@@ -1,0 +1,66 @@
+name: Update existing icon pack
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: icon-pack-update-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Regenerate and reconcile all icons
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Require branch and PAT
+        env:
+          ICON_PACK_PAT: ${{ secrets.ICON_PACK_PAT }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [ "$REF_TYPE" != "branch" ]; then
+            echo "::error::Icon updates must run against a branch."
+            exit 1
+          fi
+          if [ -z "$ICON_PACK_PAT" ]; then
+            echo "::error::Repository secret ICON_PACK_PAT is required."
+            exit 1
+          fi
+
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Update all generated icons
+        run: |
+          python3 .github/scripts/process_icon_submission.py \
+            --mode update \
+            --random-digits 6
+
+      - name: Commit updated icon pack
+        env:
+          ICON_PACK_PAT: ${{ secrets.ICON_PACK_PAT }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          if git diff --quiet && [ -z "$(git status --short)" ]; then
+            echo "No icon updates to commit."
+            exit 0
+          fi
+
+          pat_user_json="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${ICON_PACK_PAT}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/user)"
+          pat_login="$(printf '%s' "$pat_user_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["login"])')"
+          pat_id="$(printf '%s' "$pat_user_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+
+          git config user.name "$pat_login"
+          git config user.email "${pat_id}+${pat_login}@users.noreply.github.com"
+          git add metadata.json svg
+          git commit -m "build(icon-pack): update SVG metadata"
+          git remote set-url origin "https://x-access-token:${ICON_PACK_PAT}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "HEAD:${TARGET_BRANCH}"

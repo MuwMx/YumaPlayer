@@ -1,0 +1,184 @@
+name: Bug Report
+description: Report a reproducible ArchiveTune bug
+labels: [BUG]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve ArchiveTune.
+
+        Before submitting, verify the bug on the latest nightly build whenever possible. Stable releases may already contain bugs fixed in nightly builds, so stable-only reports need a clear reason and may be closed if they cannot be reproduced on nightly.
+
+  - type: checkboxes
+    id: pre-submission-checklist
+    attributes:
+      label: Required pre-submission checklist
+      description: Reports that skip these checks are difficult to triage and may be closed.
+      options:
+        - label: I have tested this bug on the [latest nightly version](https://github.com/ArchiveTuneApp/ArchiveTune/actions).
+          required: true
+        - label: This report describes one specific bug, not multiple unrelated problems.
+          required: true
+        - label: The issue title names the affected area and the broken behavior.
+          required: true
+        - label: I understand stable-only reports may be closed if the bug is not verified on the latest nightly build.
+          required: true
+
+  - type: dropdown
+    id: nightly-verification
+    attributes:
+      label: Latest nightly verification
+      description: >
+        Test the latest nightly build from GitHub Actions before reporting whenever possible.
+        Select "Confirmed on latest nightly" only if the bug still happens on that build.
+      options:
+        - Confirmed on latest nightly
+        - Stable only; I cannot test nightly
+        - Stable only; nightly build is unavailable or failed to install
+        - Stable only; bug is security, data-loss, or crash-critical
+    validations:
+      required: true
+
+  - type: input
+    id: nightly-build-source
+    attributes:
+      label: Nightly build used, or stable-only reason
+      description: >
+        If you tested nightly, paste the GitHub Actions run link, artifact name, build hash, or version.
+        If you did not test nightly, explain the blocking reason clearly.
+      placeholder: "Example: Nightly from Actions run #12345, app-mobile-universal-debug-pr-123, hash abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: release-channel
+    attributes:
+      label: Installed release channel where the bug happens
+      description: Select the build channel where you reproduced the bug.
+      options:
+        - Nightly
+        - Stable
+        - Debug/local build
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: ArchiveTune version
+      description: Found in Settings -> About, or from the APK/build artifact name.
+      placeholder: "Example: 13.4.0, debug build, or nightly hash abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected area
+      description: Select the main area where the bug happens.
+      options:
+        - Music player / now playing
+        - Playback queue / radio / cache
+        - Library / playlists / local media
+        - Search / browse / YouTube data
+        - Lyrics / translation / romanization
+        - Downloads
+        - Settings / preferences
+        - UI / visuals / theme
+        - Widgets / notification / shortcuts
+        - Integrations / Discord / Last.fm / ListenBrainz / Spotify
+        - Login / account / proxy
+        - Crash / startup / installation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Reproducibility
+      description: How often can you reproduce this bug with the steps below?
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Rarely
+        - Once, but with logs or crash evidence
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps from a clean app state when possible.
+      placeholder: |
+        1. Open ArchiveTune.
+        2. Go to ...
+        3. Tap ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior-comparison
+    attributes:
+      label: Expected behavior vs actual behavior
+      description: Describe what should happen and what actually happens.
+      placeholder: |
+        Expected:
+
+        Actual:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Paste relevant adb logcat output, crash traces, or app-generated logs.
+        Remove access tokens, cookies, auth headers, account identifiers, and local file paths before submitting.
+      placeholder: "Paste logs here, or attach a text file if the log is long."
+    validations:
+      required: true
+
+  - type: textarea
+    id: visual-evidence
+    attributes:
+      label: Screenshots or screen recordings
+      description: Attach evidence for UI, playback, lyrics, widget, notification, settings, or visual bugs by dragging files into this field.
+      placeholder: "Attach files here, or describe why visual evidence is not available."
+
+  - type: dropdown
+    id: android-version
+    attributes:
+      label: Android version
+      options:
+        - Android 16
+        - Android 15
+        - Android 14
+        - Android 13
+        - Android 12
+        - Android 11
+        - Android 10
+        - Android 9 or older
+        - Custom ROM
+    validations:
+      required: true
+
+  - type: input
+    id: device-model
+    attributes:
+      label: Device model
+      description: Include manufacturer, model, and ROM if relevant.
+      placeholder: "Example: Pixel 7 Pro, Samsung Galaxy S23, LineageOS device"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add network conditions, account state, region, proxy/VPN use, local file type, playlist size, or anything else needed to reproduce the bug.
+      placeholder: "Example: Happens only on Wi-Fi with proxy enabled, or only with local FLAC files."

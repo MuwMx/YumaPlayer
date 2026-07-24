@@ -1,0 +1,82 @@
+name: Request New Lyrics Source
+description: Propose a new lyrics provider to be added to ArchiveTune's lyrics module
+title: "[New Source] "
+labels: ["Source Request"]
+body:
+  - type: input
+    id: source-name
+    attributes:
+      label: Lyrics Source Name
+      description: Name of the service/API (e.g. "Genius", "AZLyrics", "Musixmatch")
+      placeholder: e.g. Genius
+    validations:
+      required: true
+
+  - type: input
+    id: source-website
+    attributes:
+      label: Website / API Endpoint
+      description: URL of the service or API documentation
+      placeholder: e.g. https://genius.com/api-clients
+    validations:
+      required: true
+
+  - type: textarea
+    id: source-description
+    attributes:
+      label: Description
+      description: How does this source work? What makes it different from existing providers?
+      placeholder: Describe the API, data format, authentication requirements, etc.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: features
+    attributes:
+      label: Capabilities
+      description: What formats does this source support?
+      options:
+        - label: Synced lyrics (LRC / TTML)
+        - label: Plain text lyrics
+        - label: Word-by-word timestamps (karaoke)
+        - label: Multiple language support
+        - label: Instrumental detection
+
+  - type: dropdown
+    id: api-type
+    attributes:
+      label: API Type
+      options:
+        - Public REST API (no auth)
+        - Public REST API (API key required)
+        - Unofficial/reverse-engineered endpoint
+        - Scraping required
+        - gRPC / GraphQL
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample Response / Documentation
+      description: Paste a sample API response or link to docs
+      placeholder: |
+        ```json
+        {
+          "lyrics": "...",
+          "syncType": "line"
+        }
+        ```
+      render: json
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Requirements
+      options:
+        - label: This source provides lyrics (not scrobbling, artwork, or audio recognition)
+          required: true
+        - label: I have verified this source is not already available in ArchiveTune
+          required: true
+        - label: This source is legally accessible and I have checked its terms of service

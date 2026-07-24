@@ -1,0 +1,47 @@
+[
+  {
+    "Name": "Sakura",
+    "Author": "morieeattonkatsu",
+    "GitHubAuthorUrl": "https://github.com/rukamori",
+    "Link": "",
+    "Id": "5847",
+    "Source": "sakura_morieeattonkatsu_5847.svg",
+    "Submission": "submissions/Sakura_Chartreux.svg"
+  },
+  {
+    "Id": "104570",
+    "Name": "Marin Kitagawa",
+    "Author": "raspweed",
+    "Source": "marin_kitagawa_raspweed_104570.svg",
+    "Submission": "submissions/raspweed.svg",
+    "Link": "https://github.com/raspweed/IconPack",
+    "GitHubAuthorUrl": "https://github.com/raspweed"
+  },
+  {
+    "Id": "950492",
+    "Name": "Frostwave - Japanese Winter",
+    "Author": "Animesh",
+    "Source": "frostwave_japanese_winter_animesh_950492.svg",
+    "Submission": "submissions/Frostwave.svg",
+    "Link": "",
+    "GitHubAuthorUrl": "https://github.com/agupta07505"
+  },
+  {
+    "Id": "417667",
+    "Name": "Suzume",
+    "Author": "Animesh",
+    "Source": "suzume_animesh_417667.svg",
+    "Submission": "submissions/Suzume.svg",
+    "Link": "",
+    "GitHubAuthorUrl": "https://github.com/agupta07505"
+  },
+  {
+    "Id": "152487",
+    "Name": "Sakura Retro",
+    "Author": "morrieeattonkatsu",
+    "Source": "sakura_retro_morrieeattonkatsu_152487.svg",
+    "Submission": "submissions/SakuraRetro.svg",
+    "Link": "",
+    "GitHubAuthorUrl": "https://github.com/rukamori"
+  }
+]

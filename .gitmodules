@@ -1,0 +1,12 @@
+[submodule "core"]
+	path = core
+	url = https://github.com/ArchiveTuneApp/core.git
+[submodule "lyrics"]
+	path = lyrics
+	url = https://github.com/ArchiveTuneApp/lyrics.git
+[submodule "moriextractor"]
+	path = moriextractor
+	url = https://github.com/ArchiveTuneApp/moriextractor
+[submodule "IconPack"]
+	path = IconPack
+	url = https://github.com/ArchiveTuneApp/IconPack

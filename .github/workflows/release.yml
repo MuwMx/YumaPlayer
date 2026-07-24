@@ -1,0 +1,499 @@
+name: Bump to new version
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'app/build.gradle.kts'
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    if: contains(github.ref, 'refs/tags') == false
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check_version.outputs.version_changed }}
+      new_version: ${{ steps.check_version.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      
+      - name: Check version and Tag
+        id: check_version
+        run: |
+          if [ ! -f app/build.gradle.kts ]; then
+            echo "Error: app/build.gradle.kts does not exist"
+            exit 1
+          fi
+
+          # 1. Extract the version from Gradle (using your regex)
+          NEW_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "")
+          
+          if [ -z "$NEW_VERSION" ]; then
+            echo "Error: Could not find versionName in app/build.gradle.kts"
+            exit 1
+          fi
+
+          # 2. ALWAYS Output the detected version (Fixes the missing output bug)
+          echo "Detected version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+          # 3. Check if this version is already released (Tag Existence Check)
+          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$NEW_VERSION already exists. Skipping release."
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag v$NEW_VERSION does not exist. Proceeding with release."
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Debug output
+        run: |
+          echo "version_changed: ${{ steps.check_version.outputs.version_changed }}"
+          echo "new_version: ${{ steps.check_version.outputs.new_version }}"
+
+  reproducibility:
+    needs: check-version
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Verify reproducible unsigned universal APK
+        shell: bash
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+        run: |
+          set -euo pipefail
+          DEVICE="mobile"
+          DEVICE_CAP="Mobile"
+          ABI="universal"
+          ABI_CAP="Universal"
+
+          locate_universal_apk() {
+            local apk
+            local metadata
+            local output_file
+            local base_dir
+            local candidate
+
+            for dir in \
+              "app/build/outputs/apk/gms${DEVICE_CAP}${ABI_CAP}/release" \
+              "app/build/outputs/apk/gms${DEVICE}${ABI_CAP}/release" \
+              "app/build/outputs/apk/gms/${DEVICE}/${ABI}/release" \
+              "app/build/outputs/apk/gms/${DEVICE}${ABI_CAP}/release" \
+              "app/build/outputs/apk/gms/${DEVICE_CAP}${ABI_CAP}/release" \
+              "app/build/outputs/apk/${DEVICE}/${ABI}/release" \
+              "app/build/outputs/apk/${DEVICE}${ABI_CAP}/release" \
+              "app/build/outputs/apk/${DEVICE_CAP}${ABI_CAP}/release"
+            do
+              [ -d "$dir" ] || continue
+
+              apk="$(find "$dir" -maxdepth 1 -type f -name "*-unsigned.apk" | head -n 1 || true)"
+              if [ -n "${apk:-}" ] && [ -f "$apk" ]; then
+                echo "$apk"
+                return 0
+              fi
+
+              apk="$(find "$dir" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" | head -n 1 || true)"
+              if [ -n "${apk:-}" ] && [ -f "$apk" ]; then
+                echo "$apk"
+                return 0
+              fi
+            done
+
+            metadata="$(
+              find app/build/outputs/apk -type f -name "output-metadata.json" \
+                \( \
+                  -path "*/gms${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/gms${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                  -path "*/${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                  -path "*/gms${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" -o \
+                  -path "*/gms${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                  -path "*/gms/${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" -o \
+                  -path "*/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
+                  -path "*/${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                  -path "*/${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" \
+                \) \
+                | head -n 1 || true
+            )"
+            if [ -n "${metadata:-}" ]; then
+              output_file="$(grep -oP '"outputFile"\s*:\s*"\K[^"]+' "$metadata" | head -n 1 || true)"
+              if [ -n "${output_file:-}" ]; then
+                base_dir="$(dirname "$metadata")"
+                candidate="$base_dir/$output_file"
+                if [ -f "$candidate" ]; then
+                  echo "$candidate"
+                  return 0
+                fi
+              fi
+            fi
+
+            apk="$(find app/build/outputs/apk -type f -name "*-unsigned.apk" \
+              \( \
+                -path "*/gms${DEVICE_CAP}${ABI_CAP}/*" -o \
+                -path "*/gms${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/gms/${DEVICE}/${ABI}/*" -o \
+                -path "*/gms/${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/gms/${DEVICE_CAP}${ABI_CAP}/*" -o \
+                -path "*/${DEVICE}/${ABI}/*" -o \
+                -path "*/${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/${DEVICE_CAP}${ABI_CAP}/*" \
+              \) | head -n 1 || true)"
+            if [ -n "${apk:-}" ] && [ -f "$apk" ]; then
+              echo "$apk"
+              return 0
+            fi
+
+            apk="$(find app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" \
+              \( \
+                -path "*/gms${DEVICE_CAP}${ABI_CAP}/*" -o \
+                -path "*/gms${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/gms/${DEVICE}/${ABI}/*" -o \
+                -path "*/gms/${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/gms/${DEVICE_CAP}${ABI_CAP}/*" -o \
+                -path "*/${DEVICE}/${ABI}/*" -o \
+                -path "*/${DEVICE}${ABI_CAP}/*" -o \
+                -path "*/${DEVICE_CAP}${ABI_CAP}/*" \
+              \) | head -n 1 || true)"
+            if [ -n "${apk:-}" ] && [ -f "$apk" ]; then
+              echo "$apk"
+              return 0
+            fi
+
+            return 1
+          }
+
+          ./gradlew clean assembleGmsMobileUniversalRelease
+          APK_1="$(locate_universal_apk || true)"
+          if [ -z "${APK_1:-}" ] || [ ! -f "$APK_1" ]; then
+            echo "Could not find unsigned universal release APK (first build)."
+            echo "APK outputs:"
+            find app/build/outputs/apk -maxdepth 6 -type f -print || true
+            exit 1
+          fi
+          SHA_1="$(sha256sum "$APK_1" | awk '{print $1}')"
+          cp "$APK_1" /tmp/universal-1.apk
+
+          ./gradlew clean assembleGmsMobileUniversalRelease
+          APK_2="$(locate_universal_apk || true)"
+          if [ -z "${APK_2:-}" ] || [ ! -f "$APK_2" ]; then
+            echo "Could not find unsigned universal release APK (second build)."
+            echo "APK outputs:"
+            find app/build/outputs/apk -maxdepth 6 -type f -print || true
+            exit 1
+          fi
+          SHA_2="$(sha256sum "$APK_2" | awk '{print $1}')"
+
+          echo "sha256 #1: $SHA_1"
+          echo "sha256 #2: $SHA_2"
+          test "$SHA_1" = "$SHA_2"
+
+  build:
+    name: Build Release APKs
+    needs: [check-version, reproducibility]
+    # Removed '|| workflow_dispatch' so it respects the version check
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: arm64
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: armeabi
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: x86
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: x86_64
+          - device: mobile
+            distribution: gms
+            distributionName: Gms
+            deviceName: Mobile
+            abi: universal
+          - device: tv
+            distribution: gms
+            distributionName: Gms
+            deviceName: Tv
+            abi: universal
+          - device: mobile
+            distribution: foss
+            distributionName: Foss
+            deviceName: Mobile
+            abi: universal
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+          
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Resolve variant names
+        id: variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISTRIBUTION="${{ matrix.distribution }}"
+          DISTRIBUTION_CAP="${{ matrix.distributionName }}"
+          DEVICE="${{ matrix.device }}"
+          ABI="${{ matrix.abi }}"
+          DEVICE_CAP="${{ matrix.deviceName }}"
+          ABI_CAP="$(tr '[:lower:]' '[:upper:]' <<< "${ABI:0:1}")${ABI:1}"
+          echo "distribution=$DISTRIBUTION" >> "$GITHUB_OUTPUT"
+          echo "distribution_cap=$DISTRIBUTION_CAP" >> "$GITHUB_OUTPUT"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+          echo "abi=$ABI" >> "$GITHUB_OUTPUT"
+          echo "device_cap=$DEVICE_CAP" >> "$GITHUB_OUTPUT"
+          echo "abi_cap=$ABI_CAP" >> "$GITHUB_OUTPUT"
+          echo "gradle_task=assemble${DISTRIBUTION_CAP}${DEVICE_CAP}${ABI_CAP}Release" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release" >> "$GITHUB_OUTPUT"
+          echo "apk_name=app-${DISTRIBUTION}-${DEVICE}-${ABI}-release.apk" >> "$GITHUB_OUTPUT"
+ 
+      - name: Build Release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_TASK="${{ steps.variant.outputs.gradle_task }}"
+          ABI="${{ matrix.abi }}"
+
+          if [ "$ABI" = "armeabi" ] || [ "$ABI" = "x86" ]; then
+            ./gradlew "$GRADLE_TASK" 2>&1 | python3 -c "import re,sys;p=re.compile(r'^(WARNING: )?\[CXX5202\] This app only has 32-bit \[(armeabi-v7a|x86)\] native libraries\. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions\. For more information, visit https://g\.co/64-bit-requirement\$');[sys.stdout.write(l) for l in sys.stdin if not p.match(l.rstrip())]"
+          else
+            ./gradlew "$GRADLE_TASK"
+          fi
+        env:
+          PULL_REQUEST: 'false'
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+      - name: Resolve release output directory
+        id: release_dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISTRIBUTION="${{ steps.variant.outputs.distribution }}"
+          DEVICE="${{ steps.variant.outputs.device }}"
+          ABI="${{ steps.variant.outputs.abi }}"
+          DEVICE_CAP="${{ steps.variant.outputs.device_cap }}"
+          ABI_CAP="${{ steps.variant.outputs.abi_cap }}"
+          CANDIDATES=(
+            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/gms/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/gms/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DEVICE}/${ABI}/release"
+            "app/build/outputs/apk/${DEVICE}${ABI_CAP}/release"
+            "app/build/outputs/apk/${DEVICE_CAP}${ABI_CAP}/release"
+            "app/build/outputs/apk/${ABI}/${DEVICE}/release"
+          )
+          for d in "${CANDIDATES[@]}"; do
+            if [ -d "$d" ]; then
+              echo "release_dir=$d" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          FOUND_METADATA="$(
+            find app/build/outputs/apk -type f -name "output-metadata.json" \
+              \( \
+                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" -o \
+                -path "*/${DEVICE}/${ABI}/release/output-metadata.json" -o \
+                -path "*/${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
+                -path "*/${ABI}/${DEVICE}/release/output-metadata.json" -o \
+                -path "*/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
+                -path "*/${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
+                -path "*/${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" \
+              \) \
+              | head -n 1 || true
+          )"
+          if [ -n "${FOUND_METADATA:-}" ]; then
+            echo "release_dir=$(dirname "$FOUND_METADATA")" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Could not resolve APK release output directory for DISTRIBUTION=$DISTRIBUTION DEVICE=$DEVICE ABI=$ABI"
+          find app/build/outputs/apk -maxdepth 8 -type d -print || true
+          exit 1
+
+      - name: Sign APK
+        uses: ilharp/sign-android-release@v2.0.0
+        with:
+          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
+          signingKey: ${{ secrets.KEYSTORE }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+          buildToolsVersion: 35.0.0
+      
+      - name: Move and rename APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISTRIBUTION="${{ steps.variant.outputs.distribution }}"
+          RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
+          mkdir -p "$RELEASE_DIR/out"
+          if [ "$DISTRIBUTION" = "gms" ]; then
+            APK="$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)"
+          else
+            APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" | head -n 1)"
+          fi
+          if [ -z "${APK:-}" ] || [ ! -f "$APK" ]; then
+            echo "Could not find APK for DISTRIBUTION=$DISTRIBUTION in $RELEASE_DIR"
+            find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
+            exit 1
+          fi
+          mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+  
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.variant.outputs.artifact_name }}
+          path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+
+  create-release:
+    needs: [check-version, build]
+    if: needs.check-version.outputs.version_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download all APKs
+        uses: actions/download-artifact@v8
+        with:
+          path: downloaded_artifacts/
+
+      - name: Resolve changelog range
+        id: changelog_range
+        shell: bash
+        run: |
+          LAST_TAG="$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || true)"
+          if [ -n "$LAST_TAG" ]; then
+            FROM_REF="$LAST_TAG"
+          else
+            FROM_REF="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+          fi
+
+          echo "from_ref=$FROM_REF" >> "$GITHUB_OUTPUT"
+          echo "to_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v6
+        with:
+          mode: "COMMIT"
+          fromTag: ${{ steps.changelog_range.outputs.from_ref }}
+          toTag: ${{ steps.changelog_range.outputs.to_ref }}
+          configurationJson: |
+            {
+              "template": "# Changelog\n\n#{{CHANGELOG}}\n\n<details>\n<summary>Other changes</summary>\n\n#{{UNCATEGORIZED}}\n</details>\n",
+              "pr_template": "- #{{TITLE}} — by @#{{AUTHOR}}",
+              "categories": [
+                { "title": "## Features", "labels": ["feat", "feature"] },
+                { "title": "## Fixes", "labels": ["fix", "bug"] },
+                { "title": "## Performance", "labels": ["perf"] },
+                { "title": "## Refactors", "labels": ["refactor"] },
+                { "title": "## Documentation", "labels": ["docs"] },
+                { "title": "## Build / CI", "labels": ["build", "ci"] }
+              ],
+              "label_extractor": [
+                {
+                  "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?:\\s+.*$",
+                  "on_property": "title",
+                  "target": "$1"
+                }
+              ]
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          MOBILE_UNIVERSAL_APK=$(find downloaded_artifacts/app-gms-mobile-universal-release -name "*.apk" | head -n 1)
+          OTHER_APKS=$(find downloaded_artifacts -path "*/app-*-release/*.apk" ! -path "*/app-gms-mobile-universal-release/*")
+
+          cat > release_notes.md <<EOF
+          ${{ steps.build_changelog.outputs.changelog }}
+          EOF
+
+          gh release create "v${{ needs.check-version.outputs.new_version }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ needs.check-version.outputs.new_version }}" \
+            --notes-file release_notes.md \
+            "$MOBILE_UNIVERSAL_APK" \
+            $OTHER_APKS

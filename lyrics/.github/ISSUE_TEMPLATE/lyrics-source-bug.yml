@@ -1,0 +1,93 @@
+name: Lyrics Source Bug
+description: Report a lyrics provider that is not working correctly in the app
+title: "[Bug] "
+labels: ["Bug"]
+body:
+  - type: dropdown
+    id: source-name
+    attributes:
+      label: Affected Lyrics Source
+      options:
+        - kugou (KuGou)
+        - lrclib (LRC Lib)
+        - simpmusic (SimpMusic)
+        - paxsenix / Apple Music
+        - paxsenix / NetEase
+        - paxsenix / Spotify
+        - paxsenix / Musixmatch
+        - paxsenix / YouTube
+        - betterlyrics (BetterLyrics)
+        - unison (Unison)
+        - Not sure / Multiple
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: source-name-other
+    attributes:
+      label: Other Source Name
+      description: If you selected "Other" above, specify the source name here
+      placeholder: e.g. SomeCustomAPI
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What is happening? What should happen instead?
+      placeholder: e.g. The provider returns "lyrics not found" for tracks that clearly have lyrics on that service.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide a track that fails (title, artist, album)
+      placeholder: |
+        1. Track: "Bohemian Rhapsody" by Queen
+        2. Provider: lrclib
+        3. Expected: synced lyrics
+        4. Actual: returns "lyrics not found"
+    validations:
+      required: true
+
+  - type: input
+    id: track-title
+    attributes:
+      label: Track Title
+      placeholder: e.g. Bohemian Rhapsody
+    validations:
+      required: true
+
+  - type: input
+    id: track-artist
+    attributes:
+      label: Track Artist
+      placeholder: e.g. Queen
+    validations:
+      required: true
+
+  - type: input
+    id: track-album
+    attributes:
+      label: Track Album (optional)
+      placeholder: e.g. A Night at the Opera
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Error Messages
+      description: Paste any relevant log output or error messages
+      placeholder: Paste logs here
+      render: shell
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have verified this issue is reproducible with the affected source
+          required: true
+        - label: I have checked there are no existing issues for this bug
+          required: true

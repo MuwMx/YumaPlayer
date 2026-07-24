@@ -1,0 +1,74 @@
+/*
+ * YumaPlayer (2026) | Modified work by MuwMix
+ * ArchiveTune (2026) | Original work by © Rukamori
+ * GPL-3.0 License | Contributors: see git history
+ */
+
+package moe.rukamori.archivetune.ui.utils
+
+private const val PlayerArtworkHighResPx = 1080
+
+enum class YTThumbQuality(
+    val value: String,
+) {
+    MAXRES("maxresdefault"),
+    HQ("hqdefault"),
+    MQ("mqdefault"),
+    DEFAULT("default"),
+}
+
+fun buildYTThumbnailUrl(
+    videoId: String,
+    quality: YTThumbQuality = YTThumbQuality.MAXRES,
+): String = "https://i.ytimg.com/vi/$videoId/${quality.value}.jpg"
+
+private val wHPathRegex = Regex("w\\d+-h\\d+")
+private val wHParamRegex = Regex("=w(\\d+)-h(\\d+)")
+private val sParamRegex = Regex("=s(\\d+)")
+private val brokenSAppendRegex = Regex("-s\\d+")
+
+fun String.resize(
+    width: Int? = null,
+    height: Int? = null,
+): String {
+    if (width == null && height == null) return this
+
+    val isGoogleCdn = contains("googleusercontent.com") || contains("ggpht.com")
+    val isYtimg = contains("i.ytimg.com")
+
+    if (isGoogleCdn) {
+        val w = width ?: height!!
+        val h = height ?: width!!
+
+        if (wHPathRegex.containsMatchIn(this)) {
+            return replace(wHPathRegex, "w$w-h$h")
+        }
+
+        wHParamRegex.find(this)?.let {
+            return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
+        }
+
+        sParamRegex.find(this)?.let { match ->
+            val before = substring(0, match.range.first)
+            val after = substring(match.range.last + 1)
+            return "$before=s${maxOf(w, h)}${after.replace(brokenSAppendRegex, "")}"
+        }
+
+        return this
+    }
+
+    if (isYtimg) {
+        return this
+    }
+
+    return this
+}
+
+fun String.highRes(): String = resize(PlayerArtworkHighResPx, PlayerArtworkHighResPx)
+
+fun getMusicVideoYTThumbnail(
+    videoId: String?,
+    ytmUrl: String?,
+    isMusicVideo: Boolean,
+    quality: YTThumbQuality = YTThumbQuality.HQ,
+): String? = if (videoId != null && isMusicVideo) buildYTThumbnailUrl(videoId, quality) else ytmUrl
