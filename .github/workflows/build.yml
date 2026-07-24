@@ -49,36 +49,36 @@ jobs:
             distributionName: Gms
             deviceName: Mobile
             abi: arm64
-          - device: mobile
-            distribution: gms
-            distributionName: Gms
-            deviceName: Mobile
-            abi: armeabi
-          - device: mobile
-            distribution: gms
-            distributionName: Gms
-            deviceName: Mobile
-            abi: x86
-          - device: mobile
-            distribution: gms
-            distributionName: Gms
-            deviceName: Mobile
-            abi: x86_64
-          - device: mobile
-            distribution: gms
-            distributionName: Gms
-            deviceName: Mobile
-            abi: universal
-          - device: tv
-            distribution: gms
-            distributionName: Gms
-            deviceName: Tv
-            abi: universal
-          - device: mobile
-            distribution: foss
-            distributionName: Foss
-            deviceName: Mobile
-            abi: universal
+#          - device: mobile
+#            distribution: gms
+#            distributionName: Gms
+#            deviceName: Mobile
+#            abi: armeabi
+#          - device: mobile
+#            distribution: gms
+#            distributionName: Gms
+#            deviceName: Mobile
+#            abi: x86
+#          - device: mobile
+#            distribution: gms
+#            distributionName: Gms
+#            deviceName: Mobile
+#            abi: x86_64
+#          - device: mobile
+#            distribution: gms
+#            distributionName: Gms
+#            deviceName: Mobile
+#            abi: universal
+#          - device: tv
+#            distribution: gms
+#            distributionName: Gms
+#            deviceName: Tv
+#            abi: universal
+#          - device: mobile
+#            distribution: foss
+#            distributionName: Foss
+#            deviceName: Mobile
+#            abi: universal
 
     steps:
       - uses: actions/checkout@v7
