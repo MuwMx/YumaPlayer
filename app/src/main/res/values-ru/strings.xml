@@ -511,6 +511,11 @@
     <string name="playback_state_unknown">НЕИЗВЕСТНО</string>
     <string name="share_logs">Поделиться логами</string>
     <string name="about">О приложении</string>
+    <string name="settings_player_subtitle">Качество аудио, кроссфейд и эквалайзер</string>
+    <string name="settings_section_account">Учётная запись и интеграции</string>
+    <string name="settings_section_appearance">Интерфейс и внешний вид</string>
+    <string name="settings_section_network">Сеть и сервисы</string>
+    <string name="settings_section_about">О системе и приложении</string>
     <string name="new_version_available">Доступна новая версия</string>
     <string name="updates">Обновления</string>
     <string name="current_version">Текущая версия</string>

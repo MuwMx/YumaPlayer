@@ -521,6 +521,11 @@
     <string name="enable_simpmusic_lyrics">Enable SimpMusic lyrics</string>
     <string name="enable_paxsenix_lyrics">Enable Paxsenix lyrics</string>
     <string name="player_and_audio">Player and audio</string>
+    <string name="settings_player_subtitle">Audio quality, crossfade, and equalizer</string>
+    <string name="settings_section_account">Account &amp; Integrations</string>
+    <string name="settings_section_appearance">Interface &amp; Appearance</string>
+    <string name="settings_section_network">Network &amp; Services</string>
+    <string name="settings_section_about">About &amp; System</string>
     <string name="audio_quality">Audio quality</string>
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>

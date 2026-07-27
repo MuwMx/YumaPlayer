@@ -125,10 +125,6 @@ fun SettingsScreen(
     val shouldShowPermissionHint = !isStorageGranted || !isNotificationGranted
     var isUpdateDismissed by remember { mutableStateOf(false) }
     val settingsGroups = buildSettingsGroups(navController, isAndroid12OrLater, hasUpdate, context)
-    val settingsItems =
-        remember(settingsGroups) {
-            settingsGroups.flatMap { it.items }
-        }
 
     val scrimAlpha by remember {
         derivedStateOf {
@@ -265,15 +261,13 @@ fun SettingsScreen(
             }
 
             itemsIndexed(
-                items = settingsItems,
-                key = { _, item -> item.key },
-                contentType = { _, _ -> "settings_segment" },
-            ) { index, settingsItem ->
-                SettingsSegmentedItem(
-                    item = settingsItem,
-                    index = index,
-                    count = settingsItems.size,
-                    modifier = Modifier.padding(horizontal = 26.dp),
+                items = settingsGroups,
+                key = { _, group -> group.title },
+                contentType = { _, _ -> "settings_group" },
+            ) { _, group ->
+                SettingsGroupCard(
+                    group = group,
+                    modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 )
             }
         }

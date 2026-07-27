@@ -56,7 +56,7 @@ fun NewActionButton(
     contentColor: Color = Color.Unspecified,
 ) {
     val colors = LocalYumaColors.current
-    val containerColor = if (backgroundColor.isSpecified) backgroundColor else colors.glassBorder.copy(alpha = 0.08f)
+    val containerColor = if (backgroundColor.isSpecified) backgroundColor else colors.glassBorder.copy(alpha = 0.10f)
     val actionContentColor = if (contentColor.isSpecified) contentColor else colors.textPrimary
 
     Box(
@@ -64,12 +64,12 @@ fun NewActionButton(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 84.dp)
-                .yumaGlassCard(
-                    shape = RoundedCornerShape(16.dp),
-                    backgroundColor = containerColor,
-                    borderColor = colors.glassBorder,
-                )
                 .yumaClickable(enabled = enabled, onClick = onClick)
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(14.dp),
+                    backgroundColor = containerColor,
+                    borderColor = Color.Transparent,
+                )
                 .padding(horizontal = 10.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -265,18 +265,18 @@ fun NewIconButton(
     contentColor: Color = Color.Unspecified,
 ) {
     val colors = LocalYumaColors.current
-    val containerColor = if (backgroundColor.isSpecified) backgroundColor else colors.glassBorder.copy(alpha = 0.08f)
+    val containerColor = if (backgroundColor.isSpecified) backgroundColor else colors.glassBorder.copy(alpha = 0.10f)
     val iconContentColor = if (contentColor.isSpecified) contentColor else colors.textPrimary
 
     Box(
         modifier = modifier
             .size(40.dp)
+            .yumaClickable(enabled = enabled, onClick = onClick)
             .yumaGlassCard(
                 shape = RoundedCornerShape(12.dp),
                 backgroundColor = containerColor,
-                borderColor = colors.glassBorder
-            )
-            .yumaClickable(enabled = enabled, onClick = onClick),
+                borderColor = Color.Transparent,
+            ),
         contentAlignment = Alignment.Center
     ) {
         icon()

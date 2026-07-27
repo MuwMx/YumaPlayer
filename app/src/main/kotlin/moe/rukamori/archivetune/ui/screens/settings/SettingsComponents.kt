@@ -340,6 +340,8 @@ fun SettingsGroupCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalYumaColors.current
+    val cardShape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
+
     Column(modifier = modifier) {
         Text(
             text = group.title.uppercase(),
@@ -354,14 +356,27 @@ fun SettingsGroupCard(
                 ),
         )
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .yumaGlassCard(
+                        shape = cardShape,
+                        backgroundColor = colors.glassBackground,
+                        borderColor = colors.glassBorder,
+                    )
+                    .padding(8.dp),
         ) {
-            group.items.forEach { item ->
-                SettingsRow(
-                    item = item,
-                    showDivider = false,
-                )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                group.items.forEach { item ->
+                    SettingsRow(
+                        item = item,
+                        showDivider = false,
+                    )
+                }
             }
         }
     }
@@ -385,13 +400,15 @@ fun SettingsRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .yumaClickable(onClick = item.onClick)
                 .yumaGlassCard(
-                    shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius),
+                    shape = RoundedCornerShape(14.dp),
+                    backgroundColor = colors.glassBorder.copy(alpha = 0.10f),
+                    borderColor = Color.Transparent,
                 )
+                .yumaClickable(onClick = item.onClick)
                 .padding(
                     horizontal = SettingsDimensions.RowHorizontalPadding,
-                    vertical = SettingsDimensions.RowVerticalPadding
+                    vertical = SettingsDimensions.RowVerticalPadding,
                 ),
     ) {
         Row(
