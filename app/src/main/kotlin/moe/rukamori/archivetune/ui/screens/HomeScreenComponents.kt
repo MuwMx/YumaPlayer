@@ -6,12 +6,35 @@
 
 package moe.rukamori.archivetune.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
+import moe.rukamori.archivetune.ui.component.horizontalFadingEdge
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
@@ -142,50 +165,115 @@ fun HomeCategoryChips(
     onChipSelected: (HomePage.Chip) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    val colors = LocalYumaColors.current
+    val scrollState = rememberScrollState()
+    var containerWidth by remember { mutableIntStateOf(0) }
+    val chipBoundsMap = remember { mutableStateMapOf<HomePage.Chip, Pair<Int, Int>>() }
+
+    LaunchedEffect(selectedChip, containerWidth) {
+        selectedChip?.let { chip ->
+            chipBoundsMap[chip]?.let { (xInParent, width) ->
+                if (containerWidth > 0) {
+                    val targetScroll = (xInParent + width / 2 - containerWidth / 2).coerceIn(0, scrollState.maxValue)
+                    scrollState.animateScrollTo(targetScroll)
+                }
+            }
+        }
+    }
+
+    Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = 68.dp)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(24.dp),
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                )
+                .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
-        chips.forEach { chip ->
-            val selected = chip == selectedChip
-            FilterChip(
-                selected = selected,
-                onClick = { onChipSelected(chip) },
-                label = {
-                    Text(
-                        text = chip.title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .onSizeChanged { containerWidth = it.width }
+                    .horizontalFadingEdge(scrollState = scrollState, length = 20.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(scrollState),
+            ) {
+                chips.forEach { chip ->
+                    val selected = chip == selectedChip
+
+                    val chipBgColor by animateColorAsState(
+                        targetValue =
+                            if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                colors.glassBorder.copy(alpha = 0.10f)
+                            },
+                        animationSpec = tween(durationMillis = 250),
+                        label = "chipBgColorAnimation",
                     )
-                },
-                leadingIcon =
-                    if (selected) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.done),
-                                contentDescription = null,
-                                modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    val chipTextColor by animateColorAsState(
+                        targetValue =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                colors.textPrimary
+                            },
+                        animationSpec = tween(durationMillis = 250),
+                        label = "chipTextColorAnimation",
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .onGloballyPositioned { coordinates ->
+                                    chipBoundsMap[chip] = Pair(coordinates.positionInParent().x.toInt(), coordinates.size.width)
+                                }
+                                .yumaClickable(pressedScale = 0.94f) { onChipSelected(chip) }
+                                .yumaGlassCard(
+                                    shape = CircleShape,
+                                    backgroundColor = chipBgColor,
+                                    borderColor = Color.Transparent,
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            AnimatedVisibility(
+                                visible = selected,
+                                enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(200)),
+                                exit = fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(200)),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.done),
+                                    contentDescription = null,
+                                    tint = chipTextColor,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            Text(
+                                text = chip.title,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = chipTextColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                    } else {
-                        null
-                    },
-                shapes = FilterChipDefaults.shapes(),
-                colors =
-                    FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
-                border = null,
-            )
+                    }
+                }
+            }
         }
     }
 }

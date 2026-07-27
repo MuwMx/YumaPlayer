@@ -761,12 +761,14 @@ class HomeViewModel
                 previousHomePage.value = homePage.value
             }
 
+            selectedChip.value = chip
+
             chipLoadJob =
                 viewModelScope.launch(Dispatchers.IO) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
-                    val nextSections = YouTube.home(params = chip?.endpoint?.params).getOrNull() ?: return@launch
+                    val nextSections = YouTube.home(params = chip.endpoint?.params).getOrNull() ?: return@launch
 
                     homePage.value =
                         nextSections.copy(
@@ -782,7 +784,6 @@ class HomeViewModel
                                     )
                                 },
                         )
-                    selectedChip.value = chip
                 }
         }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.MarqueeSpacing
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import moe.rukamori.archivetune.constants.DisableAnimationsKey
+import moe.rukamori.archivetune.utils.rememberPreference
 
 /**
  * Умная обертка: включает бегущую строку только при наличии реального оверфлоу
@@ -39,12 +42,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun AutoScrollingTextOnDemand(
     text: String,
-    style: TextStyle,
-    gradientEdgeColor: Color,
+    style: TextStyle = LocalTextStyle.current,
+    gradientEdgeColor: Color = Color.Black,
     modifier: Modifier = Modifier,
     expansionFractionProvider: () -> Float = { 1f }, // По умолчанию скроллинг разрешен всегда
     canScroll: Boolean = true
 ) {
+    val disableAnimations by rememberPreference(DisableAnimationsKey, defaultValue = false)
+    val effectiveCanScroll = canScroll && !disableAnimations
+
     var overflow by remember(text, style) { mutableStateOf(false) }
     val canStart by remember(text, style) {
         derivedStateOf { expansionFractionProvider() > 0.99f && overflow }
@@ -67,7 +73,7 @@ fun AutoScrollingTextOnDemand(
             textAlign = TextAlign.Start,
             gradientEdgeColor = gradientEdgeColor,
             modifier = modifier,
-            canScroll = canScroll && canStart
+            canScroll = effectiveCanScroll && canStart
         )
     }
 }
@@ -76,13 +82,16 @@ fun AutoScrollingTextOnDemand(
 @Composable
 fun AutoScrollingText(
     text: String,
-    style: TextStyle,
-    gradientEdgeColor: Color,
+    style: TextStyle = LocalTextStyle.current,
+    gradientEdgeColor: Color = Color.Black,
     modifier: Modifier = Modifier,
     textAlign: TextAlign? = null,
     gradientWidth: Dp = 24.dp,
     canScroll: Boolean = true
 ) {
+    val disableAnimations by rememberPreference(DisableAnimationsKey, defaultValue = false)
+    val effectiveCanScroll = canScroll && !disableAnimations
+
     SubcomposeLayout(modifier = modifier.clipToBounds()) { constraints ->
         // Измеряем реальный размер текста без ограничений по ширине экрана
         val textPlaceable = subcompose("text") {
@@ -92,12 +101,12 @@ fun AutoScrollingText(
         val isOverflowing = textPlaceable.width > constraints.maxWidth
 
         val content = @Composable {
-            if (isOverflowing && canScroll) {
+            if (isOverflowing && effectiveCanScroll) {
                 val initialDelayMillis = 2000
                 val fadeAnimationDuration = 500
 
-                var isScrolling by remember(text, canScroll) { mutableStateOf(false) }
-                LaunchedEffect(text, canScroll) {
+                var isScrolling by remember(text, effectiveCanScroll) { mutableStateOf(false) }
+                LaunchedEffect(text, effectiveCanScroll) {
                     isScrolling = false
                     delay(initialDelayMillis.toLong())
                     isScrolling = true
@@ -151,7 +160,7 @@ fun AutoScrollingText(
                     )
                 }
             } else if (isOverflowing) {
-                // Текст длинный, но скроллинг заблокирован шторкой — просто плавно тушим правый край
+                // Текст длинный, но скроллинг заблокирован (например, отключены анимации) — просто плавно тушим правый край
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -48,6 +48,7 @@ import kotlin.math.min
 val DefaultThemeColor = Color(0xFFED5564)
 val LocalArchiveTuneFontPreference = staticCompositionLocalOf { AppFontPreference.DEFAULT }
 val LocalArchiveTuneFontFamily = staticCompositionLocalOf { AppFontFamily }
+val LocalDisableAnimations = staticCompositionLocalOf { false }
 
 @Composable
 fun rememberArchiveTuneLyricsFontFamily(): FontFamily {
@@ -180,6 +181,7 @@ fun ArchiveTuneTheme(
     CompositionLocalProvider(
         LocalArchiveTuneFontPreference provides fontPreference,
         LocalArchiveTuneFontFamily provides resolvedFontFamily,
+        LocalDisableAnimations provides disableAnimations,
     ) {
         MaterialExpressiveTheme(
             colorScheme = animatedColorScheme,

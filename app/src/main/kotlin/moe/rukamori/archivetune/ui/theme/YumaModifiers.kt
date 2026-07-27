@@ -61,14 +61,24 @@ fun Modifier.yumaClickable(
 ): Modifier {
     if (!enabled) return this
 
+    val disableAnimations = LocalDisableAnimations.current
     val interactionSource = remember { MutableInteractionSource() }
+
+    if (disableAnimations) {
+        return this.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scaleState = animateFloatAsState(
         targetValue = if (isPressed) pressedScale else 1f,
         animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "yumaClickScale"
     )
