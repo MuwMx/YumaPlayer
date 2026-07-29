@@ -43,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -64,6 +65,8 @@ import androidx.compose.ui.text.font.FontFamily
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.ui.player.player_0.scroll.AutoScrollingTextOnDemand
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.LocalPreferenceItemIndex
+import moe.rukamori.archivetune.ui.component.rememberPreferenceIconShape
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
@@ -372,11 +375,13 @@ fun SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                group.items.forEach { item ->
-                    SettingsRow(
-                        item = item,
-                        showDivider = false,
-                    )
+                group.items.forEachIndexed { index, item ->
+                    CompositionLocalProvider(LocalPreferenceItemIndex provides index) {
+                        SettingsRow(
+                            item = item,
+                            showDivider = false,
+                        )
+                    }
                 }
             }
         }
@@ -401,12 +406,12 @@ fun SettingsRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .yumaClickable(onClick = item.onClick)
                 .yumaGlassCard(
                     shape = RoundedCornerShape(14.dp),
                     backgroundColor = colors.glassBorder.copy(alpha = 0.10f),
                     borderColor = Color.Transparent,
                 )
-                .yumaClickable(onClick = item.onClick)
                 .padding(
                     horizontal = SettingsDimensions.RowHorizontalPadding,
                     vertical = SettingsDimensions.RowVerticalPadding,
@@ -416,46 +421,44 @@ fun SettingsRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (item.showUpdateIndicator) {
-                BadgedBox(
-                    badge = {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(8.dp),
+            val iconShape = rememberPreferenceIconShape(item.title)
+            Box(
+                modifier = Modifier
+                    .size(SettingsDimensions.RowIconSize)
+                    .clip(iconShape)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                        shape = iconShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (item.showUpdateIndicator) {
+                    BadgedBox(
+                        badge = {
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(8.dp),
+                            )
+                        },
+                    ) {
+                        Icon(
+                            painter = item.icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
-                    },
-                ) {
+                    }
+                } else {
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
-            } else {
-                Icon(
-                    painter = item.icon,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            /*
-            Box(
-                modifier =
-                    Modifier
-                        .size(SettingsDimensions.RowIconSize)
-                        .clip(CircleShape)
-                        .background(effectiveAccent.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                ...
-            }
             Spacer(modifier = Modifier.width(14.dp))
-            */
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(

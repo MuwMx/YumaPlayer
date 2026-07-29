@@ -11,8 +11,10 @@ import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.datastore.core.DataMigration
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
@@ -147,6 +149,9 @@ fun <T> rememberPreference(
     key: Preferences.Key<T>,
     defaultValue: T,
 ): MutableState<T> {
+    if (LocalInspectionMode.current) {
+        return remember(key) { mutableStateOf(defaultValue) }
+    }
     val context = LocalContext.current
 
     val state =
@@ -178,6 +183,9 @@ inline fun <reified T : Enum<T>> rememberEnumPreference(
     key: Preferences.Key<String>,
     defaultValue: T,
 ): MutableState<T> {
+    if (LocalInspectionMode.current) {
+        return remember(key) { mutableStateOf(defaultValue) }
+    }
     val context = LocalContext.current
 
     val state =

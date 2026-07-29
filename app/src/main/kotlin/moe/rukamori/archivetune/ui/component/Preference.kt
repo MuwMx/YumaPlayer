@@ -108,6 +108,7 @@ val LocalPreferenceInGroup = compositionLocalOf { false }
 enum class PreferenceGroupPosition { Single, First, Middle, Last }
 
 val LocalPreferenceGroupPosition = compositionLocalOf<PreferenceGroupPosition?> { null }
+val LocalPreferenceItemIndex = compositionLocalOf { 0 }
 
 private val PreferenceGroupLargeCorner = SettingsDimensions.GroupCardCornerRadius
 private val PreferenceGroupSmallCorner = 4.dp
@@ -117,7 +118,15 @@ private val PreferenceEntryHorizontalPadding = SettingsDimensions.RowHorizontalP
 private val PreferenceEntryVerticalPadding = SettingsDimensions.RowVerticalPadding
 
 @Composable
-private fun rememberPreferenceIconShape(): Shape = MaterialShapes.Ghostish.toShape()
+fun rememberPreferenceIconShape(key: Any? = LocalPreferenceItemIndex.current): Shape {
+    val seed = kotlin.math.abs(key?.hashCode() ?: 0)
+    return when (seed % 4) {
+        0 -> MaterialShapes.Ghostish.toShape()
+        1 -> MaterialShapes.Clover4Leaf.toShape()
+        2 -> MaterialShapes.Cookie9Sided.toShape()
+        else -> MaterialShapes.Pill.toShape()
+    }
+}
 
 private fun segmentedPreferenceItemShape(
     index: Int,
@@ -248,31 +257,37 @@ fun PreferenceEntry(
             modifier = Modifier.fillMaxWidth()
         ) {
             if (icon != null) {
+                val iconShape = rememberPreferenceIconShape()
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(38.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = iconShape,
+                        )
+                        .clip(iconShape)
                         .align(Alignment.CenterVertically),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CompositionLocalProvider(LocalContentColor provides Color.White.copy(alpha = 0.8f)) {
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                         icon()
                     }
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
             }
 
             Column(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f),
             ) {
-                ProvideTextStyle(MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, color = Color.White)) {
+                ProvideTextStyle(MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
                     title()
                 }
                 if (description != null) {
                     Spacer(Modifier.height(2.dp))
                     AutoScrollingTextOnDemand(
                         text = description,
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.65f)),
+                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                     )
                 }
                 content?.invoke()
@@ -449,7 +464,7 @@ fun <T> ListPreference(
         },
         trailingContent = {
             Icon(
-                painter = painterResource(R.drawable.arrow_forward),
+                painter = painterResource(R.drawable.ic_arrow_right),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
@@ -1186,6 +1201,7 @@ fun PreferenceGroup(
                     CompositionLocalProvider(
                         LocalPreferenceInGroup provides true,
                         LocalPreferenceGroupPosition provides position,
+                        LocalPreferenceItemIndex provides index,
                     ) {
                         itemContent()
                     }

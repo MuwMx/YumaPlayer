@@ -57,6 +57,8 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.state.UpdateState
+import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
+import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.Updater
@@ -69,10 +71,8 @@ fun SettingsScreen(
     onClearUpdateBadge: () -> Unit = {},
 ) {
 
-    // Вычисляем hasUpdate из нового стейта
     val hasUpdate = updateState is UpdateState.SoftUpdate || updateState is UpdateState.CriticalUpdate
 
-    // Для бейджа и текста можно вытащить версию так:
     val latestVersionName = when (updateState) {
         is UpdateState.SoftUpdate -> updateState.versionName
         is UpdateState.CriticalUpdate -> updateState.versionName
@@ -273,4 +273,16 @@ fun SettingsScreen(
         }
     }
 }
+}
+
+@ThemePreviews
+@Composable
+private fun SettingsScreenPreview() {
+    TestThemeWrapper {
+        SettingsScreen(
+            navController = androidx.navigation.compose.rememberNavController(),
+            updateState = UpdateState.NoUpdate,
+            onClearUpdateBadge = {}
+        )
+    }
 }

@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 
 object SettingsDimensions {
-    val GroupCardCornerRadius = 14.dp
+    val GroupCardCornerRadius = 20.dp
     val BannerCardCornerRadius = 18.dp
 
     val ScreenHorizontalPadding = 16.dp
