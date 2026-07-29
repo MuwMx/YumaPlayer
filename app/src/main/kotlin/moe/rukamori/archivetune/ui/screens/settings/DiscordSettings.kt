@@ -320,7 +320,7 @@ fun DiscordSettings(navController: NavController) {
     val (button2Label) =
         rememberPreference(
             key = DiscordActivityButton2LabelKey,
-            defaultValue = "Go to ArchiveTune",
+            defaultValue = "Go to Yuma",
         )
     val (button2Enabled) =
         rememberPreference(
@@ -373,13 +373,14 @@ fun DiscordSettings(navController: NavController) {
         ArtworkStorage.removeBySongId(context, song?.song?.id ?: return@LaunchedEffect)
     }
 
-    Scaffold(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    SettingsScreenBackground {
+        Scaffold(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeFlexibleTopAppBar(
@@ -431,8 +432,8 @@ fun DiscordSettings(navController: NavController) {
                 },
                 colors =
                     TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
                     ),
                 scrollBehavior = scrollBehavior,
             )
@@ -733,6 +734,7 @@ fun DiscordSettings(navController: NavController) {
             )
         }
     }
+}
 }
 
 @Composable
@@ -1227,7 +1229,7 @@ fun RichPresence(
     button1Enabled: Boolean = true,
     button1UrlSource: String = "songurl",
     button1CustomUrl: String = "",
-    button2Label: String = "Go to ArchiveTune",
+    button2Label: String = "Go to Yuma",
     button2Enabled: Boolean = true,
     button2UrlSource: String = "custom",
     button2CustomUrl: String = "https://github.com/MuwMx/YumaPlayer",

@@ -4,7 +4,7 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 
 package moe.rukamori.archivetune.ui.screens.settings
 
@@ -35,13 +35,27 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
+import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -50,8 +64,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.res.painterResource
@@ -64,7 +80,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.ui.player.player_0.scroll.AutoScrollingTextOnDemand
-import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.LocalPreferenceItemIndex
 import moe.rukamori.archivetune.ui.component.rememberPreferenceIconShape
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -603,7 +618,7 @@ fun SettingsSegmentedItem(
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
@@ -611,7 +626,7 @@ fun SettingsSegmentedItem(
                 Icon(
                     painter = item.icon,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
@@ -663,7 +678,7 @@ fun SettingsSegmentedItem(
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_right),
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.3f),
+                tint = colors.textSecondary.copy(alpha = 0.5f),
                 modifier = Modifier.size(SettingsDimensions.ChevronSize),
             )
         }
@@ -792,6 +807,109 @@ fun SettingsFlatItem(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreenBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val primaryAccent = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val bgTopColor = remember(primaryAccent, surfaceColor) {
+        primaryAccent.copy(alpha = 0.22f).compositeOver(surfaceColor)
+    }
+    val bgMidColor = remember(primaryAccent, surfaceColor) {
+        primaryAccent.copy(alpha = 0.06f).compositeOver(surfaceColor)
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        bgTopColor,
+                        bgMidColor,
+                        surfaceColor,
+                    )
+                )
+            )
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun YumaSettingsScaffold(
+    title: @Composable () -> Unit,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBackLongClick: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    scrollable: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    SettingsScreenBackground(modifier = modifier) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                TopAppBar(
+                    title = title,
+                    navigationIcon = {
+                        val backIcon = @Composable {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                            )
+                        }
+
+                        if (onBackLongClick != null) {
+                            IconButton(
+                                onClick = onBackClick,
+                                onLongClick = onBackLongClick,
+                                content = backIcon,
+                            )
+                        } else {
+                            androidx.compose.material3.IconButton(
+                                onClick = onBackClick,
+                                content = backIcon,
+                            )
+                        }
+                    },
+                    actions = actions,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
+                    ),
+                )
+            },
+        ) { innerPadding ->
+            val baseModifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(
+                    LocalPlayerAwareWindowInsets.current.only(
+                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                    ),
+                )
+                .padding(top = innerPadding.calculateTopPadding())
+
+            if (scrollable) {
+                Column(
+                    modifier = baseModifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+                    content = content,
+                )
+            } else {
+                Column(
+                    modifier = baseModifier.padding(bottom = SettingsDimensions.ScreenBottomPadding),
+                    content = content,
+                )
             }
         }
     }

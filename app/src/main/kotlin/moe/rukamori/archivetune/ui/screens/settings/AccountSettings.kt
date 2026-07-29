@@ -11,9 +11,15 @@ package moe.rukamori.archivetune.ui.screens.settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -29,6 +35,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import moe.rukamori.archivetune.ui.player.player_0.scroll.AutoScrollingTextOnDemand
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,6 +92,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -101,12 +109,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -135,6 +147,8 @@ import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.account.AccountSettingsViewModel
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
+import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -682,59 +696,110 @@ private fun ProfileIdentityCard(
         }
     }
 
-    val gradientStart = extractedColor?.copy(alpha = 0.35f)
-        ?: MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+    val targetPrimary = if (isLoggedIn && extractedColor != null) extractedColor else MaterialTheme.colorScheme.primary
+    val targetTertiary = MaterialTheme.colorScheme.tertiary
+
+    val animatedPrimary by animateColorAsState(
+        targetValue = targetPrimary,
+        animationSpec = tween(durationMillis = 400),
+        label = "primaryGlowColor"
+    )
+    val animatedTertiary by animateColorAsState(
+        targetValue = targetTertiary,
+        animationSpec = tween(durationMillis = 400),
+        label = "tertiaryGlowColor"
+    )
+
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+    val blendMode = if (isDark) BlendMode.Plus else BlendMode.SrcOver
+
+    val spot1Alpha = if (isDark) 0.22f else 0.18f
+    val spot1AlphaMid = if (isDark) 0.08f else 0.05f
+
+    val spot2Alpha = if (isDark) 0.25f else 0.20f
+    val spot2AlphaMid = if (isDark) 0.09f else 0.06f
+
+    val transition = rememberInfiniteTransition(label = "profileMeshGlow")
+    val time by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "time"
+    )
 
     Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(cardShape)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            gradientStart,
-                            colors.glassBackground,
-                        )
-                    )
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+            .drawWithCache {
+                val spot1X = size.width * (0.5f + 0.35f * kotlin.math.cos(time))
+                val spot1Y = size.height * (0.5f + 0.30f * kotlin.math.sin(time))
+
+                val spot2X = size.width * (0.5f + 0.40f * kotlin.math.sin(time + 1.8f))
+                val spot2Y = size.height * (0.5f + 0.35f * kotlin.math.cos(time + 1.8f))
+
+                val spot1Gradient = Brush.radialGradient(
+                    colors = listOf(
+                        animatedPrimary.copy(alpha = spot1Alpha),
+                        animatedPrimary.copy(alpha = spot1AlphaMid),
+                        Color.Transparent
+                    ),
+                    center = Offset(spot1X, spot1Y),
+                    radius = size.width * 0.85f
                 )
-                .border(1.dp, colors.glassBorder, cardShape),
+
+                val spot2Gradient = Brush.radialGradient(
+                    colors = listOf(
+                        animatedTertiary.copy(alpha = spot2Alpha),
+                        animatedTertiary.copy(alpha = spot2AlphaMid),
+                        Color.Transparent
+                    ),
+                    center = Offset(spot2X, spot2Y),
+                    radius = size.width * 0.90f
+                )
+
+                onDrawBehind {
+                    drawRect(color = colors.glassBackground)
+                    drawRect(brush = spot1Gradient, blendMode = blendMode)
+                    drawRect(brush = spot2Gradient, blendMode = blendMode)
+                }
+            }
+            .border(1.dp, colors.glassBorder, cardShape),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
-                    modifier =
-                        Modifier
-                            .size(50.dp)
-                            .shadow(4.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            (extractedColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.20f),
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f),
-                                        ),
+                    modifier = Modifier
+                        .size(50.dp)
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    animatedPrimary.copy(alpha = 0.20f),
+                                    animatedTertiary.copy(alpha = 0.10f),
                                 ),
-                            ).border(
-                                width = 1.5.dp,
-                                brush =
-                                    Brush.linearGradient(
-                                        colors =
-                                            listOf(
-                                                (extractedColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.70f),
-                                                (extractedColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.20f),
-                                            ),
-                                    ),
-                                shape = CircleShape,
+                            )
+                        ).border(
+                            width = 1.5.dp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    animatedPrimary.copy(alpha = 0.70f),
+                                    animatedPrimary.copy(alpha = 0.20f),
+                                ),
                             ),
+                            shape = CircleShape,
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
@@ -755,21 +820,19 @@ private fun ProfileIdentityCard(
                                     onAvatarPixelsReady(pixels)
                                 }
                             },
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
                             contentScale = ContentScale.Crop,
                         )
                     } else {
                         Icon(
-                            painter =
-                                painterResource(
-                                    if (isLoggedIn) R.drawable.account else R.drawable.login,
-                                ),
+                            painter = painterResource(
+                                if (isLoggedIn) R.drawable.account else R.drawable.login,
+                            ),
                             contentDescription = null,
                             modifier = Modifier.size(26.dp),
-                            tint = extractedColor ?: MaterialTheme.colorScheme.primary,
+                            tint = animatedPrimary,
                         )
                     }
                 }
@@ -781,7 +844,7 @@ private fun ProfileIdentityCard(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = extractedColor ?: MaterialTheme.colorScheme.primary,
+                        color = animatedPrimary,
                         modifier = Modifier.size(18.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -828,16 +891,14 @@ private fun ProfileIdentityCard(
                         leadingButton = {
                             SplitButtonDefaults.ElevatedLeadingButton(
                                 onClick = onPrimaryAction,
-                                colors =
-                                    ButtonDefaults.elevatedButtonColors(
-                                        containerColor = colors.glassBackground,
-                                        contentColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                elevation =
-                                    ButtonDefaults.elevatedButtonElevation(
-                                        defaultElevation = 0.dp,
-                                        pressedElevation = 0.dp,
-                                    ),
+                                colors = ButtonDefaults.elevatedButtonColors(
+                                    containerColor = colors.glassBackground,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                elevation = ButtonDefaults.elevatedButtonElevation(
+                                    defaultElevation = 0.dp,
+                                    pressedElevation = 0.dp,
+                                ),
                                 modifier = Modifier.yumaClickable(pressedScale = 0.94f, onClick = onPrimaryAction),
                             ) {
                                 Text(
@@ -851,25 +912,22 @@ private fun ProfileIdentityCard(
                             SplitButtonDefaults.ElevatedTrailingButton(
                                 checked = accountMenuExpanded,
                                 onCheckedChange = { accountMenuExpanded = it },
-                                colors =
-                                    ButtonDefaults.elevatedButtonColors(
-                                        containerColor = colors.glassBackground,
-                                        contentColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                elevation =
-                                    ButtonDefaults.elevatedButtonElevation(
-                                        defaultElevation = 0.dp,
-                                        pressedElevation = 0.dp,
-                                    ),
+                                colors = ButtonDefaults.elevatedButtonColors(
+                                    containerColor = colors.glassBackground,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                ),
+                                elevation = ButtonDefaults.elevatedButtonElevation(
+                                    defaultElevation = 0.dp,
+                                    pressedElevation = 0.dp,
+                                ),
                                 modifier = Modifier.yumaClickable(pressedScale = 0.94f, onClick = { accountMenuExpanded = !accountMenuExpanded }),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.expand_more),
                                     contentDescription = null,
-                                    modifier =
-                                        Modifier
-                                            .size(16.dp)
-                                            .rotate(menuChevronRotation),
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .rotate(menuChevronRotation),
                                 )
                             }
                         },
@@ -1039,15 +1097,14 @@ private fun ProfileIdentityCard(
             }
 
             Box(
-                modifier =
-                    Modifier
-                        .yumaClickable(
-                            pressedScale = 0.94f,
-                            onClick = onSecondaryAction,
-                        )
-                        .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.40f), RoundedCornerShape(12.dp))
-                        .background(colors.glassBackground, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .yumaClickable(
+                        pressedScale = 0.94f,
+                        onClick = onSecondaryAction,
+                    )
+                    .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.40f), RoundedCornerShape(12.dp))
+                    .background(colors.glassBackground, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

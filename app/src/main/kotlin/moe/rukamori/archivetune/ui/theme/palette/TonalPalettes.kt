@@ -12,7 +12,7 @@ class DynamicTonePalette(private val defaultColor: Color) {
 }
 
 class TonalPalettes {
-    // Теперь это не просто цвета, а объекты с поддержкой индексов [tone]
+    // Теперь это не просто цвета, а объекты с поддержкой индексов [tone]А
     val primary = DynamicTonePalette(Color(0xFFED5564))
     val secondary = DynamicTonePalette(Color(0xFFED5564))
     val tertiary = DynamicTonePalette(Color(0xFFED5564))

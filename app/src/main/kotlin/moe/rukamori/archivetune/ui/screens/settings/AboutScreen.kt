@@ -73,6 +73,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -123,8 +124,18 @@ import moe.rukamori.archivetune.viewmodels.AboutScreenState
 import moe.rukamori.archivetune.viewmodels.AboutUiModel
 import moe.rukamori.archivetune.viewmodels.AboutViewModel
 import moe.rukamori.archivetune.viewmodels.TeamMember
-
 // import moe.rukamori.archivetune.viewmodels.TeamMemberCollection
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
+import moe.rukamori.archivetune.ui.theme.ThemePreviews
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,13 +191,14 @@ private fun AboutScreenContent(
 ) {
     val listState = rememberLazyListState()
 
-    Scaffold(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    SettingsScreenBackground {
+        Scaffold(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeFlexibleTopAppBar(
                 title = {
@@ -208,8 +220,8 @@ private fun AboutScreenContent(
                 },
                 colors =
                     TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
                     ),
                 actions = {
                     if (state is AboutScreenState.Success) {
@@ -287,6 +299,7 @@ private fun AboutScreenContent(
             onRetryDependencyLicenses = onRetryDependencyLicenses,
         )
     }
+}
 }
 
 @Composable
@@ -842,6 +855,7 @@ private fun AboutSuccessContent(
 
 
 
+
         /*
          * ====================================================================
          * ЗАКОММЕНТИРОВАНО: Секции команды, респектеров и контрибьюторов
@@ -919,21 +933,73 @@ private fun AboutIdentityCard(
 ) {
     val colors = LocalYumaColors.current
     val cardShape = MaterialTheme.shapes.extraLarge
+    val isDark = isSystemInDarkTheme()
 
-    Card(
-        modifier = modifier.border(1.dp, colors.glassBorder, cardShape),
-        shape = cardShape,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = colors.glassBackground,
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
+    val blendMode = if (isDark) BlendMode.Plus else BlendMode.SrcOver
+
+    val spot1Alpha = if (isDark) 0.50f else 0.35f
+    val spot1AlphaMid = if (isDark) 0.20f else 0.12f
+
+    val spot2Alpha = if (isDark) 0.55f else 0.40f
+    val spot2AlphaMid = if (isDark) 0.22f else 0.15f
+
+    val transition = rememberInfiniteTransition(label = "meshGlow")
+    val time by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "time"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+            .drawWithCache {
+                val spot1X = size.width * (0.5f + 0.35f * kotlin.math.cos(time))
+                val spot1Y = size.height * (0.5f + 0.30f * kotlin.math.sin(time))
+
+                val spot2X = size.width * (0.5f + 0.40f * kotlin.math.sin(time + 1.8f))
+                val spot2Y = size.height * (0.5f + 0.35f * kotlin.math.cos(time + 1.8f))
+
+                val spot1Gradient = Brush.radialGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = spot1Alpha),
+                        primaryColor.copy(alpha = spot1AlphaMid),
+                        Color.Transparent
+                    ),
+                    center = Offset(spot1X, spot1Y),
+                    radius = size.width * 0.85f
+                )
+
+                val spot2Gradient = Brush.radialGradient(
+                    colors = listOf(
+                        tertiaryColor.copy(alpha = spot2Alpha),
+                        tertiaryColor.copy(alpha = spot2AlphaMid),
+                        Color.Transparent
+                    ),
+                    center = Offset(spot2X, spot2Y),
+                    radius = size.width * 0.90f
+                )
+
+                onDrawBehind {
+                    drawRect(color = colors.glassBackground)
+                    drawRect(brush = spot1Gradient, blendMode = blendMode)
+                    drawRect(brush = spot2Gradient, blendMode = blendMode)
+                }
+            }
+            .border(1.dp, colors.glassBorder, cardShape),
     ) {
         Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -971,13 +1037,12 @@ private fun AboutIdentityCard(
                 onOpenUri = onOpenUri,
             )
 
-            // Юридический дисклеймер для GPL-3.0
             Text(
                 text = "Based on ArchiveTune by Rukamori.\nSource code available under GPL-3.0.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }
@@ -1050,6 +1115,7 @@ private fun LinkChipRow(
                 onClick = onClick,
             )
         }
+        val solanaCopiedMessage = stringResource(R.string.solana_address_copied)
 
         InteractiveLinkChip(
             label = "Solana (SOL)",
@@ -1058,7 +1124,7 @@ private fun LinkChipRow(
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Solana Address", solanaAddress)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, context.getString(R.string.solana_address_copied), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, solanaCopiedMessage, Toast.LENGTH_SHORT).show()
             },
         )
     }

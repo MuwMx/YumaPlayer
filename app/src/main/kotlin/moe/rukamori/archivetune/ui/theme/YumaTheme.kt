@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,42 +12,53 @@ import androidx.compose.ui.graphics.Color
 
 @Immutable
 data class YumaColorScheme(
-    val glassBackground: Color = Color(0x12FFFFFF),
-    val glassBorder: Color = Color(0x1FFFFFFF),
-    val cardBackgroundOpaque: Color = Color(0xFF1C1C1E),
-    val textPrimary: Color = Color.White,
-    val textSecondary: Color = Color(0x80FFFFFF),
-    val rippleColor: Color = Color(0x1FFFFFFF)
+    val glassBackground: Color,
+    val glassBorder: Color,
+    val cardBackgroundOpaque: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val rippleColor: Color
 )
 
-val LocalYumaColors = staticCompositionLocalOf {
-    YumaColorScheme()
+fun lightYumaColorScheme(
+    colorScheme: ColorScheme
+): YumaColorScheme = YumaColorScheme(
+    glassBackground = Color.White.copy(alpha = 0.65f),
+    glassBorder = colorScheme.outline.copy(alpha = 0.25f),
+    cardBackgroundOpaque = colorScheme.surfaceContainerLow,
+    textPrimary = colorScheme.onSurface,
+    textSecondary = colorScheme.onSurface.copy(alpha = 0.65f),
+    rippleColor = colorScheme.onSurface.copy(alpha = 0.12f)
+)
+
+fun darkYumaColorScheme(
+    colorScheme: ColorScheme
+): YumaColorScheme = YumaColorScheme(
+    glassBackground = colorScheme.onSurface.copy(alpha = 0.06f),
+    glassBorder = colorScheme.outline.copy(alpha = 0.10f),
+    cardBackgroundOpaque = Color(0xFF1C1C1E),
+    textPrimary = colorScheme.onSurface,
+    textSecondary = colorScheme.onSurface.copy(alpha = 0.65f),
+    rippleColor = colorScheme.onSurface.copy(alpha = 0.16f)
+)
+
+val LocalYumaColors = staticCompositionLocalOf<YumaColorScheme> {
+    error("No YumaColorScheme provided. Make sure to wrap content in YumaTheme.")
 }
 
 @Composable
 fun YumaTheme(
-    colors: YumaColorScheme = LocalYumaColors.current,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val darkTheme = isSystemInDarkTheme()
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val outline = MaterialTheme.colorScheme.outline
+    val colorScheme = MaterialTheme.colorScheme
 
-    val computedGlassBackground = remember(darkTheme, onSurface) {
-        if (darkTheme) onSurface.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.65f)
-    }
-    val computedGlassBorder = remember(darkTheme, outline) {
-        if (darkTheme) outline.copy(alpha = 0.10f) else outline.copy(alpha = 0.25f)
-    }
-    val yumaColors = remember(computedGlassBackground, computedGlassBorder, onSurface) {
-        YumaColorScheme(
-            glassBackground = computedGlassBackground,
-            glassBorder = computedGlassBorder,
-            cardBackgroundOpaque = Color(0xFF1C1C1E),
-            textPrimary = onSurface,
-            textSecondary = onSurface.copy(alpha = 0.65f),
-            rippleColor = Color(0x1FFFFFFF)
-        )
+    val yumaColors = remember(darkTheme, colorScheme) {
+        if (darkTheme) {
+            darkYumaColorScheme(colorScheme)
+        } else {
+            lightYumaColorScheme(colorScheme)
+        }
     }
 
     CompositionLocalProvider(

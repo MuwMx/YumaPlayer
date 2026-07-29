@@ -96,6 +96,7 @@ fun ArchiveTuneTheme(
                     null
                 }
         }.value
+
     val resolvedFontFamily =
         remember(fontPreference, customFontFamily) {
             when (fontPreference) {
@@ -104,6 +105,7 @@ fun ArchiveTuneTheme(
                 AppFontPreference.CUSTOM -> customFontFamily ?: AppFontFamily
             }
         }
+
     val typography =
         remember(resolvedFontFamily) {
             when (resolvedFontFamily) {
@@ -112,16 +114,15 @@ fun ArchiveTuneTheme(
                 else -> typographyFor(resolvedFontFamily)
             }
         }
+
     val motionScheme =
         remember(disableAnimations) {
             if (disableAnimations) DisabledMotionScheme else MotionScheme.expressive()
         }
 
-    // ТВОЙ МОДЕРНИЗИРОВАННЫЙ ДВИЖОК ЦВЕТА БЕЗ MATERIALKOLOR
     val appColorScheme =
         remember(seedPalette, themeColor, darkTheme) {
             if (seedPalette != null) {
-                // Если юзер выбрал готовую палитру из настроек, собираем её стандартными средствами M3
                 if (darkTheme) {
                     darkColorScheme(
                         primary = seedPalette.primary,
@@ -140,10 +141,15 @@ fun ArchiveTuneTheme(
                     )
                 }
             } else {
-                // ВОТ ОНО: Во всех остальных случаях врубаем твой личный Monet-движок квантизации пикселей
-                generateDarkColorSchemeFromSeed(themeColor)
+                if (darkTheme) {
+                    generateDarkColorSchemeFromSeed(themeColor)
+                } else {
+                    generateLightColorSchemeFromSeed(themeColor)
+                }
             }
         }
+
+
 
     val baseColorScheme =
         if (useSystemDynamicColor) {
@@ -189,7 +195,10 @@ fun ArchiveTuneTheme(
             typography = typography,
             shapes = expressiveShapes,
         ) {
-            YumaTheme(content = content)
+            YumaTheme(
+                darkTheme = darkTheme,
+                content = content
+            )
         }
     }
 }

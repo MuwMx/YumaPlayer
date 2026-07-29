@@ -114,12 +114,18 @@ fun extractSeedColor(bitmap: Bitmap, config: ColorExtractionConfig = ColorExtrac
 fun generateDarkColorSchemeFromSeed(seedColor: Color): ColorScheme {
     return runCatching {
         val sourceHct = Hct.fromInt(seedColor.toArgb())
-        // Меняем SchemeExpressive на SchemeFidelity.
-        // Теперь никаких левых оттенков — строго родной пигмент трека.
         SchemeFidelity(sourceHct, true, 0.0).toComposeColorScheme()
     }.getOrElse {
-        // Фолбэк на случай ошибки
         SchemeFidelity(Hct.fromInt(0xFF1DB954.toInt()), true, 0.0).toComposeColorScheme()
+    }
+}
+
+fun generateLightColorSchemeFromSeed(seedColor: Color): ColorScheme {
+    return runCatching {
+        val sourceHct = Hct.fromInt(seedColor.toArgb())
+        SchemeFidelity(sourceHct, false, 0.0).toComposeColorScheme()
+    }.getOrElse {
+        SchemeFidelity(Hct.fromInt(0xFF1DB954.toInt()), false, 0.0).toComposeColorScheme()
     }
 }
 
