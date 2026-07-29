@@ -704,7 +704,7 @@
     <string name="aod_mode_exit">Quitter AOD</string>
     <string name="error_malformed_stream">Erreur source</string>
     <string name="support_development_title">Soutenir le développement</string>
-    <string name="support_development_message">Salut ! Je m\'appelle Koiverse, je suis le développeur d\'YumaPlayer. Si YumaPlayer fait désormais partie de vos habitudes d\'écoute quotidiennes, vous pouvez contribuer à son développement en faisant un don ou en ajoutant le projet à vos favoris sur GitHub. Merci de soutenir le travail qui se cache derrière cette application.</string>
+    <string name="support_development_message">Si %1$s est votre lecteur de musique préféré, pensez à soutenir son développement. Vous pouvez lui ajouter une étoile sur GitHub ou faire un don pour financer de nouvelles fonctionnalités. Merci pour votre soutien !</string>
     <string name="support_development_donate">Faites un don pour soutenir le développement</string>
     <string name="support_development_star">Ajouter à vos favoris sur GitHub</string>
     <string name="later">Plus tard</string>

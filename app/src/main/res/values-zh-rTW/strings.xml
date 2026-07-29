@@ -719,7 +719,7 @@
     <string name="target_language">目標語言</string>
     <string name="close_dialog">關閉</string>
     <string name="support_development_title">支持開發者</string>
-    <string name="support_development_message">嗨！我是 ArchiveTune 的開發者 rukamori。如果 ArchiveTune 已經成為你日常聆聽體驗的一部分，歡迎透過捐款或在 GitHub 上為專案點讚（Star）來支持它的持續發展。感謝你對這款應用程式背後工作的支持。</string>
+    <string name="support_development_message">如果 %1$s 已成為你最常用的音樂播放器，歡迎支持它的持續開發。你可以透過在 GitHub 上點讚（Star）或捐款來推動新功能的推出。感謝你的支持！</string>
     <string name="support_development_donate">捐贈以支持開發</string>
     <string name="support_development_star">在 GitHub 上給個星</string>
     <string name="later">以後再說</string>

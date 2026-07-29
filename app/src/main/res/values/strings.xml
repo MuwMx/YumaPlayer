@@ -747,10 +747,7 @@
     <string name="target_language">Target Language</string>
     <string name="close_dialog">Close</string>
     <string name="support_development_title">Support development</string>
-    <string name="support_development_message">Hey there! I\'m rukamori, the developer of YumaPlayer. If YumaPlayer has earned a place in your daily listening, you can help keep it moving forward by donating or starring the project on GitHub. Thanks for supporting the work behind the app.</string>
-    <string name="support_development_donate">Donate to support development</string>
-    <string name="support_development_star">Star on GitHub</string>
-    <string name="later">Later</string>
+    <string name="support_development_message">If %1$s is your go-to music player, consider supporting its development. You can star the project on GitHub or make a donation to help fuel new features and updates. Thanks for your support!</string>    <string name="later">Later</string>
     <string name="new_update_available">New update available</string>
     <string name="release_notes_unavailable">Release notes are unavailable</string>
     <string name="update_text">Update</string>

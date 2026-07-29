@@ -684,7 +684,7 @@
     <string name="target_language">שפת היעד</string>
     <string name="close_dialog">סגירה</string>
     <string name="support_development_title">תמיכה בפיתוח</string>
-    <string name="support_development_message">אהלן! אני קויברס, המפתח של YumaPlayer. אם אתם מוצאים שימוש יום-יומי ב-YumaPlayer , אתם יכולים לעזור לנו להמשיך להתקדם על ידי תרומה או סימון הפרויקט ב-GitHub. תודה על התמיכה בעבודה שמאחורי האפליקציה.</string>
+    <string name="support_development_message">אם %1$s הוא נגן המוזיקה העיקרי שלכם, שקלו לתמוך בפיתוח שלו. תוכלו להעניק כוכב ב-GitHub או לתרום כדי לעזור להוציא תכונות חדשות. תודה על התמיכה!</string>
     <string name="support_development_donate">תרמו לתמיכה בפיתוח</string>
     <string name="support_development_star">דרגו ב-GitHub</string>
     <string name="later">מאוחר יותר</string>

@@ -538,6 +538,7 @@
     <string name="permissions_title">Разрешите YumaPlayer работать лучше</string>
     <string name="permissions_subtitle">Мы используем несколько разрешений чтобы надёжно воспроизводить и управлять вашей музыкой. Вы всегда можете изменить их в системных настройках.</string>
     <string name="permission_storage_title">Доступ к хранилищу</string>
+    <string name="support_development_message">Если %1$s стал вашим основным плеером, подумайте о поддержке разработки. Вы можете поставить звёздочку на GitHub или сделать донат, чтобы помочь выходу новых функций. Спасибо за поддержку!</string>
     <string name="permission_storage_desc">Необходим чтобы читать ваши загруженные и локальные аудиофайлы для воспроизведения.</string>
     <string name="permission_status_allowed">Разрешено</string>
     <string name="next">Следующий</string>

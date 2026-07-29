@@ -747,7 +747,7 @@
     <string name="target_language">対象言語</string>
     <string name="close_dialog">閉じる</string>
     <string name="support_development_title">開発を応援</string>
-    <string name="support_development_message">こんにちは！YumaPlayer開発者のrukamoriです。YumaPlayerが日々の音楽生活に役立っているなら、寄付やGitHubでスターを付けることで開発を続ける助けになります。アプリを支えてくれてありがとう。</string>
+    <string name="support_development_message">%1$s がお気に入りの音楽プレイヤーなら、開発の支援をご検討ください。GitHubでスターを付けたり寄付をしたりすることで、新機能の追加をサポートできます。ご支援ありがとうございます！</string>
     <string name="support_development_donate">寄付して開発を応援</string>
     <string name="support_development_star">GitHubでスター</string>
     <string name="later">あとで</string>

@@ -50,6 +50,7 @@
     <string name="other_versions">Andere Versionen</string>
     <string name="liked_songs">Gefallene Lieder</string>
     <string name="downloaded_songs">Heruntergeladene Lieder</string>
+
     <string name="playlist_is_empty">Die Playlist ist leer</string>
     <string name="remove_download_playlist_confirm">Möchten Sie wirklich alle \"%s\" Playlist-Lieder aus dem Speicher für heruntergeladene Songs entfernen?</string>
     <string name="delete_playlist_confirm">Möchten Sie die Playlist \"%s\" wirklich löschen?</string>
@@ -643,7 +644,7 @@
     <string name="discord_activity_type_playing_label">Spielt</string>
     <string name="discord_activity_type_streaming_label">Streamt</string>
     <string name="support_development_title">Entwicklung unterstützen</string>
-    <string name="support_development_message">Hallo! Ich bin Koiverse, der Entwickler von ArchiveTune. Wenn ArchiveTune einen festen Platz in deinem Musikalltag gefunden hat, kannst du dazu beitragen, dass es weiterentwickelt wird, indem du spendest oder das Projekt auf GitHub mit einem Stern markierst. Vielen Dank für deine Unterstützung der Arbeit hinter der App.</string>
+    <string name="support_development_message">Wenn %1$s dein bevorzugter Musikplayer ist, unterstütze gerne die Weiterentwicklung. Du kannst das Projekt auf GitHub mit einem Stern markieren oder spenden, um neue Funktionen zu ermöglichen. Vielen Dank!</string>
     <string name="support_development_donate">Spende, um die Entwicklung zu unterstützen</string>
     <string name="support_development_star">Stern auf GitHub geben</string>
     <string name="later">Später</string>

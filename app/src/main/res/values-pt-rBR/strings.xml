@@ -737,7 +737,7 @@
     <string name="target_language">Idioma de destino</string>
     <string name="close_dialog">Fechar</string>
     <string name="support_development_title">Apoiar o desenvolvimento</string>
-    <string name="support_development_message">Olá! Sou rukamori, desenvolvedor do ArchiveTune. Se o ArchiveTune conquistou um lugar na sua rotina de escuta, você pode ajudar o projeto a seguir em frente doando ou dando uma estrela no GitHub. Obrigado por apoiar o trabalho por trás do app.</string>
+    <string name="support_development_message">Se o %1$s é o seu reprodutor de música favorito, considere apoiar o seu desenvolvimento. Você pode dar uma estrela no GitHub ou fazer uma doação para ajudar a trazer novos recursos. Obrigado pelo apoio!</string>
     <string name="support_development_donate">Doe para apoiar o desenvolvimento</string>
     <string name="support_development_star">Dar estrela no GitHub</string>
     <string name="later">Depois</string>

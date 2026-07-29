@@ -547,7 +547,7 @@
     <string name="target_language">Bahasa Sasaran</string>
     <string name="close_dialog">Tutup</string>
     <string name="support_development_title">Dukung pengembangan</string>
-    <string name="support_development_message">Halo! Saya Koiverse, pengembang ArchiveTune. Jika ArchiveTune telah menemani aktivitas mendengarkan musikmu sehari-hari, kamu bisa membantu agar proyek ini terus berkembang dengan cara berdonasi atau memberikan bintang (star) pada proyek ini di GitHub. Terima kasih telah mendukung proses pengembangan di balik aplikasi ini.</string>
+    <string name="support_development_message">Jika %1$s adalah pemutar musik andalanmu, pertimbangkan untuk mendukung pengembangannya. Kamu bisa memberikan bintang di GitHub atau berdonasi untuk membantu menghadirkan fitur baru. Terima kasih atas dukunganmu!</string>
     <string name="support_development_donate">Donasi untuk mendukung pembangunan</string>
     <string name="support_development_star">Bintangi di GitHub</string>
     <string name="later">Nanti</string>

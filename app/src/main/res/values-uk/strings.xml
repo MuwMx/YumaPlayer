@@ -27,6 +27,7 @@
     <string name="this_week">Цього тижня</string>
     <string name="last_week">Минулого тижня</string>
     <string name="most_played_songs">Топ прослуховувань</string>
+    <string name="support_development_message">Якщо %1$s став вашим основним плеєром, розгляньте можливість підтримки розробки. Ви можете поставити зірочку на GitHub або зробити донат, щоб допомогти виходу нових функцій. Дякуємо за підтримку!</string>
     <string name="search">Пошук</string>
     <string name="search_yt_music">Пошук на YouTube Music…</string>
     <string name="search_library">Пошук у бібліотеці…</string>

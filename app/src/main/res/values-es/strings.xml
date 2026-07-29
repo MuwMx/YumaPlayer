@@ -705,7 +705,7 @@
     <string name="aod_mode_exit">Desactivar pantalla siempre encendida</string>
     <string name="error_malformed_stream">Error en la fuente</string>
     <string name="support_development_title">Apoyar el desarrollo</string>
-    <string name="support_development_message">¡Hola! Soy Koiverse, el desarrollador de YumaPlayer. Si YumaPlayer se ha ganado un hueco en tu rutina diaria de música, puedes ayudar a que siga adelante haciendo una donación o marcando el proyecto como favorito en GitHub. Gracias por apoyar el trabajo que hay detrás de la aplicación.</string>
+    <string name="support_development_message">Si %1$s es tu reproductor de música habitual, considera apoyar su desarrollo. Puedes marcar el proyecto con una estrella en GitHub o hacer una donación para ayudar a lanzar nuevas funciones. ¡Gracias por tu apoyo!</string>
     <string name="support_development_donate">Haz una donación para apoyar el desarrollo</string>
     <string name="support_development_star">Marcar como favorito en GitHub</string>
     <string name="later">Más tarde</string>
