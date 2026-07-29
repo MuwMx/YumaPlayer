@@ -117,4 +117,5 @@ core.*
 /SOUL.md
 /string_cleaner.py
 /.codexignore
-.agentsdeploy*.py
+.agents
+deploy*.py
