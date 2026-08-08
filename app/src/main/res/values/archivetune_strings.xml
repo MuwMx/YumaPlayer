@@ -529,6 +529,7 @@
     <string name="spotify_reload_playlist">Reload Playlist</string>
     <string name="spotify_reload_playlist_desc">Refresh Spotify playlists from your account.</string>
     <string name="spotify_no_tracks">No Spotify tracks found.</string>
+    <string name="spotify_liked_songs">Liked Songs</string>
     <string name="login_success">Logged in successfully</string>
     <string name="ai_integration">AI Integration</string>
     <string name="ai_integration_desc">Configure AI translation and personalized user automates.</string>

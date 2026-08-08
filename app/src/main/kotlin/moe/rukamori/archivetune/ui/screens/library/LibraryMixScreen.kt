@@ -124,7 +124,7 @@ fun LibraryMixScreen(
     val mostPlayedAlbumUiState by viewModel.mostPlayedAlbumUiState.collectAsStateWithLifecycle()
     val topMixesUiState by viewModel.topMixesUiState.collectAsStateWithLifecycle()
     val spotifyPlaylists by spotifyLibraryViewModel.playlists.collectAsStateWithLifecycle()
-    val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, false)
+    val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, true)
 
     val filteredPlaylistIds by database
         .playlistIdsByTags(
@@ -437,7 +437,7 @@ fun LibraryMixScreen(
                                                 indication = null,
                                                 onClick = {
                                                     if (!playlist.playlist.isEditable && playlist.songCount == 0 &&
-                                                        playlist.playlist.remoteSongCount != 0
+                                                        playlist.playlist.remoteSongCount != 0 && playlist.playlist.browseId != null
                                                     ) {
                                                         navController.navigate("online_playlist/${playlist.playlist.browseId}")
                                                     } else {
@@ -500,6 +500,94 @@ fun LibraryMixScreen(
                                     )
                                     Text(
                                         text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                    )
+                                }
+                            }
+
+                            item(key = "spotify_liked_songs_card") {
+                                val likedSongsTotal by spotifyLibraryViewModel.likedSongsTotal.collectAsStateWithLifecycle()
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+                                val scale by animateFloatAsState(
+                                    targetValue = if (isPressed) 0.97f else 1.0f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                                    label = "SpotifyLikedSongsCompactCardScale",
+                                )
+
+                                Column(
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                        .graphicsLayer {
+                                            scaleX = scale
+                                            scaleY = scale
+                                        }
+                                        .clip(RoundedCornerShape(32.dp))
+                                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null,
+                                            onClick = { navController.navigate("spotify_liked_songs") },
+                                        )
+                                        .padding(12.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(106.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .background(MaterialTheme.colorScheme.errorContainer),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.favorite),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(44.dp),
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(6.dp)
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary)
+                                                .clickable {
+                                                    playerConnection.let { conn ->
+                                                        coroutineScope.launch {
+                                                            val preloadTrack = moe.rukamori.archivetune.spotify.Spotify.likedSongs(limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
+                                                            val preloadItem = preloadTrack?.let { moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                                            conn.playQueue(
+                                                                moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue(
+                                                                    title = context.getString(R.string.spotify_liked_songs),
+                                                                    preloadItem = preloadItem,
+                                                                )
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.play),
+                                                contentDescription = stringResource(R.string.play),
+                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                modifier = Modifier.size(14.dp),
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.spotify_liked_songs),
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                    Text(
+                                        text = "$likedSongsTotal ${stringResource(R.string.tracks_label)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,

@@ -20,10 +20,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,12 +40,20 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,6 +77,11 @@ import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
+import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
+import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
+import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
+import moe.rukamori.archivetune.constants.HomeBackgroundStyle
+import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
@@ -113,6 +131,17 @@ fun AppearanceSettings(navController: NavController) {
             DisableAnimationsKey,
             defaultValue = defaultDisableAnimations,
         )
+    val (homeBackgroundStyle, onHomeBackgroundStyleChange) =
+        rememberEnumPreference(
+            HomeBackgroundStyleKey,
+            defaultValue = HomeBackgroundStyle.TONAL,
+        )
+    val (homeBackgroundParallaxEnabled, onHomeBackgroundParallaxEnabledChange) =
+        rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
+    val (homeBackgroundParallaxStrength, onHomeBackgroundParallaxStrengthChange) =
+        rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
+    val (homeBackgroundBrightness, onHomeBackgroundBrightnessChange) =
+        rememberPreference(HomeBackgroundBrightnessKey, defaultValue = 1f)
     val (forceHighRefreshRate, onForceHighRefreshRateChange) =
         rememberPreference(
             ForceHighRefreshRateKey,
@@ -330,6 +359,58 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    EnumListPreference(
+                        title = { Text(stringResource(R.string.home_background)) },
+                        icon = { Icon(painterResource(R.drawable.image), null, modifier = Modifier.size(24.dp)) },
+                        selectedValue = homeBackgroundStyle,
+                        onValueSelected = onHomeBackgroundStyleChange,
+                        valueText = {
+                            when (it) {
+                                HomeBackgroundStyle.TONAL -> stringResource(R.string.home_background_tonal)
+                                HomeBackgroundStyle.CIRCLES -> stringResource(R.string.home_background_circles)
+                            }
+                        },
+                    )
+                }
+
+                item(visible = homeBackgroundStyle == HomeBackgroundStyle.CIRCLES) {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_background_parallax)) },
+                        icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
+                        checked = homeBackgroundParallaxEnabled,
+                        onCheckedChange = onHomeBackgroundParallaxEnabledChange,
+                    )
+                }
+
+                item(
+                    visible =
+                        homeBackgroundStyle == HomeBackgroundStyle.CIRCLES &&
+                            homeBackgroundParallaxEnabled,
+                ) {
+                    HomeBackgroundSliderItem(
+                        title = stringResource(R.string.home_background_parallax_strength),
+                        value = homeBackgroundParallaxStrength,
+                        onValueChangeFinished = onHomeBackgroundParallaxStrengthChange,
+                        valueRange = HOME_BACKGROUND_PARALLAX_RANGE,
+                        valueText = { strength ->
+                            String.format(java.util.Locale.US, "%.1f", strength)
+                        },
+                    )
+                }
+
+                item(visible = homeBackgroundStyle == HomeBackgroundStyle.CIRCLES) {
+                    HomeBackgroundSliderItem(
+                        title = stringResource(R.string.home_background_brightness),
+                        value = homeBackgroundBrightness,
+                        onValueChangeFinished = onHomeBackgroundBrightnessChange,
+                        valueRange = HOME_BACKGROUND_BRIGHTNESS_RANGE,
+                        valueText = { brightness ->
+                            "${(brightness * 100).roundToInt()}%"
+                        },
+                    )
+                }
+
+                item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.force_high_refresh_rate)) },
                         description =
@@ -542,6 +623,66 @@ private tailrec fun Context.findActivity(): Activity? =
 private const val HIGH_REFRESH_RATE_THRESHOLD_FPS = 60.5f
 private const val DEFAULT_STANDARD_REFRESH_RATE_FPS = 60f
 private const val DEFAULT_REFRESH_RATE_REQUEST = 0f
+
+private val HOME_BACKGROUND_PARALLAX_RANGE = 0.1f..1.5f
+private val HOME_BACKGROUND_BRIGHTNESS_RANGE = 0.1f..1.5f
+
+@Composable
+private fun HomeBackgroundSliderItem(
+    title: String,
+    value: Float,
+    onValueChangeFinished: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    valueText: (Float) -> String,
+) {
+    var localValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { localValue = value }
+
+    val sliderState =
+        rememberSliderState(
+            value = localValue,
+            valueRange = valueRange,
+            onValueChangeFinished = { onValueChangeFinished(localValue) },
+        )
+    sliderState.onValueChange = { localValue = it }
+    sliderState.value = localValue
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = SettingsDimensions.RowHorizontalPadding,
+                vertical = SettingsDimensions.RowVerticalPadding,
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = valueText(localValue),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Slider(
+            state = sliderState,
+            modifier = Modifier.fillMaxWidth(),
+            track = {
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    trackCornerSize = 12.dp,
+                )
+            },
+        )
+    }
+}
 
 enum class DarkMode {
     ON,

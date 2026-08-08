@@ -5928,7 +5928,7 @@ class MusicService :
                             dataStore.get(HideExplicitKey, false),
                         ).filterVideo(dataStore.get(HideVideoKey, false))
                 if (player.playbackState != STATE_IDLE) {
-                    player.addMediaItems(mediaItems.drop(1))
+                    player.addMediaItems(mediaItems)
                 } else {
                     requestDiscordSync(
                         reason = "player_idle_after_queue_extension",

@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.OnlinePlaylistScreen
+import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResult
@@ -300,6 +301,9 @@ fun NavGraphBuilder.navigationBuilder(
             ),
     ) {
         SpotifyPlaylistScreen(navController, scrollBehavior)
+    }
+    composable("spotify_liked_songs") {
+        SpotifyLikedSongsScreen(navController, scrollBehavior)
     }
     composable(
         route = "auto_playlist/{playlist}",

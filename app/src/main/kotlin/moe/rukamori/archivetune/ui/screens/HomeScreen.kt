@@ -39,9 +39,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -60,7 +57,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomeScreenState
 import moe.rukamori.archivetune.home.HomeUiState
-import moe.rukamori.archivetune.home.effects.HomePremiumBackground
+import moe.rukamori.archivetune.home.effects.ScreenBackground
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
@@ -270,37 +267,8 @@ private fun HomeContent(
     onAction: (HomeAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tonalStart = MaterialTheme.colorScheme.primaryContainer
-    val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
     Box(modifier = modifier.fillMaxSize()) {
-//        if (uiState.showTonalBackdrop) {
-//            Box(
-//                modifier =
-//                    Modifier
-//                        .fillMaxWidth()
-//                        .height(430.dp)
-//                        .align(Alignment.TopCenter)
-//                        .drawWithCache {
-//                            val brush =
-//                                Brush.verticalGradient(
-//                                    0f to tonalStart.copy(alpha = 0.30f),
-//                                    0.42f to tonalMiddle.copy(alpha = 0.14f),
-//                                    1f to Color.Transparent,
-//                                )
-//                            onDrawBehind { drawRect(brush) }
-//                        },
-//            )
-//        }
-
-        if (uiState.showTonalBackdrop) {
-            HomePremiumBackground(
-                blobColor = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(430.dp)
-                    .align(Alignment.TopCenter)
-            )
-        }
+        ScreenBackground(isVisible = uiState.showTonalBackdrop)
 
         ExpressivePullToRefreshBox(
             isRefreshing = uiState.isRefreshing,

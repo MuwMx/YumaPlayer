@@ -70,6 +70,10 @@ val BackdropEnabledKey = booleanPreferencesKey("backdropEnabled")
 val BackdropBlurAmountKey = intPreferencesKey("backdropBlurAmount")
 val MiniPlayerLastAnchorKey = intPreferencesKey("miniPlayerLastAnchor")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
+val HomeBackgroundStyleKey = stringPreferencesKey("homeBackgroundStyle")
+val HomeBackgroundParallaxEnabledKey = booleanPreferencesKey("homeBackgroundParallaxEnabled")
+val HomeBackgroundParallaxStrengthKey = floatPreferencesKey("homeBackgroundParallaxStrength")
+val HomeBackgroundBrightnessKey = floatPreferencesKey("homeBackgroundBrightness")
 
 enum class AodThumbnailShape {
     ROUNDED,
@@ -378,6 +382,7 @@ val LastLibSongSyncKey = longPreferencesKey("last_library_song_sync")
 val LastAlbumSyncKey = longPreferencesKey("last_album_sync")
 val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
+val LastSpotifySyncKey = longPreferencesKey("lastSpotifySync")
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
 val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
@@ -634,6 +639,11 @@ enum class MiniPlayerBackgroundStyle {
     THEME,
     GRADIENT,
     GLOW,
+}
+
+enum class HomeBackgroundStyle {
+    TONAL,
+    CIRCLES,
 }
 
 // Keys for customized background

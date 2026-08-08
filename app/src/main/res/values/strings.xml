@@ -445,6 +445,12 @@
     <string name="disable_blur_desc">Disable blur effects throughout the app</string>
     <string name="disable_animations">Disable animations</string>
     <string name="disable_animations_desc">Disable most app animations. Recommended for low-end devices</string>
+    <string name="home_background">Home background</string>
+    <string name="home_background_tonal">Tonal glow</string>
+    <string name="home_background_circles">Circles</string>
+    <string name="home_background_parallax">Parallax</string>
+    <string name="home_background_parallax_strength">Parallax strength</string>
+    <string name="home_background_brightness">Brightness</string>
     <string name="force_high_refresh_rate">Force high refresh rate</string>
     <string name="max_supported_refresh_rate">Max supported: %1$d Hz</string>
     <string name="blur_intensity">Blur intensity</string>

@@ -100,16 +100,6 @@ fun extractSeedColor(bitmap: Bitmap, config: ColorExtractionConfig = ColorExtrac
  * Генерирует готовую темную схему Material 3 на основе базового цвета.
  * Использует SchemeExpressive для сочных и выразительных цветов обложки.
  */
-//fun generateDarkColorSchemeFromSeed(seedColor: Color): ColorScheme {
-//    return runCatching {
-//        val sourceHct = Hct.fromInt(seedColor.toArgb())
-//        // Генерируем выразительную (Expressive) темную тему (isDark = true)
-//        SchemeExpressive(sourceHct, true, 0.0).toComposeColorScheme()
-//    }.getOrElse {
-//        // Фолбэк на случай ошибки математики
-//        SchemeExpressive(Hct.fromInt(0xFF1DB954.toInt()), true, 0.0).toComposeColorScheme()
-//    }
-//}
 
 fun generateDarkColorSchemeFromSeed(seedColor: Color): ColorScheme {
     return runCatching {

@@ -598,6 +598,9 @@ class LibraryMixViewModel
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MostPlayedAlbumUiState.Loading)
 
         init {
+            viewModelScope.launch(Dispatchers.IO) {
+                syncUtils.trySpotifyAutoSync()
+            }
             viewModelScope.launch {
                 combine(observedTopMixes, isTopMixAiAvailable) { mixes, isAiAvailable ->
                     mixes != null && mixes.isEmpty() && isAiAvailable
@@ -617,6 +620,7 @@ class LibraryMixViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     syncUtils.performFullSync()
+                    syncUtils.trySpotifyAutoSync(authoritative = true)
                 } catch (e: Exception) {
                     timber.log.Timber.e(e, "Error during manual sync")
                     reportException(e)

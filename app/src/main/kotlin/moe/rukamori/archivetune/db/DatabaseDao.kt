@@ -55,6 +55,7 @@ import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.db.entities.SongWithStats
+import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.extensions.reversed
 import moe.rukamori.archivetune.extensions.toSQLiteQuery
@@ -2090,6 +2091,28 @@ interface DatabaseDao {
             removePlaylistTag(playlistId, tagId)
         } else {
             addTagToPlaylist(playlistId, tagId)
+        }
+    }
+
+    @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
+    fun spotifyMatch(spotifyId: String): Flow<SpotifyMatchEntity?>
+
+    @Query("SELECT * FROM spotify_match WHERE youtubeId = :youtubeId")
+    fun spotifyMatchByYouTubeId(youtubeId: String): Flow<SpotifyMatchEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(spotifyMatch: SpotifyMatchEntity)
+
+    @Transaction
+    @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifyId = :spotifyId")
+    fun playlistBySpotifyId(spotifyId: String): Flow<Playlist?>
+
+    @Query("SELECT * FROM spotify_match WHERE youtubeId IN (:youtubeIds)")
+    fun rawGetSpotifyMatchesByYouTubeIds(youtubeIds: List<String>): List<SpotifyMatchEntity>
+
+    fun getSpotifyMatchesByYouTubeIds(youtubeIds: List<String>): List<SpotifyMatchEntity> {
+        return youtubeIds.chunked(500).flatMap { chunk ->
+            rawGetSpotifyMatchesByYouTubeIds(chunk)
         }
     }
 }

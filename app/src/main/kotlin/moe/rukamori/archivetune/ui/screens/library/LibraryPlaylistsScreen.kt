@@ -572,7 +572,7 @@ private fun openPlaylist(
     navController: NavController,
     playlist: Playlist,
 ) {
-    if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.remoteSongCount != 0) {
+    if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.remoteSongCount != 0 && playlist.playlist.browseId != null) {
         navController.navigate("online_playlist/${playlist.playlist.browseId}")
     } else {
         navController.navigate("local_playlist/${playlist.id}")

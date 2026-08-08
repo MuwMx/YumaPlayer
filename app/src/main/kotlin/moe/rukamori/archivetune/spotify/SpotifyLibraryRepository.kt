@@ -50,6 +50,22 @@ class SpotifyLibraryRepository
         private val _errorMessage = MutableStateFlow<String?>(null)
         val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+        private val _likedSongsTotal = MutableStateFlow(0)
+        val likedSongsTotal: StateFlow<Int> = _likedSongsTotal.asStateFlow()
+
+        suspend fun refreshLikedSongsTotal() {
+            runCatching {
+                ensureAuthenticated()
+                spotifyCallWithTokenRetry {
+                    Spotify.likedSongs(limit = 1, offset = 0).getOrThrow().total
+                }
+            }.onSuccess { total ->
+                _likedSongsTotal.value = total
+            }.onFailure { error ->
+                reportException(error)
+            }
+        }
+
         suspend fun restoreCachedPlaylists() {
             withContext(Dispatchers.IO) {
                 if (_playlists.value.isNotEmpty()) return@withContext
@@ -163,6 +179,7 @@ class SpotifyLibraryRepository
                 try {
                     ensureAuthenticated()
                     refreshProfile()
+                    refreshLikedSongsTotal()
                     val loaded = fetchAllPlaylists()
                     _playlists.value = loaded
                     context.dataStore.edit { prefs ->

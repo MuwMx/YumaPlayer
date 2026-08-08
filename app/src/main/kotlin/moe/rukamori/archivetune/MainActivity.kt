@@ -180,6 +180,13 @@ import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.HasPressedStarKey
+import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
+import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
+import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
+import moe.rukamori.archivetune.constants.HomeBackgroundStyle
+import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
+import moe.rukamori.archivetune.home.effects.HomeBackgroundSettings
+import moe.rukamori.archivetune.home.effects.LocalHomeBackgroundStyle
 import moe.rukamori.archivetune.constants.LaunchCountKey
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
@@ -617,6 +624,10 @@ class MainActivity : ComponentActivity() {
                 DisableAnimationsKey,
                 defaultValue = defaultDisableAnimations,
             )
+            val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
+            val homeBackgroundParallaxEnabled by rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
+            val homeBackgroundParallaxStrength by rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
+            val homeBackgroundBrightness by rememberPreference(HomeBackgroundBrightnessKey, defaultValue = 1f)
             val fontPreference by rememberEnumPreference(FontPreferenceKey, defaultValue = AppFontPreference.DEFAULT)
             val customFontUri by rememberPreference(CustomFontUriKey, defaultValue = "")
             val legacyUseSystemFont by rememberPreference(UseSystemFontKey, defaultValue = false)
@@ -1402,6 +1413,13 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalHapticFeedback provides customHaptic,
                         LocalAnimationsDisabled provides disableAnimations,
+                        LocalHomeBackgroundStyle provides
+                            HomeBackgroundSettings(
+                                style = homeBackgroundStyle,
+                                parallaxEnabled = homeBackgroundParallaxEnabled,
+                                parallaxSensitivity = homeBackgroundParallaxStrength,
+                                brightness = homeBackgroundBrightness,
+                            ),
                         LocalDatabase provides database,
                         LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
                         LocalPlayerConnection provides playerConnection,
