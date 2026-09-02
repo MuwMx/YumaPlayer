@@ -47,6 +47,7 @@ import moe.rukamori.archivetune.discord.DiscordAuthCoordinator
 import moe.rukamori.archivetune.discord.DiscordOAuthRepository
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
+import moe.rukamori.archivetune.playback.refreshDiscordNow
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
