@@ -311,27 +311,27 @@ class MusicService :
     @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
 
-    private lateinit var audioManager: AudioManager
-    private var audioFocusRequest: AudioFocusRequest? = null
-    private var lastAudioFocusState = AudioManager.AUDIOFOCUS_NONE
-    private var wasPlayingBeforeAudioFocusLoss = false
-    private var pauseOnDeviceMuteEnabled = false
-    private var deviceMutePlaybackRecoveryVolumePercent = 0
-    private var wasAutoPausedByDeviceMute = false
-    private var muteRecoveryObserver: ContentObserver? = null
-    private var lastDeviceMutePlaybackNoticeAtElapsedMs = 0L
-    private var hasAudioFocus = false
-    private var autoStartOnBluetoothEnabled = false
+    internal lateinit var audioManager: AudioManager
+    internal var audioFocusRequest: AudioFocusRequest? = null
+    internal var lastAudioFocusState = AudioManager.AUDIOFOCUS_NONE
+    internal var wasPlayingBeforeAudioFocusLoss = false
+    internal var pauseOnDeviceMuteEnabled = false
+    internal var deviceMutePlaybackRecoveryVolumePercent = 0
+    internal var wasAutoPausedByDeviceMute = false
+    internal var muteRecoveryObserver: ContentObserver? = null
+    internal var lastDeviceMutePlaybackNoticeAtElapsedMs = 0L
+    internal var hasAudioFocus = false
+    internal var autoStartOnBluetoothEnabled = false
     private var bluetoothReceiverRegistered = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var wakelockEnabled = false
     private var audioDeviceCallbackRegistered = false
-    private var audioRouteRecoveryJob: Job? = null
-    private var audiblePlaybackRecoveryJob: Job? = null
-    private var lastAudioOutputDeviceSignature: String? = null
-    private var lastAudioRouteRecoveryRealtimeMs = 0L
+    internal var audioRouteRecoveryJob: Job? = null
+    internal var audiblePlaybackRecoveryJob: Job? = null
+    internal var lastAudioOutputDeviceSignature: String? = null
+    internal var lastAudioRouteRecoveryRealtimeMs = 0L
 
-    private val audioDeviceCallback =
+    internal val audioDeviceCallback =
         object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
                 if (addedDevices.any { it.isSink }) onAudioOutputDeviceChanged()
@@ -346,7 +346,7 @@ class MusicService :
     internal var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     internal var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
     private val binder = MusicBinder()
-    private var hasBoundClients = false
+    internal var hasBoundClients = false
     private var idleStopJob: Job? = null
 
     internal lateinit var connectivityManager: ConnectivityManager
@@ -522,22 +522,22 @@ class MusicService :
 
     internal val normalizeFactor = MutableStateFlow(1f)
     internal val audioNormalizationFactorCache = ConcurrentHashMap<String, Float>()
-    private var audioNormalizationEnabled = true
+    internal var audioNormalizationEnabled = true
     var playerVolume = MutableStateFlow(1f)
-    private val audioFocusVolumeFactor = MutableStateFlow(1f)
-    private var effectiveVolumeRampJob: Job? = null
-    private var crossfadeEnabled = false
-    private var crossfadeDurationMs = 0L
-    private var crossfadeGapless = false
-    private var crossfadeTriggerJob: Job? = null
-    private var crossfadeJob: Job? = null
-    private var secondaryCrossfadePlayer: ExoPlayer? = null
-    private var secondaryCrossfadeTarget: CrossfadeTarget? = null
-    private var isCrossfading = false
-    private var crossfadeHandoffInProgress = false
-    private var crossfadeBaseVolume = 1f
-    private var crossfadeIncomingBaseVolume = 1f
-    private var crossfadeProgress = 0f
+    internal val audioFocusVolumeFactor = MutableStateFlow(1f)
+    internal var effectiveVolumeRampJob: Job? = null
+    internal var crossfadeEnabled = false
+    internal var crossfadeDurationMs = 0L
+    internal var crossfadeGapless = false
+    internal var crossfadeTriggerJob: Job? = null
+    internal var crossfadeJob: Job? = null
+    internal var secondaryCrossfadePlayer: ExoPlayer? = null
+    internal var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    internal var isCrossfading = false
+    internal var crossfadeHandoffInProgress = false
+    internal var crossfadeBaseVolume = 1f
+    internal var crossfadeIncomingBaseVolume = 1f
+    internal var crossfadeProgress = 0f
     private var crossfadePlaybackRequested = false
     private var lyricsPreloadManager: LyricsPreloadManager? = null
 
@@ -660,16 +660,16 @@ class MusicService :
     lateinit var downloadCache: Cache
 
     lateinit var localPlayer: ExoPlayer
-        private set
+        internal set
     lateinit var player: Player
-        private set
+        internal set
     private lateinit var castPlaybackRepository: CastPlaybackRepository
     private lateinit var mediaSession: MediaLibrarySession
 
-    private var isAudioEffectSessionOpened = false
-    private var openedAudioSessionId: Int? = null
+    internal var isAudioEffectSessionOpened = false
+    internal var openedAudioSessionId: Int? = null
     val eqCapabilities = MutableStateFlow<EqCapabilities?>(null)
-    private val desiredEqSettings =
+    internal val desiredEqSettings =
         MutableStateFlow(
             EqSettings(
                 enabled = false,
@@ -683,12 +683,12 @@ class MusicService :
             ),
         )
 
-    private var audioEffectsSessionId: Int? = null
-    private var audioEffectsInitializationJob: Job? = null
-    private var equalizer: Equalizer? = null
-    private var bassBoost: BassBoost? = null
-    private var virtualizer: Virtualizer? = null
-    private var loudnessEnhancer: LoudnessEnhancer? = null
+    internal var audioEffectsSessionId: Int? = null
+    internal var audioEffectsInitializationJob: Job? = null
+    internal var equalizer: Equalizer? = null
+    internal var bassBoost: BassBoost? = null
+    internal var virtualizer: Virtualizer? = null
+    internal var loudnessEnhancer: LoudnessEnhancer? = null
     private val audioEffectPlayerListener =
         object : Player.Listener {
             override fun onEvents(
@@ -1605,260 +1605,6 @@ class MusicService :
         }
     }
 
-    private fun setupAudioFocusRequest() {
-        audioFocusRequest =
-            AudioFocusRequest
-                .Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(
-                    android.media.AudioAttributes
-                        .Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build(),
-                ).setOnAudioFocusChangeListener { focusChange ->
-                    handleAudioFocusChange(focusChange)
-                }.setAcceptsDelayedFocusGain(true)
-                .build()
-    }
-
-    private fun onAudioOutputDeviceChanged() {
-        if (!::player.isInitialized) return
-        val outputSignature = currentAudioOutputDeviceSignature()
-        if (outputSignature == lastAudioOutputDeviceSignature) return
-        lastAudioOutputDeviceSignature = outputSignature
-        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-        player.setAudioAttributes(playbackAudioAttributes(), false)
-        audioRouteRecoveryJob?.cancel()
-        audioRouteRecoveryJob =
-            scope.launch {
-                delay(AUDIO_ROUTE_CHANGE_DEBOUNCE_MS)
-                recoverAudioRouteAfterDeviceChange()
-            }
-    }
-
-    private suspend fun recoverAudioRouteAfterDeviceChange() {
-        if (!::player.isInitialized) return
-
-        rebindAudioEffectsAfterRouteChange()
-
-        if (!shouldRebuildPlaybackForAudioRouteChange()) return
-
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastAudioRouteRecoveryRealtimeMs < AUDIO_ROUTE_RECOVERY_MIN_INTERVAL_MS) return
-        lastAudioRouteRecoveryRealtimeMs = now
-
-        val mediaItemIndex = player.currentMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: return
-        val playbackPosition = player.currentPosition.coerceAtLeast(0L)
-        val shouldResumePlayback = player.playWhenReady
-
-        Timber.tag("MusicService").i(
-            "Recovering audio route after output change at index=$mediaItemIndex position=$playbackPosition resume=$shouldResumePlayback",
-        )
-
-        if (shouldResumePlayback && !requestAudioFocus()) {
-            wasPlayingBeforeAudioFocusLoss = true
-            player.playWhenReady = false
-            return
-        }
-
-        player.playWhenReady = false
-        player.prepare()
-        player.seekTo(mediaItemIndex, playbackPosition)
-        delay(AUDIO_ROUTE_RECOVERY_RESUME_DELAY_MS)
-
-        if (
-            shouldResumePlayback &&
-            player.currentMediaItem != null &&
-            player.playbackState != Player.STATE_ENDED &&
-            requestAudioFocus()
-        ) {
-            player.playWhenReady = true
-        }
-    }
-
-    private suspend fun rebindAudioEffectsAfterRouteChange() {
-        if (!isAudioEffectSessionOpened) return
-        closeAudioEffectSession()
-        if (!player.playWhenReady) return
-        delay(AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS)
-        openAudioEffectSession()
-    }
-
-    private fun shouldRebuildPlaybackForAudioRouteChange(): Boolean {
-        if (player.currentMediaItem == null) return false
-        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
-        return player.playWhenReady || player.playbackState == Player.STATE_BUFFERING
-    }
-
-    private fun currentAudioOutputDeviceSignature(): String =
-        runCatching {
-            audioManager
-                .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                .asSequence()
-                .filter { it.isSink }
-                .sortedWith(
-                    compareBy<AudioDeviceInfo>(
-                        { it.type },
-                        { it.id },
-                        { it.productName?.toString().orEmpty() },
-                    ),
-                ).joinToString(separator = "|") { device ->
-                    "${device.type}:${device.id}:${device.productName?.toString().orEmpty()}"
-                }
-        }.getOrDefault("")
-
-    private fun playbackAudioAttributes(): AudioAttributes =
-        AudioAttributes
-            .Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .setAllowedCapturePolicy(C.ALLOW_CAPTURE_BY_ALL)
-            .build()
-
-    private fun calculateEffectivePlayerVolume(
-        playerVolume: Float,
-        normalizeFactor: Float,
-        audioFocusVolumeFactor: Float,
-    ): Float {
-        val safePlayerVolume = playerVolume.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 1f
-        val safeNormalizeFactor =
-            normalizeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_NORMALIZATION_FACTOR, MAX_AUDIO_NORMALIZATION_FACTOR) ?: 1f
-        val safeAudioFocusVolumeFactor =
-            audioFocusVolumeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_FOCUS_VOLUME_FACTOR, 1f) ?: 1f
-        return (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor).coerceIn(0f, maxSafeGainFactor)
-    }
-
-    private fun currentEffectivePlayerVolume(): Float =
-        calculateEffectivePlayerVolume(playerVolume.value, normalizeFactor.value, audioFocusVolumeFactor.value)
-
-    private fun currentEffectivePlayerVolumeForMediaId(mediaId: String): Float {
-        val targetNormalizeFactor =
-            if (audioNormalizationEnabled) {
-                audioNormalizationFactorCache[mediaId] ?: 1f
-            } else {
-                1f
-            }
-        return calculateEffectivePlayerVolume(playerVolume.value, targetNormalizeFactor, audioFocusVolumeFactor.value)
-    }
-
-    private fun updateEffectiveVolume(finalVolume: Float) {
-        if (!::player.isInitialized || !shouldRampEffectiveVolume(finalVolume)) {
-            applyEffectiveVolumeImmediately(finalVolume)
-            return
-        }
-
-        val startVolume = player.volume.takeIf { it.isFinite() }?.coerceIn(0f, maxSafeGainFactor) ?: finalVolume
-        val targetVolume = finalVolume.coerceIn(0f, maxSafeGainFactor)
-        if (abs(targetVolume - startVolume) <= EFFECTIVE_VOLUME_RAMP_MIN_DELTA) {
-            applyEffectiveVolumeImmediately(targetVolume)
-            return
-        }
-
-        effectiveVolumeRampJob?.cancel()
-        effectiveVolumeRampJob =
-            scope.launch {
-                val durationMs =
-                    if (targetVolume > startVolume) {
-                        EFFECTIVE_VOLUME_RAMP_UP_MS
-                    } else {
-                        EFFECTIVE_VOLUME_RAMP_DOWN_MS
-                    }
-                val startedAtMs = android.os.SystemClock.elapsedRealtime()
-                while (isActive) {
-                    val elapsedMs = android.os.SystemClock.elapsedRealtime() - startedAtMs
-                    val progress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                    val easedProgress = progress * progress * (3f - (2f * progress))
-                    val interpolatedVolume = startVolume + ((targetVolume - startVolume) * easedProgress)
-                    applyEffectiveVolume(interpolatedVolume)
-                    if (progress >= 1f) break
-                    delay(EFFECTIVE_VOLUME_RAMP_FRAME_MS)
-                }
-                applyEffectiveVolume(targetVolume)
-                effectiveVolumeRampJob = null
-            }
-    }
-
-    private fun shouldRampEffectiveVolume(finalVolume: Float): Boolean {
-        if (isCrossfading || crossfadeHandoffInProgress) return false
-        if (!shouldKeepPlaybackAudible()) return false
-        if (!finalVolume.isFinite()) return false
-        if (player.volume <= STUCK_MUTED_VOLUME_EPSILON) return false
-        return true
-    }
-
-    private fun applyEffectiveVolumeImmediately(finalVolume: Float = currentEffectivePlayerVolume()) {
-        effectiveVolumeRampJob?.cancel()
-        effectiveVolumeRampJob = null
-        applyEffectiveVolume(finalVolume)
-    }
-
-    private fun applyEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
-        crossfadeBaseVolume = finalVolume
-        val incomingPlayer = secondaryCrossfadePlayer
-        if (isCrossfading && incomingPlayer != null) {
-            val incomingBaseVolume =
-                secondaryCrossfadeTarget?.let { currentEffectivePlayerVolumeForMediaId(it.mediaId) }
-                    ?: finalVolume
-            crossfadeIncomingBaseVolume = incomingBaseVolume
-            applyCrossfadeVolumes(crossfadeProgress, finalVolume, incomingBaseVolume, localPlayer, incomingPlayer)
-            return
-        }
-        if (::player.isInitialized) {
-            player.volume = finalVolume
-        }
-        incomingPlayer?.volume = 0f
-    }
-
-    private fun ensureAudiblePlaybackVolume(reason: String) {
-        if (!::player.isInitialized) return
-        if (isCrossfading || crossfadeHandoffInProgress) return
-        if (!shouldKeepPlaybackAudible()) return
-        if (playerVolume.value <= 0f) return
-
-        val expectedVolume = currentEffectivePlayerVolume()
-        if (expectedVolume <= MIN_AUDIBLE_EFFECTIVE_VOLUME) return
-        if (player.volume > STUCK_MUTED_VOLUME_EPSILON) return
-
-        Timber.tag(TAG).w(
-            "Restoring muted primary player volume during active playback: reason=%s expected=%s actual=%s",
-            reason,
-            expectedVolume,
-            player.volume,
-        )
-        applyEffectiveVolumeImmediately(expectedVolume)
-    }
-
-    private fun updateAudiblePlaybackRecovery() {
-        if (!::player.isInitialized || !shouldKeepPlaybackAudible()) {
-            audiblePlaybackRecoveryJob?.cancel()
-            audiblePlaybackRecoveryJob = null
-            return
-        }
-
-        if (audiblePlaybackRecoveryJob?.isActive == true) return
-        audiblePlaybackRecoveryJob =
-            scope.launch {
-                while (isActive && shouldKeepPlaybackAudible()) {
-                    ensureAudiblePlaybackVolume("watchdog")
-                    delay(AUDIBLE_PLAYBACK_VOLUME_CHECK_MS)
-                }
-                audiblePlaybackRecoveryJob = null
-            }
-    }
-
-    private fun applyCrossfadeVolumes(
-        progress: Float,
-        outgoingBaseVolume: Float,
-        incomingBaseVolume: Float,
-        outgoingPlayer: ExoPlayer,
-        incomingPlayer: ExoPlayer,
-    ) {
-        val clampedProgress = progress.coerceIn(0f, 1f)
-        val radians = clampedProgress.toDouble() * (PI / 2.0)
-        outgoingPlayer.volume = (outgoingBaseVolume * cos(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
-        incomingPlayer.volume = (incomingBaseVolume * sin(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
-    }
-
     private fun scheduleCrossfade() {
         if (!::player.isInitialized) return
         crossfadeTriggerJob?.cancel()
@@ -2265,7 +2011,7 @@ class MusicService :
         return C.INDEX_UNSET
     }
 
-    private fun cancelCrossfade(
+    internal fun cancelCrossfade(
         resetVolume: Boolean,
         resetPauseAtEnd: Boolean,
     ) {
@@ -2357,248 +2103,7 @@ class MusicService :
             .mapNotNull { it?.toFloat() }
             .firstOrNull { it.isFinite() }
 
-    private fun shouldKeepPlaybackAudible(): Boolean {
-        if (!::player.isInitialized) return false
-        if (player.currentMediaItem == null || !player.playWhenReady) return false
-        return player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED
-    }
-
-    private fun restoreAudioFocusVolume() {
-        audioFocusVolumeFactor.value = 1f
-        hasAudioFocus = true
-        lastAudioFocusState = AudioManager.AUDIOFOCUS_GAIN
-    }
-
-    private fun pauseForAudioFocusLoss(resumeWhenFocusReturns: Boolean) {
-        audioFocusVolumeFactor.value = 1f
-        wasPlayingBeforeAudioFocusLoss = resumeWhenFocusReturns && player.playWhenReady
-        if (player.playWhenReady) {
-            player.pause()
-        }
-    }
-
-    private fun ensureAudioFocusForActivePlayback(): Boolean {
-        if (!player.playWhenReady) return true
-        if (requestAudioFocus()) return true
-        pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
-        return false
-    }
-
-    private fun handleAudioFocusChange(focusChange: Int) {
-        when (focusChange) {
-            AudioManager.AUDIOFOCUS_GAIN -> {
-                hasAudioFocus = true
-                audioFocusVolumeFactor.value = 1f
-
-                if (wasPlayingBeforeAudioFocusLoss) {
-                    player.play()
-                    wasPlayingBeforeAudioFocusLoss = false
-                }
-
-                lastAudioFocusState = focusChange
-            }
-
-            AudioManager.AUDIOFOCUS_LOSS -> {
-                hasAudioFocus = false
-                pauseForAudioFocusLoss(resumeWhenFocusReturns = false)
-
-                abandonAudioFocus()
-
-                lastAudioFocusState = focusChange
-            }
-
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                hasAudioFocus = false
-                pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
-
-                lastAudioFocusState = focusChange
-            }
-
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                hasAudioFocus = false
-                pauseForAudioFocusLoss(resumeWhenFocusReturns = true)
-
-                lastAudioFocusState = focusChange
-            }
-
-            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT -> {
-                hasAudioFocus = true
-                audioFocusVolumeFactor.value = 1f
-
-                if (wasPlayingBeforeAudioFocusLoss) {
-                    player.play()
-                    wasPlayingBeforeAudioFocusLoss = false
-                }
-
-                lastAudioFocusState = focusChange
-            }
-
-            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
-                hasAudioFocus = true
-                audioFocusVolumeFactor.value = 1f
-
-                lastAudioFocusState = focusChange
-            }
-        }
-    }
-
-    private fun requestAudioFocus(): Boolean {
-        if (hasAudioFocus) {
-            if (audioFocusVolumeFactor.value != 1f || lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
-                restoreAudioFocusVolume()
-            }
-            return true
-        }
-
-        audioFocusRequest?.let { request ->
-            val result = audioManager.requestAudioFocus(request)
-            hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-            if (hasAudioFocus) {
-                restoreAudioFocusVolume()
-            }
-            return hasAudioFocus
-        }
-        return false
-    }
-
-    private fun abandonAudioFocus() {
-        if (hasAudioFocus) {
-            audioFocusRequest?.let { request ->
-                audioManager.abandonAudioFocusRequest(request)
-                hasAudioFocus = false
-            }
-        }
-    }
-
     fun hasAudioFocusForPlayback(): Boolean = hasAudioFocus
-
-    private fun isDeviceMutedNow(): Boolean {
-        val streamVolume =
-            runCatching {
-                audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            }.getOrElse { error ->
-                reportException(error)
-                return player.isDeviceMuted || player.deviceVolume <= 0
-            }
-        val isStreamMuted =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                runCatching {
-                    audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
-                }.getOrElse { error ->
-                    reportException(error)
-                    false
-                }
-
-        return isStreamMuted || streamVolume <= 0
-    }
-
-    private fun isTogetherGuestSession(): Boolean {
-        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
-        return joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest
-    }
-
-    private fun registerMuteRecoveryObserver() {
-        if (muteRecoveryObserver != null) return
-        val observer =
-            object : ContentObserver(Handler(mainLooper)) {
-                override fun onChange(selfChange: Boolean) {
-                    if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0) {
-                        handleDeviceMuteStateChanged()
-                    }
-                }
-            }
-        contentResolver.registerContentObserver(
-            android.provider.Settings.System.CONTENT_URI,
-            true,
-            observer,
-        )
-        muteRecoveryObserver = observer
-    }
-
-    private fun unregisterMuteRecoveryObserver() {
-        muteRecoveryObserver?.let { contentResolver.unregisterContentObserver(it) }
-        muteRecoveryObserver = null
-    }
-
-    private fun handleDeviceMuteStateChanged(playbackRequestedWhileMuted: Boolean = false) {
-        if (!pauseOnDeviceMuteEnabled || isTogetherGuestSession()) {
-            wasAutoPausedByDeviceMute = false
-            unregisterMuteRecoveryObserver()
-            return
-        }
-
-        if (isDeviceMutedNow()) {
-            if (playbackRequestedWhileMuted && restoreDeviceMusicVolumeForPlayback()) {
-                wasAutoPausedByDeviceMute = false
-                unregisterMuteRecoveryObserver()
-                return
-            }
-
-            val canPauseNow =
-                player.currentMediaItem != null &&
-                    player.playWhenReady &&
-                    player.playbackState != Player.STATE_IDLE &&
-                    player.playbackState != Player.STATE_ENDED
-
-            if (canPauseNow) {
-                player.pause()
-                wasAutoPausedByDeviceMute = true
-                registerMuteRecoveryObserver()
-                if (playbackRequestedWhileMuted) {
-                    showDeviceMutePlaybackNotice()
-                }
-            }
-            return
-        }
-
-        unregisterMuteRecoveryObserver()
-
-        if (!wasAutoPausedByDeviceMute) return
-
-        wasAutoPausedByDeviceMute = false
-        val canResumeNow =
-            player.currentMediaItem != null &&
-                player.playbackState != Player.STATE_IDLE &&
-                player.playbackState != Player.STATE_ENDED
-        if (canResumeNow) {
-            player.play()
-        }
-    }
-
-    private fun restoreDeviceMusicVolumeForPlayback(): Boolean {
-        val recoveryPercent = deviceMutePlaybackRecoveryVolumePercent.coerceIn(0, 100)
-        if (recoveryPercent <= 0) return false
-
-        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        if (maxVolume <= 0) return false
-
-        val targetVolume =
-            ceil(maxVolume * (recoveryPercent / 100.0))
-                .toInt()
-                .coerceIn(1, maxVolume)
-
-        return runCatching {
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0)
-            audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0
-        }.getOrElse {
-            reportException(it)
-            false
-        }
-    }
-
-    private fun showDeviceMutePlaybackNotice() {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastDeviceMutePlaybackNoticeAtElapsedMs < DEVICE_MUTE_PLAYBACK_NOTICE_INTERVAL_MS) return
-        lastDeviceMutePlaybackNoticeAtElapsedMs = now
-        scope.launch(SilentHandler) {
-            Toast
-                .makeText(
-                    this@MusicService,
-                    R.string.device_volume_zero_playback_paused,
-                    Toast.LENGTH_SHORT,
-                ).show()
-        }
-    }
 
     private val bluetoothReceiver =
         object : BroadcastReceiver() {
@@ -4877,29 +4382,15 @@ class MusicService :
         startRadioSeamlessly()
     }
 
-    private fun decodeBandLevelsMb(raw: String?): List<Int> {
+    internal fun decodeBandLevelsMb(raw: String?): List<Int> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching { EqualizerJson.json.decodeFromString<List<Int>>(raw) }.getOrNull() ?: emptyList()
     }
 
-    private fun encodeBandLevelsMb(levelsMb: List<Int>): String =
+    internal fun encodeBandLevelsMb(levelsMb: List<Int>): String =
         runCatching {
             EqualizerJson.json.encodeToString(levelsMb)
         }.getOrNull().orEmpty()
-
-    private fun readEqSettingsFromPrefs(prefs: Preferences): EqSettings {
-        val levels = decodeBandLevelsMb(prefs[EqualizerBandLevelsMbKey])
-        return EqSettings(
-            enabled = prefs[EqualizerEnabledKey] ?: false,
-            bandLevelsMb = levels,
-            outputGainEnabled = prefs[EqualizerOutputGainEnabledKey] ?: false,
-            outputGainMb = prefs[EqualizerOutputGainMbKey] ?: 0,
-            bassBoostEnabled = prefs[EqualizerBassBoostEnabledKey] ?: false,
-            bassBoostStrength = (prefs[EqualizerBassBoostStrengthKey] ?: 0).coerceIn(0, 1000),
-            virtualizerEnabled = prefs[EqualizerVirtualizerEnabledKey] ?: false,
-            virtualizerStrength = (prefs[EqualizerVirtualizerStrengthKey] ?: 0).coerceIn(0, 1000),
-        )
-    }
 
     fun applyEqFlatPreset() {
         ioScope.launch {
@@ -4943,260 +4434,6 @@ class MusicService :
                 }
             }
         }
-    }
-
-    private fun resampleLevelsByIndex(
-        levelsMb: List<Int>,
-        targetCount: Int,
-    ): List<Int> {
-        if (targetCount <= 0) return emptyList()
-        if (levelsMb.isEmpty()) return List(targetCount) { 0 }
-        if (levelsMb.size == targetCount) return levelsMb
-        if (targetCount == 1) return listOf(levelsMb.sum() / levelsMb.size)
-
-        val lastIndex = levelsMb.lastIndex.toFloat().coerceAtLeast(1f)
-        return List(targetCount) { i ->
-            val pos = i.toFloat() * lastIndex / (targetCount - 1).toFloat()
-            val lo =
-                kotlin.math
-                    .floor(pos)
-                    .toInt()
-                    .coerceIn(0, levelsMb.lastIndex)
-            val hi =
-                kotlin.math
-                    .ceil(pos)
-                    .toInt()
-                    .coerceIn(0, levelsMb.lastIndex)
-            val t = (pos - lo.toFloat()).coerceIn(0f, 1f)
-            val a = levelsMb[lo]
-            val b = levelsMb[hi]
-            (a + ((b - a) * t)).toInt()
-        }
-    }
-
-    private inline fun <T> readAudioEffectValue(
-        operation: String,
-        block: () -> T,
-    ): T? =
-        runCatching(block)
-            .onFailure { error ->
-                Timber.tag("MusicService").w(error, "Audio effect query failed: %s", operation)
-            }.getOrNull()
-
-    private fun updateEqCapabilitiesFromEffect(eq: Equalizer) {
-        val bandCount = readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt().coerceAtLeast(0) } ?: 0
-        val range = readAudioEffectValue("equalizer band range") { eq.bandLevelRange }
-        val minMb = range?.getOrNull(0)?.toInt() ?: -1500
-        val maxMb = range?.getOrNull(1)?.toInt() ?: 1500
-        val center =
-            (0 until bandCount).map { band ->
-                (
-                    readAudioEffectValue("equalizer center frequency for band $band") {
-                        eq.getCenterFreq(band.toShort())
-                    } ?: 0
-                ) / 1000
-            }
-        val presetCount = readAudioEffectValue("equalizer preset count") { eq.numberOfPresets.toInt().coerceAtLeast(0) } ?: 0
-        val presets =
-            (0 until presetCount).map { idx ->
-                readAudioEffectValue("equalizer preset name for preset $idx") {
-                    eq.getPresetName(idx.toShort()).toString()
-                } ?: "Preset ${idx + 1}"
-            }
-        eqCapabilities.value =
-            EqCapabilities(
-                bandCount = bandCount,
-                minBandLevelMb = minMb,
-                maxBandLevelMb = maxMb,
-                centerFreqHz = center,
-                systemPresets = presets,
-            )
-    }
-
-    private fun releaseAudioEffectInstances() {
-        audioEffectsSessionId = null
-        try {
-            equalizer?.release()
-        } catch (_: Exception) {
-        }
-        try {
-            bassBoost?.release()
-        } catch (_: Exception) {
-        }
-        try {
-            virtualizer?.release()
-        } catch (_: Exception) {
-        }
-        try {
-            loudnessEnhancer?.release()
-        } catch (_: Exception) {
-        }
-        equalizer = null
-        bassBoost = null
-        virtualizer = null
-        loudnessEnhancer = null
-        eqCapabilities.value = null
-    }
-
-    private fun releaseAudioEffects() {
-        audioEffectsInitializationJob?.cancel()
-        audioEffectsInitializationJob = null
-        releaseAudioEffectInstances()
-    }
-
-    private fun ensureAudioEffects(sessionId: Int) {
-        if (sessionId <= 0) return
-        if (audioEffectsSessionId == sessionId && equalizer != null) return
-
-        audioEffectsInitializationJob?.cancel()
-        audioEffectsInitializationJob = null
-        if (initializeAudioEffects(sessionId)) return
-
-        audioEffectsInitializationJob =
-            scope.launch {
-                repeat(AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS - 1) {
-                    delay(AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS)
-                    if (localPlayer.audioSessionId != sessionId || !shouldKeepAudioEffectSessionOpen()) {
-                        return@launch
-                    }
-                    if (initializeAudioEffects(sessionId)) return@launch
-                }
-            }
-    }
-
-    private fun initializeAudioEffects(sessionId: Int): Boolean {
-        releaseAudioEffectInstances()
-        audioEffectsSessionId = sessionId
-
-        equalizer = createAudioEffect("Equalizer", sessionId) { Equalizer(0, sessionId) }
-        bassBoost = createAudioEffect("BassBoost", sessionId) { BassBoost(0, sessionId) }
-        virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
-        loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
-
-        equalizer?.let(::updateEqCapabilitiesFromEffect)
-        applyEqSettingsToEffects(desiredEqSettings.value)
-        return equalizer != null
-    }
-
-    private inline fun <T> createAudioEffect(
-        name: String,
-        sessionId: Int,
-        factory: () -> T,
-    ): T? =
-        runCatching(factory)
-            .onFailure { error ->
-                Timber.tag(TAG).w(error, "%s initialization failed for audio session %d", name, sessionId)
-            }.getOrNull()
-
-    private fun applyEqSettingsToEffects(settings: EqSettings) {
-        val eq = equalizer ?: return
-        val caps = eqCapabilities.value
-        val bandCount = caps?.bandCount ?: readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt() } ?: 0
-        val minMb =
-            caps?.minBandLevelMb ?: readAudioEffectValue("equalizer minimum band level") { eq.bandLevelRange.getOrNull(0)?.toInt() }
-                ?: -1500
-        val maxMb =
-            caps?.maxBandLevelMb ?: readAudioEffectValue("equalizer maximum band level") { eq.bandLevelRange.getOrNull(1)?.toInt() } ?: 1500
-
-        val levels = resampleLevelsByIndex(settings.bandLevelsMb, bandCount)
-        runCatching { eq.enabled = settings.enabled }
-
-        for (band in 0 until bandCount) {
-            val levelMb = levels.getOrNull(band)?.coerceIn(minMb, maxMb) ?: 0
-            runCatching { eq.setBandLevel(band.toShort(), levelMb.toShort()) }
-        }
-
-        bassBoost?.let { bb ->
-            runCatching { bb.enabled = settings.bassBoostEnabled }
-            runCatching { bb.setStrength(settings.bassBoostStrength.toShort()) }
-        }
-
-        virtualizer?.let { v ->
-            runCatching { v.enabled = settings.virtualizerEnabled }
-            runCatching { v.setStrength(settings.virtualizerStrength.toShort()) }
-        }
-
-        loudnessEnhancer?.let { le ->
-            val gainMb = if (settings.outputGainEnabled) settings.outputGainMb.coerceIn(-1500, 1500) else 0
-            runCatching { le.setTargetGain(gainMb) }
-            runCatching { le.enabled = settings.outputGainEnabled }
-        }
-    }
-
-    private fun shouldKeepAudioEffectSessionOpen(): Boolean {
-        val playbackState = localPlayer.playbackState
-        return playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY
-    }
-
-    private fun reconcileAudioEffectSession() {
-        if (!shouldKeepAudioEffectSessionOpen()) {
-            closeAudioEffectSession()
-            return
-        }
-
-        val sessionId = localPlayer.audioSessionId
-        if (sessionId > 0) {
-            rebindAudioEffectSession(sessionId)
-        }
-    }
-
-    private fun openAudioEffectSession() {
-        if (isAudioEffectSessionOpened) return
-        val sessionId = localPlayer.audioSessionId
-        if (sessionId <= 0) return
-        isAudioEffectSessionOpened = true
-        openedAudioSessionId = sessionId
-        ensureAudioEffects(sessionId)
-        sendOpenAudioEffectSessionBroadcast(sessionId)
-    }
-
-    private fun closeAudioEffectSession() {
-        if (!isAudioEffectSessionOpened) return
-        isAudioEffectSessionOpened = false
-        val sessionId = openedAudioSessionId ?: localPlayer.audioSessionId
-        openedAudioSessionId = null
-        releaseAudioEffects()
-        if (sessionId <= 0) return
-        sendCloseAudioEffectSessionBroadcast(sessionId)
-    }
-
-    private fun rebindAudioEffectSession(newSessionId: Int) {
-        if (newSessionId <= 0 || !shouldKeepAudioEffectSessionOpen()) return
-        val oldSessionId = openedAudioSessionId
-        if (!isAudioEffectSessionOpened) {
-            openAudioEffectSession()
-            return
-        }
-        if (oldSessionId == newSessionId) {
-            ensureAudioEffects(newSessionId)
-            return
-        }
-
-        if (oldSessionId != null && oldSessionId > 0) {
-            sendCloseAudioEffectSessionBroadcast(oldSessionId)
-        }
-        openedAudioSessionId = newSessionId
-        ensureAudioEffects(newSessionId)
-        sendOpenAudioEffectSessionBroadcast(newSessionId)
-    }
-
-    private fun sendOpenAudioEffectSessionBroadcast(sessionId: Int) {
-        sendBroadcast(
-            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
-                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
-                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-            },
-        )
-    }
-
-    private fun sendCloseAudioEffectSessionBroadcast(sessionId: Int) {
-        sendBroadcast(
-            Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
-                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
-                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-            },
-        )
     }
 
     override fun onMediaItemTransition(
@@ -6916,9 +6153,9 @@ class MusicService :
         const val PLAYLIST = "playlist"
         const val ONLINE_PLAYLIST = "online_playlist"
 
-        private const val TAG = "MusicService"
-        private const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4
-        private const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
+        internal const val TAG = "MusicService"
+        internal const val AUDIO_EFFECT_INITIALIZATION_MAX_ATTEMPTS = 4
+        internal const val AUDIO_EFFECT_INITIALIZATION_RETRY_DELAY_MS = 250L
         internal const val DISCORD_SYNC_TAG = "DiscordSync"
         internal const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
         const val CHANNEL_ID = "music_channel_01"
