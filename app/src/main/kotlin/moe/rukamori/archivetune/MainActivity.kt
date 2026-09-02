@@ -239,6 +239,7 @@ import moe.rukamori.archivetune.onboarding.OnboardingViewModel
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.MusicService.MusicBinder
+import moe.rukamori.archivetune.playback.joinTogether
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.PlayerConnectionHolder
 import moe.rukamori.archivetune.playback.queues.ListQueue

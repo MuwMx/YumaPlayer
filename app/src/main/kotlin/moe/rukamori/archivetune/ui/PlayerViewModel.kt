@@ -13,6 +13,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.models.ParsedIntentAction
 import moe.rukamori.archivetune.playback.AdvancedSleepTimer
+import moe.rukamori.archivetune.playback.joinTogether
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
