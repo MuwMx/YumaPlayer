@@ -107,6 +107,7 @@ internal fun UnifiedPlayerSheetLayers(
     onSeekStarted: () -> Unit,
     dragHandler: SheetVerticalDragGestureHandler? = null
 ) {
+    val haptics = rememberYumaHaptics()
     val density = LocalDensity.current.density
 
     val lyricsListState = rememberLazyListState()
@@ -238,8 +239,14 @@ internal fun UnifiedPlayerSheetLayers(
                     LyricsHeader(
                         state = state,
                         animateProgressProvider = lyricsFractionProvider,
-                        onCloseClick = onCloseLyricsClick,
-                        onMoreClick = onMoreLyricsClick,
+                        onCloseClick = {
+                            haptics.click()
+                            onCloseLyricsClick()
+                        },
+                        onMoreClick = {
+                            haptics.click()
+                            onMoreLyricsClick()
+                        },
                         isVisible = isLyricsVisible
                     )
 

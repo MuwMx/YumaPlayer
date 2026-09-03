@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 
@@ -43,6 +44,7 @@ fun PlayerToolbar(
     hasUpdate: Boolean = false,
     colorScheme: ColorScheme = MaterialTheme.colorScheme
 ) {
+    val haptics = rememberYumaHaptics()
 
     val isImmersiveOrBlur = (state.isImmersiveEnabled || state.isBlurBackgroundEnabled) && !state.isLyricsVisible
     val buttonBackground = if (isImmersiveOrBlur) Color.Black.copy(alpha = 0.2f) else Color.Transparent
@@ -111,7 +113,10 @@ fun PlayerToolbar(
                     .clickable(
                         interactionSource = moreInteractionSource,
                         indication = null
-                    ) { onMoreClick() },
+                    ) {
+                        haptics.click()
+                        onMoreClick()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Box(modifier = Modifier.size(24.dp)) {
@@ -149,7 +154,10 @@ fun PlayerToolbar(
                 .clickable(
                     interactionSource = collapseInteractionSource,
                     indication = null
-                ) { onCollapseClick() },
+                ) {
+                    haptics.click()
+                    onCollapseClick()
+                },
             contentAlignment = Alignment.Center
         ) {
             Image(
