@@ -32,9 +32,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -45,6 +47,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -360,10 +364,16 @@ private fun QueueItem(
             Modifier
         }
 
-    MaterialTheme(colorScheme = darkColorScheme()) { Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    val darkScheme = darkColorScheme()
+    MaterialTheme(colorScheme = darkScheme) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White,
+            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = modifier.fillMaxWidth(),
+            ) {
         Box(
             modifier =
                 Modifier
@@ -429,5 +439,7 @@ private fun QueueItem(
         }
 
         dragHandle()
-    } }
+            }
+        }
+    }
 }

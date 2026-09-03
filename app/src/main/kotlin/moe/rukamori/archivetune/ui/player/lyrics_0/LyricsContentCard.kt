@@ -26,9 +26,11 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,8 @@ import moe.rukamori.archivetune.ui.player.player_0.PlayerSeekBar
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.ui.theme.glassBorder
 import moe.rukamori.archivetune.ui.theme.transparentIconShadow
 import moe.rukamori.archivetune.ui.utils.bounceClick
@@ -119,28 +123,34 @@ fun LyricsContentCard(
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    PlayerSeekBar(
-                        state = state,
-                        progressProvider = progressMsProvider,
-                        durationMs = state.durationMs,
-                        vibrantColor = Color(state.vibrantColor),
-                        slideOffset = { 1f },
-                        onSeek = onSeek,
-                        onSeekStarted = onSeekStarted,
-                    )
-
-                    MaterialTheme(colorScheme = darkColorScheme()) { Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
+                val darkScheme = darkColorScheme()
+                MaterialTheme(colorScheme = darkScheme) {
+                    CompositionLocalProvider(
+                        LocalContentColor provides Color.White,
+                        LocalYumaColors provides darkYumaColorScheme(darkScheme),
                     ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            PlayerSeekBar(
+                                state = state,
+                                progressProvider = progressMsProvider,
+                                durationMs = state.durationMs,
+                                vibrantColor = Color(state.vibrantColor),
+                                slideOffset = { 1f },
+                                onSeek = onSeek,
+                                onSeekStarted = onSeekStarted,
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                         val playPauseIcon = if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow
 
                         Box(
@@ -206,7 +216,9 @@ fun LyricsContentCard(
                                 colorFilter = ColorFilter.tint(Color.White),
                             )
                         }
-                    } }
+                            }
+                        }
+                    }
                 }
             }
         }
