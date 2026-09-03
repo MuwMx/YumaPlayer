@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -47,6 +48,7 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarBottomPadding
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
@@ -68,6 +70,7 @@ import moe.rukamori.archivetune.ui.state.PlayerSheetState
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 fun UnifiedPlayerSheetV2(
@@ -89,6 +92,8 @@ fun UnifiedPlayerSheetV2(
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
+    val view = LocalView.current
+    val (hapticFeedbackEnabled) = rememberPreference(EnableHapticFeedbackKey, true)
     val playerConnection = LocalPlayerConnection.current
 
     val activityResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
@@ -139,8 +144,9 @@ fun UnifiedPlayerSheetV2(
         val offsetAnimatable = remember { Animatable(0f) }
         val miniDismissGestureHandler = rememberMiniPlayerDismissGestureHandler(
             scope = scope,
-            density = LocalDensity.current,
-            hapticFeedback = androidx.compose.ui.platform.LocalHapticFeedback.current,
+            density = density,
+            hapticView = view,
+            hapticFeedbackEnabled = hapticFeedbackEnabled,
             offsetAnimatable = offsetAnimatable,
             screenWidthPx = screenWidthPx,
             onDismissPlaylistAndShowUndo = { onAction(PlayerAction.Dismiss) }
@@ -386,7 +392,7 @@ fun UnifiedPlayerSheetV2(
                     )
                 }
                 .graphicsLayer {
-                    translationX = if (expansionFraction.value == 0f) offsetAnimatable.value else 0f
+                    translationX = if (currentSheetState == PlayerSheetState.COLLAPSED || expansionFraction.value < 0.01f) offsetAnimatable.value else 0f
                     scaleY = visualOvershootScaleY.value
                     val paddingX = sheetVisualState.currentHorizontalPaddingStartPxProvider()
                     val currentWidth = size.width - (paddingX * 2)

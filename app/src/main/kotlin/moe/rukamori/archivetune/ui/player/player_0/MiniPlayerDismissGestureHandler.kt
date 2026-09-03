@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import android.view.View
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -11,11 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.util.lerp
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -28,7 +29,8 @@ private enum class MiniDismissDragPhase { IDLE, TENSION, SNAPPING, FREE_DRAG }
 internal class MiniPlayerDismissGestureHandler(
     private val scope: CoroutineScope,
     private val density: Density,
-    private val hapticFeedback: HapticFeedback,
+    private val hapticView: View,
+    private val hapticFeedbackEnabled: Boolean,
     private val offsetAnimatable: Animatable<Float, AnimationVector1D>,
     private val screenWidthPx: Float,
     private val onDismissPlaylistAndShowUndo: () -> Unit,
@@ -36,11 +38,21 @@ internal class MiniPlayerDismissGestureHandler(
 ) {
     private var dragPhase: MiniDismissDragPhase = MiniDismissDragPhase.IDLE
     private var accumulatedDragX: Float = 0f
+    private var lastHapticTickOffset: Float = 0f
+    private var isInDismissZone: Boolean = false
     private var offsetJob: Job? = null
+
+    private fun performHaptic(feedbackConstant: Int) {
+        if (hapticFeedbackEnabled) {
+            ViewCompat.performHapticFeedback(hapticView, feedbackConstant)
+        }
+    }
 
     fun onDragStart() {
         dragPhase = MiniDismissDragPhase.TENSION
         accumulatedDragX = 0f
+        lastHapticTickOffset = 0f
+        isInDismissZone = false
         offsetJob?.cancel()
         offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             offsetAnimatable.stop()
@@ -49,6 +61,12 @@ internal class MiniPlayerDismissGestureHandler(
 
     fun onHorizontalDrag(dragAmount: Float) {
         accumulatedDragX += dragAmount
+
+        val tickIntervalPx = 18f * density.density
+        if (abs(accumulatedDragX - lastHapticTickOffset) >= tickIntervalPx) {
+            performHaptic(HapticFeedbackConstantsCompat.SEGMENT_TICK)
+            lastHapticTickOffset = accumulatedDragX
+        }
 
         when (dragPhase) {
             MiniDismissDragPhase.TENSION -> {
@@ -63,25 +81,36 @@ internal class MiniPlayerDismissGestureHandler(
                     }
                 } else {
                     dragPhase = MiniDismissDragPhase.SNAPPING
+                    performHaptic(HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE)
+                    offsetJob?.cancel()
+                    offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        offsetAnimatable.animateTo(
+                            targetValue = accumulatedDragX,
+                            animationSpec = spring(
+                                dampingRatio = 0.8f,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
+                    }
+                    dragPhase = MiniDismissDragPhase.FREE_DRAG
                 }
             }
 
-            MiniDismissDragPhase.SNAPPING -> {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                offsetJob?.cancel()
-                offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                    offsetAnimatable.animateTo(
-                        targetValue = accumulatedDragX,
-                        animationSpec = spring(
-                            dampingRatio = 0.8f,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                }
-                dragPhase = MiniDismissDragPhase.FREE_DRAG
-            }
+            MiniDismissDragPhase.SNAPPING -> Unit
 
             MiniDismissDragPhase.FREE_DRAG -> {
+                val dismissThreshold = screenWidthPx * 0.4f
+                val nowInZone = abs(accumulatedDragX) > dismissThreshold
+                if (nowInZone != isInDismissZone) {
+                    isInDismissZone = nowInZone
+                    performHaptic(
+                        if (nowInZone) {
+                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE
+                        } else {
+                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_DEACTIVATE
+                        }
+                    )
+                }
                 offsetJob?.cancel()
                 offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     offsetAnimatable.animateTo(
@@ -100,9 +129,11 @@ internal class MiniPlayerDismissGestureHandler(
 
     fun onDragEnd() {
         dragPhase = MiniDismissDragPhase.IDLE
+        isInDismissZone = false
         offsetJob?.cancel()
         val dismissThreshold = screenWidthPx * 0.4f
         if (abs(accumulatedDragX) > dismissThreshold) {
+            performHaptic(HapticFeedbackConstantsCompat.GESTURE_END)
             onDismissStarted()
             val targetDismissOffset = if (accumulatedDragX < 0) -screenWidthPx else screenWidthPx
             offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -114,7 +145,6 @@ internal class MiniPlayerDismissGestureHandler(
                     )
                 )
                 onDismissPlaylistAndShowUndo()
-                offsetAnimatable.snapTo(0f)
             }
         } else {
             offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -134,7 +164,8 @@ internal class MiniPlayerDismissGestureHandler(
 internal fun rememberMiniPlayerDismissGestureHandler(
     scope: CoroutineScope,
     density: Density,
-    hapticFeedback: HapticFeedback,
+    hapticView: View,
+    hapticFeedbackEnabled: Boolean,
     offsetAnimatable: Animatable<Float, AnimationVector1D>,
     screenWidthPx: Float,
     onDismissPlaylistAndShowUndo: () -> Unit,
@@ -142,11 +173,12 @@ internal fun rememberMiniPlayerDismissGestureHandler(
 ): MiniPlayerDismissGestureHandler {
     val onDismissPlaylistAndShowUndoState = rememberUpdatedState(onDismissPlaylistAndShowUndo)
     val onDismissStartedState = rememberUpdatedState(onDismissStarted)
-    return remember(scope, density, hapticFeedback, offsetAnimatable, screenWidthPx) {
+    return remember(scope, density, hapticView, hapticFeedbackEnabled, offsetAnimatable, screenWidthPx) {
         MiniPlayerDismissGestureHandler(
             scope = scope,
             density = density,
-            hapticFeedback = hapticFeedback,
+            hapticView = hapticView,
+            hapticFeedbackEnabled = hapticFeedbackEnabled,
             offsetAnimatable = offsetAnimatable,
             screenWidthPx = screenWidthPx,
             onDismissPlaylistAndShowUndo = { onDismissPlaylistAndShowUndoState.value() },
@@ -167,7 +199,8 @@ internal fun Modifier.miniPlayerDismissHorizontalGesture(
                 change.consume()
                 handler.onHorizontalDrag(dragAmount)
             },
-            onDragEnd = { handler.onDragEnd() }
+            onDragEnd = { handler.onDragEnd() },
+            onDragCancel = { handler.onDragEnd() }
         )
     }
 }
