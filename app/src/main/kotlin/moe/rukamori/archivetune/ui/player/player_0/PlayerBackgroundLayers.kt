@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,8 +100,11 @@ fun PlayerBackgroundLayers(
         label = "BlurOverlayTransition"
     )
 
-    val isOverlayVisible = state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
-
+    val isOverlayVisible by remember {
+        derivedStateOf {
+            state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+        }
+    }
     val immersiveTransitionAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled && !isOverlayVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
