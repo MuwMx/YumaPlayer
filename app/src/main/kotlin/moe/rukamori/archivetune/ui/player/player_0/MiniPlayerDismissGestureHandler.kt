@@ -1,5 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -13,18 +15,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
 
-private enum class MiniDismissDragPhase { IDLE, TENSION, SNAPPING, FREE_DRAG }
+private enum class MiniDismissDragPhase { IDLE, TENSION, FREE_DRAG }
 
 internal class MiniPlayerDismissGestureHandler(
     private val scope: CoroutineScope,
@@ -38,34 +44,57 @@ internal class MiniPlayerDismissGestureHandler(
 ) {
     private var dragPhase: MiniDismissDragPhase = MiniDismissDragPhase.IDLE
     private var accumulatedDragX: Float = 0f
+    private var offsetJob: Job? = null
+    private var lastTickTime: Long = 0L
     private var lastHapticTickOffset: Float = 0f
     private var isInDismissZone: Boolean = false
-    private var offsetJob: Job? = null
 
     private fun performHaptic(feedbackConstant: Int) {
-        if (hapticFeedbackEnabled) {
-            ViewCompat.performHapticFeedback(hapticView, feedbackConstant)
-        }
+        if (!hapticFeedbackEnabled) return
+        ViewCompat.performHapticFeedback(hapticView, feedbackConstant)
     }
 
     fun onDragStart() {
-        dragPhase = MiniDismissDragPhase.TENSION
         accumulatedDragX = 0f
+        lastTickTime = 0L
         lastHapticTickOffset = 0f
         isInDismissZone = false
         offsetJob?.cancel()
         offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            offsetAnimatable.stop()
+            if (dragPhase == MiniDismissDragPhase.IDLE) {
+                offsetAnimatable.snapTo(0f)
+            } else {
+                offsetAnimatable.stop()
+            }
         }
+        dragPhase = MiniDismissDragPhase.TENSION
     }
 
     fun onHorizontalDrag(dragAmount: Float) {
         accumulatedDragX += dragAmount
 
-        val tickIntervalPx = 18f * density.density
-        if (abs(accumulatedDragX - lastHapticTickOffset) >= tickIntervalPx) {
-            performHaptic(HapticFeedbackConstantsCompat.SEGMENT_TICK)
+        val currentTime = System.currentTimeMillis()
+        val tickDistancePx = 10f * density.density
+
+        if (abs(accumulatedDragX - lastHapticTickOffset) >= tickDistancePx && (currentTime - lastTickTime) >= 25L) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                performHaptic(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
+            } else {
+                performHaptic(HapticFeedbackConstants.CLOCK_TICK)
+            }
             lastHapticTickOffset = accumulatedDragX
+            lastTickTime = currentTime
+        }
+
+        val dismissThreshold = screenWidthPx * 0.4f
+        val currentlyInDismissZone = abs(accumulatedDragX) >= dismissThreshold
+        if (currentlyInDismissZone != isInDismissZone) {
+            isInDismissZone = currentlyInDismissZone
+            if (currentlyInDismissZone) {
+                performHaptic(HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE)
+            } else {
+                performHaptic(HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_DEACTIVATE)
+            }
         }
 
         when (dragPhase) {
@@ -80,7 +109,7 @@ internal class MiniPlayerDismissGestureHandler(
                         offsetAnimatable.snapTo(tensionOffset * accumulatedDragX.sign)
                     }
                 } else {
-                    dragPhase = MiniDismissDragPhase.SNAPPING
+                    dragPhase = MiniDismissDragPhase.FREE_DRAG
                     performHaptic(HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE)
                     offsetJob?.cancel()
                     offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -92,25 +121,10 @@ internal class MiniPlayerDismissGestureHandler(
                             )
                         )
                     }
-                    dragPhase = MiniDismissDragPhase.FREE_DRAG
                 }
             }
 
-            MiniDismissDragPhase.SNAPPING -> Unit
-
             MiniDismissDragPhase.FREE_DRAG -> {
-                val dismissThreshold = screenWidthPx * 0.4f
-                val nowInZone = abs(accumulatedDragX) > dismissThreshold
-                if (nowInZone != isInDismissZone) {
-                    isInDismissZone = nowInZone
-                    performHaptic(
-                        if (nowInZone) {
-                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE
-                        } else {
-                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_DEACTIVATE
-                        }
-                    )
-                }
                 offsetJob?.cancel()
                 offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     offsetAnimatable.animateTo(
@@ -133,8 +147,8 @@ internal class MiniPlayerDismissGestureHandler(
         offsetJob?.cancel()
         val dismissThreshold = screenWidthPx * 0.4f
         if (abs(accumulatedDragX) > dismissThreshold) {
-            performHaptic(HapticFeedbackConstantsCompat.GESTURE_END)
             onDismissStarted()
+            performHaptic(HapticFeedbackConstantsCompat.GESTURE_END)
             val targetDismissOffset = if (accumulatedDragX < 0) -screenWidthPx else screenWidthPx
             offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 offsetAnimatable.animateTo(
@@ -145,6 +159,8 @@ internal class MiniPlayerDismissGestureHandler(
                     )
                 )
                 onDismissPlaylistAndShowUndo()
+                delay(300)
+                offsetAnimatable.snapTo(0f)
             }
         } else {
             offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
