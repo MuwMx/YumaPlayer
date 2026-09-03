@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -359,7 +360,7 @@ private fun QueueItem(
             Modifier
         }
 
-    Row(
+    MaterialTheme(colorScheme = darkColorScheme()) { Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -428,5 +429,5 @@ private fun QueueItem(
         }
 
         dragHandle()
-    }
+    } }
 }

@@ -26,6 +26,8 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -132,7 +134,7 @@ fun LyricsContentCard(
                         onSeekStarted = onSeekStarted,
                     )
 
-                    Row(
+                    MaterialTheme(colorScheme = darkColorScheme()) { Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp),
@@ -204,7 +206,7 @@ fun LyricsContentCard(
                                 colorFilter = ColorFilter.tint(Color.White),
                             )
                         }
-                    }
+                    } }
                 }
             }
         }
