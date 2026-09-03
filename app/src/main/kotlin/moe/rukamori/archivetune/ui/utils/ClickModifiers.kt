@@ -13,13 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.input.pointer.pointerInput
-
 /**
  * Applies a snappy spring-based scale down (compression) on press.
  * Instantly reacts on touch down (0ms delay), bypassing scroll container press delays.
@@ -32,10 +25,11 @@ fun Modifier.bounceClick(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier = composed {
-    val isPressed = remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) pressedScale else 1f,
+        targetValue = if (isPressed) pressedScale else 1f,
         animationSpec = spring(
             dampingRatio = 0.5f,
             stiffness = Spring.StiffnessMedium
@@ -48,16 +42,8 @@ fun Modifier.bounceClick(
             scaleX = scale
             scaleY = scale
         }
-        .pointerInput(Unit) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                isPressed.value = true
-                waitForUpOrCancellation()
-                isPressed.value = false
-            }
-        }
         .combinedClickable(
-            interactionSource = remember { MutableInteractionSource() },
+            interactionSource = interactionSource,
             indication = null, // Disable default sharp ripple
             onClick = onClick,
             onLongClick = onLongClick

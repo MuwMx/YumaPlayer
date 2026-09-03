@@ -235,7 +235,7 @@ internal fun Modifier.miniPlayerDismissHorizontalGesture(
     handler: MiniPlayerDismissGestureHandler
 ): Modifier {
     if (!enabled) return this
-    return this.pointerInput(true, handler) {
+    return this.pointerInput(enabled, handler) {
         detectHorizontalDragGestures(
             onDragStart = { handler.onDragStart() },
             onHorizontalDrag = { change, dragAmount ->

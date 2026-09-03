@@ -71,7 +71,7 @@ fun SettingsSwitchRow(
             }
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color(0xFF161616),
                     checkedTrackColor = vibrantColor,

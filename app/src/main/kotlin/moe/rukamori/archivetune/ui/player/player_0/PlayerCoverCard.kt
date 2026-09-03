@@ -126,7 +126,7 @@ fun PlayerCoverCard(
             }
             .then(
                 if (gestureEnabled) {
-                    Modifier.pointerInput(Unit) {
+                    Modifier.pointerInput(key1 = onNext, key2 = onPrevious) {
                         detectHorizontalDragGestures(
                             onDragStart = {
                                 accumulatedDragX = 0f

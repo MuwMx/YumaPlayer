@@ -102,6 +102,7 @@ fun DraggableScrollbar(
                             isDragging = false
                         },
                     ) { change, _ ->
+                        change.consume()
                         val viewportHeight = size.height.toFloat()
                         val constThumbHeight = with(density) { thumbHeight.toPx() }
                         val maxThumbY = viewportHeight - constThumbHeight

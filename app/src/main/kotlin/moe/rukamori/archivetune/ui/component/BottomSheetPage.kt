@@ -144,21 +144,7 @@ fun BottomSheetPage(
             shadowElevation = 10.dp,
         ) {
             Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    if (dragOffset > 100) {
-                                        state.dismiss()
-                                    }
-                                    dragOffset = 0f
-                                },
-                            ) { _, dragAmount ->
-                                dragOffset += dragAmount
-                            }
-                        },
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Box(
                     modifier =
@@ -169,7 +155,22 @@ fun BottomSheetPage(
                             .clip(CircleShape)
                             .background(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                            ),
+                            )
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onDragEnd = {
+                                        if (dragOffset > 100) {
+                                            state.dismiss()
+                                        }
+                                        dragOffset = 0f
+                                    },
+                                    onDragCancel = {
+                                        dragOffset = 0f
+                                    },
+                                ) { _, dragAmount ->
+                                    dragOffset += dragAmount
+                                }
+                            },
                 )
 
                 // Content with proper spacing

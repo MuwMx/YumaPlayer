@@ -226,107 +226,111 @@ internal fun UnifiedPlayerSheetLayers(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val fraction = lyricsFractionProvider()
-                        alpha = fraction
-                        translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
-                    }
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    LyricsHeader(
-                        state = state,
-                        animateProgressProvider = lyricsFractionProvider,
-                        onCloseClick = onCloseLyricsClick,
-                        onMoreClick = {
-                            haptics.click()
-                            onMoreLyricsClick()
-                        },
-                        isVisible = isLyricsVisible
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .then(
-                                if (lyricsNestedScrollConnection != null) {
-                                    Modifier.nestedScroll(lyricsNestedScrollConnection)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .sheetBackground(state)
-                    ) {
-                        LyricsColumn(
+            if (lyricsFractionProvider() > 0.001f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val fraction = lyricsFractionProvider()
+                            alpha = fraction
+                            translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
+                        }
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        LyricsHeader(
                             state = state,
                             animateProgressProvider = lyricsFractionProvider,
-                            progressMsProvider = progressMsProvider,
                             onCloseClick = onCloseLyricsClick,
-                            onMoreClick = onMoreLyricsClick,
-                            onSearchClick = onSearchLyricsClick,
-                            lazyListState = lyricsListState,
-                            onAction = onAction,
-                            onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
-                            onSeek = onSeek,
-                            onSeekStarted = onSeekStarted
+                            onMoreClick = {
+                                haptics.click()
+                                onMoreLyricsClick()
+                            },
+                            isVisible = isLyricsVisible
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .then(
+                                    if (lyricsNestedScrollConnection != null) {
+                                        Modifier.nestedScroll(lyricsNestedScrollConnection)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .sheetBackground(state)
+                        ) {
+                            LyricsColumn(
+                                state = state,
+                                animateProgressProvider = lyricsFractionProvider,
+                                progressMsProvider = progressMsProvider,
+                                onCloseClick = onCloseLyricsClick,
+                                onMoreClick = onMoreLyricsClick,
+                                onSearchClick = onSearchLyricsClick,
+                                lazyListState = lyricsListState,
+                                onAction = onAction,
+                                onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
+                                onSeek = onSeek,
+                                onSeekStarted = onSeekStarted
+                            )
+                        }
                     }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val fraction = queueFractionProvider()
-                        alpha = fraction
-                        translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
-                    }
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    QueueSheetHeader(
-                        queueState = queueState,
-                        queueFractionProvider = queueFractionProvider,
-                        onCloseClick = onCloseQueueClick,
-                        onMoreQueueClick = onMoreQueueClick,
-                        onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
-                        isAutoMixEnabled = state.isAutoMixEnabled,
-                        state = state,
-                        isVisible = isQueueVisible
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .then(
-                                if (queueNestedScrollConnection != null && !isQueueReordering) {
-                                    Modifier.nestedScroll(queueNestedScrollConnection)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .sheetBackground(state)
-                    ) {
-                        QueueScreen(
-                            state = queueState,
-                            onAction = onAction,
-                            lazyListState = queueListState,
-                            contentPadding = PaddingValues(
-                                top = 8.dp,
-                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
-                            ),
+            if (queueFractionProvider() > 0.001f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val fraction = queueFractionProvider()
+                            alpha = fraction
+                            translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
+                        }
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        QueueSheetHeader(
+                            queueState = queueState,
                             queueFractionProvider = queueFractionProvider,
-                            onReorderStateChange = { isQueueReordering = it },
-                            modifier = Modifier.fillMaxSize(),
+                            onCloseClick = onCloseQueueClick,
+                            onMoreQueueClick = onMoreQueueClick,
+                            onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
+                            isAutoMixEnabled = state.isAutoMixEnabled,
+                            state = state,
+                            isVisible = isQueueVisible
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .then(
+                                    if (queueNestedScrollConnection != null && !isQueueReordering) {
+                                        Modifier.nestedScroll(queueNestedScrollConnection)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .sheetBackground(state)
+                        ) {
+                            QueueScreen(
+                                state = queueState,
+                                onAction = onAction,
+                                lazyListState = queueListState,
+                                contentPadding = PaddingValues(
+                                    top = 8.dp,
+                                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
+                                ),
+                                queueFractionProvider = queueFractionProvider,
+                                onReorderStateChange = { isQueueReordering = it },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
                 }
             }

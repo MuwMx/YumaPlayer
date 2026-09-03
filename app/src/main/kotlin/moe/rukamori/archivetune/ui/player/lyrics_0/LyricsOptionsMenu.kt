@@ -458,6 +458,12 @@ private fun LyricsMenuTranslate(
                     )
                 )
 
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { langExpanded = true }
+                )
+
                 DropdownMenu(
                     expanded = langExpanded,
                     onDismissRequest = { langExpanded = false },
