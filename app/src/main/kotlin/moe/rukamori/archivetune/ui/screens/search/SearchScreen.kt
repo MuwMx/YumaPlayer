@@ -487,23 +487,7 @@ private fun SuggestedSongsSection(
                                     if (song.id == mediaMetadata?.id) {
                                         playerConnection.player.togglePlayPause()
                                     } else {
-                                        val idx = visibleSongs.indexOfFirst { it.id == song.id }
-                                        if (idx != -1 && visibleSongs.size > 1) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = sectionTitle,
-                                                    items = visibleSongs.map { it.toMediaItem() },
-                                                    startIndex = idx
-                                                )
-                                            )
-                                        } else {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue(
-                                                    endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                                    preloadItem = song.toMediaMetadata(),
-                                                ),
-                                            )
-                                        }
+                                        playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
                                     }
                                 },
                                 onLongClick = {

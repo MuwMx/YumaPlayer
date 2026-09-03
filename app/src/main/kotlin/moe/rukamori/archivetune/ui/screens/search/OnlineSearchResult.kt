@@ -227,35 +227,7 @@ fun OnlineSearchResult(
                                     if (item.id == mediaMetadata?.id) {
                                         playerConnection.player.togglePlayPause()
                                     } else {
-                                        val section = allModeSections.find { s -> s.items.any { it.id == item.id } }
-                                        val visibleSongs: List<SongItem>?
-                                        val sectionTitle: String?
-                                        if (section != null) {
-                                            val sorted = viewModel.sortedItems(section.items, searchSort)
-                                            visibleSongs = sorted.filterIsInstance<SongItem>()
-                                            sectionTitle = section.title
-                                        } else {
-                                            val sorted = viewModel.sortedItems(itemsPage?.items.orEmpty().distinctBy { it.id }, searchSort)
-                                            visibleSongs = sorted.filterIsInstance<SongItem>()
-                                            sectionTitle = searchFilter?.value ?: "Search"
-                                        }
-                                        val idx = visibleSongs?.indexOfFirst { it.id == item.id } ?: -1
-                                        if (visibleSongs != null && visibleSongs.size > 1 && idx != -1) {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = sectionTitle,
-                                                    items = visibleSongs.map { it.toMediaItem() },
-                                                    startIndex = idx
-                                                )
-                                            )
-                                        } else {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue(
-                                                    WatchEndpoint(videoId = item.id),
-                                                    item.toMediaMetadata(),
-                                                ),
-                                            )
-                                        }
+                                        playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                                     }
                                 }
 
