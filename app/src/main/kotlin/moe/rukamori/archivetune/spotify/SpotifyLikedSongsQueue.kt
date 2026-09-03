@@ -7,19 +7,8 @@
 package moe.rukamori.archivetune.spotify
 
 import androidx.media3.common.MediaItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
-import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.flow.first
-import moe.rukamori.archivetune.constants.SpotifyAccessTokenExpiresAtKey
-import moe.rukamori.archivetune.constants.SpotifyAccessTokenKey
-import moe.rukamori.archivetune.constants.SpotifySpDcKey
-import moe.rukamori.archivetune.constants.SpotifySpKeyKey
+import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
@@ -27,122 +16,46 @@ class SpotifyLikedSongsQueue(
     private val title: String? = null,
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
+    private val total: Int = initialTracks.size,
     override val preloadItem: MediaMetadata? = null,
 ) : Queue {
-    private val allTracks = mutableListOf<SpotifyTrack>()
-    private var resolveOffset = 0
-    private var apiFetchOffset = 0
-    private var apiTotal = 0
-    private var apiHasMore = true
+    private val allTracks = initialTracks.toList()
     private var isInitialized = false
 
-    override suspend fun getInitialStatus(): Queue.Status =
-        withContext(Dispatchers.IO) {
-            try {
-                if (initialTracks.isNotEmpty()) {
-                    allTracks += initialTracks
-                    apiTotal = initialTracks.size
-                    apiFetchOffset = apiTotal
-                    apiHasMore = false
-                } else {
-                    fetchNextApiPage()
-                }
-
-                while (startIndex >= allTracks.size && apiHasMore) {
-                    fetchNextApiPage()
-                }
-
-                if (allTracks.isEmpty()) {
-                    return@withContext Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
-                }
-
-                val targetIndex = startIndex.coerceIn(allTracks.indices)
-                val resolvedEntries = resolveTrackEntries(allTracks)
-                val resolvedItems = resolvedEntries.map { it.second }
-
-                resolveOffset = allTracks.size
-                if (resolvedItems.isEmpty()) {
-                    return@withContext Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
-                }
-
-                Queue.Status(
-                    title = title,
-                    items = resolvedItems,
-                    mediaItemIndex =
-                        resolvedEntries
-                            .indexOfFirst { it.first >= targetIndex }
-                            .takeIf { it >= 0 }
-                            ?: resolvedItems.lastIndex,
-                )
-            } finally {
-                isInitialized = true
+    override suspend fun getInitialStatus(): Queue.Status {
+        try {
+            if (allTracks.isEmpty()) {
+                return Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
             }
+            val targetIndex = startIndex.coerceIn(allTracks.indices)
+            val stubItems = allTracks.map { it.toStubMediaItem() }
+            return Queue.Status(
+                title = title,
+                items = stubItems,
+                mediaItemIndex = targetIndex,
+            )
+        } finally {
+            isInitialized = true
         }
-
-    override fun hasNextPage(): Boolean = isInitialized && (resolveOffset < allTracks.size || apiHasMore)
-
-    override suspend fun nextPage(): List<MediaItem> =
-        withContext(Dispatchers.IO) {
-            if (resolveOffset >= allTracks.size && apiHasMore) {
-                fetchNextApiPage()
-            }
-            if (resolveOffset >= allTracks.size) return@withContext emptyList()
-
-            val end = (resolveOffset + RESOLVE_BATCH_SIZE).coerceAtMost(allTracks.size)
-            val batch = allTracks.subList(resolveOffset, end)
-            resolveOffset = end
-            resolveTracks(batch)
-        }
-
-    private suspend fun resolveTracks(tracks: List<SpotifyTrack>): List<MediaItem> = resolveTrackEntries(tracks).map { it.second }
-
-    private suspend fun resolveTrackEntries(tracks: List<SpotifyTrack>): List<Pair<Int, MediaItem>> =
-        buildList {
-            tracks.chunked(RESOLVE_BATCH_SIZE).forEachIndexed { chunkIndex, chunk ->
-                val chunkOffset = chunkIndex * RESOLVE_BATCH_SIZE
-                val resolvedChunk =
-                    coroutineScope {
-                        chunk
-                            .mapIndexed { index, track ->
-                                async {
-                                    SpotifyPlaybackResolver
-                                        .resolveToMediaItem(track)
-                                        ?.let { mediaItem -> chunkOffset + index to mediaItem }
-                                }
-                            }.awaitAll()
-                            .filterNotNull()
-                    }
-                addAll(resolvedChunk)
-            }
-        }
-
-    private suspend fun fetchNextApiPage() {
-        if (!apiHasMore) return
-        val result = runCatching {
-            Spotify.likedSongs(limit = SPOTIFY_PAGE_SIZE, offset = apiFetchOffset).getOrThrow()
-        }.getOrElse { error ->
-            if ((error as? Spotify.SpotifyException)?.statusCode != 401) throw error
-            val context = moe.rukamori.archivetune.App.instance
-            val prefs = context.dataStore.data.first()
-            val spDc = prefs[SpotifySpDcKey].orEmpty()
-            if (spDc.isBlank()) throw error
-            val token = SpotifyAuth.fetchAccessToken(spDc = spDc, spKey = prefs[SpotifySpKeyKey].orEmpty()).getOrThrow()
-            Spotify.accessToken = token.accessToken
-            context.dataStore.edit { p ->
-                p[SpotifyAccessTokenKey] = token.accessToken
-                p[SpotifyAccessTokenExpiresAtKey] = token.accessTokenExpirationTimestampMs
-            }
-            Spotify.likedSongs(limit = SPOTIFY_PAGE_SIZE, offset = apiFetchOffset).getOrThrow()
-        }
-        apiTotal = result.total
-        val fetched = result.items.mapNotNull { it.track.takeUnless(SpotifyTrack::isLocal) }
-        allTracks += fetched
-        apiFetchOffset += result.items.size
-        apiHasMore = apiFetchOffset < apiTotal
     }
 
-    companion object {
-        private const val SPOTIFY_PAGE_SIZE = 50
-        private const val RESOLVE_BATCH_SIZE = 20
+    override fun hasNextPage(): Boolean = isInitialized && allTracks.size < total
+
+    override suspend fun nextPage(): List<MediaItem> = emptyList()
+
+    private fun SpotifyTrack.toStubMediaItem(): MediaItem {
+        val metadata =
+            MediaMetadata(
+                id = id,
+                title = name,
+                artists = artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
+                duration = if (durationMs > 0) durationMs / 1000 else -1,
+                thumbnailUrl = SpotifyMapper.getTrackThumbnail(this),
+                album = album?.let { MediaMetadata.Album(id = it.id, title = it.name) },
+                explicit = explicit,
+                spotifyTrackId = id.takeIf(String::isNotBlank),
+                isrc = externalIds?.isrc?.takeIf { it.isNotBlank() },
+            )
+        return metadata.toMediaItem()
     }
 }
