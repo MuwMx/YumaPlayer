@@ -42,6 +42,9 @@ class SpotifyLikedSongsViewModel
         private val _error = MutableStateFlow<String?>(null)
         val error = _error.asStateFlow()
 
+        private val _isLoadingMore = MutableStateFlow(false)
+        val isLoadingMore = _isLoadingMore.asStateFlow()
+
         init {
             viewModelScope.launch {
                 repository.likedSongs.collect { tracks ->
@@ -97,6 +100,27 @@ class SpotifyLikedSongsViewModel
         }
 
         fun loadMoreSongs() {
+            if (_isLoadingMore.value) return
+            _isLoadingMore.value = true
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val offset = _tracks.value.size
+                    val currentTotal = _total.value
+                    if (currentTotal != 0 && offset >= currentTotal) return@launch
+                    val page = repository.likedSongsPage(limit = 50, offset = offset)
+                    if (page.items.isNotEmpty()) {
+                        _tracks.value = _tracks.value + page.items
+                    }
+                    _total.value = page.total
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    reportException(e)
+                    _error.value = e.message
+                } finally {
+                    _isLoadingMore.value = false
+                }
+            }
         }
 
     }
