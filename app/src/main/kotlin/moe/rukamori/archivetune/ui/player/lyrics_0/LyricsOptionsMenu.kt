@@ -23,12 +23,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
@@ -66,11 +65,6 @@ fun LyricsOptionsMenu(
             currentScreen = LyricsMenuScreen.MAIN
         }
     }
-
-    val GoogleSans = FontFamily(
-        Font(R.font.google_sans_regular, FontWeight.Normal),
-        Font(R.font.google_sans_bold, FontWeight.Bold)
-    )
 
     if (isVisible) {
         BackHandler {
@@ -166,26 +160,22 @@ fun LyricsOptionsMenu(
                             state = state,
                             onAction = onAction,
                             onDismiss = onDismiss,
-                            onNavigateTo = { currentScreen = it },
-                            font = GoogleSans
+                            onNavigateTo = { currentScreen = it }
                         )
                         LyricsMenuScreen.EDIT -> LyricsMenuEdit(
                             state = state,
                             onAction = onAction,
-                            onBack = { currentScreen = LyricsMenuScreen.MAIN },
-                            font = GoogleSans
+                            onBack = { currentScreen = LyricsMenuScreen.MAIN }
                         )
                         LyricsMenuScreen.TRANSLATE -> LyricsMenuTranslate(
                             state = state,
                             onAction = onAction,
-                            onBack = { currentScreen = LyricsMenuScreen.MAIN },
-                            font = GoogleSans
+                            onBack = { currentScreen = LyricsMenuScreen.MAIN }
                         )
                         LyricsMenuScreen.SYNC_OFFSET -> LyricsMenuSyncOffset(
                             state = state,
                             onAction = onAction,
-                            onBack = { currentScreen = LyricsMenuScreen.MAIN },
-                            font = GoogleSans
+                            onBack = { currentScreen = LyricsMenuScreen.MAIN }
                         )
                     }
                         }
@@ -201,9 +191,9 @@ private fun LyricsMenuMain(
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
     onDismiss: () -> Unit,
-    onNavigateTo: (LyricsMenuScreen) -> Unit,
-    font: FontFamily
+    onNavigateTo: (LyricsMenuScreen) -> Unit
 ) {
+    val font = LocalArchiveTuneFontFamily.current
     val count = 5
 
     Column {
@@ -300,9 +290,9 @@ private fun LyricsMenuMain(
 private fun LyricsMenuEdit(
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
-    onBack: () -> Unit,
-    font: FontFamily
+    onBack: () -> Unit
 ) {
+    val font = LocalArchiveTuneFontFamily.current
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -352,9 +342,9 @@ private fun LyricsMenuEdit(
 private fun LyricsMenuTranslate(
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
-    onBack: () -> Unit,
-    font: FontFamily
+    onBack: () -> Unit
 ) {
+    val font = LocalArchiveTuneFontFamily.current
     val context = LocalContext.current
     val languages = remember(context) { moe.rukamori.archivetune.utils.TranslatorLanguages.load(context) }
 
@@ -509,9 +499,9 @@ private fun LyricsMenuTranslate(
 private fun LyricsMenuSyncOffset(
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
-    onBack: () -> Unit,
-    font: FontFamily
+    onBack: () -> Unit
 ) {
+    val font = LocalArchiveTuneFontFamily.current
     // Временное локальное смещение, инициализируемое значением из стейта
     var tempOffset by remember(state.lyricsSyncOffset) { mutableStateOf(state.lyricsSyncOffset) }
 

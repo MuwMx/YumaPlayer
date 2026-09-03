@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.TimeUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -186,7 +187,7 @@ fun PlayerSeekBar(
             Text(
                 text = currentSecText,
                 color = Color(0x80FFFFFF),
-                fontFamily = GoogleSans,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.CenterStart)
             )
@@ -204,7 +205,7 @@ fun PlayerSeekBar(
                     Text(
                         text = codecInfo,
                         color = Color(0x80FFFFFF),
-                        fontFamily = GoogleSans,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         fontSize = 10.sp,
                         modifier = Modifier
                             .background(Color(0x1AFFFFFF), CircleShape)
@@ -227,7 +228,7 @@ fun PlayerSeekBar(
             Text(
                 text = durationSecText,
                 color = Color(0x80FFFFFF),
-                fontFamily = GoogleSans,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.CenterEnd)
             )

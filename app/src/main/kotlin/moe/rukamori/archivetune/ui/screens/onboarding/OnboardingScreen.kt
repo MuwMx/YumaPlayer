@@ -78,8 +78,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +109,7 @@ import moe.rukamori.archivetune.ui.screens.settings.FlacTokenInputs
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
 import moe.rukamori.archivetune.ui.screens.settings.TokenEditorDialog
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
@@ -125,11 +124,6 @@ import java.util.UUID
 
 private val OnboardingContentMaxWidth = 540.dp
 private val OnboardingPagePadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-
-private val GoogleSansFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
 
 @Composable
 private fun rememberExpressiveShapes(): List<Shape> {
@@ -323,14 +317,14 @@ private fun MessageContent(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 textAlign = TextAlign.Center,
             )
             Button(
@@ -344,7 +338,7 @@ private fun MessageContent(
             ) {
                 Text(
                     text = actionLabel,
-                    fontFamily = GoogleSansFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
@@ -512,7 +506,7 @@ private fun GlassBottomNavigation(
                 ) {
                     Text(
                         text = stringResource(R.string.back_button_desc),
-                        fontFamily = GoogleSansFont,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 14.sp,
@@ -536,7 +530,7 @@ private fun GlassBottomNavigation(
                 ) {
                     Text(
                         text = nextLabel,
-                        fontFamily = GoogleSansFont,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 15.sp,
@@ -654,7 +648,7 @@ private fun WelcomePage(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = GoogleSansFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     textAlign = TextAlign.Center,
                 )
 
@@ -664,7 +658,7 @@ private fun WelcomePage(
                     text = stringResource(page.subtitleResId),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 15.sp,
-                    fontFamily = GoogleSansFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp,
                 )
@@ -713,7 +707,7 @@ private fun PassivePill(text: String) {
             text = text,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
             style = MaterialTheme.typography.labelLarge,
-            fontFamily = GoogleSansFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -817,7 +811,7 @@ private fun GlassPermissionRow(
             Text(
                 text = stringResource(permission.titleResId),
                 style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -825,7 +819,7 @@ private fun GlassPermissionRow(
             Text(
                 text = stringResource(permission.descriptionResId),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -892,7 +886,7 @@ private fun PermissionStatusAction(
         ) {
             Text(
                 text = stringResource(R.string.allow),
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 13.sp,
@@ -914,7 +908,7 @@ private fun PermissionStatusAction(
         ) {
             Text(
                 text = stringResource(permission.status.labelResId()),
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1019,7 +1013,7 @@ private fun GlassCommunityRow(
             Text(
                 text = stringResource(action.titleResId),
                 style = MaterialTheme.typography.titleMedium,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -1027,7 +1021,7 @@ private fun GlassCommunityRow(
             Text(
                 text = stringResource(action.descriptionResId),
                 style = MaterialTheme.typography.bodyMedium,
-                fontFamily = GoogleSansFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1074,7 +1068,7 @@ private fun ExpressivePageHeader(
         Text(
             text = stringResource(titleResId),
             style = MaterialTheme.typography.headlineMedium,
-            fontFamily = GoogleSansFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
@@ -1082,7 +1076,7 @@ private fun ExpressivePageHeader(
         Text(
             text = stringResource(subtitleResId),
             style = MaterialTheme.typography.bodyMedium,
-            fontFamily = GoogleSansFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )

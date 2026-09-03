@@ -49,7 +49,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -366,11 +365,11 @@ private fun QueueItem(
         }
 
     val darkScheme = darkColorScheme()
-    CompositionLocalProvider(
-        LocalContentColor provides Color.White,
-        LocalYumaColors provides darkYumaColorScheme(darkScheme),
-    ) {
-        MaterialTheme(colorScheme = darkScheme) {
+    MaterialTheme(colorScheme = darkScheme) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White,
+            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = modifier.fillMaxWidth(),
@@ -423,7 +422,6 @@ private fun QueueItem(
                             val h = coordinates.size.height.toFloat()
                             if (h != surfaceHeightPx) surfaceHeightPx = h
                         }
-                        .yumaGlassCard()
                         .then(dismissGestureModifier),
             ) {
                 MediaMetadataListItem(

@@ -20,8 +20,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,16 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-
-private val localFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
 
 /**
  * Стеклянный контейнер категории настроек YumaPlayer.
@@ -63,7 +57,7 @@ fun YumaPreferenceCategory(
                     color = colors.textSecondary,
                     fontSize = SettingsDimensions.YumaTitleFontSize,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 ),
                 modifier =
                     Modifier.padding(
@@ -159,7 +153,7 @@ fun YumaPreferenceRow(
                     color = if (enabled) Color.White else Color.White.copy(alpha = SettingsDimensions.YumaRowDisabledAlpha),
                     fontSize = SettingsDimensions.YumaRowTitleSize,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = localFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -170,7 +164,7 @@ fun YumaPreferenceRow(
                         color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                         fontSize = SettingsDimensions.YumaRowSubtitleSize,
                         lineHeight = SettingsDimensions.YumaRowSubtitleLineHeight,
-                        fontFamily = localFont,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -259,7 +253,7 @@ fun YumaSwitchPreferenceRow(
                     color = if (enabled) Color.White else Color.White.copy(alpha = SettingsDimensions.YumaRowDisabledAlpha),
                     fontSize = SettingsDimensions.YumaRowTitleSize,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = localFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -270,7 +264,7 @@ fun YumaSwitchPreferenceRow(
                         color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                         fontSize = SettingsDimensions.YumaRowSubtitleSize,
                         lineHeight = SettingsDimensions.YumaRowSubtitleLineHeight,
-                        fontFamily = localFont,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

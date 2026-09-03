@@ -23,8 +23,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +36,7 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.playback.ExoDownloadService
 import androidx.compose.material3.CircularWavyProgressIndicator
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -70,11 +69,6 @@ fun FullPlayerOptionsMenu(
     modifier: Modifier = Modifier,
     initialScreen: PlayerMenuScreen = PlayerMenuScreen.SETTINGS
 ) {
-
-    val GoogleSans = FontFamily(
-        Font(R.font.google_sans_regular, FontWeight.Normal),
-        Font(R.font.google_sans_bold, FontWeight.Bold)
-    )
 
     // Стейт текущего экрана внутри меню
     var currentScreen by remember { mutableStateOf(PlayerMenuScreen.SETTINGS) }
@@ -233,7 +227,7 @@ fun FullPlayerOptionsMenu(
                         color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = GoogleSans,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
                             .yumaClickable {
@@ -275,11 +269,6 @@ fun DownloadMenuContent(
         defaultValue = ""
     )
 
-    val GoogleSans = FontFamily(
-        Font(R.font.google_sans_regular, FontWeight.Normal),
-        Font(R.font.google_sans_bold, FontWeight.Bold)
-    )
-
     val hasFlac = playbackSource == moe.rukamori.archivetune.constants.PlaybackSource.FLAC
     val totalRows = 1 + (if (hasFlac) 1 else 0) + (if (externalDownloaderEnabled) 1 else 0)
     var currentRow = 0
@@ -290,7 +279,7 @@ fun DownloadMenuContent(
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = GoogleSans,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             modifier = Modifier.padding(start = 4.dp, bottom = 16.dp)
         )
 

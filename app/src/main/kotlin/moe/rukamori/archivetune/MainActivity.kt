@@ -661,7 +661,6 @@ class MainActivity : ComponentActivity() {
                         text = "v$latestVersionName",
                         style = MaterialTheme.typography.displaySmall.copy(
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily(Font(R.font.google_sans_regular, FontWeight.Normal), Font(R.font.google_sans_bold, FontWeight.Bold)),
                         ),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),

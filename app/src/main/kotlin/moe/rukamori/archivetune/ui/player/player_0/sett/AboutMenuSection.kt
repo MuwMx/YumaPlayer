@@ -16,17 +16,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
+import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
@@ -37,11 +36,6 @@ import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
 import moe.rukamori.archivetune.utils.toggleSpeedDialPin
-
-private val localFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
 
 @Composable
 fun SettingsMenuContent(
@@ -73,7 +67,7 @@ fun SettingsMenuContent(
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = localFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             modifier = Modifier.padding(start = 4.dp, bottom = 16.dp)
         )
 
@@ -136,8 +130,8 @@ fun SettingsMenuContent(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         val formattedVer = if (updateState.versionName.startsWith("v", ignoreCase = true)) updateState.versionName else "v${updateState.versionName}"
-                        Text(text = "Update Available ($formattedVer)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = localFont)
-                        Text(text = "Tap to download from Telegram", color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha), fontSize = 12.sp, fontFamily = localFont)
+                        Text(text = "Update Available ($formattedVer)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LocalArchiveTuneFontFamily.current)
+                        Text(text = "Tap to download from Telegram", color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha), fontSize = 12.sp, fontFamily = LocalArchiveTuneFontFamily.current)
                     }
                 }
             }
@@ -257,7 +251,7 @@ fun AboutMenuSection(
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = localFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             modifier = Modifier.padding(start = 4.dp, bottom = 16.dp)
         )
     }
@@ -333,7 +327,7 @@ fun CompactMenuRow(
                     color = if (isActive) activeIconTint else Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
                 Spacer(modifier = Modifier.height(1.dp))
                 Text(
@@ -341,7 +335,7 @@ fun CompactMenuRow(
                     color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                     fontSize = 11.sp,
                     lineHeight = 13.sp,
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
             }
             if (showArrow) {
@@ -389,7 +383,7 @@ private fun MenuRowButton(
                 color = contentColor,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = localFont
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
         } else {
             Icon(
@@ -412,8 +406,6 @@ fun SleepTimerMenuContent(
     val isTimerActive = sleepTimerSecs != null
 
     var selectedMinutes by remember { mutableIntStateOf(15) }
-    val GoogleSans = localFont
-
     val displayMinutes = if (sleepTimerSecs != null) {
         (sleepTimerSecs + 59) / 60
     } else {
@@ -426,7 +418,7 @@ fun SleepTimerMenuContent(
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = GoogleSans,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             modifier = Modifier.padding(start = 4.dp, bottom = 24.dp)
         )
 
@@ -455,7 +447,7 @@ fun SleepTimerMenuContent(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text("-5", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = GoogleSans)
+                Text("-5", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LocalArchiveTuneFontFamily.current)
             }
 
             Column(
@@ -467,13 +459,13 @@ fun SleepTimerMenuContent(
                     color = Color.White,
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = GoogleSans
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
                 Text(
                     text = "minutes",
                     color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                     fontSize = 12.sp,
-                    fontFamily = GoogleSans
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
             }
 
@@ -495,7 +487,7 @@ fun SleepTimerMenuContent(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text("+5", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = GoogleSans)
+                Text("+5", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LocalArchiveTuneFontFamily.current)
             }
         }
 
@@ -528,7 +520,7 @@ fun SleepTimerMenuContent(
                 color = if (isTimerActive) Color.White else (if (Color(state.vibrantColor).luminance() > 0.5f) Color.Black else Color.White),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = GoogleSans
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
         }
     }

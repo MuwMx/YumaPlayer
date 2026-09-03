@@ -52,7 +52,6 @@ import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.ui.theme.glassBorder
 import moe.rukamori.archivetune.ui.theme.transparentIconShadow
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.bounceClick
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -90,37 +89,45 @@ fun LyricsContentCard(
                 label = "LyricsTransportAccent",
             )
 
-            val darkScheme = darkColorScheme()
-            CompositionLocalProvider(
-                LocalContentColor provides Color.White,
-                LocalYumaColors provides darkYumaColorScheme(darkScheme),
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                    .fillMaxWidth()
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        if (animateProgressProvider() >= 0.05f) {
+                            layout(placeable.width, placeable.height) {
+                                placeable.placeRelative(0, 0)
+                            }
+                        } else {
+                            layout(0, 0) {}
+                        }
+                    }
+                    .graphicsLayer {
+                        val progress = animateProgressProvider()
+                        alpha = progress
+                        scaleX = 0.88f + (0.12f * progress)
+                        scaleY = 0.88f + (0.12f * progress)
+                        translationY = 40f * (1f - progress)
+                    }
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(animatedAccentColor.copy(alpha = 0.12f))
+                    .glassBorder(
+                        shape = RoundedCornerShape(32.dp),
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                        topAlpha = 0.18f,
+                        bottomAlpha = 0.08f,
+                        baseColor = animatedAccentColor,
+                    )
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
             ) {
+                val darkScheme = darkColorScheme()
                 MaterialTheme(colorScheme = darkScheme) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 20.dp, vertical = 24.dp)
-                            .fillMaxWidth()
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints)
-                                if (animateProgressProvider() >= 0.05f) {
-                                    layout(placeable.width, placeable.height) {
-                                        placeable.placeRelative(0, 0)
-                                    }
-                                } else {
-                                    layout(0, 0) {}
-                                }
-                            }
-                            .graphicsLayer {
-                                val progress = animateProgressProvider()
-                                alpha = progress
-                                scaleX = 0.88f + (0.12f * progress)
-                                scaleY = 0.88f + (0.12f * progress)
-                                translationY = 40f * (1f - progress)
-                            }
-                            .yumaGlassCard(shape = RoundedCornerShape(32.dp))
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
+                    CompositionLocalProvider(
+                        LocalContentColor provides Color.White,
+                        LocalYumaColors provides darkYumaColorScheme(darkScheme),
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),

@@ -29,8 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.player.player_0.GoogleSans
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 
 @Composable
 fun PlayerToolbar(
@@ -74,7 +74,7 @@ fun PlayerToolbar(
             color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = GoogleSans,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
@@ -221,7 +221,7 @@ fun SleepTimerTopBadge(
                 color = colorScheme.onSurface.copy(alpha = 0.9f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = GoogleSans
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
         }
     }

@@ -36,6 +36,7 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 
 import moe.rukamori.archivetune.ui.component.MarqueeText
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.theme.SoftTextShadow
 
 @Composable
@@ -95,7 +96,7 @@ fun PlayerMetadata(
                         color = Color.White,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = GoogleSans,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         shadow = SoftTextShadow
                     ),
                     maxLines = 1,
@@ -139,7 +140,7 @@ fun PlayerMetadata(
                     style = TextStyle(
                         color = Color(0xF2FFFFFF),
                         fontSize = 16.sp,
-                        fontFamily = GoogleSans,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         shadow = SoftTextShadow
                     ),
                     maxLines = 1,

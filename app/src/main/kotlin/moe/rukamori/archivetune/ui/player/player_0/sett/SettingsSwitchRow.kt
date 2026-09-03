@@ -10,22 +10,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
-
-private val localFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
 
 @Composable
 fun SettingsSwitchRow(
@@ -66,14 +59,14 @@ fun SettingsSwitchRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = localFont)
+                Text(text = title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = LocalArchiveTuneFontFamily.current)
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                     fontSize = 11.sp,
                     lineHeight = 14.sp,
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
             }
             Switch(

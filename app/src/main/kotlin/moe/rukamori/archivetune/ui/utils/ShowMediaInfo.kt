@@ -64,8 +64,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,10 +76,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 
-private val localFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 
 private enum class MediaInfoTab(
     @StringRes val labelRes: Int,
@@ -290,7 +285,7 @@ fun ShowMediaInfo(videoId: String) {
                                     text = fact.text,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 12.sp,
-                                    fontFamily = localFont,
+                                    fontFamily = LocalArchiveTuneFontFamily.current,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -446,7 +441,7 @@ private fun MediaInfoActionButton(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = localFont
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
         }
     }
@@ -493,7 +488,7 @@ private fun MediaInfoTabSelector(
                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    fontFamily = localFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -570,14 +565,14 @@ private fun MediaInfoHeroCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
                 Text(
                     text = title,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = localFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -585,7 +580,7 @@ private fun MediaInfoHeroCard(
                     text = subtitle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
-                    fontFamily = localFont,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -604,7 +599,7 @@ private fun MediaInfoHeroCard(
                             text = loadingText,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
-                            fontFamily = localFont
+                            fontFamily = LocalArchiveTuneFontFamily.current
                         )
                     }
                 }
@@ -634,7 +629,7 @@ private fun MediaInfoDetailCard(
                             text = item.label,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             fontSize = 11.sp,
-                            fontFamily = localFont
+                            fontFamily = LocalArchiveTuneFontFamily.current
                         )
                     },
                     trailingContent = {
@@ -653,7 +648,7 @@ private fun MediaInfoDetailCard(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        fontFamily = localFont,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
                         maxLines = if (item.multiline) Int.MAX_VALUE else 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -699,7 +694,7 @@ private fun MediaInfoNarrativeCard(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = localFont
+                    fontFamily = LocalArchiveTuneFontFamily.current
                 )
                 MediaInfoActionButton(
                     text = copyText,
@@ -712,7 +707,7 @@ private fun MediaInfoNarrativeCard(
                 text = body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
-                fontFamily = localFont,
+                fontFamily = LocalArchiveTuneFontFamily.current,
                 lineHeight = 18.sp
             )
         }
@@ -747,14 +742,14 @@ private fun MediaInfoMetricsGrid(metrics: List<MediaInfoMetric>) {
                                 text = stringResource(metric.labelRes),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 fontSize = 11.sp,
-                                fontFamily = localFont
+                                fontFamily = LocalArchiveTuneFontFamily.current
                             )
                             Text(
                                 text = metric.value,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = localFont
+                                fontFamily = LocalArchiveTuneFontFamily.current
                             )
                         }
                     }
@@ -792,13 +787,13 @@ private fun MediaInfoPendingCard(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = localFont
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
-                fontFamily = localFont
+                fontFamily = LocalArchiveTuneFontFamily.current
             )
         }
     }

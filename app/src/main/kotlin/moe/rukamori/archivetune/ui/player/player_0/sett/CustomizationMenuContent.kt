@@ -6,20 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
-
-private val localFont = FontFamily(
-    Font(R.font.google_sans_regular, FontWeight.Normal),
-    Font(R.font.google_sans_bold, FontWeight.Bold)
-)
 
 @Composable
 fun CustomizationMenuContent(
@@ -36,7 +30,7 @@ fun CustomizationMenuContent(
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = localFont,
+            fontFamily = LocalArchiveTuneFontFamily.current,
             modifier = Modifier.padding(start = 4.dp, bottom = 16.dp)
         )
 
