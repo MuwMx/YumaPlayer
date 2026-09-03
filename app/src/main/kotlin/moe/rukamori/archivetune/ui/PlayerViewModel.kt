@@ -380,6 +380,17 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.PlayQueueItem -> audioPlayer?.seekToDefaultPosition(action.index)
             is PlayerAction.RemoveQueueItem -> audioPlayer?.removeMediaItem(action.index)
             is PlayerAction.MoveQueueItem -> audioPlayer?.moveMediaItem(action.from, action.to)
+            is PlayerAction.ClearQueue -> playerConnection?.clearQueue()
+            is PlayerAction.ShuffleQueue -> toggleShuffle()
+            is PlayerAction.ToggleAutoMix -> {
+                val enabled = !_uiState.value.isAutoMixEnabled
+                _uiState.update { it.copy(isAutoMixEnabled = enabled) }
+                if (enabled) {
+                    playerConnection?.service?.onInfiniteQueueEnabled()
+                } else {
+                    playerConnection?.service?.onInfiniteQueueDisabled()
+                }
+            }
             is PlayerAction.Like, is PlayerAction.ToggleLike -> toggleLike()
             is PlayerAction.Shuffle -> toggleShuffle()
             is PlayerAction.Repeat -> toggleRepeat()

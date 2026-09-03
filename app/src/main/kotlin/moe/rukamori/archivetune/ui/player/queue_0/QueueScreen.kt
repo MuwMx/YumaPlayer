@@ -47,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
@@ -94,6 +95,7 @@ fun QueueScreen(
     onReorderStateChange: (Boolean) -> Unit = {},
 ) {
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val haptics = rememberYumaHaptics()
     val hapticView = LocalView.current
     val playerConnection = LocalPlayerConnection.current
 
@@ -227,7 +229,10 @@ fun QueueScreen(
                     isDragging = isDragging,
                     enableHapticFeedback = enableHapticFeedback,
                     hapticView = hapticView,
-                    onPlay = { onAction(PlayerAction.PlayQueueItem(index)) },
+                    onPlay = {
+                        haptics.click()
+                        onAction(PlayerAction.PlayQueueItem(index))
+                    },
                     onRemove = { onAction(PlayerAction.RemoveQueueItem(index)) },
                     dragHandle = {
                         IconButton(

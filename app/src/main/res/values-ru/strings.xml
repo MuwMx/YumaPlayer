@@ -338,6 +338,11 @@
     <string name="audio_quality_high">Высокое (128 kbps)</string>
     <string name="audio_quality_low">Низкое (48 kbps)</string>
     <string name="queue">Очередь</string>
+    <string name="clear_queue">Очистить очередь</string>
+    <string name="clear_queue_desc">Оставить только текущий трек</string>
+    <string name="shuffle_queue_desc">Перемешать треки в очереди</string>
+    <string name="save_as_playlist">Сохранить как плейлист</string>
+    <string name="save_as_playlist_desc">Сохранить текущую очередь в плейлист</string>
     <string name="persistent_queue">Сохранение очереди</string>
     <string name="persistent_queue_desc">Восстанавливать последнюю очередь при запуске</string>
     <string name="permanent_shuffle">Режим постоянного перемешивания</string>

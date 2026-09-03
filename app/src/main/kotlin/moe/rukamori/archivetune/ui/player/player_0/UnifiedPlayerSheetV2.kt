@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
@@ -53,6 +54,7 @@ import moe.rukamori.archivetune.constants.FloatingToolbarBottomPadding
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
+import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.menu.EqualizerDialog
 import moe.rukamori.archivetune.ui.menu.TempoPitchDialog
@@ -66,6 +68,7 @@ import moe.rukamori.archivetune.ui.player.player_0.scoped.rememberFullPlayerVisu
 import moe.rukamori.archivetune.ui.player.player_0.scoped.rememberSheetVisualState
 import moe.rukamori.archivetune.ui.player.player_0.sett.FullPlayerOptionsMenu
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
+import moe.rukamori.archivetune.ui.player.queue_0.QueueOptionsMenu
 import moe.rukamori.archivetune.ui.state.PlayerSheetState
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
@@ -99,11 +102,13 @@ fun UnifiedPlayerSheetV2(
     val activityResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
 
     var isLyricsMenuVisible by remember { mutableStateOf(false) }
+    var isQueueMenuVisible by remember { mutableStateOf(false) }
     var showSettingsMenu by remember { mutableStateOf(false) }
     var menuInitialScreen by remember { mutableStateOf(PlayerMenuScreen.SETTINGS) }
     var showEqualizerDialog by remember { mutableStateOf(false) }
     var showPitchTempoDialog by remember { mutableStateOf(false) }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var showQueueAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val screenHeightDp = maxHeight
@@ -435,6 +440,7 @@ fun UnifiedPlayerSheetV2(
                             )
                         }
                     },
+                    onMoreQueueClick = { isQueueMenuVisible = true },
                     onOpenQueue = {
                         scope.launch {
                             queueFraction.animateTo(
@@ -477,6 +483,17 @@ fun UnifiedPlayerSheetV2(
             state = state
         )
 
+        QueueOptionsMenu(
+            isVisible = isQueueMenuVisible,
+            onDismiss = { isQueueMenuVisible = false },
+            onAction = onAction,
+            onSaveAsPlaylist = {
+                isQueueMenuVisible = false
+                showQueueAddToPlaylistDialog = true
+            },
+            state = state
+        )
+
         FullPlayerOptionsMenu(
             expanded = showSettingsMenu,
             initialScreen = menuInitialScreen,
@@ -499,7 +516,7 @@ fun UnifiedPlayerSheetV2(
                     try {
                         val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
                             playerConnection?.localPlayer?.audioSessionId?.let {
-                                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, it)
+                                extra -> putExtra(AudioEffect.EXTRA_AUDIO_SESSION, extra)
                             }
                             putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
                             putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
@@ -521,12 +538,37 @@ fun UnifiedPlayerSheetV2(
             TempoPitchDialog(onDismiss = { showPitchTempoDialog = false })
         }
 
-        // Диалог Добавления в плейлист
         if (showAddToPlaylistDialog && state.trackUrl.isNotBlank()) {
             AddToPlaylistDialog(
                 isVisible = showAddToPlaylistDialog,
                 onGetSong = { listOf(state.trackUrl) },
                 onDismiss = { showAddToPlaylistDialog = false }
+            )
+        }
+
+        if (showQueueAddToPlaylistDialog && queueState.queueWindows.isNotEmpty()) {
+            val database = LocalDatabase.current
+            AddToPlaylistDialog(
+                isVisible = showQueueAddToPlaylistDialog,
+                onGetSong = {
+                    val songIds = queueState.queueWindows.mapNotNull { window ->
+                        window.mediaItem.metadata?.let { meta ->
+                            database.withTransaction {
+                                insert(meta)
+                            }
+                            meta.id
+                        }
+                    }
+                    songIds
+                },
+                onDismiss = { showQueueAddToPlaylistDialog = false },
+                onAddComplete = { songCount, playlistNames ->
+                    val message = when {
+                        playlistNames.size == 1 -> context.getString(R.string.added_to_playlist, playlistNames.first())
+                        else -> context.getString(R.string.added_to_n_playlists, playlistNames.size)
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             )
         }
     }

@@ -2307,6 +2307,21 @@ class MusicService :
         autoAddedMediaIds.clear()
     }
 
+    fun clearQueue() {
+        val currentIdx = player.currentMediaItemIndex
+        if (currentIdx < 0 || player.mediaItemCount <= 1) return
+
+        val countAfter = player.mediaItemCount - (currentIdx + 1)
+        if (countAfter > 0) {
+            player.removeMediaItems(currentIdx + 1, player.mediaItemCount)
+        }
+        if (currentIdx > 0) {
+            player.removeMediaItems(0, currentIdx)
+        }
+        currentQueue = EmptyQueue
+        queueTitle = null
+    }
+
     fun onInfiniteQueueDisabled() {
         infiniteQueueLoading.value = false
         val currentIndex = player.currentMediaItemIndex

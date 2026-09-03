@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.transparentIconShadow
@@ -70,6 +71,8 @@ fun PlayerTransportControls(
     modifier: Modifier = Modifier,
     isLarge: Boolean = true,
 ) {
+    val haptics = rememberYumaHaptics()
+
     val animatedAccentColor by animateColorAsState(
         targetValue = vibrantColor,
         animationSpec = tween(500),
@@ -113,6 +116,7 @@ fun PlayerTransportControls(
             Box(
                 modifier = Modifier
                     .bounceClick(pressedScale = 0.90f) {
+                        haptics.click()
                         onAction(PlayerAction.Shuffle)
                     }
                     .size(OuterButtonSize)
@@ -154,6 +158,7 @@ fun PlayerTransportControls(
                 Box(
                     modifier = Modifier
                         .bounceClick(pressedScale = 0.90f) {
+                            haptics.click()
                             onAction(PlayerAction.Previous)
                         }
                         .size(SkipButtonSize)
@@ -172,7 +177,12 @@ fun PlayerTransportControls(
                 // Play / Pause
                 Box(
                     modifier = Modifier
-                        .bounceClick(pressedScale = 0.92f) { if (!state.isLoading) onAction(PlayerAction.PlayPause) }
+                        .bounceClick(pressedScale = 0.92f) {
+                            if (!state.isLoading) {
+                                haptics.click()
+                                onAction(PlayerAction.PlayPause)
+                            }
+                        }
                         .size(CenterButtonSize)
                         .clip(CircleShape)
                         .drawBehind {
@@ -199,6 +209,7 @@ fun PlayerTransportControls(
                 Box(
                     modifier = Modifier
                         .bounceClick(pressedScale = 0.90f) {
+                            haptics.click()
                             onAction(PlayerAction.Next)
                         }
                         .size(SkipButtonSize)
@@ -219,6 +230,7 @@ fun PlayerTransportControls(
             Box(
                 modifier = Modifier
                     .bounceClick(pressedScale = 0.90f) {
+                        haptics.click()
                         onAction(PlayerAction.Repeat)
                     }
                     .size(OuterButtonSize)

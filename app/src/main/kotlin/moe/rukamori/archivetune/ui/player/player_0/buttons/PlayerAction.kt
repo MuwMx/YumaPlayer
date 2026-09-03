@@ -32,6 +32,9 @@ sealed interface PlayerAction {
     object Shuffle : PlayerAction
     object Repeat : PlayerAction
     object Share : PlayerAction
+    data object ToggleAutoMix : PlayerAction
+    data object ClearQueue : PlayerAction
+    data object ShuffleQueue : PlayerAction
     data class PlayQueueItem(val index: Int) : PlayerAction
     data class RemoveQueueItem(val index: Int) : PlayerAction
     data class MoveQueueItem(val from: Int, val to: Int) : PlayerAction

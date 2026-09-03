@@ -71,6 +71,7 @@ class PlayerViewModelHandleActionTest {
         every { playerConnection.player } returns audioPlayer
         every { playerConnection.queueWindows } returns queueWindowsFlow
         every { playerConnection.currentWindowIndex } returns currentWindowIndexFlow
+        every { playerConnection.queueTitle } returns MutableStateFlow<String?>(null)
         
         val metadataFlow = MutableStateFlow<MediaMetadata?>(
             MediaMetadata(
@@ -161,6 +162,16 @@ class PlayerViewModelHandleActionTest {
 
         viewModel.handleAction(PlayerAction.MoveQueueItem(1, 4))
         verify { audioPlayer.moveMediaItem(1, 4) }
+
+        viewModel.handleAction(PlayerAction.ClearQueue)
+        verify { connectionHolder.connection.value?.clearQueue() }
+
+        viewModel.handleAction(PlayerAction.ShuffleQueue)
+        verify { audioPlayer.shuffleModeEnabled = any() }
+
+        val initialAutoMix = viewModel.uiState.value.isAutoMixEnabled
+        viewModel.handleAction(PlayerAction.ToggleAutoMix)
+        assertEquals(!initialAutoMix, viewModel.uiState.value.isAutoMixEnabled)
     }
 
     @Test

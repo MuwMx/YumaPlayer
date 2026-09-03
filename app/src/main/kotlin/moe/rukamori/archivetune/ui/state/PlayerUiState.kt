@@ -39,6 +39,7 @@ data class PlayerUiState(
 
     val isBlurBackgroundEnabled: Boolean = false,
     val isAutoDownloadEnabled: Boolean = false,
+    val isAutoMixEnabled: Boolean = false,
     val shouldShowWelcome: Boolean = false,
     val shuffleState: String = "off",
     val repeatState: String = "off",

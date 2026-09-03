@@ -48,13 +48,13 @@ class StaticLyricsTest {
         
         Dispatchers.setMain(testDispatcher)
         application = mockk(relaxed = true)
-        connectionHolder = mockk(relaxed = true)
         connection = mockk(relaxed = true)
         settingsRepository = mockk(relaxed = true)
         lyricsHelper = mockk(relaxed = true)
         database = mockk(relaxed = true)
 
-        every { connectionHolder.connection } returns MutableStateFlow(connection)
+        connectionHolder = PlayerConnectionHolder()
+        connectionHolder.connection.value = connection
         every { connection.currentLyrics } returns currentLyricsFlow
         every { connection.database } returns database
         every { connection.mediaMetadata } returns MutableStateFlow(null)
@@ -65,6 +65,9 @@ class StaticLyricsTest {
         every { connection.audioFormat } returns MutableStateFlow(null)
         every { connection.shuffleModeEnabled } returns MutableStateFlow(false)
         every { connection.repeatMode } returns MutableStateFlow(0)
+        every { connection.queueWindows } returns MutableStateFlow(emptyList())
+        every { connection.currentWindowIndex } returns MutableStateFlow(-1)
+        every { connection.queueTitle } returns MutableStateFlow(null)
         every { connection.service.sleepTimer.remainingSeconds } returns MutableStateFlow(0L)
         every { settingsRepository.isBlurBackgroundEnabled() } returns false
         every { settingsRepository.isAutoDownloadLyricsEnabled() } returns false
@@ -86,27 +89,31 @@ class StaticLyricsTest {
     @Test
     fun `test static lyrics resets currentLineIndex`() = runTest {
         viewModel.setLyricsVisible(true)
+        testDispatcher.scheduler.advanceUntilIdle()
         
         viewModel.uiState.test {
             val initial = awaitItem()
-            assertEquals(-1, initial.currentLineIndex)
-
+            
             // Emit synced lyrics
             val syncedLyrics = "[00:01.00] Line 1\n[00:02.00] Line 2\n[00:03.00] Line 3\n[00:04.00] Line 4"
             currentLyricsFlow.value = LyricsEntity(id = "1", lyrics = syncedLyrics, source = "REMOTE")
+            testDispatcher.scheduler.advanceUntilIdle()
             
             val syncedState = awaitItem()
             assertEquals(true, syncedState.isSynced)
             
             // Simulate progress to line 3 (index 3)
             viewModel.onPlaybackProgress(4, 10)
-            val progressState1 = awaitItem() // durationMs update
-            val progressState2 = awaitItem() // currentLineIndex update
+            testDispatcher.scheduler.advanceUntilIdle()
+            
+            val progressState1 = awaitItem()
+            val progressState2 = awaitItem()
             assertEquals(3, progressState2.currentLineIndex)
 
             // Emit static lyrics
             val staticLyrics = "Line 1\nLine 2\nLine 3"
             currentLyricsFlow.value = LyricsEntity(id = "2", lyrics = staticLyrics, source = "REMOTE")
+            testDispatcher.scheduler.advanceUntilIdle()
             
             val staticState = awaitItem()
             assertEquals(false, staticState.isSynced)

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
 // =================================================================
@@ -38,6 +39,7 @@ fun PlayerControlCapsule(
     onAction: (PlayerAction) -> Unit, /* Одна лямбда вместо кучи пробросов */
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberYumaHaptics()
     var lastLikeClickTime by remember { mutableLongStateOf(0L) }
 
     val heartColor by animateColorAsState(
@@ -76,7 +78,10 @@ fun PlayerControlCapsule(
             CapsuleIconButton(
                 iconRes = R.drawable.ic_shuffle,
                 tint = shuffleColor,
-                onClick = { onAction(PlayerAction.Shuffle) }
+                onClick = {
+                    haptics.click()
+                    onAction(PlayerAction.Shuffle)
+                }
             )
 
             Spacer(modifier = Modifier.width(SpaceBetweenButtons))
@@ -85,7 +90,10 @@ fun PlayerControlCapsule(
             CapsuleIconButton(
                 iconRes = R.drawable.ic_share,
                 tint = InactiveButtonColor,
-                onClick = { onAction(PlayerAction.Share) }
+                onClick = {
+                    haptics.click()
+                    onAction(PlayerAction.Share)
+                }
             )
 
             Spacer(modifier = Modifier.width(SpaceBetweenButtons))
@@ -98,6 +106,7 @@ fun PlayerControlCapsule(
                     val now = System.currentTimeMillis()
                     if (now - lastLikeClickTime > 450L) {
                         lastLikeClickTime = now
+                        haptics.click()
                         onAction(PlayerAction.Like)
                     }
                 }
@@ -109,7 +118,10 @@ fun PlayerControlCapsule(
             CapsuleIconButton(
                 iconRes = R.drawable.ic_lyrics,
                 tint = InactiveButtonColor,
-                onClick = { onAction(PlayerAction.Lyrics) }
+                onClick = {
+                    haptics.click()
+                    onAction(PlayerAction.Lyrics)
+                }
             )
 
             Spacer(modifier = Modifier.width(SpaceBetweenButtons))
@@ -118,7 +130,10 @@ fun PlayerControlCapsule(
             CapsuleIconButton(
                 iconRes = repeatIcon,
                 tint = repeatColor,
-                onClick = { onAction(PlayerAction.Repeat) }
+                onClick = {
+                    haptics.click()
+                    onAction(PlayerAction.Repeat)
+                }
             )
         }
     }

@@ -133,6 +133,10 @@ class PlayerConnection(
         service.addToQueue(items)
     }
 
+    fun clearQueue() {
+        service.clearQueue()
+    }
+
     fun playFromVoiceSearch(query: String) {
         service.playFromVoiceSearch(query)
     }

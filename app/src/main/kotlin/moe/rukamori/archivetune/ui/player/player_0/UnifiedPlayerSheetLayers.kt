@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.extensions.metadata
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -91,6 +93,7 @@ internal fun UnifiedPlayerSheetLayers(
     onAction: (PlayerAction) -> Unit,
     onCloseLyricsClick: () -> Unit,
     onCloseQueueClick: () -> Unit = {},
+    onMoreQueueClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onMoreLyricsClick: () -> Unit,
     onSearchLyricsClick: () -> Unit,
@@ -286,7 +289,9 @@ internal fun UnifiedPlayerSheetLayers(
                         queueState = queueState,
                         queueFractionProvider = queueFractionProvider,
                         onCloseClick = onCloseQueueClick,
-                        onMoreClick = onMoreLyricsClick,
+                        onMoreQueueClick = onMoreQueueClick,
+                        onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
+                        isAutoMixEnabled = state.isAutoMixEnabled,
                         state = state,
                         isVisible = isQueueVisible
                     )
@@ -330,13 +335,27 @@ private fun QueueSheetHeader(
     queueState: QueueUiState,
     queueFractionProvider: () -> Float,
     onCloseClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onMoreQueueClick: () -> Unit,
+    onToggleAutoMix: () -> Unit,
+    isAutoMixEnabled: Boolean = false,
     state: PlayerUiState,
     isVisible: Boolean
 ) {
+    val haptics = rememberYumaHaptics()
+
     val closeInteractionSource = remember { MutableInteractionSource() }
     val closePressed by closeInteractionSource.collectIsPressedAsState()
     val closeScale by androidx.compose.animation.core.animateFloatAsState(if (closePressed) 0.92f else 1f, spring(dampingRatio = 0.5f))
+
+    val autoMixInteractionSource = remember { MutableInteractionSource() }
+    val autoMixPressed by autoMixInteractionSource.collectIsPressedAsState()
+    val autoMixScale by androidx.compose.animation.core.animateFloatAsState(if (autoMixPressed) 0.92f else 1f, spring(dampingRatio = 0.5f))
+
+    val autoMixTint by animateColorAsState(
+        targetValue = if (isAutoMixEnabled) Color(state.vibrantColor) else Color.White.copy(alpha = 0.5f),
+        animationSpec = tween(300),
+        label = "AutoMixTint"
+    )
 
     val moreInteractionSource = remember { MutableInteractionSource() }
     val morePressed by moreInteractionSource.collectIsPressedAsState()
@@ -378,7 +397,10 @@ private fun QueueSheetHeader(
                     .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
                     .size(40.dp)
                     .clip(CircleShape)
-                    .clickable(interactionSource = closeInteractionSource, indication = null) { onCloseClick() },
+                    .clickable(interactionSource = closeInteractionSource, indication = null) {
+                        haptics.click()
+                        onCloseClick()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
@@ -409,10 +431,31 @@ private fun QueueSheetHeader(
             }
             Box(
                 modifier = Modifier
+                    .graphicsLayer { scaleX = autoMixScale; scaleY = autoMixScale }
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(interactionSource = autoMixInteractionSource, indication = null) {
+                        haptics.click()
+                        onToggleAutoMix()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.auto_awesome),
+                    contentDescription = "AutoMix",
+                    modifier = Modifier.size(20.dp),
+                    colorFilter = ColorFilter.tint(autoMixTint)
+                )
+            }
+            Box(
+                modifier = Modifier
                     .graphicsLayer { scaleX = moreScale; scaleY = moreScale }
                     .size(40.dp)
                     .clip(CircleShape)
-                    .clickable(interactionSource = moreInteractionSource, indication = null) { onMoreClick() },
+                    .clickable(interactionSource = moreInteractionSource, indication = null) {
+                        haptics.click()
+                        onMoreQueueClick()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Image(painter = painterResource(id = R.drawable.ic_more), contentDescription = "More", modifier = Modifier.size(20.dp))
