@@ -127,6 +127,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
+import moe.rukamori.archivetune.ui.haptics.YumaHapticsImpl
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -1529,6 +1532,8 @@ class MainActivity : ComponentActivity() {
                         }
                     val haptic = LocalHapticFeedback.current
                     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+                    val hapticView = LocalView.current
+                    val yumaHaptics = remember(enableHapticFeedback, hapticView) { YumaHapticsImpl(hapticView, enableHapticFeedback) }
                     val customHaptic =
                         remember(haptic, enableHapticFeedback) {
                             object : HapticFeedback {
@@ -1541,6 +1546,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                     CompositionLocalProvider(
+                        LocalYumaHaptics provides yumaHaptics,
                         LocalHapticFeedback provides customHaptic,
                         LocalAnimationsDisabled provides disableAnimations,
                         LocalHomeBackgroundStyle provides
