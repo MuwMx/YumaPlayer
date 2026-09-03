@@ -45,6 +45,7 @@ class SpotifyLibraryRepository
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val profileCache: SpotifyProfileCache,
     ) {
         private val _playlists = MutableStateFlow<List<SpotifyPlaylist>>(emptyList())
         val playlists: StateFlow<List<SpotifyPlaylist>> = _playlists.asStateFlow()
@@ -184,6 +185,7 @@ class SpotifyLibraryRepository
             spKey: String,
         ): SpotifyAccountSession =
             withContext(Dispatchers.IO) {
+                profileCache.clearCache()
                 context.dataStore.edit { prefs ->
                     prefs[SpotifySpDcKey] = spDc
                     prefs.remove(SpotifyLibraryPlaylistsCacheKey)
@@ -208,6 +210,7 @@ class SpotifyLibraryRepository
 
         suspend fun logout() {
             withContext(Dispatchers.IO) {
+                profileCache.clearCache()
                 context.dataStore.edit { prefs ->
                     prefs.remove(SpotifySpDcKey)
                     prefs.remove(SpotifySpKeyKey)

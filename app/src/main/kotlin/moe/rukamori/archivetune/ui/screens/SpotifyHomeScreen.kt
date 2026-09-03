@@ -66,7 +66,7 @@ import moe.rukamori.archivetune.spotify.SpotifyHomeNavigationEvent
 import moe.rukamori.archivetune.spotify.SpotifyHomeSection
 import moe.rukamori.archivetune.spotify.SpotifyHomeScreenState
 import moe.rukamori.archivetune.spotify.SpotifyHomeViewModel
-import moe.rukamori.archivetune.spotify.SpotifyRecentItem
+import moe.rukamori.archivetune.models.SpotifyRecentItem
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
@@ -160,9 +160,9 @@ fun SpotifyHomeScreen(
                                     viewModel.onAction(SpotifyHomeAction.AlbumClick(
                                         moe.rukamori.archivetune.spotify.models.SpotifyAlbum(
                                             id = album.id,
-                                            name = album.name,
-                                            artists = album.artists.map { moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist(id = it.id, name = it.name, uri = it.uri) },
-                                            images = listOfNotNull(album.imageUrl?.let { moe.rukamori.archivetune.spotify.models.SpotifyImage(it, null, null) })
+                                            name = album.title,
+                                            artists = if (album.artistName.isNotEmpty()) listOf(moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist(id = "", name = album.artistName, uri = null)) else emptyList(),
+                                            images = listOfNotNull(album.thumbnailUrl?.let { moe.rukamori.archivetune.spotify.models.SpotifyImage(it, null, null) })
                                         )
                                     )) 
                                 },
@@ -494,16 +494,16 @@ fun SpotifyRecentPanel(
                 when (item) {
                     is SpotifyRecentItem.Playlist -> {
                         SpotifyQuickGridCell(
-                            title = item.name,
-                            imageUrl = item.imageUrl,
+                            title = item.title,
+                            imageUrl = item.thumbnailUrl,
                             onClick = { onPlaylistClick(item) },
                             isArtist = false
                         )
                     }
                     is SpotifyRecentItem.Album -> {
                         SpotifyQuickGridCell(
-                            title = item.name,
-                            imageUrl = item.imageUrl,
+                            title = item.title,
+                            imageUrl = item.thumbnailUrl,
                             onClick = { onAlbumClick(item) },
                             isArtist = false
                         )
