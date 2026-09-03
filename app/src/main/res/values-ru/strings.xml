@@ -735,4 +735,6 @@
     <string name="onboarding_customization_subtitle">Выбери тему, фон и основной источник музыки.</string>
     <string name="spotify_recently_played">Недавно прослушано</string>
     <string name="spotify_frequently_listened">Часто слушаете</string>
+    <string name="spotify_sp_dc">sp_dc</string>
+    <string name="spotify_login_via_token">Войти по токену</string>
 </resources>

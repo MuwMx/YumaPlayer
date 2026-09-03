@@ -1086,6 +1086,8 @@
 
     <string name="spotify_integration">Spotify</string>
     <string name="spotify_sync_likes">Sync Spotify Likes</string>
+    <string name="spotify_sp_dc">sp_dc</string>
+    <string name="spotify_login_via_token">Login via token</string>
     <string name="hide_ytm_liked_songs">Hide YTM Liked Songs</string>
     <string name="lossless_integration">Lossless / FLAC</string>
     <string name="enable_lossless">Enable Lossless</string>
