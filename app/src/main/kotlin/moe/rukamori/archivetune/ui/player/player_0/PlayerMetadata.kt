@@ -148,6 +148,7 @@ fun PlayerMetadata(
                     isVisible = isVisible
                 )
             }
+
         }
 
         // Кнопка лайка

@@ -310,15 +310,6 @@ private fun HomeContent(
 
                     if (uiState.quickPicks.isNotEmpty()) {
                         item(
-                            key = "home_quick_picks_header",
-                            contentType = "section_header",
-                        ) {
-                            HomeSectionHeader(
-                                title = stringResource(R.string.quick_picks),
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
                             key = "home_quick_picks",
                             contentType = "quick_picks",
                         ) {

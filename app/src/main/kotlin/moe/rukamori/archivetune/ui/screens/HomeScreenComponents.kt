@@ -77,6 +77,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -350,10 +351,51 @@ fun QuickPicksSection(
     modifier: Modifier = Modifier,
 ) {
     val distinctQuickPicks = remember(quickPicks) { quickPicks.distinctBy { it.id } }
+    val context = LocalContext.current
 
-    when (displayMode) {
-        QuickPicksDisplayMode.CARD -> {
-            BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.quick_picks),
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
+            )
+            FilledTonalButton(
+                onClick = {
+                    if (distinctQuickPicks.isNotEmpty()) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.quick_picks),
+                                items = distinctQuickPicks.map { it.toMediaItem() },
+                            ),
+                        )
+                    }
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.play),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = stringResource(R.string.play_all))
+            }
+        }
+
+        when (displayMode) {
+            QuickPicksDisplayMode.CARD -> {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val heroHeight =
                     when {
                         maxWidth >= 840.dp -> 380.dp
@@ -500,7 +542,7 @@ fun QuickPicksSection(
 
         QuickPicksDisplayMode.LIST -> {
             BoxWithConstraints(
-                modifier = modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 val widthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                 val itemWidth = maxWidth * widthFactor
@@ -588,6 +630,7 @@ fun QuickPicksSection(
                     }
                 }
             }
+        }
         }
     }
 }

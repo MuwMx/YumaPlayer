@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -50,11 +52,14 @@ import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.flow.first
 import me.bush.translator.Language
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
 
@@ -358,6 +363,7 @@ class PlayerViewModel @Inject constructor(
                     _queueState.value = state
                 }
         }
+
     }
 
     // ==========================================
