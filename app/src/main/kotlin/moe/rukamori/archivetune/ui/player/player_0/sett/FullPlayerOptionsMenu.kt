@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +45,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.LocalDownloadUtil
@@ -136,7 +140,13 @@ fun FullPlayerOptionsMenu(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
                     .padding(20.dp)
             ) {
-                Column {
+                val darkScheme = darkColorScheme()
+                MaterialTheme(colorScheme = darkScheme) {
+                    CompositionLocalProvider(
+                        LocalContentColor provides Color.White,
+                        LocalYumaColors provides darkYumaColorScheme(darkScheme),
+                    ) {
+                        Column {
                     // ==========================================
                     // АНИМИРОВАННЫЙ КОНТЕНТ (Суб-навигация)
                     // ==========================================
@@ -234,6 +244,8 @@ fun FullPlayerOptionsMenu(
                             }
                             .padding(6.dp)
                     )
+                        }
+                    }
                 }
             }
         }

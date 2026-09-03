@@ -56,8 +56,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -68,6 +70,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -131,6 +134,8 @@ import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
 import moe.rukamori.archivetune.utils.SpeedDialPin
@@ -366,7 +371,14 @@ fun PlayerMenu(
             mediaMetadata.artists.joinToString(separator = " • ") { it.name }
         }
 
-    Surface(
+    val darkScheme = darkColorScheme()
+    MaterialTheme(colorScheme = darkScheme) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White,
+            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Surface(
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth(),
@@ -908,6 +920,9 @@ fun PlayerMenu(
                 }
             }
         }
+            }
+        }
+    }
     }
 }
 

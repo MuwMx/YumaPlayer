@@ -52,6 +52,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -59,7 +60,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -109,6 +112,8 @@ import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.utils.TranslatorLang
 import moe.rukamori.archivetune.utils.TranslatorLanguages
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -362,9 +367,15 @@ fun LyricsMenu(
         }
     }
 
-    Spacer(modifier = Modifier.height(12.dp))
+    val darkScheme = darkColorScheme()
+    MaterialTheme(colorScheme = darkScheme) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White,
+            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+        ) {
+            Spacer(modifier = Modifier.height(12.dp))
 
-    val configuration = LocalConfiguration.current
+            val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val defaultLanguageCode =
         remember(configuration) {
@@ -759,6 +770,8 @@ fun LyricsMenu(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
                 )
             }
+        }
+    }
         }
     }
 }

@@ -10,6 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -140,7 +144,13 @@ fun LyricsOptionsMenu(
                     .padding(20.dp)
                     .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
             ) {
-                AnimatedContent(
+                val darkScheme = darkColorScheme()
+                MaterialTheme(colorScheme = darkScheme) {
+                    CompositionLocalProvider(
+                        LocalContentColor provides Color.White,
+                        LocalYumaColors provides darkYumaColorScheme(darkScheme),
+                    ) {
+                        AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
                         if (targetState != LyricsMenuScreen.MAIN) {
@@ -177,6 +187,8 @@ fun LyricsOptionsMenu(
                             onBack = { currentScreen = LyricsMenuScreen.MAIN },
                             font = GoogleSans
                         )
+                    }
+                        }
                     }
                 }
             }
