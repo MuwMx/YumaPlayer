@@ -1186,8 +1186,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val playerUiState by playerViewModel.uiState.collectAsStateWithLifecycle()
-                    val isMiniPlayerVisible = playerUiState.trackUrl.isNotEmpty()
+                    val isMiniPlayerVisible by remember(playerViewModel) {
+                        playerViewModel.uiState
+                            .map { it.trackUrl.isNotEmpty() }
+                            .distinctUntilChanged()
+                    }.collectAsStateWithLifecycle(initialValue = false)
 
                     val playerAwareWindowInsets =
                         remember(
