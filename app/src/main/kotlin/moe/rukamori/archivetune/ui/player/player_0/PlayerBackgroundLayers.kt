@@ -77,9 +77,9 @@ fun PlayerBackgroundLayers(
     val blurVeilBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
-                Color.Black.copy(alpha = 0.50f),
-                Color.Black.copy(alpha = 0.25f),
-                Color.Black.copy(alpha = 0.70f)
+                Color.Black.copy(alpha = 0.45f),
+                Color.Black.copy(alpha = 0.30f),
+                Color.Black.copy(alpha = 0.72f)
             )
         )
     }
@@ -112,8 +112,8 @@ fun PlayerBackgroundLayers(
     val blurImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
-            .size(100)
-            .transformations(FastBlurTransformation(radius = 46, sampling = 1f))
+            .size(240)
+            .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
             .build()
     }
 
