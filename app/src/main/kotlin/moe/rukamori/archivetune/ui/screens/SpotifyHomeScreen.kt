@@ -161,7 +161,7 @@ fun SpotifyHomeScreen(
                                         moe.rukamori.archivetune.spotify.models.SpotifyAlbum(
                                             id = album.id,
                                             name = album.title,
-                                            artists = if (album.artistName.isNotEmpty()) listOf(moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist(id = "", name = album.artistName, uri = null)) else emptyList(),
+                                            artists = album.artists,
                                             images = listOfNotNull(album.thumbnailUrl?.let { moe.rukamori.archivetune.spotify.models.SpotifyImage(it, null, null) })
                                         )
                                     )) 

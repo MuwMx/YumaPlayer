@@ -133,18 +133,17 @@ class SpotifyHomeViewModel @Inject constructor(
 
                 val sections = mutableListOf<SpotifyHomeSection>()
                 var frequentArtists = emptyList<SpotifyArtist>()
+                var recentItems = emptyList<SpotifyRecentItem>()
 
                 val topTracksDeferred = async { Spotify.topTracks(limit = 20) }
                 val newReleasesDeferred = async { Spotify.newReleases(limit = 20) }
                 val homeDeferred = async { Spotify.home(sectionItemsLimit = 10) }
                 val topArtistsDeferred = async { Spotify.topArtists(limit = 20) }
-                val recentlyPlayedDeferred = async { Spotify.recentlyPlayed(limit = 20) }
 
                 val topTracksResult = topTracksDeferred.await()
                 val newReleasesResult = newReleasesDeferred.await()
                 val homeResult = homeDeferred.await()
                 val topArtistsResult = topArtistsDeferred.await()
-                val recentlyPlayedResult = recentlyPlayedDeferred.await()
 
                 var topTracksList = emptyList<SpotifyTrack>()
                 topTracksResult.onSuccess { topTracks ->
@@ -158,6 +157,16 @@ class SpotifyHomeViewModel @Inject constructor(
                             )
                         )
                     }
+                }
+
+                if (topTracksList.isEmpty() && cachedData.topTracks.isNotEmpty()) {
+                    sections.add(
+                        SpotifyHomeSection(
+                            title = "spotify_top_tracks",
+                            type = SectionType.TRACKS,
+                            tracks = cachedData.topTracks
+                        )
+                    )
                 }
 
                 newReleasesResult.onSuccess { newReleases ->
@@ -180,28 +189,6 @@ class SpotifyHomeViewModel @Inject constructor(
                     frequentArtists = cachedData.frequentArtists
                 }
 
-                val fetchedRecentItems = recentlyPlayedResult.getOrNull()?.items?.mapNotNull { item ->
-                    val track = item.track
-                    val album = track.album
-                    if (album != null && album.id.isNotEmpty()) {
-                        SpotifyRecentItem.Album(
-                            id = album.id,
-                            title = album.name,
-                            subtitle = album.artists.joinToString { it.name },
-                            thumbnailUrl = album.images.firstOrNull()?.url,
-                            artistName = album.artists.firstOrNull()?.name.orEmpty()
-                        )
-                    } else {
-                        null
-                    }
-                }?.distinctBy { it.id }.orEmpty()
-
-                val recentItems = if (fetchedRecentItems.isNotEmpty()) {
-                    fetchedRecentItems
-                } else {
-                    cachedData.recentItems
-                }
-
                 homeResult.onSuccess { feed ->
                     feed.sections.forEach { raw ->
                         val isRecent = raw.sectionUri.contains("recent", ignoreCase = true) ||
@@ -211,13 +198,38 @@ class SpotifyHomeViewModel @Inject constructor(
                             raw.title?.contains("Снова в деле", ignoreCase = true) == true ||
                             raw.title?.contains("Недавние", ignoreCase = true) == true ||
                             raw.title?.contains("Прослушано", ignoreCase = true) == true
-                        if (!isRecent) {
+
+                        if (isRecent && recentItems.isEmpty()) {
+                            recentItems = raw.items.mapNotNull { item ->
+                                when (item) {
+                                    is SpotifyHomeFeedItem.Album -> SpotifyRecentItem.Album(
+                                        id = item.id,
+                                        title = item.name,
+                                        subtitle = item.artists.joinToString { it.name },
+                                        thumbnailUrl = item.imageUrl,
+                                        artists = item.artists
+                                    )
+                                    is SpotifyHomeFeedItem.Playlist -> SpotifyRecentItem.Playlist(
+                                        id = item.id,
+                                        title = item.name,
+                                        subtitle = item.ownerName.orEmpty(),
+                                        thumbnailUrl = item.imageUrl,
+                                        trackCount = item.totalCount
+                                    )
+                                    is SpotifyHomeFeedItem.Artist -> null
+                                }
+                            }
+                        } else if (!isRecent) {
                             val converted = convertHomeSection(raw)
                             if (converted != null) {
                                 sections.add(converted)
                             }
                         }
                     }
+                }
+
+                if (recentItems.isEmpty()) {
+                    recentItems = cachedData.recentItems
                 }
 
                 if (recentItems.isNotEmpty() || topTracksList.isNotEmpty() || frequentArtists.isNotEmpty()) {
@@ -228,7 +240,7 @@ class SpotifyHomeViewModel @Inject constructor(
                     )
                 }
 
-                if (sections.isEmpty() && recentItems.isEmpty()) {
+                if (sections.isEmpty() && recentItems.isEmpty() && frequentArtists.isEmpty()) {
                     _screenState.update { SpotifyHomeScreenState.Empty }
                 } else {
                     _screenState.update {

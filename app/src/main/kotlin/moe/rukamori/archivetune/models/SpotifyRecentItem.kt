@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.models
 
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
+import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
 
 @Immutable
 @Serializable
@@ -28,6 +29,6 @@ sealed interface SpotifyRecentItem {
         override val title: String,
         override val subtitle: String,
         override val thumbnailUrl: String?,
-        val artistName: String = "",
+        val artists: List<SpotifySimpleArtist> = emptyList(),
     ) : SpotifyRecentItem
 }

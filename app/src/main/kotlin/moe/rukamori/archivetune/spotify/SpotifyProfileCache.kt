@@ -10,11 +10,10 @@ import moe.rukamori.archivetune.constants.SpotifyProfileArtistsKey
 import moe.rukamori.archivetune.constants.SpotifyProfileCacheTsKey
 import moe.rukamori.archivetune.constants.SpotifyProfileRecentItemsKey
 import moe.rukamori.archivetune.constants.SpotifyProfileTopTracksKey
-import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.SpotifyRecentItem
-import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.utils.dataStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,7 +27,6 @@ data class SpotifyProfileCachedData(
 @Singleton
 class SpotifyProfileCache @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val database: MusicDatabase,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }
 
