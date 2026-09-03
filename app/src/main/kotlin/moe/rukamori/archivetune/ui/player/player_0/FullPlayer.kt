@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -42,6 +44,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.ui.Alignment
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
 
@@ -104,7 +107,7 @@ fun FullPlayer(
 
     // ── Immersive offset for controls ─────────────────────────────────────────
     val controlsOffsetY by animateDpAsState(
-        targetValue = if (state.isImmersiveEnabled) 32.dp else 0.dp,
+        targetValue = if (state.isImmersiveEnabled) 16.dp else 0.dp,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
         label = "ImmersiveControlsOffset"
     )
@@ -113,7 +116,7 @@ fun FullPlayer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
     ) {
         PlayerLayout(
             modifier = Modifier
@@ -132,7 +135,7 @@ fun FullPlayer(
                     hasUpdate = updateState is UpdateState.SoftUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
                 )
             },
             cover = {
@@ -162,7 +165,7 @@ fun FullPlayer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
                         .widthIn(max = 420.dp)
                         .offset { IntOffset(x = 0, y = controlsOffsetY.roundToPx()) }
                 ) {

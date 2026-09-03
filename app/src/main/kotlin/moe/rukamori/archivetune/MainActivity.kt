@@ -189,7 +189,6 @@ import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DisableScreenshotKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
-import moe.rukamori.archivetune.constants.FloatingToolbarBottomPadding
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.FontPreferenceKey
@@ -287,6 +286,7 @@ import moe.rukamori.archivetune.ui.state.PlayerEvent
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
+import moe.rukamori.archivetune.ui.theme.YdsInsets
 import moe.rukamori.archivetune.ui.theme.extractSeedColor
 import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
@@ -1044,7 +1044,7 @@ class MainActivity : ComponentActivity() {
                             0.dp
                         }
 
-                    val floatingBarsBottomPadding = FloatingToolbarBottomPadding
+                    val floatingToolbarBottomPadding = YdsInsets.floatingToolbarBottomPadding()
                     val navVisibleHeight = FloatingToolbarHeight
 
                     val bottomNavigationBarHeight by animateDpAsState(
@@ -1198,10 +1198,11 @@ class MainActivity : ComponentActivity() {
                             bottomInset,
                             shouldShowNavigationBar,
                             isMiniPlayerVisible,
+                            floatingToolbarBottomPadding,
                         ) {
                             var bottom = bottomInset
                             if (shouldShowNavigationBar && !useRail) {
-                                bottom += getBottomNavPadding() + floatingBarsBottomPadding
+                                bottom = floatingToolbarBottomPadding + getBottomNavPadding()
                             }
                             if (isMiniPlayerVisible) {
                                 bottom += MiniPlayerHeight + MiniPlayerBottomSpacing
@@ -2117,7 +2118,7 @@ class MainActivity : ComponentActivity() {
                                         if (useRail) return@Box
 
                                         val navSlideDistance =
-                                            bottomInset + floatingBarsBottomPadding + navVisibleHeight
+                                            floatingToolbarBottomPadding + navVisibleHeight
 
                                         Box(
                                             modifier =
@@ -2160,7 +2161,7 @@ class MainActivity : ComponentActivity() {
                                                         .padding(
                                                             start = FloatingToolbarHorizontalPadding,
                                                             end = FloatingToolbarHorizontalPadding,
-                                                            bottom = bottomInset + floatingBarsBottomPadding,
+                                                            bottom = floatingToolbarBottomPadding,
                                                         ).height(navVisibleHeight),
                                                 onShuffleClick =
                                                     if (shouldShowHomeShuffleButton) {

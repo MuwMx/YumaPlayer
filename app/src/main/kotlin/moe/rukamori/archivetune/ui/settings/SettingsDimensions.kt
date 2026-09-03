@@ -11,6 +11,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
@@ -20,6 +21,11 @@ import moe.rukamori.archivetune.LocalAnimationsDisabled
  * Consumers must read values from here instead of hardcoding them.
  */
 object SettingsDimensions {
+
+    val SafeImmersiveMinBottom: Dp = 16.dp
+    val FloatingBarBottomSpacing: Dp = 8.dp
+    val PlayerControlsHorizontalPadding: Dp = 16.dp
+    val PlayerControlsVerticalGap: Dp = 16.dp
 
     // -- Cards -------------------------------------------------------------
     val CardElevation = 0.dp
