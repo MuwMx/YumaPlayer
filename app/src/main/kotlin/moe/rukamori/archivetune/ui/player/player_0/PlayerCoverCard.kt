@@ -28,12 +28,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
@@ -43,6 +41,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import kotlin.math.abs
 
 @Composable
@@ -61,7 +60,7 @@ fun PlayerCoverCard(
     val surfaceColor: Color = MaterialTheme.colorScheme.surface
     val outlineColor: Color = MaterialTheme.colorScheme.outlineVariant
     
-    val hapticFeedback = LocalHapticFeedback.current
+    val haptics = LocalYumaHaptics.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     
@@ -135,7 +134,7 @@ fun PlayerCoverCard(
                             onDragEnd = {
                                 coroutineScope.launch {
                                     if (abs(accumulatedDragX) > snapThresholdPx) {
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptics.gestureThresholdActivate()
                                         if (accumulatedDragX > 0) {
                                             onPrevious()
                                         } else {

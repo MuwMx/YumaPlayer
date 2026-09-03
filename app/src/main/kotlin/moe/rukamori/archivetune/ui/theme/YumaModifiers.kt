@@ -25,8 +25,7 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
@@ -139,19 +138,19 @@ fun Modifier.yumaCombinedClickable(
 ): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
     val disableAnimations = LocalDisableAnimations.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = LocalYumaHaptics.current
 
-    val hapticOnClick = remember(onClick, haptic) {
+    val hapticOnClick = remember(onClick, haptics) {
         {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            haptics.click()
             onClick()
         }
     }
 
-    val hapticOnLongClick = remember(onLongClick, haptic) {
+    val hapticOnLongClick = remember(onLongClick, haptics) {
         onLongClick?.let {
             {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                haptics.longPress()
                 it()
             }
         }

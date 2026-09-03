@@ -27,14 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.utils.isScrollingUp
-import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -150,18 +148,12 @@ private fun HideOnScrollFabButton(
     label: String,
     onClick: () -> Unit,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val haptics = LocalYumaHaptics.current
 
     ExtendedFloatingActionButton(
         modifier = Modifier.padding(16.dp),
         onClick = {
-            if (enableHapticFeedback) {
-                view.performHapticFeedback(
-                    android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                    android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                )
-            }
+            haptics.click()
             onClick()
         },
         icon = {

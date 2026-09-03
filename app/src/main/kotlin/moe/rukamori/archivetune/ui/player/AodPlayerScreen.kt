@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -80,8 +79,8 @@ import moe.rukamori.archivetune.constants.AodThumbnailShapeRotationKey
 import moe.rukamori.archivetune.constants.AodThumbnailSizeKey
 import moe.rukamori.archivetune.constants.AodTitleMaxLinesKey
 import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
-import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.utils.supportsArtworkGlowShadow
 import moe.rukamori.archivetune.ui.utils.toComposeShape
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -369,8 +368,7 @@ private fun AodControls(
     onSkipPrevious: () -> Unit,
     onSkipNext: () -> Unit,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val haptics = LocalYumaHaptics.current
     val playButtonSize = controlSize.dp
     val skipButtonSize = (controlSize * 0.75f).dp
     val playIconSize = (controlSize * 0.5f).dp
@@ -393,12 +391,7 @@ private fun AodControls(
     ) {
         IconButton(
             onClick = {
-                if (enableHapticFeedback) {
-                    view.performHapticFeedback(
-                        android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                        android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                    )
-                }
+                haptics.click()
                 onSkipPrevious()
             },
             enabled = canSkipPrevious,
@@ -416,12 +409,7 @@ private fun AodControls(
             AodControlStyle.FILLED -> {
                 FilledIconButton(
                     onClick = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onPlayPause()
                     },
                     modifier =
@@ -441,12 +429,7 @@ private fun AodControls(
             AodControlStyle.TONAL -> {
                 FilledTonalIconButton(
                     onClick = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onPlayPause()
                     },
                     modifier =
@@ -466,12 +449,7 @@ private fun AodControls(
             AodControlStyle.MINIMAL -> {
                 IconButton(
                     onClick = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onPlayPause()
                     },
                     modifier = Modifier.size(playButtonSize),
@@ -488,12 +466,7 @@ private fun AodControls(
 
         IconButton(
             onClick = {
-                if (enableHapticFeedback) {
-                    view.performHapticFeedback(
-                        android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                        android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                    )
-                }
+                haptics.click()
                 onSkipNext()
             },
             enabled = canSkipNext,

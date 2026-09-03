@@ -62,7 +62,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -75,7 +74,6 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.db.entities.formattedFileSize
@@ -84,6 +82,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.bottomSheetDraggable
+import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
@@ -116,8 +115,7 @@ fun CurrentSongHeader(
     onInfiniteQueueClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val haptics = LocalYumaHaptics.current
 
     Column(
         modifier =
@@ -309,12 +307,7 @@ fun CurrentSongHeader(
             ToggleButton(
                 checked = shuffleModeEnabled,
                 onCheckedChange = {
-                    if (enableHapticFeedback) {
-                        view.performHapticFeedback(
-                            android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                            android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                        )
-                    }
+                    haptics.click()
                     onShuffleClick()
                 },
                 modifier = Modifier.weight(1f).size(48.dp),
@@ -331,12 +324,7 @@ fun CurrentSongHeader(
             ToggleButton(
                 checked = repeatMode != Player.REPEAT_MODE_OFF,
                 onCheckedChange = {
-                    if (enableHapticFeedback) {
-                        view.performHapticFeedback(
-                            android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                            android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                        )
-                    }
+                    haptics.click()
                     onRepeatClick()
                 },
                 modifier = Modifier.weight(1f).size(48.dp),
@@ -541,12 +529,7 @@ fun QueueCollapsedContentV2(
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
-
-    LaunchedEffect(enableHapticFeedback) {
-        view.isHapticFeedbackEnabled = enableHapticFeedback
-    }
+    val haptics = LocalYumaHaptics.current
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
@@ -689,12 +672,7 @@ fun QueueCollapsedContentV2(
                                 bottomEnd = 50.dp,
                             ),
                         ).clickable {
-                            if (enableHapticFeedback) {
-                                view.performHapticFeedback(
-                                    android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                    android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                                )
-                            }
+                            haptics.click()
                             onRepeatModeClick()
                         },
                 contentAlignment = Alignment.Center,
@@ -757,9 +735,6 @@ fun QueueCollapsedContentV3(
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
-
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val context = LocalContext.current
@@ -1375,8 +1350,7 @@ fun QueueCollapsedContentV9(
     onSleepTimerClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
-    val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val haptics = LocalYumaHaptics.current
     val railContainerColor = textBackgroundColor.copy(alpha = 0.14f)
     val buttonContainerColor = textBackgroundColor.copy(alpha = 0.08f)
     val selectedButtonContainerColor = textBackgroundColor.copy(alpha = 0.18f)
@@ -1470,12 +1444,7 @@ fun QueueCollapsedContentV9(
                 ToggleButton(
                     checked = shuffleModeEnabled,
                     onCheckedChange = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onShuffleClick()
                     },
                     modifier =
@@ -1498,12 +1467,7 @@ fun QueueCollapsedContentV9(
                 ToggleButton(
                     checked = repeatMode != Player.REPEAT_MODE_OFF,
                     onCheckedChange = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onRepeatModeClick()
                     },
                     modifier =
@@ -1535,12 +1499,7 @@ fun QueueCollapsedContentV9(
 
                 Surface(
                     onClick = {
-                        if (enableHapticFeedback) {
-                            view.performHapticFeedback(
-                                android.view.HapticFeedbackConstants.CONTEXT_CLICK,
-                                android.view.HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
-                            )
-                        }
+                        haptics.click()
                         onMenuClick()
                     },
                     shape =
