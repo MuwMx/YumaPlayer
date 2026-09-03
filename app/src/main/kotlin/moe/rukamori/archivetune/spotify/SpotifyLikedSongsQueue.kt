@@ -16,30 +16,22 @@ class SpotifyLikedSongsQueue(
     private val title: String? = null,
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
-    private val total: Int = initialTracks.size,
     override val preloadItem: MediaMetadata? = null,
 ) : Queue {
-    private val allTracks = initialTracks.toList()
-    private var isInitialized = false
-
     override suspend fun getInitialStatus(): Queue.Status {
-        try {
-            if (allTracks.isEmpty()) {
-                return Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
-            }
-            val targetIndex = startIndex.coerceIn(allTracks.indices)
-            val stubItems = allTracks.map { it.toStubMediaItem() }
-            return Queue.Status(
-                title = title,
-                items = stubItems,
-                mediaItemIndex = targetIndex,
-            )
-        } finally {
-            isInitialized = true
+        if (initialTracks.isEmpty()) {
+            return Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
         }
+        val targetIndex = startIndex.coerceIn(initialTracks.indices)
+        val stubItems = initialTracks.map { it.toStubMediaItem() }
+        return Queue.Status(
+            title = title,
+            items = stubItems,
+            mediaItemIndex = targetIndex,
+        )
     }
 
-    override fun hasNextPage(): Boolean = isInitialized && allTracks.size < total
+    override fun hasNextPage(): Boolean = false
 
     override suspend fun nextPage(): List<MediaItem> = emptyList()
 

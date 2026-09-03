@@ -739,14 +739,15 @@ fun AutoPlaylistScreen(
                                     onCheckedChange = {
                                         val isSpotify = viewModel.isSpotifySource.value
                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                            val currentTracksMap = viewModel.spotifyTracks.value.associateBy { it.id }
-                                            val orderedTracks = songs.mapNotNull { currentTracksMap[it.song.id] }
-                                            playerConnection.playQueue(
-                                                SpotifyLikedSongsQueue(
-                                                    title = playlist,
-                                                    initialTracks = orderedTracks.ifEmpty { viewModel.spotifyTracks.value }
+                                            val tracks = viewModel.spotifyTracks.value
+                                            if (tracks.isNotEmpty()) {
+                                                playerConnection.playQueue(
+                                                    SpotifyLikedSongsQueue(
+                                                        title = playlist,
+                                                        initialTracks = tracks,
+                                                    ),
                                                 )
-                                            )
+                                            }
                                         } else {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -781,14 +782,15 @@ fun AutoPlaylistScreen(
                                     onCheckedChange = {
                                         val isSpotify = viewModel.isSpotifySource.value
                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                            val currentTracksMap = viewModel.spotifyTracks.value.associateBy { it.id }
-                                            val orderedTracks = songs.mapNotNull { currentTracksMap[it.song.id] }
-                                            playerConnection.playQueue(
-                                                SpotifyLikedSongsQueue(
-                                                    title = playlist,
-                                                    initialTracks = orderedTracks.shuffled().ifEmpty { viewModel.spotifyTracks.value.shuffled() }
+                                            val tracks = viewModel.spotifyTracks.value
+                                            if (tracks.isNotEmpty()) {
+                                                playerConnection.playQueue(
+                                                    SpotifyLikedSongsQueue(
+                                                        title = playlist,
+                                                        initialTracks = tracks.shuffled(),
+                                                    ),
                                                 )
-                                            )
+                                            }
                                         } else {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -1023,22 +1025,20 @@ fun AutoPlaylistScreen(
                                                 val visibleSongs = filteredSongs.map { it.item }
                                                 val isSpotify = viewModel.isSpotifySource.value
                                                 if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                                    val currentTracksMap = viewModel.spotifyTracks.value.associateBy { it.id }
-                                                    val orderedSpotifyTracks = visibleSongs.mapNotNull { currentTracksMap[it.song.id] }
-                                                    val currentTrack = currentTracksMap[songWrapper.item.song.id]
-                                                    if (currentTrack != null) {
-                                                        val targetTracks = orderedSpotifyTracks.ifEmpty { listOf(currentTrack) }
-                                                        val trackIndex = targetTracks.indexOf(currentTrack).coerceAtLeast(0)
+                                                    val tracks = viewModel.spotifyTracks.value
+                                                    val currentTrack = tracks.find { it.id == songWrapper.item.song.id }
+                                                    if (currentTrack != null && tracks.isNotEmpty()) {
+                                                        val trackIndex = tracks.indexOf(currentTrack).coerceAtLeast(0)
                                                         coroutineScope.launch(Dispatchers.IO) {
                                                             val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(currentTrack)
                                                             withContext(Dispatchers.Main) {
                                                                 playerConnection.playQueue(
                                                                     SpotifyLikedSongsQueue(
                                                                         title = playlist,
-                                                                        initialTracks = targetTracks,
+                                                                        initialTracks = tracks,
                                                                         startIndex = trackIndex,
-                                                                        preloadItem = preloadItem
-                                                                    )
+                                                                        preloadItem = preloadItem,
+                                                                    ),
                                                                 )
                                                             }
                                                         }
