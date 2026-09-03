@@ -68,3 +68,58 @@ fun Modifier.horizontalFadingEdge(
             )
         }
     }
+
+fun Modifier.smoothFadingEdge(
+    top: Dp? = null,
+    bottom: Dp? = null,
+) = graphicsLayer(alpha = 0.99f)
+    .drawWithContent {
+        drawContent()
+        if (top != null) {
+            val topPx = top.toPx()
+            drawRect(
+                brush =
+                    Brush.verticalGradient(
+                        colorStops =
+                            arrayOf(
+                                0.0f to Color.Transparent,
+                                0.3f to Color.Black.copy(alpha = 0.15f),
+                                0.5f to Color.Black.copy(alpha = 0.4f),
+                                0.7f to Color.Black.copy(alpha = 0.7f),
+                                0.85f to Color.Black.copy(alpha = 0.9f),
+                                1.0f to Color.Black,
+                            ),
+                        startY = 0f,
+                        endY = topPx,
+                    ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+        if (bottom != null) {
+            val bottomPx = bottom.toPx()
+            drawRect(
+                brush =
+                    Brush.verticalGradient(
+                        colorStops =
+                            arrayOf(
+                                0.0f to Color.Black,
+                                0.15f to Color.Black.copy(alpha = 0.9f),
+                                0.3f to Color.Black.copy(alpha = 0.7f),
+                                0.5f to Color.Black.copy(alpha = 0.4f),
+                                0.7f to Color.Black.copy(alpha = 0.15f),
+                                1.0f to Color.Transparent,
+                            ),
+                        startY = size.height - bottomPx,
+                        endY = size.height,
+                    ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+    }
+
+fun Modifier.smoothFadingEdge(vertical: Dp) =
+    smoothFadingEdge(
+        top = vertical,
+        bottom = vertical,
+    )
+

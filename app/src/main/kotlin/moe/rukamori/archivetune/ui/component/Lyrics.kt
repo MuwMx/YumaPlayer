@@ -161,7 +161,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.LyricsPosition
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
-import moe.rukamori.archivetune.ui.utils.smoothFadingEdge
+import moe.rukamori.archivetune.ui.component.smoothFadingEdge
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
