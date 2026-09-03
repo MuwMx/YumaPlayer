@@ -1,12 +1,5 @@
-/*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
- * GPL-3.0 License | Contributors: see git history
- */
-
 package moe.rukamori.archivetune.ui.player.player_0
 
-import android.view.View
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -15,169 +8,124 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Density
-import androidx.core.view.HapticFeedbackConstantsCompat
-import androidx.core.view.ViewCompat
+import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.sign
 
-private enum class MiniPlayerDismissDragPhase { IDLE, TENSION, SNAPPING, FREE_DRAG }
+private enum class MiniDismissDragPhase { IDLE, TENSION, SNAPPING, FREE_DRAG }
 
 internal class MiniPlayerDismissGestureHandler(
     private val scope: CoroutineScope,
     private val density: Density,
-    private val hapticView: View,
-    private val hapticFeedbackEnabled: Boolean,
+    private val hapticFeedback: HapticFeedback,
     private val offsetAnimatable: Animatable<Float, AnimationVector1D>,
-    private val itemWidthPx: Float,
-    private val onDismiss: () -> Unit,
+    private val screenWidthPx: Float,
+    private val onDismissPlaylistAndShowUndo: () -> Unit,
+    private val onDismissStarted: () -> Unit = {}
 ) {
-    private var dragPhase: MiniPlayerDismissDragPhase = MiniPlayerDismissDragPhase.IDLE
+    private var dragPhase: MiniDismissDragPhase = MiniDismissDragPhase.IDLE
     private var accumulatedDragX: Float = 0f
+    private var offsetJob: Job? = null
 
-    var isInDismissZone: Boolean by mutableStateOf(false)
-        private set
-
-    var isDismissing: Boolean by mutableStateOf(false)
-        private set
-
-    private fun performHaptic(feedbackConstant: Int) {
-        if (hapticFeedbackEnabled) {
-            ViewCompat.performHapticFeedback(hapticView, feedbackConstant)
+    fun onDragStart() {
+        dragPhase = MiniDismissDragPhase.TENSION
+        accumulatedDragX = 0f
+        offsetJob?.cancel()
+        offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            offsetAnimatable.stop()
         }
     }
 
-    fun onDragStart() {
-        if (isDismissing) return
-        dragPhase = MiniPlayerDismissDragPhase.TENSION
-        accumulatedDragX = 0f
-        isInDismissZone = false
-        scope.launch { offsetAnimatable.stop() }
-    }
-
     fun onHorizontalDrag(dragAmount: Float) {
-        if (isDismissing) return
         accumulatedDragX += dragAmount
 
         when (dragPhase) {
-            MiniPlayerDismissDragPhase.TENSION -> {
-                val tensionThresholdPx = 60f * density.density
-                if (abs(accumulatedDragX) < tensionThresholdPx) {
-                    val maxTensionOffsetPx = 20f * density.density
-                    val dragFraction = (abs(accumulatedDragX) / tensionThresholdPx).coerceIn(0f, 1f)
-                    val tensionOffset = if (accumulatedDragX >= 0) maxTensionOffsetPx * dragFraction else -maxTensionOffsetPx * dragFraction
-                    scope.launch {
-                        offsetAnimatable.snapTo(tensionOffset)
+            MiniDismissDragPhase.TENSION -> {
+                val snapThresholdPx = 100f * density.density
+                if (abs(accumulatedDragX) < snapThresholdPx) {
+                    val maxTensionOffsetPx = 30f * density.density
+                    val dragFraction = (abs(accumulatedDragX) / snapThresholdPx).coerceIn(0f, 1f)
+                    val tensionOffset = lerp(0f, maxTensionOffsetPx, dragFraction)
+                    offsetJob?.cancel()
+                    offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        offsetAnimatable.snapTo(tensionOffset * accumulatedDragX.sign)
                     }
                 } else {
-                    dragPhase = MiniPlayerDismissDragPhase.SNAPPING
+                    dragPhase = MiniDismissDragPhase.SNAPPING
                 }
             }
 
-            MiniPlayerDismissDragPhase.SNAPPING -> {
-                performHaptic(HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE)
-                scope.launch {
+            MiniDismissDragPhase.SNAPPING -> {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                offsetJob?.cancel()
+                offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     offsetAnimatable.animateTo(
                         targetValue = accumulatedDragX,
-                        animationSpec =
-                            spring(
-                                dampingRatio = 0.8f,
-                                stiffness = Spring.StiffnessLow,
-                            ),
+                        animationSpec = spring(
+                            dampingRatio = 0.8f,
+                            stiffness = Spring.StiffnessLow
+                        )
                     )
                 }
-                dragPhase = MiniPlayerDismissDragPhase.FREE_DRAG
+                dragPhase = MiniDismissDragPhase.FREE_DRAG
             }
 
-            MiniPlayerDismissDragPhase.FREE_DRAG -> {
-                val dismissThreshold = itemWidthPx * 0.40f
-                val nowInZone = abs(accumulatedDragX) > dismissThreshold
-                if (nowInZone != isInDismissZone) {
-                    isInDismissZone = nowInZone
-                    performHaptic(
-                        if (nowInZone) {
-                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE
-                        } else {
-                            HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_DEACTIVATE
-                        },
-                    )
-                }
-                scope.launch {
+            MiniDismissDragPhase.FREE_DRAG -> {
+                offsetJob?.cancel()
+                offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     offsetAnimatable.animateTo(
                         targetValue = accumulatedDragX,
-                        animationSpec =
-                            spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessHigh,
-                            ),
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessHigh
+                        )
                     )
                 }
             }
 
-            MiniPlayerDismissDragPhase.IDLE -> Unit
+            MiniDismissDragPhase.IDLE -> Unit
         }
     }
 
     fun onDragEnd() {
-        if (isDismissing) return
-        dragPhase = MiniPlayerDismissDragPhase.IDLE
-        val dismissThreshold = itemWidthPx * 0.40f
-
+        dragPhase = MiniDismissDragPhase.IDLE
+        offsetJob?.cancel()
+        val dismissThreshold = screenWidthPx * 0.4f
         if (abs(accumulatedDragX) > dismissThreshold) {
-            isDismissing = true
-            performHaptic(HapticFeedbackConstantsCompat.GESTURE_END)
-            val targetOffset = if (accumulatedDragX > 0) itemWidthPx else -itemWidthPx
-            scope.launch {
+            onDismissStarted()
+            val targetDismissOffset = if (accumulatedDragX < 0) -screenWidthPx else screenWidthPx
+            offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 offsetAnimatable.animateTo(
-                    targetValue = targetOffset,
-                    animationSpec =
-                        tween(
-                            durationMillis = 180,
-                            easing = FastOutSlowInEasing,
-                        ),
+                    targetValue = targetDismissOffset,
+                    animationSpec = tween(
+                        durationMillis = 200,
+                        easing = FastOutSlowInEasing
+                    )
                 )
-                onDismiss()
-                delay(300)
+                onDismissPlaylistAndShowUndo()
                 offsetAnimatable.snapTo(0f)
-                isDismissing = false
-                isInDismissZone = false
             }
         } else {
-            isInDismissZone = false
-            scope.launch {
+            offsetJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 offsetAnimatable.animateTo(
                     targetValue = 0f,
-                    animationSpec =
-                        spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        ),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
                 )
             }
-        }
-    }
-
-    fun onDragCancel() {
-        if (isDismissing) return
-        dragPhase = MiniPlayerDismissDragPhase.IDLE
-        isInDismissZone = false
-        scope.launch {
-            offsetAnimatable.animateTo(
-                targetValue = 0f,
-                animationSpec =
-                    spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium,
-                    ),
-            )
         }
     }
 }
@@ -186,36 +134,40 @@ internal class MiniPlayerDismissGestureHandler(
 internal fun rememberMiniPlayerDismissGestureHandler(
     scope: CoroutineScope,
     density: Density,
-    hapticView: View,
-    hapticFeedbackEnabled: Boolean,
+    hapticFeedback: HapticFeedback,
     offsetAnimatable: Animatable<Float, AnimationVector1D>,
-    itemWidthPx: Float,
-    onDismiss: () -> Unit,
+    screenWidthPx: Float,
+    onDismissPlaylistAndShowUndo: () -> Unit,
+    onDismissStarted: () -> Unit = {}
 ): MiniPlayerDismissGestureHandler {
-    return remember(scope, density, hapticView, hapticFeedbackEnabled, offsetAnimatable, itemWidthPx, onDismiss) {
+    val onDismissPlaylistAndShowUndoState = rememberUpdatedState(onDismissPlaylistAndShowUndo)
+    val onDismissStartedState = rememberUpdatedState(onDismissStarted)
+    return remember(scope, density, hapticFeedback, offsetAnimatable, screenWidthPx) {
         MiniPlayerDismissGestureHandler(
             scope = scope,
             density = density,
-            hapticView = hapticView,
-            hapticFeedbackEnabled = hapticFeedbackEnabled,
+            hapticFeedback = hapticFeedback,
             offsetAnimatable = offsetAnimatable,
-            itemWidthPx = itemWidthPx,
-            onDismiss = onDismiss,
+            screenWidthPx = screenWidthPx,
+            onDismissPlaylistAndShowUndo = { onDismissPlaylistAndShowUndoState.value() },
+            onDismissStarted = { onDismissStartedState.value() }
         )
     }
 }
 
-internal fun Modifier.miniPlayerDismissGesture(
+internal fun Modifier.miniPlayerDismissHorizontalGesture(
     enabled: Boolean,
-    handler: MiniPlayerDismissGestureHandler?,
+    handler: MiniPlayerDismissGestureHandler
 ): Modifier {
-    if (!enabled || handler == null) return this
-    return pointerInput(handler) {
+    if (!enabled) return this
+    return this.pointerInput(enabled, handler) {
         detectHorizontalDragGestures(
             onDragStart = { handler.onDragStart() },
-            onHorizontalDrag = { _, dragAmount -> handler.onHorizontalDrag(dragAmount) },
-            onDragEnd = { handler.onDragEnd() },
-            onDragCancel = { handler.onDragCancel() },
+            onHorizontalDrag = { change, dragAmount ->
+                change.consume()
+                handler.onHorizontalDrag(dragAmount)
+            },
+            onDragEnd = { handler.onDragEnd() }
         )
     }
 }

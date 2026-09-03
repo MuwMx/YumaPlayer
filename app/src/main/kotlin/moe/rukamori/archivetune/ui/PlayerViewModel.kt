@@ -192,7 +192,10 @@ class PlayerViewModel @Inject constructor(
                 .filterNotNull()
                 .flatMapLatest { connection -> connection.mediaMetadata }
                 .collect { metadata ->
-                    if (metadata == null) return@collect
+                    if (metadata == null) {
+                        _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
+                        return@collect
+                    }
                     val title = metadata.title
                     val artist = metadata.artists.joinToString { it.name }
 
@@ -432,6 +435,7 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             is PlayerAction.Dismiss -> {
+                _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
                 audioPlayer?.stop()
                 audioPlayer?.clearMediaItems()
             }

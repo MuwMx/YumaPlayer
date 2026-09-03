@@ -156,48 +156,13 @@ internal fun UnifiedPlayerSheetLayers(
         }
 
         if (expansionFractionProvider() < 1f) {
-            val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
-            val hapticView = LocalView.current
-            val coroutineScope = rememberCoroutineScope()
-            val densityObj = LocalDensity.current
-            val miniPlayerOffsetX = remember { Animatable(0f) }
-            var miniPlayerWidthPx by remember { mutableFloatStateOf(0f) }
-
-            val miniPlayerDismissHandler = remember(
-                isMiniPlayerVisible,
-                miniPlayerWidthPx,
-                enableHapticFeedback
-            ) {
-                if (isMiniPlayerVisible && miniPlayerWidthPx > 0f) {
-                    MiniPlayerDismissGestureHandler(
-                        scope = coroutineScope,
-                        density = densityObj,
-                        hapticView = hapticView,
-                        hapticFeedbackEnabled = enableHapticFeedback,
-                        offsetAnimatable = miniPlayerOffsetX,
-                        itemWidthPx = miniPlayerWidthPx,
-                        onDismiss = { onAction(PlayerAction.Dismiss) },
-                    )
-                } else {
-                    null
-                }
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onSizeChanged { size ->
-                        miniPlayerWidthPx = size.width.toFloat()
-                    }
                     .graphicsLayer {
                         val fraction = expansionFractionProvider()
                         alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
-                        translationX = miniPlayerOffsetX.value
                     }
-                    .miniPlayerDismissGesture(
-                        enabled = isMiniPlayerVisible,
-                        handler = miniPlayerDismissHandler
-                    )
             ) {
                 MiniPlayerContentInternal(
                     state = state,

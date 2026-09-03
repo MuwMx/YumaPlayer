@@ -136,6 +136,16 @@ fun UnifiedPlayerSheetV2(
         val visualOvershootScaleY = remember { Animatable(1f) }
         var predictiveBackProgress by remember { mutableStateOf(0f) }
 
+        val offsetAnimatable = remember { Animatable(0f) }
+        val miniDismissGestureHandler = rememberMiniPlayerDismissGestureHandler(
+            scope = scope,
+            density = LocalDensity.current,
+            hapticFeedback = androidx.compose.ui.platform.LocalHapticFeedback.current,
+            offsetAnimatable = offsetAnimatable,
+            screenWidthPx = screenWidthPx,
+            onDismissPlaylistAndShowUndo = { onAction(PlayerAction.Dismiss) }
+        )
+
         LaunchedEffect(Unit) {
             snapshotFlow { expansionFraction.value }.collect { fraction ->
                 onExpansionFractionChanged(fraction)
@@ -376,11 +386,16 @@ fun UnifiedPlayerSheetV2(
                     )
                 }
                 .graphicsLayer {
+                    translationX = if (expansionFraction.value == 0f) offsetAnimatable.value else 0f
                     scaleY = visualOvershootScaleY.value
                     val paddingX = sheetVisualState.currentHorizontalPaddingStartPxProvider()
                     val currentWidth = size.width - (paddingX * 2)
                     scaleX = currentWidth / size.width
                 }
+                .miniPlayerDismissHorizontalGesture(
+                    enabled = currentSheetState == PlayerSheetState.COLLAPSED,
+                    handler = miniDismissGestureHandler
+                )
                 .playerSheetVerticalDragGesture(
                     enabled = true,
                     handler = dragHandler
