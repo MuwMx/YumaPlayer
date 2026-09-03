@@ -22,7 +22,10 @@ data class SpotifyHomeFeedSection(
     val typename: String,
     val totalCount: Int,
     val items: List<SpotifyHomeFeedItem>,
-)
+) {
+    val isShortsOrRecent: Boolean
+        get() = typename == "HomeShortsSectionData" || typename == "HomeRecentlyPlayedSectionData" || (title.isNullOrBlank() && items.isNotEmpty())
+}
 
 sealed class SpotifyHomeFeedItem {
     abstract val uri: String
