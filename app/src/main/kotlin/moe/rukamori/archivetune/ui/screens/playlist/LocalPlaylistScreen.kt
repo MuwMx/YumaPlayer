@@ -86,10 +86,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -148,6 +146,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.removeSongFromRemotePlaylist
@@ -184,7 +183,7 @@ fun LocalPlaylistScreen(
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
@@ -1334,18 +1333,18 @@ fun LocalPlaylistScreen(
                                                     )
                                                 }
                                             },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                if (!selection) {
-                                                    selection = true
-                                                }
-                                                selectedSongMapIds = setOf(song.map.id)
-                                            },
-                                        ),
-                            )
-                        }
+                                             onLongClick = {
+                                                 haptics.longPress()
+                                                 if (!selection) {
+                                                     selection = true
+                                                 }
+                                                 selectedSongMapIds = setOf(song.map.id)
+                                             },
+                                         ),
+                             )
+                         }
 
-                        if (locked || selection || swipeToSongEnabled) {
+                         if (locked || selection || swipeToSongEnabled) {
                             content()
                         } else {
                             SwipeToDismissBox(
@@ -1475,18 +1474,18 @@ fun LocalPlaylistScreen(
                                                         }
                                                 }
                                             },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                if (!selection) {
-                                                    selection = true
-                                                }
-                                                selectedSongMapIds = setOf(song.map.id)
-                                            },
-                                        ),
-                            )
-                        }
+                                             onLongClick = {
+                                                 haptics.longPress()
+                                                 if (!selection) {
+                                                     selection = true
+                                                 }
+                                                 selectedSongMapIds = setOf(song.map.id)
+                                             },
+                                         ),
+                             )
+                         }
 
-                        if (locked || !editable || swipeToSongEnabled) {
+                         if (locked || !editable || swipeToSongEnabled) {
                             content()
                         } else {
                             SwipeToDismissBox(

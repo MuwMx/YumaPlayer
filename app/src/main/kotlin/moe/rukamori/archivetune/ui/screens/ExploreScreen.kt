@@ -30,8 +30,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -53,6 +51,7 @@ import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
@@ -67,7 +66,7 @@ fun ExploreScreen(
     chartsViewModel: ChartsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -302,7 +301,7 @@ fun ExploreScreen(
                                                     }
                                                 },
                                                 onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    haptics.longPress()
                                                     menuState.show {
                                                         YouTubeSongMenu(
                                                             song = song,
@@ -346,59 +345,59 @@ fun ExploreScreen(
                                             onClick = {
                                                 navController.navigate("album/${album.id}")
                                             },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
-                                                    YouTubeAlbumMenu(
-                                                        albumItem = album,
-                                                        navController = navController,
-                                                        onDismiss = menuState::dismiss,
-                                                    )
-                                                }
-                                            },
-                                        ).animateItem(),
-                            )
+                                                onLongClick = {
+                                                    haptics.longPress()
+                                                    menuState.show {
+                                                        YouTubeAlbumMenu(
+                                                            albumItem = album,
+                                                            navController = navController,
+                                                            onDismiss = menuState::dismiss,
+                                                        )
+                                                    }
+                                                },
+                                            ).animateItem(),
+                                )
+                            }
                         }
                     }
-                }
 
-                chartsPage?.sections?.find { it.title == "Top music videos" }?.let { topVideosSection ->
-                    NavigationTitle(
-                        title = stringResource(R.string.top_music_videos),
-                    )
-                    LazyRow(
-                        contentPadding =
-                            WindowInsets.systemBars
-                                .only(WindowInsetsSides.Horizontal)
-                                .asPaddingValues(),
-                    ) {
-                        items(
-                            items = topVideosSection.items.filterIsInstance<SongItem>().distinctBy { it.id },
-                            key = { it.id },
-                        ) { video ->
-                            YouTubeGridItem(
-                                item = video,
-                                isActive = video.id == mediaMetadata?.id,
-                                isPlaying = isPlaying,
-                                coroutineScope = coroutineScope,
-                                modifier =
-                                    Modifier
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (video.id == mediaMetadata?.id) {
-                                                    playerConnection.player.togglePlayPause()
-                                                } else {
-                                                    playerConnection.playQueue(
-                                                        YouTubeQueue(
-                                                            endpoint = WatchEndpoint(videoId = video.id),
-                                                            preloadItem = video.toMediaMetadata(),
-                                                        ),
-                                                    )
-                                                }
-                                            },
-                                            onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                menuState.show {
+                    chartsPage?.sections?.find { it.title == "Top music videos" }?.let { topVideosSection ->
+                        NavigationTitle(
+                            title = stringResource(R.string.top_music_videos),
+                        )
+                        LazyRow(
+                            contentPadding =
+                                WindowInsets.systemBars
+                                    .only(WindowInsetsSides.Horizontal)
+                                    .asPaddingValues(),
+                        ) {
+                            items(
+                                items = topVideosSection.items.filterIsInstance<SongItem>().distinctBy { it.id },
+                                key = { it.id },
+                            ) { video ->
+                                YouTubeGridItem(
+                                    item = video,
+                                    isActive = video.id == mediaMetadata?.id,
+                                    isPlaying = isPlaying,
+                                    coroutineScope = coroutineScope,
+                                    modifier =
+                                        Modifier
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (video.id == mediaMetadata?.id) {
+                                                        playerConnection.player.togglePlayPause()
+                                                    } else {
+                                                        playerConnection.playQueue(
+                                                            YouTubeQueue(
+                                                                endpoint = WatchEndpoint(videoId = video.id),
+                                                                preloadItem = video.toMediaMetadata(),
+                                                            ),
+                                                        )
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    haptics.longPress()
+                                                    menuState.show {
                                                     YouTubeSongMenu(
                                                         song = video,
                                                         navController = navController,

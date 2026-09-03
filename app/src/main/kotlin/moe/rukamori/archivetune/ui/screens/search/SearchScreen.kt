@@ -53,10 +53,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,6 +82,7 @@ import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
@@ -451,7 +450,7 @@ private fun SuggestedSongsSection(
 
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
@@ -508,7 +507,7 @@ private fun SuggestedSongsSection(
                                     }
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptics.longPress()
                                     menuState.show {
                                         YouTubeSongMenu(
                                             song = song,
@@ -548,7 +547,7 @@ private fun TrendingAlbumsSection(
 
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -577,7 +576,7 @@ private fun TrendingAlbumsSection(
                                 navController.navigate("album/${album.id}")
                             },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     YouTubeAlbumMenu(
                                         albumItem = album,
@@ -602,7 +601,7 @@ private fun SuggestedArtistsSection(
     if (artists.isEmpty()) return
 
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
 
     NavigationTitle(
         title = stringResource(R.string.stats_unique_artists),
@@ -625,7 +624,7 @@ private fun SuggestedArtistsSection(
                                 navController.navigate("artist/${artist.id}")
                             },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     YouTubeArtistMenu(
                                         artist = artist,

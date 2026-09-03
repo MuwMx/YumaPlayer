@@ -63,7 +63,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -108,7 +107,6 @@ fun LibraryMixScreen(
     viewModel: LibraryMixViewModel = hiltViewModel(),
     spotifyLibraryViewModel: SpotifyLibraryViewModel = hiltViewModel(),
 ) {
-    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val coroutineScope = rememberCoroutineScope()

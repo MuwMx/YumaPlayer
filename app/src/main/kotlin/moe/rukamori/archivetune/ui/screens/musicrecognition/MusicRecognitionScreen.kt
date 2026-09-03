@@ -81,12 +81,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -103,6 +101,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.viewmodels.MusicRecognitionErrorUi
@@ -122,7 +121,7 @@ fun MusicRecognitionScreen(
     viewModel: MusicRecognitionViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val hapticFeedback = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val historySheetState by viewModel.historySheetState.collectAsStateWithLifecycle()
     val modalSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -149,7 +148,7 @@ fun MusicRecognitionScreen(
             viewModel.onMicrophonePermissionResult(granted)
         }
 
-    LaunchedEffect(viewModel, context, navController, hapticFeedback) {
+    LaunchedEffect(viewModel, context, navController, haptics) {
         viewModel.events.collect { event ->
             when (event) {
                 MusicRecognitionEvent.RequestMicrophonePermission -> {
@@ -164,7 +163,7 @@ fun MusicRecognitionScreen(
                 }
 
                 MusicRecognitionEvent.RecognitionStarted -> {
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptics.longPress()
                 }
 
                 is MusicRecognitionEvent.Search -> {

@@ -67,11 +67,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -121,7 +119,7 @@ import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
-import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -156,7 +154,7 @@ fun AlbumScreen(
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val playerConnection = LocalPlayerConnection.current ?: return
 
     val scope = rememberCoroutineScope()
@@ -773,43 +771,43 @@ fun AlbumScreen(
                                             songWrapper.isSelected = !songWrapper.isSelected
                                         }
                                     },
-                                    onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (!selection) {
-                                            selection = true
-                                        }
-                                        wrappedSongs.forEach { it.isSelected = false }
-                                        songWrapper.isSelected = true
-                                    },
-                                ),
-                    )
-                }
-
-                // Other Versions Section
-                if (otherVersions.isNotEmpty()) {
-                    item(key = "other_versions_header") {
-                        NavigationTitle(
-                            title = stringResource(R.string.other_versions),
-                        )
-                    }
-                    item(key = "other_versions_list") {
-                        LazyRow {
-                            items(
-                                items = otherVersions.distinctBy { it.id },
-                                key = { it.id },
-                            ) { item ->
-                                YouTubeGridItem(
-                                    item = item,
-                                    isActive = mediaMetadata?.album?.id == item.id,
-                                    isPlaying = isPlaying,
-                                    coroutineScope = scope,
-                                    modifier =
-                                        Modifier
-                                            .combinedClickable(
-                                                onClick = { navController.navigate("album/${item.id}") },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    menuState.show {
+                                     onLongClick = {
+                                         haptics.longPress()
+                                         if (!selection) {
+                                             selection = true
+                                         }
+                                         wrappedSongs.forEach { it.isSelected = false }
+                                         songWrapper.isSelected = true
+                                     },
+                                 ),
+                     )
+                 }
+ 
+                 // Other Versions Section
+                 if (otherVersions.isNotEmpty()) {
+                     item(key = "other_versions_header") {
+                         NavigationTitle(
+                             title = stringResource(R.string.other_versions),
+                         )
+                     }
+                     item(key = "other_versions_list") {
+                         LazyRow {
+                             items(
+                                 items = otherVersions.distinctBy { it.id },
+                                 key = { it.id },
+                             ) { item ->
+                                 YouTubeGridItem(
+                                     item = item,
+                                     isActive = mediaMetadata?.album?.id == item.id,
+                                     isPlaying = isPlaying,
+                                     coroutineScope = scope,
+                                     modifier =
+                                         Modifier
+                                             .combinedClickable(
+                                                 onClick = { navController.navigate("album/${item.id}") },
+                                                 onLongClick = {
+                                                     haptics.longPress()
+                                                     menuState.show {
                                                         YouTubeAlbumMenu(
                                                             albumItem = item,
                                                             navController = navController,

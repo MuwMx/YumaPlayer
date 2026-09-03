@@ -48,9 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +67,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
@@ -88,7 +87,7 @@ fun AccountScreen(
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val coroutineScope = rememberCoroutineScope()
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -224,7 +223,7 @@ fun AccountScreen(
                                                 navController.navigate("online_playlist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                haptics.longPress()
                                                 menuState.show {
                                                     YouTubePlaylistMenu(
                                                         playlist = item,
@@ -252,7 +251,7 @@ fun AccountScreen(
                                                 navController.navigate("album/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                haptics.longPress()
                                                 menuState.show {
                                                     YouTubeAlbumMenu(
                                                         albumItem = item,
@@ -280,7 +279,7 @@ fun AccountScreen(
                                                 navController.navigate("artist/${item.id}")
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                haptics.longPress()
                                                 menuState.show {
                                                     YouTubeArtistMenu(
                                                         artist = item,

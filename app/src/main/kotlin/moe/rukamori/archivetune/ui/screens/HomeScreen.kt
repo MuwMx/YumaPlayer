@@ -39,10 +39,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -77,7 +75,6 @@ fun HomeScreen(
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
 
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
@@ -185,7 +182,6 @@ fun HomeScreen(
                     navController = navController,
                     playerConnection = playerConnection,
                     menuState = menuState,
-                    haptic = haptic,
                     scope = scope,
                     lazyListState = lazyListState,
                     forgottenFavoritesGridState = forgottenFavoritesGridState,
@@ -259,7 +255,6 @@ private fun HomeContent(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     lazyListState: androidx.compose.foundation.lazy.LazyListState,
     forgottenFavoritesGridState: LazyGridState,
@@ -321,7 +316,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -349,7 +343,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 scope = scope,
                                 modifier = Modifier.animateItem(),
                             )
@@ -378,7 +371,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 scope = scope,
                                 modifier = Modifier.animateItem(),
                             )
@@ -404,7 +396,6 @@ private fun HomeContent(
                                     navController = navController,
                                     playerConnection = playerConnection,
                                     menuState = menuState,
-                                    haptic = haptic,
                                     scope = scope,
                                 )
                             }
@@ -436,7 +427,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -465,7 +455,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 scope = scope,
                                 modifier = Modifier.animateItem(),
                             )
@@ -496,7 +485,6 @@ private fun HomeContent(
                                 navController = navController,
                                 playerConnection = playerConnection,
                                 menuState = menuState,
-                                haptic = haptic,
                                 scope = scope,
                                 modifier = Modifier.animateItem(),
                             )

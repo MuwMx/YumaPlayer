@@ -96,8 +96,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -118,6 +116,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.db.entities.Album
@@ -347,11 +346,11 @@ fun QuickPicksSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     modifier: Modifier = Modifier,
 ) {
     val distinctQuickPicks = remember(quickPicks) { quickPicks.distinctBy { it.id } }
     val context = LocalContext.current
+    val haptics = rememberYumaHaptics()
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -460,7 +459,7 @@ fun QuickPicksSection(
                                         }
                                     },
                                     onLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptics.longPress()
                                         menuState.show {
                                             SongMenu(
                                                 originalSong = song,
@@ -616,7 +615,7 @@ fun QuickPicksSection(
                                             }
                                         },
                                         onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            haptics.longPress()
                                             menuState.show {
                                                 SongMenu(
                                                     originalSong = song,
@@ -648,11 +647,11 @@ fun SpeedDialSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val haptics = rememberYumaHaptics()
 
     data class SpeedDialTile(
         val key: String,
@@ -886,7 +885,7 @@ fun SpeedDialSection(
                                                                 }
                                                             },
                                                             onLongClick = {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                haptics.longPress()
                                                                 menuState.show {
                                                                     when (localItem) {
                                                                         is Song -> {
@@ -1027,7 +1026,6 @@ fun KeepListeningSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
@@ -1070,7 +1068,6 @@ fun KeepListeningSection(
                 navController = navController,
                 playerConnection = playerConnection,
                 menuState = menuState,
-                haptic = haptic,
                 scope = scope,
             )
         }
@@ -1092,11 +1089,11 @@ fun ForgottenFavoritesSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     modifier: Modifier = Modifier,
 ) {
     val rows = min(4, forgottenFavorites.size)
     val distinctForgottenFavorites = remember(forgottenFavorites) { forgottenFavorites.distinctBy { it.id } }
+    val haptics = rememberYumaHaptics()
 
     LazyHorizontalGrid(
         state = lazyGridState,
@@ -1125,7 +1122,7 @@ fun ForgottenFavoritesSection(
                 trailingContent = {
                     IconButton(
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.longPress()
                             menuState.show {
                                 SongMenu(
                                     originalSong = song,
@@ -1160,7 +1157,7 @@ fun ForgottenFavoritesSection(
                                 }
                             },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     SongMenu(
                                         originalSong = song,
@@ -1187,7 +1184,6 @@ fun AccountPlaylistsSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
@@ -1212,7 +1208,6 @@ fun AccountPlaylistsSection(
                 navController = navController,
                 playerConnection = playerConnection,
                 menuState = menuState,
-                haptic = haptic,
                 scope = scope,
             )
         }
@@ -1231,7 +1226,6 @@ fun SimilarRecommendationsSection(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
@@ -1254,7 +1248,6 @@ fun SimilarRecommendationsSection(
                 navController = navController,
                 playerConnection = playerConnection,
                 menuState = menuState,
-                haptic = haptic,
                 scope = scope,
                 visibleItems = recommendation.items,
                 clickedIndex = index,
@@ -1276,7 +1269,6 @@ fun HomePageSectionContent(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
@@ -1299,7 +1291,6 @@ fun HomePageSectionContent(
                 navController = navController,
                 playerConnection = playerConnection,
                 menuState = menuState,
-                haptic = haptic,
                 scope = scope,
                 visibleItems = section.items,
                 clickedIndex = index,
@@ -1323,13 +1314,13 @@ private fun YouTubeGridItemWrapper(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
     visibleItems: List<YTItem>? = null,
     clickedIndex: Int = -1,
     sectionTitle: String? = null,
 ) {
+    val haptics = rememberYumaHaptics()
     YouTubeGridItem(
         item = item,
         isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
@@ -1381,7 +1372,7 @@ private fun YouTubeGridItemWrapper(
                         }
                     },
                     onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.longPress()
                         menuState.show {
                             when (item) {
                                 is SongItem -> {
@@ -1433,10 +1424,10 @@ private fun LocalGridItem(
     navController: NavController,
     playerConnection: PlayerConnection,
     menuState: MenuState,
-    haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberYumaHaptics()
     when (item) {
         is Song -> {
             SongGridItem(
@@ -1454,7 +1445,7 @@ private fun LocalGridItem(
                                 }
                             },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     SongMenu(
                                         originalSong = item,
@@ -1482,7 +1473,7 @@ private fun LocalGridItem(
                         .combinedClickable(
                             onClick = { navController.navigate("album/${item.id}") },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     AlbumMenu(
                                         originalAlbum = item,
@@ -1505,7 +1496,7 @@ private fun LocalGridItem(
                         .combinedClickable(
                             onClick = { navController.navigate("artist/${item.id}") },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     ArtistMenu(
                                         originalArtist = item,

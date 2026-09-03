@@ -90,11 +90,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -160,6 +158,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
@@ -187,7 +186,7 @@ fun ArtistScreen(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
@@ -860,7 +859,7 @@ fun ArtistScreen(
                                                 }
                                             },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                haptics.longPress()
                                                 menuState.show {
                                                     SongMenu(
                                                         originalSong = song,
@@ -942,7 +941,7 @@ fun ArtistScreen(
                                                         navController.navigate("album/${album.id}")
                                                     },
                                                     onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        haptics.longPress()
                                                         menuState.show {
                                                             AlbumMenu(
                                                                 originalAlbum = album,
@@ -1022,7 +1021,7 @@ fun ArtistScreen(
                                                     }
                                                 },
                                                 onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    haptics.longPress()
                                                     menuState.show {
                                                         YouTubeSongMenu(
                                                             song = song,
@@ -1104,7 +1103,7 @@ fun ArtistScreen(
                                                             }
                                                         },
                                                         onLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            haptics.longPress()
                                                             menuState.show {
                                                                 when (item) {
                                                                     is SongItem -> {

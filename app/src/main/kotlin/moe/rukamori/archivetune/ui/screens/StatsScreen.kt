@@ -68,10 +68,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -107,6 +105,7 @@ import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -127,7 +126,7 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
 ) {
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
@@ -432,7 +431,7 @@ fun StatsScreen(
                                     }
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptics.longPress()
                                     menuState.show {
                                         SongMenu(
                                             originalSong = mostPlayedSongs[index],
@@ -479,7 +478,7 @@ fun StatsScreen(
                                     .combinedClickable(
                                         onClick = { navController.navigate("artist/${artist.id}") },
                                         onLongClick = {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            haptics.longPress()
                                             menuState.show {
                                                 ArtistMenu(
                                                     originalArtist = artist,
@@ -533,7 +532,7 @@ fun StatsScreen(
                                         .combinedClickable(
                                             onClick = { navController.navigate("album/${album.id}") },
                                             onLongClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                haptics.longPress()
                                                 menuState.show {
                                                     AlbumMenu(
                                                         originalAlbum = album,

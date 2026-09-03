@@ -70,12 +70,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -101,6 +99,7 @@ import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.utils.ComposeToImage
@@ -173,7 +172,7 @@ private fun YearInMusicRecapScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
     val coroutineScope = rememberCoroutineScope()
     val content = uiState as YearInMusicUiState.Content
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
@@ -218,7 +217,7 @@ private fun YearInMusicRecapScreen(
             isShareCaptureMode = isShareCaptureMode,
             onCardBoundsChanged = { currentCardBounds = it },
             onTopSongLongClick = { song ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                haptics.longPress()
                 menuState.show {
                     SongMenu(
                         originalSong = song,
@@ -228,7 +227,7 @@ private fun YearInMusicRecapScreen(
                 }
             },
             onTopArtistLongClick = { artist ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                haptics.longPress()
                 menuState.show {
                     ArtistMenu(
                         originalArtist = artist,

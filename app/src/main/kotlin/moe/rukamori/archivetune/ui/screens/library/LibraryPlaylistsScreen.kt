@@ -63,10 +63,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -104,6 +102,7 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -126,7 +125,7 @@ fun LibraryPlaylistsScreen(
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberYumaHaptics()
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -477,7 +476,7 @@ fun LibraryPlaylistsScreen(
                                 }
                             },
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.longPress()
                                 menuState.show {
                                     triggerPlaylistMenu(playlist, coroutineScope, menuState)
                                 }
