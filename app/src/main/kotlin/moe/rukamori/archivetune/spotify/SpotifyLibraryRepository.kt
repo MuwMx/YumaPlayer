@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -58,6 +60,25 @@ class SpotifyLibraryRepository
 
         private val _likedSongs = MutableStateFlow<List<SpotifyTrack>>(emptyList())
         val likedSongs: StateFlow<List<SpotifyTrack>> = _likedSongs.asStateFlow()
+
+        private val tokenMutex = Mutex()
+
+        suspend fun likedSongsPage(
+            limit: Int = 50,
+            offset: Int = 0,
+        ): moe.rukamori.archivetune.spotify.models.SpotifyPaging<SpotifyTrack> {
+            val page =
+                spotifyCallWithTokenRetry {
+                    Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
+                }
+            val filtered = page.items.mapNotNull { it.track.takeUnless(SpotifyTrack::isLocal) }
+            return moe.rukamori.archivetune.spotify.models.SpotifyPaging(
+                items = filtered,
+                total = page.total,
+                limit = page.limit,
+                offset = page.offset,
+            )
+        }
 
         suspend fun refreshLikedSongsTotal() {
             runCatching {
@@ -317,16 +338,18 @@ class SpotifyLibraryRepository
             spDc: String,
             spKey: String,
         ): Result<Unit> =
-            SpotifyAuth
-                .fetchAccessToken(spDc = spDc, spKey = spKey)
-                .mapCatching { token ->
-                    Spotify.accessToken = token.accessToken
-                    context.dataStore.edit { prefs ->
-                        prefs[SpotifyAccessTokenKey] = token.accessToken
-                        prefs[SpotifyAccessTokenExpiresAtKey] = token.accessTokenExpirationTimestampMs
+            tokenMutex.withLock {
+                SpotifyAuth
+                    .fetchAccessToken(spDc = spDc, spKey = spKey)
+                    .mapCatching { token ->
+                        Spotify.accessToken = token.accessToken
+                        context.dataStore.edit { prefs ->
+                            prefs[SpotifyAccessTokenKey] = token.accessToken
+                            prefs[SpotifyAccessTokenExpiresAtKey] = token.accessTokenExpirationTimestampMs
+                        }
+                        refreshProfile()
                     }
-                    refreshProfile()
-                }
+            }
 
         private suspend fun refreshProfile() {
             Spotify
