@@ -35,8 +35,7 @@ object YdsInsets {
 
     @Composable
     fun floatingToolbarBottomPadding(): Dp {
-        val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        return navBarBottom + SettingsDimensions.FloatingBarBottomSpacing
+        return safeBottomPadding() + SettingsDimensions.FloatingBarBottomSpacing
     }
 }
 
