@@ -155,7 +155,6 @@ fun PlayerToolbar(
                     interactionSource = collapseInteractionSource,
                     indication = null
                 ) {
-                    haptics.click()
                     onCollapseClick()
                 },
             contentAlignment = Alignment.Center

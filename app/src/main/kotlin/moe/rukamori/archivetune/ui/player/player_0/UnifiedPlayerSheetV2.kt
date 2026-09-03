@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,6 +76,7 @@ import moe.rukamori.archivetune.ui.state.QueueUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.utils.rememberPreference
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun UnifiedPlayerSheetV2(
     state: PlayerUiState,
@@ -551,12 +553,9 @@ fun UnifiedPlayerSheetV2(
             AddToPlaylistDialog(
                 isVisible = showQueueAddToPlaylistDialog,
                 onGetSong = {
-                    val songIds = queueState.queueWindows.mapNotNull { window ->
-                        window.mediaItem.metadata?.let { meta ->
-                            database.withTransaction {
-                                insert(meta)
-                            }
-                            meta.id
+                    val songIds = database.withTransaction {
+                        queueState.queueWindows.mapNotNull { window ->
+                            window.mediaItem.metadata?.also { insert(it) }?.id
                         }
                     }
                     songIds

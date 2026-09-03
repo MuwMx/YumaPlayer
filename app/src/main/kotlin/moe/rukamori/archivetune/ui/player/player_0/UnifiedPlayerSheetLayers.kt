@@ -239,10 +239,7 @@ internal fun UnifiedPlayerSheetLayers(
                     LyricsHeader(
                         state = state,
                         animateProgressProvider = lyricsFractionProvider,
-                        onCloseClick = {
-                            haptics.click()
-                            onCloseLyricsClick()
-                        },
+                        onCloseClick = onCloseLyricsClick,
                         onMoreClick = {
                             haptics.click()
                             onMoreLyricsClick()
@@ -405,7 +402,6 @@ private fun QueueSheetHeader(
                     .size(40.dp)
                     .clip(CircleShape)
                     .clickable(interactionSource = closeInteractionSource, indication = null) {
-                        haptics.click()
                         onCloseClick()
                     },
                 contentAlignment = Alignment.Center

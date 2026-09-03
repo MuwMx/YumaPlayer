@@ -1186,18 +1186,21 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val playerUiState by playerViewModel.uiState.collectAsStateWithLifecycle()
+                    val isMiniPlayerVisible = playerUiState.trackUrl.isNotEmpty()
+
                     val playerAwareWindowInsets =
                         remember(
                             useRail,
                             bottomInset,
                             shouldShowNavigationBar,
-                            playerBottomSheetState.isDismissed,
+                            isMiniPlayerVisible,
                         ) {
                             var bottom = bottomInset
                             if (shouldShowNavigationBar && !useRail) {
                                 bottom += getBottomNavPadding() + floatingBarsBottomPadding
                             }
-                            if (!playerBottomSheetState.isDismissed) {
+                            if (isMiniPlayerVisible) {
                                 bottom += MiniPlayerHeight + MiniPlayerBottomSpacing
                             }
                             windowsInsets
@@ -2066,7 +2069,7 @@ class MainActivity : ComponentActivity() {
                                                     Modifier
                                                         .fillMaxSize()
                                                         .padding(
-                                                            bottom = if (!playerBottomSheetState.isDismissed) MiniPlayerHeight else 0.dp,
+                                                            bottom = if (isMiniPlayerVisible) MiniPlayerHeight else 0.dp,
                                                         ).navigationBarsPadding(),
                                             ) { searchSource ->
                                                 when (searchSource) {
