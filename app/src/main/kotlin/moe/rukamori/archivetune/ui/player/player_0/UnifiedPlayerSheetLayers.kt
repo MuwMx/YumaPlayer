@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -33,8 +34,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +48,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -54,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
@@ -70,6 +76,7 @@ import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.ui.theme.SoftTextShadow
 import moe.rukamori.archivetune.ui.theme.glassBorder
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 internal fun UnifiedPlayerSheetLayers(
@@ -149,13 +156,48 @@ internal fun UnifiedPlayerSheetLayers(
         }
 
         if (expansionFractionProvider() < 1f) {
+            val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+            val hapticView = LocalView.current
+            val coroutineScope = rememberCoroutineScope()
+            val densityObj = LocalDensity.current
+            val miniPlayerOffsetX = remember { Animatable(0f) }
+            var miniPlayerWidthPx by remember { mutableFloatStateOf(0f) }
+
+            val miniPlayerDismissHandler = remember(
+                isMiniPlayerVisible,
+                miniPlayerWidthPx,
+                enableHapticFeedback
+            ) {
+                if (isMiniPlayerVisible && miniPlayerWidthPx > 0f) {
+                    MiniPlayerDismissGestureHandler(
+                        scope = coroutineScope,
+                        density = densityObj,
+                        hapticView = hapticView,
+                        hapticFeedbackEnabled = enableHapticFeedback,
+                        offsetAnimatable = miniPlayerOffsetX,
+                        itemWidthPx = miniPlayerWidthPx,
+                        onDismiss = { onAction(PlayerAction.Dismiss) },
+                    )
+                } else {
+                    null
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onSizeChanged { size ->
+                        miniPlayerWidthPx = size.width.toFloat()
+                    }
                     .graphicsLayer {
                         val fraction = expansionFractionProvider()
                         alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
+                        translationX = miniPlayerOffsetX.value
                     }
+                    .miniPlayerDismissGesture(
+                        enabled = isMiniPlayerVisible,
+                        handler = miniPlayerDismissHandler
+                    )
             ) {
                 MiniPlayerContentInternal(
                     state = state,

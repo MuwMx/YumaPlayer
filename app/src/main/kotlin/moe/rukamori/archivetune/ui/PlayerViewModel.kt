@@ -431,6 +431,10 @@ class PlayerViewModel @Inject constructor(
                     }
                 }
             }
+            is PlayerAction.Dismiss -> {
+                audioPlayer?.stop()
+                audioPlayer?.clearMediaItems()
+            }
             is PlayerAction.TranslateLyrics -> translateLyrics(action.langCode, action.useAi)
             is PlayerAction.DeleteLyrics -> deleteLyricsCache()
             is PlayerAction.OpenAlbum -> {
