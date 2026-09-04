@@ -101,11 +101,20 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryPlaylistsViewModel
@@ -204,6 +213,8 @@ fun LibraryPlaylistsScreen(
             .asPaddingValues()
             .calculateBottomPadding() + 12.dp
 
+    val yumaColors = LocalYumaColors.current
+
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
@@ -215,7 +226,7 @@ fun LibraryPlaylistsScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -256,22 +267,28 @@ fun LibraryPlaylistsScreen(
                         Row(
                             modifier =
                                 Modifier
+                                    .height(SettingsDimensions.LibraryChipHeight)
+                                    .yumaClickable { showSortMenu = true }
+                                    .yumaGlassCard(
+                                        shape = CircleShape,
+                                        backgroundColor = yumaColors.glassBackground,
+                                        borderColor = yumaColors.glassBorder,
+                                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                    )
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable { showSortMenu = true }
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = currentSortLabel,
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 painter = painterResource(id = R.drawable.expand_more),
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(16.dp),
                             )
                         }
@@ -304,15 +321,20 @@ fun LibraryPlaylistsScreen(
                     }
 
                     if (showSortDirection) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                            onClick = { onSortDescendingChange(!sortDescending) },
-                            colors =
-                                IconButtonDefaults.iconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                            modifier = Modifier.size(40.dp),
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(SettingsDimensions.LibraryChipHeight)
+                                    .yumaClickable { onSortDescendingChange(!sortDescending) }
+                                    .yumaGlassCard(
+                                        shape = CircleShape,
+                                        backgroundColor = yumaColors.glassBackground,
+                                        borderColor = yumaColors.glassBorder,
+                                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                    )
+                                    .clip(CircleShape),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.arrow_downward),
@@ -324,6 +346,7 @@ fun LibraryPlaylistsScreen(
                                             R.string.sort_order_ascending
                                         },
                                     ),
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier =
                                     Modifier
                                         .size(16.dp)
@@ -336,13 +359,25 @@ fun LibraryPlaylistsScreen(
                 // Right: list/grid toggle & add button
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (sortType == PlaylistSortType.CUSTOM) {
-                        IconButton(
-                            onClick = { locked = !locked },
-                            modifier = Modifier.size(40.dp),
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(SettingsDimensions.LibraryChipHeight)
+                                    .yumaClickable { locked = !locked }
+                                    .yumaGlassCard(
+                                        shape = CircleShape,
+                                        backgroundColor = yumaColors.glassBackground,
+                                        borderColor = yumaColors.glassBorder,
+                                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                    )
+                                    .clip(CircleShape),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
                                 contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(16.dp),
                             )
                         }
 
@@ -353,9 +388,15 @@ fun LibraryPlaylistsScreen(
                     Row(
                         modifier =
                             Modifier
+                                .height(SettingsDimensions.LibraryChipHeight)
+                                .yumaGlassCard(
+                                    shape = CircleShape,
+                                    backgroundColor = yumaColors.glassBackground,
+                                    borderColor = yumaColors.glassBorder,
+                                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                )
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                .padding(2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
@@ -364,7 +405,7 @@ fun LibraryPlaylistsScreen(
                                     .size(32.dp)
                                     .clip(CircleShape)
                                     .background(if (!isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { isGridView = false },
+                                    .yumaClickable { isGridView = false },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -380,7 +421,7 @@ fun LibraryPlaylistsScreen(
                                     .size(32.dp)
                                     .clip(CircleShape)
                                     .background(if (isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { isGridView = true },
+                                    .yumaClickable { isGridView = true },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -392,14 +433,20 @@ fun LibraryPlaylistsScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Row(
                         modifier =
                             Modifier
+                                .height(SettingsDimensions.LibraryChipHeight)
+                                .yumaGlassCard(
+                                    shape = CircleShape,
+                                    backgroundColor = yumaColors.glassBackground,
+                                    borderColor = yumaColors.glassBorder,
+                                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                )
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                .padding(2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
@@ -408,14 +455,14 @@ fun LibraryPlaylistsScreen(
                                     .size(32.dp)
                                     .clip(CircleShape)
                                     .background(if (showHidden) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                    .clickable { showHidden = !showHidden },
+                                    .yumaClickable { showHidden = !showHidden },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.visibility_off),
                                 contentDescription = stringResource(R.string.show_hidden_playlists),
                                 tint = if (showHidden) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                         Box(
@@ -424,14 +471,14 @@ fun LibraryPlaylistsScreen(
                                     .size(32.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
-                                    .clickable { showCreatePlaylistDialog = true },
+                                    .yumaClickable { showCreatePlaylistDialog = true },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.add),
                                 contentDescription = stringResource(R.string.create_playlist),
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
@@ -449,73 +496,29 @@ fun LibraryPlaylistsScreen(
             if (isGridView) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 ) {
-                    items(
-                        items = visiblePlaylists,
-                        key = { playlist -> playlist.id },
-                        contentType = { "playlist_grid" },
-                    ) { playlist ->
-                        PlaylistGridCard(
-                            playlist = playlist,
-                            onClick = {
-                                openPlaylist(navController, playlist)
-                            },
-                            onPlay = {
-                                playerConnection?.let { conn ->
-                                    coroutineScope.launch {
-                                        database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
-                                            if (songs.isNotEmpty()) {
-                                                conn.playQueue(ListQueue(items = songs.map { it.song.toMediaItem() }))
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            onLongClick = {
-                                haptics.longPress()
-                                menuState.show {
-                                    triggerPlaylistMenu(playlist, coroutineScope, menuState)
-                                }
-                            },
-                        )
-                    }
-                }
-            } else {
-                val spaceBetween = if (isDarkTheme && pureBlack) 0.dp else 12.dp
-                val listPlaylists = if (sortType == PlaylistSortType.CUSTOM) mutablePlaylists else visiblePlaylists
-                val showDragHandles = sortType == PlaylistSortType.CUSTOM && !locked
-                LazyColumn(
-                    state = lazyListState,
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(spaceBetween),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    itemsIndexed(
-                        items = listPlaylists,
-                        key = { _, playlist -> playlist.id },
-                        contentType = { _, _ -> "playlist_list" },
-                    ) { index, playlist ->
-                        ReorderableItem(
-                            state = reorderableState,
-                            key = playlist.id,
-                            modifier =
-                                Modifier.graphicsLayer {
-                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                                },
-                        ) {
-                            val showDivider = isDarkTheme && pureBlack && index > 0
-                            if (showDivider) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                    thickness = 0.5.dp,
-                                )
-                            }
-                            PlaylistListCard(
+                    if (visiblePlaylists.isEmpty()) {
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }, key = "empty_playlists_grid") {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.queue_music,
+                                titleRes = R.string.no_playlists_yet,
+                                subtitleRes = R.string.library_playlists_subtitle,
+                                modifier = Modifier.padding(vertical = 24.dp),
+                            )
+                        }
+                    } else {
+                        items(
+                            items = visiblePlaylists,
+                            key = { playlist -> playlist.id },
+                            contentType = { "playlist_grid" },
+                        ) { playlist ->
+                            PlaylistGridCard(
                                 playlist = playlist,
                                 onClick = {
                                     openPlaylist(navController, playlist)
@@ -531,17 +534,80 @@ fun LibraryPlaylistsScreen(
                                         }
                                     }
                                 },
-                                onMenuClick = {
+                                onLongClick = {
+                                    haptics.longPress()
                                     menuState.show {
                                         triggerPlaylistMenu(playlist, coroutineScope, menuState)
                                     }
                                 },
-                                showDragHandle = showDragHandles,
-                                dragHandleModifier =
-                                    Modifier
-                                        .draggableHandle()
-                                        .graphicsLayer { alpha = 0.99f },
                             )
+                        }
+                    }
+                }
+            } else {
+                val listPlaylists = if (sortType == PlaylistSortType.CUSTOM) mutablePlaylists else visiblePlaylists
+                val showDragHandles = sortType == PlaylistSortType.CUSTOM && !locked
+                LazyColumn(
+                    state = lazyListState,
+                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                ) {
+                    if (listPlaylists.isEmpty()) {
+                        item(key = "empty_playlists") {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.queue_music,
+                                titleRes = R.string.no_playlists_yet,
+                                subtitleRes = R.string.library_playlists_subtitle,
+                                modifier = Modifier.padding(vertical = 24.dp),
+                            )
+                        }
+                    } else {
+                        itemsIndexed(
+                            items = listPlaylists,
+                            key = { _, playlist -> playlist.id },
+                            contentType = { _, _ -> "playlist_list" },
+                        ) { index, playlist ->
+                            val segmentPosition = yumaSegmentPosition(index, listPlaylists.size)
+                            ReorderableItem(
+                                state = reorderableState,
+                                key = playlist.id,
+                                modifier =
+                                    Modifier.graphicsLayer {
+                                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                                    },
+                            ) {
+                                PlaylistListCard(
+                                    playlist = playlist,
+                                    position = segmentPosition,
+                                    onClick = {
+                                        openPlaylist(navController, playlist)
+                                    },
+                                    onPlay = {
+                                        playerConnection?.let { conn ->
+                                            coroutineScope.launch {
+                                                database.playlistSongs(playlist.id).firstOrNull()?.let { songs ->
+                                                    if (songs.isNotEmpty()) {
+                                                        conn.playQueue(ListQueue(items = songs.map { it.song.toMediaItem() }))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onMenuClick = {
+                                        menuState.show {
+                                            triggerPlaylistMenu(playlist, coroutineScope, menuState)
+                                        }
+                                    },
+                                    showDragHandle = showDragHandles,
+                                    dragHandleModifier =
+                                        Modifier
+                                            .draggableHandle()
+                                            .graphicsLayer { alpha = 0.99f },
+                                )
+                            }
                         }
                     }
                 }
@@ -715,62 +781,53 @@ fun PlaylistListCard(
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onMenuClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    position: YumaSegmentPosition = YumaSegmentPosition.Single,
     showDragHandle: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
 ) {
-    val cardBgColor =
-        rememberArtworkCardColor(
-            thumbnailUrl = playlist.thumbnails.getOrNull(0),
-            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "PlaylistListCardScale",
-    )
-
+    val yumaColors = LocalYumaColors.current
     val hiddenAlpha = if (playlist.playlist.isHidden) 0.45f else 1f
 
     Row(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
                     alpha = hiddenAlpha
-                }.clip(RoundedCornerShape(32.dp))
-                .background(cardBgColor)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
+                }
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
-                ).padding(12.dp),
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                    backgroundColor = yumaColors.glassBackground,
+                    borderColor = yumaColors.glassBorder,
+                    position = position,
+                )
+                .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
+                .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Thumbnail
         AsyncImage(
             model = playlist.thumbnails.getOrNull(0),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier =
                 Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         )
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Text & details
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = playlist.playlist.name,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -782,10 +839,9 @@ fun PlaylistListCard(
                 Text(
                     text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                // Tag pill
                 val tagText =
                     if (playlist.playlist.isEditable) {
                         stringResource(
@@ -798,9 +854,11 @@ fun PlaylistListCard(
                 Box(
                     modifier =
                         Modifier
+                            .height(20.dp)
                             .clip(CircleShape)
-                            .background(tagColor.copy(alpha = 0.12f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = tagText,
@@ -810,12 +868,12 @@ fun PlaylistListCard(
                 }
 
                 if (playlist.playlist.isHidden) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         painter = painterResource(id = R.drawable.visibility_off),
                         contentDescription = stringResource(R.string.hide_playlist),
                         modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                 }
             }
@@ -826,10 +884,10 @@ fun PlaylistListCard(
             onClick = onPlay,
             colors =
                 IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                     contentColor = MaterialTheme.colorScheme.primary,
                 ),
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.play),
@@ -843,11 +901,13 @@ fun PlaylistListCard(
         // Options Button
         IconButton(
             onClick = onMenuClick,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.more_vert),
                 contentDescription = stringResource(R.string.options_label),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
         }
 
@@ -855,11 +915,12 @@ fun PlaylistListCard(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(
                 onClick = {},
-                modifier = dragHandleModifier.size(36.dp),
+                modifier = dragHandleModifier.size(SettingsDimensions.LibraryChipHeight),
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.drag_handle),
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -873,46 +934,38 @@ fun PlaylistGridCard(
     onClick: () -> Unit,
     onPlay: () -> Unit,
     onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val cardBgColor =
-        rememberArtworkCardColor(
-            thumbnailUrl = playlist.thumbnails.getOrNull(0),
-            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "PlaylistGridCardScale",
-    )
-
+    val yumaColors = LocalYumaColors.current
     val hiddenAlpha = if (playlist.playlist.isHidden) 0.45f else 1f
 
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
                     alpha = hiddenAlpha
-                }.clip(RoundedCornerShape(32.dp))
-                .background(cardBgColor)
-                .combinedClickable(
-                    interactionSource = interactionSource,
-                    indication = null,
+                }
+                .yumaCombinedClickable(
+                    pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
                     onLongClick = onLongClick,
-                ).padding(12.dp),
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    backgroundColor = yumaColors.glassBackground,
+                    borderColor = yumaColors.glassBorder,
+                    position = YumaSegmentPosition.Single,
+                )
+                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                .padding(12.dp),
     ) {
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .clip(RoundedCornerShape(26.dp)),
+                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
         ) {
             AsyncImage(
                 model = playlist.thumbnails.getOrNull(0),
@@ -949,7 +1002,7 @@ fun PlaylistGridCard(
                             .align(Alignment.TopEnd)
                             .padding(8.dp)
                             .size(16.dp),
-                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 )
             }
         }
@@ -959,14 +1012,15 @@ fun PlaylistGridCard(
         Text(
             text = playlist.playlist.name,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

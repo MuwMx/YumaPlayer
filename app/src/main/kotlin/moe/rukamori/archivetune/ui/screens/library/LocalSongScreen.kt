@@ -25,6 +25,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,19 +49,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -85,6 +82,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -112,11 +111,16 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.localmedia.LocalSongScanConfig
 import moe.rukamori.archivetune.localmedia.SupportedLocalAudio
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LocalSongsScanState
 import moe.rukamori.archivetune.viewmodels.LocalSongsViewModel
@@ -236,7 +240,6 @@ fun LocalSongScreen(
                 strength = Collator.PRIMARY
             }
         }
-    val bottomContentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding() + 20.dp
 
     val visibleSongs by remember(songs, query, sortType, sortDescending, collator) {
         derivedStateOf {
@@ -427,12 +430,8 @@ fun LocalSongScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding =
-                PaddingValues(
-                    top = 12.dp,
-                    bottom = bottomContentPadding,
-                ),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
             item(
                 key = "controls",
@@ -468,27 +467,26 @@ fun LocalSongScreen(
                     key = "empty",
                     contentType = CONTENT_TYPE_HEADER,
                 ) {
-                    LocalSongEmptyState(query = query)
+                    LibraryEmptyState(
+                        iconRes = if (query.isBlank()) R.drawable.music_note else R.drawable.ic_search,
+                        titleRes = if (query.isBlank()) R.string.local_songs_empty_title else R.string.local_songs_no_matches_title,
+                        subtitleRes = if (query.isBlank()) R.string.local_songs_empty_desc else R.string.local_songs_no_matches_desc,
+                        modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 24.dp),
+                    )
                 }
             } else {
-                item(
-                    key = "divider",
-                    contentType = CONTENT_TYPE_HEADER,
-                ) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
-
                 itemsIndexed(
                     items = visibleSongs,
                     key = { index, item -> "${item.id}_$index" },
                     contentType = { _, _ -> CONTENT_TYPE_SONG },
                 ) { index, song ->
+                    val isActive = song.id == mediaMetadata?.id
                     SongListItem(
                         song = song,
                         showInLibraryIcon = false,
                         showDownloadIcon = false,
                         showSongIconPlaceholder = true,
-                        isActive = song.id == mediaMetadata?.id,
+                        isActive = isActive,
                         isPlaying = isPlaying,
                         trailingContent = {
                             IconButton(
@@ -501,16 +499,28 @@ fun LocalSongScreen(
                                         )
                                     }
                                 },
+                                modifier = Modifier.size(SettingsDimensions.RowIconSize),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.more_vert),
                                     contentDescription = null,
+                                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                                 )
                             }
                         },
                         modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                                .animateItem()
+                                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                                .then(
+                                    if (isActive) {
+                                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                                 .combinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
@@ -530,9 +540,9 @@ fun LocalSongScreen(
                                             )
                                         }
                                     },
-                                     onLongClick = {
-                                         haptics.longPress()
-                                         menuState.show {
+                                    onLongClick = {
+                                        haptics.longPress()
+                                        menuState.show {
                                             SongMenu(
                                                 originalSong = song,
                                                 navController = navController,
@@ -540,42 +550,11 @@ fun LocalSongScreen(
                                             )
                                         }
                                     },
-                                ).padding(horizontal = 16.dp)
-                                .animateItem(),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LocalSongBadge(
-    iconRes: Int,
-    text: String,
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
@@ -595,7 +574,7 @@ private fun LocalSongControlsCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp, vertical = 8.dp),
+                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
     ) {
         SortHeader(
             sortType = sortType,
@@ -631,51 +610,6 @@ private fun LocalSongControlsCard(
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.secondary,
         )
-    }
-}
-
-@Composable
-private fun LocalSongEmptyState(query: String) {
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
-        ) {
-            Icon(
-                painter = painterResource(if (query.isBlank()) R.drawable.music_note else R.drawable.ic_search),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
-            )
-            Text(
-                text =
-                    if (query.isBlank()) {
-                        stringResource(R.string.local_songs_empty_title)
-                    } else {
-                        stringResource(R.string.local_songs_no_matches_title)
-                    },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text =
-                    if (query.isBlank()) {
-                        stringResource(R.string.local_songs_empty_desc)
-                    } else {
-                        stringResource(R.string.local_songs_no_matches_desc)
-                    },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
@@ -759,10 +693,10 @@ private fun LocalSongScanSheet(
                 stringResource(R.string.local_songs_permission_body)
             }
 
-            hasSummary -> {
+            lastSummary != null -> {
                 stringResource(
                     R.string.local_songs_scan_summary,
-                    lastSummary!!.scannedSongs,
+                    lastSummary.scannedSongs,
                     lastSummary.removedSongs,
                 )
             }
@@ -791,20 +725,17 @@ private fun LocalSongScanSheet(
         containerColor = Color.Transparent,
         dragHandle = null,
     ) {
-        Surface(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
-                .navigationBarsPadding(),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            border = BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-            ),
-            tonalElevation = 6.dp,
-            shadowElevation = 10.dp,
+                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                .padding(bottom = SettingsDimensions.BottomSheetBottomPadding)
+                .navigationBarsPadding()
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                    position = YumaSegmentPosition.Single,
+                )
+                .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius)),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -812,30 +743,30 @@ private fun LocalSongScanSheet(
                     Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 16.dp, bottom = 28.dp),
+                        .padding(horizontal = SettingsDimensions.BottomSheetContentPaddingH)
+                        .padding(top = SettingsDimensions.BottomSheetContentPaddingTop, bottom = SettingsDimensions.BottomSheetContentPaddingBottom),
             ) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(bottom = 16.dp)
-                        .size(width = 40.dp, height = 4.dp)
+                        .padding(bottom = SettingsDimensions.BottomSheetDragHandleBottomPadding)
+                        .size(width = SettingsDimensions.BottomSheetDragHandleWidth, height = SettingsDimensions.BottomSheetDragHandleHeight)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)),
                 )
-            Surface(
-                shape = RoundedCornerShape(32.dp),
-                color = heroContainerColor,
-                modifier = Modifier.size(80.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                        .background(heroContainerColor),
+                ) {
                     AnimatedContent(
                         targetState = heroIcon,
                         transitionSpec = {
-                            (
-                                fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
-                                    fadeOut(spring(stiffness = Spring.StiffnessMedium))
-                            )
+                            fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
+                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
                         },
                         label = "heroIcon",
                     ) { icon ->
@@ -843,383 +774,385 @@ private fun LocalSongScanSheet(
                             painter = painterResource(icon),
                             contentDescription = null,
                             tint = heroTint,
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
                         )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                text = stringResource(R.string.local_songs_scan_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
+                Text(
+                    text = stringResource(R.string.local_songs_scan_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = stringResource(R.string.local_songs_scan_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+                Text(
+                    text = stringResource(R.string.local_songs_scan_subtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            AnimatedVisibility(
-                visible = scanState.isScanning,
-                enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
-                exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier =
-                        Modifier
+                AnimatedVisibility(
+                    visible = scanState.isScanning,
+                    enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
+                    exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
+                ) {
+                    Box(
+                        modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    ) {
-                        CircularWavyProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Text(
-                            text = stringResource(R.string.scanning_device),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                }
-            }
-
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .alpha(contentAlpha),
-            ) {
-                Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                    ScanSheetInfoRow(
-                        iconRes = R.drawable.storage,
-                        title = stringResource(R.string.permission_storage_title),
-                        description = stringResource(R.string.permission_storage_desc),
-                        trailing = {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color =
-                                    if (hasStoragePermission) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.errorContainer
-                                    },
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                ) {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                if (hasStoragePermission) R.drawable.done else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        tint =
-                                            if (hasStoragePermission) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onErrorContainer
-                                            },
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                    Text(
-                                        text =
-                                            if (hasStoragePermission) {
-                                                stringResource(R.string.permission_status_allowed)
-                                            } else {
-                                                stringResource(R.string.not_allowed)
-                                            },
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color =
-                                            if (hasStoragePermission) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onErrorContainer
-                                            },
-                                    )
-                                }
-                            }
-                        },
-                    )
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                    )
-
-                    ScanSheetInfoRow(
-                        iconRes = R.drawable.ic_about,
-                        title = stringResource(R.string.local_songs_latest_scan),
-                        description = statusText,
-                        trailing = null,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .alpha(contentAlpha),
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.local_songs_scan_filters_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = stringResource(R.string.local_songs_scan_filters_note),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    LocalSongScanSettingCard(
-                        iconRes = R.drawable.timer,
-                        title = stringResource(R.string.local_songs_scan_duration_title),
-                        description = stringResource(R.string.local_songs_scan_duration_desc),
-                    ) {
-                        Text(
-                            text = durationLabel,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                        Slider(
-                            value = minimumDurationSeconds.toFloat(),
-                            onValueChange = { onMinimumDurationSecondsChange(it.roundToInt()) },
-                            valueRange = 0f..180f,
-                            steps = 11,
-                            enabled = !scanState.isScanning,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-
-                    LocalSongScanSettingCard(
-                        iconRes = R.drawable.snippet_folder,
-                        title = stringResource(R.string.local_songs_scan_included_folders_title),
-                        description = stringResource(R.string.local_songs_scan_included_folders_desc),
-                        actionLabel = stringResource(R.string.local_songs_scan_included_folders_add),
-                        onActionClick = {
-                            if (!scanState.isScanning) {
-                                onAddIncludedFolder()
-                            }
-                        },
-                    ) {
-                        if (sanitizedIncludedFolders.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.local_songs_scan_included_folders_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            .padding(bottom = 16.dp)
+                            .yumaGlassCard(
+                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                position = YumaSegmentPosition.Single,
                             )
-                        } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                sanitizedIncludedFolders.forEach { folderPath ->
-                                    LocalSongFolderChip(
-                                        folderPath = folderPath,
-                                        enabled = !scanState.isScanning,
-                                        onRemove = {
-                                            onIncludedFoldersChange(
-                                                includedFolders
-                                                    .filterNot {
-                                                        LocalSongScanConfig
-                                                            .normalizeFolderEntry(it)
-                                                            .equals(folderPath, ignoreCase = true)
-                                                    }.toSet(),
-                                            )
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    LocalSongScanSettingCard(
-                        iconRes = R.drawable.snippet_folder,
-                        title = stringResource(R.string.local_songs_scan_folders_title),
-                        description = stringResource(R.string.local_songs_scan_folders_desc),
-                        actionLabel = stringResource(R.string.local_songs_scan_folders_add),
-                        onActionClick = {
-                            if (!scanState.isScanning) {
-                                onAddExcludedFolder()
-                            }
-                        },
+                            .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
                     ) {
-                        if (sanitizedExcludedFolders.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.local_songs_scan_folders_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                sanitizedExcludedFolders.forEach { folderPath ->
-                                    LocalSongFolderChip(
-                                        folderPath = folderPath,
-                                        enabled = !scanState.isScanning,
-                                        onRemove = {
-                                            onExcludedFoldersChange(
-                                                excludedFolders
-                                                    .filterNot {
-                                                        LocalSongScanConfig
-                                                            .normalizeFolderEntry(it)
-                                                            .equals(folderPath, ignoreCase = true)
-                                                    }.toSet(),
-                                            )
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = onPrimaryAction,
-                enabled = !scanState.isScanning,
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor =
-                            if (hasStoragePermission) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.tertiary
-                            },
-                        contentColor =
-                            if (hasStoragePermission) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onTertiary
-                            },
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    ),
-                shape = RoundedCornerShape(28.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                AnimatedContent(
-                    targetState = scanState.isScanning,
-                    transitionSpec = {
-                        (
-                            fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
-                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
-                        )
-                    },
-                    label = "buttonContent",
-                ) { isScanning ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (isScanning) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                        ) {
                             CircularWavyProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.primary,
                             )
-                        } else {
-                            Icon(
-                                painter =
-                                    painterResource(
-                                        if (hasStoragePermission) R.drawable.sync else R.drawable.security,
-                                    ),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Text(
+                                text = stringResource(R.string.scanning_device),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(contentAlpha)
+                        .yumaGlassCard(
+                            shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                            position = YumaSegmentPosition.Single,
+                        )
+                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                        ScanSheetInfoRow(
+                            iconRes = R.drawable.storage,
+                            title = stringResource(R.string.permission_storage_title),
+                            description = stringResource(R.string.permission_storage_desc),
+                            trailing = {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            if (hasStoragePermission) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.errorContainer
+                                            },
+                                        ),
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    ) {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    if (hasStoragePermission) R.drawable.done else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            tint =
+                                                if (hasStoragePermission) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onErrorContainer
+                                                },
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                        Text(
+                                            text =
+                                                if (hasStoragePermission) {
+                                                    stringResource(R.string.permission_status_allowed)
+                                                } else {
+                                                    stringResource(R.string.not_allowed)
+                                                },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color =
+                                                if (hasStoragePermission) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onErrorContainer
+                                                },
+                                        )
+                                    }
+                                }
+                            },
+                        )
+
+                        ScanSheetInfoRow(
+                            iconRes = R.drawable.ic_about,
+                            title = stringResource(R.string.local_songs_latest_scan),
+                            description = statusText,
+                            trailing = null,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(contentAlpha)
+                        .yumaGlassCard(
+                            shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                            position = YumaSegmentPosition.Single,
+                        )
+                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                    ) {
                         Text(
-                            text =
-                                if (isScanning) {
-                                    stringResource(R.string.scanning_device)
-                                } else {
-                                    primaryButtonText
-                                },
+                            text = stringResource(R.string.local_songs_scan_filters_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
+                        Text(
+                            text = stringResource(R.string.local_songs_scan_filters_note),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        LocalSongScanSettingCard(
+                            iconRes = R.drawable.timer,
+                            title = stringResource(R.string.local_songs_scan_duration_title),
+                            description = stringResource(R.string.local_songs_scan_duration_desc),
+                        ) {
+                            Text(
+                                text = durationLabel,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                            Slider(
+                                value = minimumDurationSeconds.toFloat(),
+                                onValueChange = { onMinimumDurationSecondsChange(it.roundToInt()) },
+                                valueRange = 0f..180f,
+                                steps = 11,
+                                enabled = !scanState.isScanning,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        LocalSongScanSettingCard(
+                            iconRes = R.drawable.snippet_folder,
+                            title = stringResource(R.string.local_songs_scan_included_folders_title),
+                            description = stringResource(R.string.local_songs_scan_included_folders_desc),
+                            actionLabel = stringResource(R.string.local_songs_scan_included_folders_add),
+                            onActionClick = {
+                                if (!scanState.isScanning) {
+                                    onAddIncludedFolder()
+                                }
+                            },
+                        ) {
+                            if (sanitizedIncludedFolders.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.local_songs_scan_included_folders_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    sanitizedIncludedFolders.forEach { folderPath ->
+                                        LocalSongFolderChip(
+                                            folderPath = folderPath,
+                                            enabled = !scanState.isScanning,
+                                            onRemove = {
+                                                onIncludedFoldersChange(
+                                                    includedFolders
+                                                        .filterNot {
+                                                            LocalSongScanConfig
+                                                                .normalizeFolderEntry(it)
+                                                                .equals(folderPath, ignoreCase = true)
+                                                        }.toSet(),
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        LocalSongScanSettingCard(
+                            iconRes = R.drawable.snippet_folder,
+                            title = stringResource(R.string.local_songs_scan_folders_title),
+                            description = stringResource(R.string.local_songs_scan_folders_desc),
+                            actionLabel = stringResource(R.string.local_songs_scan_folders_add),
+                            onActionClick = {
+                                if (!scanState.isScanning) {
+                                    onAddExcludedFolder()
+                                }
+                            },
+                        ) {
+                            if (sanitizedExcludedFolders.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.local_songs_scan_folders_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    sanitizedExcludedFolders.forEach { folderPath ->
+                                        LocalSongFolderChip(
+                                            folderPath = folderPath,
+                                            enabled = !scanState.isScanning,
+                                            onRemove = {
+                                                onExcludedFoldersChange(
+                                                    excludedFolders
+                                                        .filterNot {
+                                                            LocalSongScanConfig
+                                                                .normalizeFolderEntry(it)
+                                                                .equals(folderPath, ignoreCase = true)
+                                                        }.toSet(),
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            AnimatedVisibility(
-                visible = hasError,
-                enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
-                exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onPrimaryAction,
+                    enabled = !scanState.isScanning,
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (hasStoragePermission) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.tertiary
+                                },
+                            contentColor =
+                                if (hasStoragePermission) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onTertiary
+                                },
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        ),
+                    shape = RoundedCornerShape(28.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                    AnimatedContent(
+                        targetState = scanState.isScanning,
+                        transitionSpec = {
+                            fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
+                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                        },
+                        label = "buttonContent",
+                    ) { isScanning ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (isScanning) {
+                                CircularWavyProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                )
+                            } else {
+                                Icon(
+                                    painter =
+                                        painterResource(
+                                            if (hasStoragePermission) R.drawable.sync else R.drawable.security,
+                                        ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text =
+                                    if (isScanning) {
+                                        stringResource(R.string.scanning_device)
+                                    } else {
+                                        primaryButtonText
+                                    },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = hasError,
+                    enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
+                    exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .yumaGlassCard(
+                                shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                                backgroundColor = MaterialTheme.colorScheme.errorContainer,
+                            )
+                            .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.error),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = scanState.errorMessage.orEmpty(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.error),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = scanState.errorMessage.orEmpty(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
 }
 
 @Composable
@@ -1231,10 +1164,14 @@ private fun LocalSongScanSettingCard(
     onActionClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .yumaGlassCard(
+                shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                position = YumaSegmentPosition.Single,
+            )
+            .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1245,19 +1182,19 @@ private fun LocalSongScanSettingCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier.size(44.dp),
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(iconRes),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(iconRes),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
 
                 Column(
@@ -1276,32 +1213,31 @@ private fun LocalSongScanSettingCard(
                     )
 
                     if (actionLabel != null && onActionClick != null) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.padding(top = 8.dp),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .heightIn(min = 40.dp)
+                                .yumaClickable(onClick = onActionClick)
+                                .yumaGlassCard(
+                                    shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                                )
+                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier =
-                                    Modifier
-                                        .heightIn(min = 48.dp)
-                                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                                        .combinedClickable(onClick = onActionClick),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.add),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Text(
-                                    text = actionLabel,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(R.drawable.add),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = actionLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
                         }
                     }
                 }
@@ -1378,19 +1314,19 @@ private fun ScanSheetInfoRow(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            modifier = Modifier.size(44.dp),
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),

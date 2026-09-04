@@ -7,27 +7,20 @@
 package moe.rukamori.archivetune.ui.screens.library
 
 import android.widget.Toast
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,8 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -57,9 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -89,6 +78,11 @@ import moe.rukamori.archivetune.spotify.SpotifyLibraryViewModel
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryMixViewModel
 import moe.rukamori.archivetune.viewmodels.LibraryTopMixEmptyReason
@@ -153,12 +147,6 @@ fun LibraryMixScreen(
         }
     }
 
-    val playerAwareBottomPadding =
-        LocalPlayerAwareWindowInsets.current
-            .only(WindowInsetsSides.Bottom)
-            .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
-
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.syncAllLibrary() },
@@ -166,8 +154,8 @@ fun LibraryMixScreen(
     ) {
         LazyColumn(
             state = rememberLazyListState(),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            contentPadding = PaddingValues(bottom = playerAwareBottomPadding),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.ScreenBottomPadding),
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "most_played_album_spotlight", contentType = "spotlight") {
@@ -206,11 +194,11 @@ fun LibraryMixScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         // Liked Songs
@@ -218,7 +206,7 @@ fun LibraryMixScreen(
                             title = stringResource(R.string.liked_songs),
                             countText = "$likedSongsCount ${stringResource(R.string.tracks_label)}",
                             iconRes = R.drawable.favorite,
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
                             iconColor = MaterialTheme.colorScheme.error,
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("auto_playlist/liked") },
@@ -229,7 +217,7 @@ fun LibraryMixScreen(
                             title = stringResource(R.string.offline_shortcut),
                             countText = stringResource(R.string.downloaded_desc),
                             iconRes = R.drawable.offline,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
                             iconColor = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("auto_playlist/downloaded") },
@@ -237,7 +225,7 @@ fun LibraryMixScreen(
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         // Cached
@@ -245,7 +233,7 @@ fun LibraryMixScreen(
                             title = stringResource(R.string.cached),
                             countText = stringResource(R.string.instant_playback),
                             iconRes = R.drawable.cached,
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                             iconColor = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("cache_playlist/cached") },
@@ -256,7 +244,7 @@ fun LibraryMixScreen(
                             title = stringResource(R.string.local_files),
                             countText = stringResource(R.string.on_device),
                             iconRes = R.drawable.snippet_folder,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             iconColor = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.weight(1f),
                             onClick = { navController.navigate("local_songs") },
@@ -397,8 +385,8 @@ fun LibraryMixScreen(
                         }
 
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                            horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.ScreenHorizontalPadding),
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -407,32 +395,12 @@ fun LibraryMixScreen(
                                 key = { playlist -> "playlist_${playlist.id}" },
                                 contentType = { "library_playlist" },
                             ) { playlist ->
-                                val cardBgColor =
-                                    rememberArtworkCardColor(
-                                        thumbnailUrl = playlist.thumbnails.getOrNull(0),
-                                        fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    )
-
-                                val interactionSource = remember { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isPressed) 0.97f else 1.0f,
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                    label = "MixPlaylistCardScale",
-                                )
-
                                 Column(
                                     modifier =
                                         Modifier
                                             .width(130.dp)
-                                            .graphicsLayer {
-                                                scaleX = scale
-                                                scaleY = scale
-                                            }.clip(RoundedCornerShape(32.dp))
-                                            .background(cardBgColor)
-                                            .clickable(
-                                                interactionSource = interactionSource,
-                                                indication = null,
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
                                                 onClick = {
                                                     if (!playlist.playlist.isEditable && playlist.playlist.browseId?.startsWith("VL") == true &&
                                                         (playlist.songCount == 0 || playlist.playlist.remoteSongCount == 0)
@@ -442,13 +410,18 @@ fun LibraryMixScreen(
                                                         navController.navigate("local_playlist/${playlist.id}")
                                                     }
                                                 },
-                                            ).padding(12.dp),
+                                            )
+                                            .yumaGlassCard(
+                                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                                position = YumaSegmentPosition.Single,
+                                            )
+                                            .padding(SettingsDimensions.SectionSpacing),
                                 ) {
                                     Box(
                                         modifier =
                                             Modifier
                                                 .size(106.dp)
-                                                .clip(RoundedCornerShape(24.dp)),
+                                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
                                     ) {
                                         AsyncImage(
                                             model = playlist.thumbnails.getOrNull(0),
@@ -508,35 +481,27 @@ fun LibraryMixScreen(
 
                             item(key = "spotify_liked_songs_card") {
                                 val likedSongsTotal by spotifyLibraryViewModel.likedSongsTotal.collectAsStateWithLifecycle()
-                                val interactionSource = remember { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isPressed) 0.97f else 1.0f,
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                                    label = "SpotifyLikedSongsCompactCardScale",
-                                )
 
                                 Column(
-                                    modifier = Modifier
-                                        .width(130.dp)
-                                        .graphicsLayer {
-                                            scaleX = scale
-                                            scaleY = scale
-                                        }
-                                        .clip(RoundedCornerShape(32.dp))
-                                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f))
-                                        .clickable(
-                                            interactionSource = interactionSource,
-                                            indication = null,
-                                            onClick = { navController.navigate("spotify_liked_songs") },
-                                        )
-                                        .padding(12.dp),
+                                    modifier =
+                                        Modifier
+                                            .width(130.dp)
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
+                                                onClick = { navController.navigate("spotify_liked_songs") },
+                                            )
+                                            .yumaGlassCard(
+                                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                                position = YumaSegmentPosition.Single,
+                                            )
+                                            .padding(SettingsDimensions.SectionSpacing),
                                 ) {
                                     Box(
-                                        modifier = Modifier
-                                            .size(106.dp)
-                                            .clip(RoundedCornerShape(24.dp))
-                                            .background(MaterialTheme.colorScheme.errorContainer),
+                                        modifier =
+                                            Modifier
+                                                .size(106.dp)
+                                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.16f)),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Icon(
@@ -546,26 +511,27 @@ fun LibraryMixScreen(
                                             modifier = Modifier.size(44.dp),
                                         )
                                         Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(6.dp)
-                                                .size(28.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primary)
-                                                .clickable {
-                                                    playerConnection.let { conn ->
-                                                        coroutineScope.launch {
-                                                            val preloadTrack = moe.rukamori.archivetune.spotify.Spotify.likedSongs(limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
-                                                            val preloadItem = preloadTrack?.let { moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver.resolveToMetadata(it) }
-                                                            conn.playQueue(
-                                                                moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue(
-                                                                    title = context.getString(R.string.spotify_liked_songs),
-                                                                    preloadItem = preloadItem,
+                                            modifier =
+                                                Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(6.dp)
+                                                    .size(28.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.primary)
+                                                    .clickable {
+                                                        playerConnection.let { conn ->
+                                                            coroutineScope.launch {
+                                                                val preloadTrack = moe.rukamori.archivetune.spotify.Spotify.likedSongs(limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
+                                                                val preloadItem = preloadTrack?.let { moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                                                conn.playQueue(
+                                                                    moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue(
+                                                                        title = context.getString(R.string.spotify_liked_songs),
+                                                                        preloadItem = preloadItem,
+                                                                    ),
                                                                 )
-                                                            )
+                                                            }
                                                         }
-                                                    }
-                                                },
+                                                    },
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Icon(
@@ -614,11 +580,16 @@ fun LibraryMixScreen(
                                         Modifier
                                             .width(130.dp)
                                             .height(168.dp)
-                                            .clip(RoundedCornerShape(32.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                            .clickable {
-                                                onTabSelected(LibraryFilter.PLAYLISTS)
-                                            },
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
+                                                onClick = {
+                                                    onTabSelected(LibraryFilter.PLAYLISTS)
+                                                },
+                                            )
+                                            .yumaGlassCard(
+                                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                                position = YumaSegmentPosition.Single,
+                                            ),
                                     verticalArrangement = Arrangement.Center,
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
@@ -637,7 +608,7 @@ fun LibraryMixScreen(
                                             modifier = Modifier.size(24.dp),
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(SettingsDimensions.SectionSpacing))
                                     Text(
                                         text = stringResource(R.string.more_label),
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -768,39 +739,26 @@ private fun SpotifyPlaylistCompactCard(
     modifier: Modifier = Modifier,
 ) {
     val thumbnailUrl = remember(playlist) { SpotifyMapper.getPlaylistThumbnail(playlist) }
-    val cardBgColor =
-        rememberArtworkCardColor(
-            thumbnailUrl = thumbnailUrl,
-            fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "SpotifyPlaylistCompactCardScale",
-    )
 
     Column(
         modifier =
             modifier
                 .width(130.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clip(RoundedCornerShape(32.dp))
-                .background(cardBgColor)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
-                ).padding(12.dp),
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    position = YumaSegmentPosition.Single,
+                )
+                .padding(SettingsDimensions.SectionSpacing),
     ) {
         Box(
             modifier =
                 Modifier
                     .size(106.dp)
-                    .clip(RoundedCornerShape(24.dp)),
+                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
         ) {
             AsyncImage(
                 model = thumbnailUrl,
@@ -900,8 +858,8 @@ private fun TopMixesForYouSection(
                         showRefresh = true,
                     )
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                        horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.ScreenHorizontalPadding),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         items(
@@ -938,7 +896,7 @@ private fun TopMixesMessageSection(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -958,25 +916,22 @@ private fun TopMixesEmptySection(
             onRefresh = onRefresh,
             showRefresh = reason != LibraryTopMixEmptyReason.AI_NOT_CONFIGURED,
         )
-        Card(
+        Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(32.dp),
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                    .yumaGlassCard(
+                        shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                        position = YumaSegmentPosition.Single,
+                    )
+                    .padding(20.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
             ) {
                 Text(
                     text =
@@ -1027,7 +982,7 @@ private fun TopMixesHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+                .padding(start = SettingsDimensions.ScreenHorizontalPadding, top = 8.dp, end = SettingsDimensions.ScreenHorizontalPadding, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -1064,46 +1019,32 @@ private fun LibraryTopMixCard(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "LibraryTopMixCardScale",
-    )
-
-    Card(
+    Box(
         modifier =
             modifier
                 .width(180.dp)
                 .height(130.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
                     onClick = onPlay,
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                    position = YumaSegmentPosition.Single,
                 ),
-        shape = RoundedCornerShape(32.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxHeight()
-                    .padding(16.dp),
+                    .padding(SettingsDimensions.ScreenHorizontalPadding),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column {
                 Text(
                     text = mix.title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1113,7 +1054,7 @@ private fun LibraryTopMixCard(
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -1152,8 +1093,8 @@ private fun LibraryTopMixCard(
                     onClick = onPlay,
                     colors =
                         IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
                     modifier = Modifier.size(48.dp),
                 ) {
@@ -1177,40 +1118,22 @@ private fun MostPlayedAlbumSpotlightCard(
     modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val isDark =
-        MaterialTheme.colorScheme.surface.let {
-            ColorUtils.calculateLuminance(it.toArgb()) < 0.5
-        }
-    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val spotlightBg =
-        remember(surfaceContainer, primaryColor, isDark) {
-            if (isDark) {
-                Color(ColorUtils.blendARGB(surfaceContainer.toArgb(), primaryColor.toArgb(), 0.12f))
-            } else {
-                Color(ColorUtils.blendARGB(surfaceContainer.toArgb(), primaryColor.toArgb(), 0.08f))
-            }
-        }
     val trackCountText = pluralStringResource(R.plurals.n_song, album.trackCount, album.trackCount)
-    val backgroundBrush =
-        remember(spotlightBg) {
-            Brush.verticalGradient(
-                colors =
-                    listOf(
-                        spotlightBg,
-                        spotlightBg.copy(alpha = 0.9f),
-                    ),
-            )
-        }
 
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(backgroundBrush)
-                .clickable(onClick = onOpenAlbum)
-                .padding(16.dp),
+                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
+                    onClick = onOpenAlbum,
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge),
+                    position = YumaSegmentPosition.Single,
+                )
+                .padding(SettingsDimensions.ScreenHorizontalPadding),
     ) {
         Column {
             Row(
@@ -1221,7 +1144,7 @@ private fun MostPlayedAlbumSpotlightCard(
                     modifier =
                         Modifier
                             .size(64.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
                             .background(primaryColor.copy(alpha = 0.16f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -1243,7 +1166,7 @@ private fun MostPlayedAlbumSpotlightCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(SettingsDimensions.ScreenHorizontalPadding))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
@@ -1252,7 +1175,7 @@ private fun MostPlayedAlbumSpotlightCard(
                             Modifier
                                 .clip(CircleShape)
                                 .background(primaryColor.copy(alpha = 0.16f))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                .padding(horizontal = SettingsDimensions.BadgePaddingH, vertical = 2.dp),
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.star),
@@ -1292,7 +1215,7 @@ private fun MostPlayedAlbumSpotlightCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(SettingsDimensions.RowIconSpacing))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1304,11 +1227,11 @@ private fun MostPlayedAlbumSpotlightCard(
                     shape = CircleShape,
                     colors =
                         ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
+                    modifier = Modifier.height(SettingsDimensions.LibraryChipHeight),
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.play),
@@ -1329,7 +1252,7 @@ private fun MostPlayedAlbumSpotlightCard(
                             containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                             contentColor = MaterialTheme.colorScheme.primary,
                         ),
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.shuffle),
@@ -1352,31 +1275,13 @@ fun ShortcutCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "ShortcutCardScale",
-    )
-
     val isDark =
         MaterialTheme.colorScheme.surface.let {
             ColorUtils.calculateLuminance(it.toArgb()) < 0.5
         }
 
-    val surfaceContainerColor = MaterialTheme.colorScheme.surfaceContainer
-    val finalBgColor =
-        remember(surfaceContainerColor, iconColor, isDark) {
-            if (isDark) {
-                Color(ColorUtils.blendARGB(surfaceContainerColor.toArgb(), iconColor.toArgb(), 0.08f))
-            } else {
-                Color(ColorUtils.blendARGB(surfaceContainerColor.toArgb(), iconColor.toArgb(), 0.06f))
-            }
-        }
-
     val iconBgColor =
-        remember(iconColor, isDark) {
+        remember(containerColor, iconColor, isDark) {
             if (isDark) {
                 iconColor.copy(alpha = 0.16f)
             } else {
@@ -1387,24 +1292,24 @@ fun ShortcutCard(
     Box(
         modifier =
             modifier
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clip(RoundedCornerShape(26.dp))
-                .background(finalBgColor)
-                .clickable(
-                    interactionSource = interactionSource,
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
-                ).padding(12.dp),
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    position = YumaSegmentPosition.Single,
+                )
+                .padding(SettingsDimensions.SectionSpacing),
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
         ) {
             Box(
                 modifier =
                     Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
+                        .size(SettingsDimensions.LibraryBadgeSize)
+                        .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
                         .background(iconBgColor),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1412,7 +1317,7 @@ fun ShortcutCard(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     tint = iconColor,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
             Column {

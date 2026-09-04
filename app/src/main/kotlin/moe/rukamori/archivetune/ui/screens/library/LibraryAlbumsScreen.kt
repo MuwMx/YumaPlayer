@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,9 +85,18 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryAlbumsViewModel
@@ -101,10 +111,11 @@ fun LibraryAlbumsScreen(
     val menuState = LocalMenuState.current
     val haptics = rememberYumaHaptics()
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
+    val yumaColors = LocalYumaColors.current
 
     var filter by rememberEnumPreference(AlbumFilterKey, AlbumFilter.LIKED)
     val (sortType, onSortTypeChange) =
@@ -138,13 +149,6 @@ fun LibraryAlbumsScreen(
             albums
         }
 
-    // Issue 2: player-aware bottom padding
-    val playerAwareBottomPadding =
-        LocalPlayerAwareWindowInsets.current
-            .only(WindowInsetsSides.Bottom)
-            .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
-
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.sync() },
@@ -156,7 +160,7 @@ fun LibraryAlbumsScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -222,22 +226,28 @@ fun LibraryAlbumsScreen(
                         Row(
                             modifier =
                                 Modifier
+                                    .height(SettingsDimensions.LibraryChipHeight)
+                                    .yumaClickable { showSortMenu = true }
+                                    .yumaGlassCard(
+                                        shape = CircleShape,
+                                        backgroundColor = yumaColors.glassBackground,
+                                        borderColor = yumaColors.glassBorder,
+                                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                    )
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                    .clickable { showSortMenu = true }
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = currentSortLabel,
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 painter = painterResource(id = R.drawable.expand_more),
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(16.dp),
                             )
                         }
@@ -262,7 +272,6 @@ fun LibraryAlbumsScreen(
                                     onClick = {
                                         filter = AlbumFilter.LIKED
                                         onSortTypeChange(type)
-                                        // Issue 4: A-Z sort defaults to ascending
                                         if (type == AlbumSortType.NAME) onSortDescendingChange(false)
                                         showSortMenu = false
                                     },
@@ -284,15 +293,20 @@ fun LibraryAlbumsScreen(
                         }
                     }
 
-                    // Sort direction toggle button
                     Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier =
                             Modifier
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { onSortDescendingChange(!sortDescending) }
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                .size(SettingsDimensions.LibraryChipHeight)
+                                .yumaClickable { onSortDescendingChange(!sortDescending) }
+                                .yumaGlassCard(
+                                    shape = CircleShape,
+                                    backgroundColor = yumaColors.glassBackground,
+                                    borderColor = yumaColors.glassBorder,
+                                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                )
+                                .clip(CircleShape),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             painter =
@@ -307,7 +321,7 @@ fun LibraryAlbumsScreen(
                                 } else {
                                     stringResource(R.string.sort_ascending)
                                 },
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -317,9 +331,15 @@ fun LibraryAlbumsScreen(
                 Row(
                     modifier =
                         Modifier
+                            .height(SettingsDimensions.LibraryChipHeight)
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = yumaColors.glassBackground,
+                                borderColor = yumaColors.glassBorder,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            )
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                            .padding(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
@@ -328,7 +348,7 @@ fun LibraryAlbumsScreen(
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(if (!isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .clickable { isGridView = false },
+                                .yumaClickable { isGridView = false },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -344,7 +364,7 @@ fun LibraryAlbumsScreen(
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(if (isGridView) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .clickable { isGridView = true },
+                                .yumaClickable { isGridView = true },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -362,11 +382,14 @@ fun LibraryAlbumsScreen(
             // Main albums list or grid layout
             if (isGridView) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4), // 4-column albums grid
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
+                    columns = GridCells.Fixed(4),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 ) {
                     // Featured Album spotlight card span all 4 columns
                     item(span = { GridItemSpan(4) }, key = "featured_album_card") {
@@ -375,11 +398,20 @@ fun LibraryAlbumsScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(36.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer)
-                                        .clickable {
-                                            navController.navigate("album/${album.id}")
-                                        }.padding(20.dp),
+                                        .yumaClickable(
+                                            pressedScale = SettingsAnimations.PressScale,
+                                            onClick = {
+                                                navController.navigate("album/${album.id}")
+                                            },
+                                        )
+                                        .yumaGlassCard(
+                                            shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                                            backgroundColor = yumaColors.glassBackground,
+                                            borderColor = yumaColors.glassBorder,
+                                            position = YumaSegmentPosition.Single,
+                                        )
+                                        .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
+                                        .padding(20.dp),
                             ) {
                                 Column {
                                     Row(
@@ -393,7 +425,7 @@ fun LibraryAlbumsScreen(
                                             modifier =
                                                 Modifier
                                                     .size(80.dp)
-                                                    .clip(RoundedCornerShape(24.dp)),
+                                                    .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
                                         )
 
                                         Spacer(modifier = Modifier.width(16.dp))
@@ -412,14 +444,14 @@ fun LibraryAlbumsScreen(
                                             Text(
                                                 text = album.album.title,
                                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
                                             Text(
                                                 text = album.artists.joinToString(", ") { it.name },
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
@@ -475,7 +507,7 @@ fun LibraryAlbumsScreen(
                                             Icon(
                                                 painter = painterResource(id = R.drawable.more_vert),
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }
@@ -484,159 +516,200 @@ fun LibraryAlbumsScreen(
                         }
                     }
 
-                    // 4-column albums list
-                    items(filteredAlbums, key = { it.id }) { album ->
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = { navController.navigate("album/${album.id}") },
-                                        onLongClick = {
-                                            haptics.longPress()
-                                            menuState.show {
-                                                AlbumMenu(
-                                                    originalAlbum = album,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ),
-                        ) {
-                            Box(
+                    if (filteredAlbums.isEmpty()) {
+                        item(span = { GridItemSpan(4) }, key = "empty_albums_grid") {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.album,
+                                titleRes = R.string.no_results_found,
+                                subtitleRes = R.string.library_albums_subtitle,
+                                modifier = Modifier.padding(vertical = 24.dp),
+                            )
+                        }
+                    } else {
+                        items(
+                            items = filteredAlbums,
+                            key = { it.id },
+                            contentType = { "album_grid_item" },
+                        ) { album ->
+                            Column(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(22.dp)),
+                                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                                        .yumaCombinedClickable(
+                                            pressedScale = SettingsAnimations.PressScale,
+                                            onClick = { navController.navigate("album/${album.id}") },
+                                            onLongClick = {
+                                                haptics.longPress()
+                                                menuState.show {
+                                                    AlbumMenu(
+                                                        originalAlbum = album,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            },
+                                        ),
                             ) {
-                                AsyncImage(
-                                    model = album.album.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                                // Play Overlay button on cover
                                 Box(
                                     modifier =
                                         Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .padding(6.dp)
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                            .clickable {
-                                                coroutineScope.launch {
-                                                    database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
-                                                        playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
-                                                    }
-                                                }
-                                            },
-                                    contentAlignment = Alignment.Center,
+                                            .fillMaxWidth()
+                                            .aspectRatio(1f)
+                                            .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
                                 ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.play),
+                                    AsyncImage(
+                                        model = album.album.thumbnailUrl,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(12.dp),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
                                     )
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(6.dp)
+                                                .size(24.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary)
+                                                .clickable {
+                                                    coroutineScope.launch {
+                                                        database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
+                                                            playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
+                                                        }
+                                                    }
+                                                },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.play),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(12.dp),
+                                        )
+                                    }
                                 }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = album.album.title,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = album.artists.joinToString(", ") { it.name },
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = album.album.title,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onBackground,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = album.artists.joinToString(", ") { it.name },
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
                         }
                     }
                 }
             } else {
                 // List View
                 LazyColumn(
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = playerAwareBottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 ) {
-                    items(filteredAlbums, key = { it.id }) { album ->
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(28.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                    .combinedClickable(
-                                        onClick = { navController.navigate("album/${album.id}") },
-                                        onLongClick = {
-                                            haptics.longPress()
-                                            menuState.show {
-                                                AlbumMenu(
-                                                    originalAlbum = album,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ).padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            AsyncImage(
-                                model = album.album.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                    if (filteredAlbums.isEmpty()) {
+                        item(key = "empty_albums_list") {
+                            LibraryEmptyState(
+                                iconRes = R.drawable.album,
+                                titleRes = R.string.no_results_found,
+                                subtitleRes = R.string.library_albums_subtitle,
+                                modifier = Modifier.padding(vertical = 24.dp),
+                            )
+                        }
+                    } else {
+                        itemsIndexed(
+                            items = filteredAlbums,
+                            key = { _, it -> it.id },
+                            contentType = { _, _ -> "album_list_item" },
+                        ) { index, album ->
+                            val segmentPosition = yumaSegmentPosition(index, filteredAlbums.size)
+                            Row(
                                 modifier =
                                     Modifier
-                                        .size(60.dp)
-                                        .clip(RoundedCornerShape(20.dp)),
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = album.album.title,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = album.artists.joinToString(", ") { it.name },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
-                                            playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
-                                        }
-                                    }
-                                },
-                                colors =
-                                    IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                        contentColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                modifier = Modifier.size(36.dp),
+                                        .fillMaxWidth()
+                                        .yumaCombinedClickable(
+                                            pressedScale = SettingsAnimations.PressScale,
+                                            onClick = { navController.navigate("album/${album.id}") },
+                                            onLongClick = {
+                                                haptics.longPress()
+                                                menuState.show {
+                                                    AlbumMenu(
+                                                        originalAlbum = album,
+                                                        navController = navController,
+                                                        onDismiss = menuState::dismiss,
+                                                    )
+                                                }
+                                            },
+                                        )
+                                        .yumaGlassCard(
+                                            shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                            backgroundColor = yumaColors.glassBackground,
+                                            borderColor = yumaColors.glassBorder,
+                                            position = segmentPosition,
+                                        )
+                                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                                        .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.play),
-                                    contentDescription = stringResource(R.string.play),
-                                    modifier = Modifier.size(16.dp),
+                                AsyncImage(
+                                    model = album.album.thumbnailUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier =
+                                        Modifier
+                                            .size(56.dp)
+                                            .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
                                 )
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = album.album.title,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = album.artists.joinToString(", ") { it.name },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            database.albumWithSongs(album.id).firstOrNull()?.let { albumWithSongs ->
+                                                playerConnection.playQueue(LocalAlbumRadio(albumWithSongs))
+                                            }
+                                        }
+                                    },
+                                    colors =
+                                        IconButtonDefaults.iconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            contentColor = MaterialTheme.colorScheme.primary,
+                                        ),
+                                    modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.play),
+                                        contentDescription = stringResource(R.string.play),
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
                             }
                         }
                     }

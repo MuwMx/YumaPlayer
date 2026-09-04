@@ -8,16 +8,12 @@ package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +22,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,10 +37,14 @@ import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.SpotifyLibraryPlaylistListItem
 import moe.rukamori.archivetune.ui.component.SpotifyLikedSongsListCard
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 
 @Composable
 fun LibrarySpotifyPlaylistsScreen(
@@ -61,12 +60,6 @@ fun LibrarySpotifyPlaylistsScreen(
     val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
     var showSpotifyLogin by remember { mutableStateOf(false) }
 
-    val playerAwareBottomPadding =
-        LocalPlayerAwareWindowInsets.current
-            .only(WindowInsetsSides.Bottom)
-            .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
-
     if (showSpotifyLogin) {
         SpotifyLoginSheet(
             onDismiss = { showSpotifyLogin = false },
@@ -81,7 +74,7 @@ fun LibrarySpotifyPlaylistsScreen(
     if (!spotifyState.isAuthenticated) {
         SpotifyLoginFallback(
             onLoginClick = { showSpotifyLogin = true },
-            modifier = Modifier.padding(bottom = playerAwareBottomPadding)
+            modifier = Modifier.padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
         )
         return
     }
@@ -93,19 +86,18 @@ fun LibrarySpotifyPlaylistsScreen(
     ) {
         LazyColumn(
             state = rememberLazyListState(),
-            contentPadding =
-                PaddingValues(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = playerAwareBottomPadding,
-                ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize(),
+            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
         ) {
             item(key = "spotify_liked_songs", contentType = "spotify_liked_songs") {
                 val likedSongsTotal by viewModel.likedSongsTotal.collectAsStateWithLifecycle()
                 SpotifyLikedSongsListCard(
                     likedSongsTotal = likedSongsTotal,
+                    position = YumaSegmentPosition.Single,
                     onClick = { navController.navigate("spotify_liked_songs") },
                     onPlay = {
                         playerConnection?.let { conn ->
@@ -126,39 +118,41 @@ fun LibrarySpotifyPlaylistsScreen(
 
             if (playlists.isEmpty()) {
                 item(key = "spotify_empty", contentType = "spotify_empty") {
-                    Text(
-                        text = stringResource(R.string.spotify_no_sources),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(vertical = 16.dp),
+                    LibraryEmptyState(
+                        iconRes = R.drawable.queue_music,
+                        titleRes = R.string.no_playlists_yet,
+                        subtitleRes = R.string.spotify_no_sources,
+                        modifier = Modifier.padding(vertical = 24.dp),
                     )
                 }
-            }
-
-            items(
-                items = playlists,
-                key = { playlist -> playlist.id },
-                contentType = { "spotify_playlist" },
-            ) { playlist ->
-                SpotifyLibraryPlaylistListItem(
-                    playlist = playlist,
-                    navController = navController,
-                    onPlay = {
-                        playerConnection?.let { conn ->
-                            coroutineScope.launch {
-                                val preloadTrack = Spotify.playlistTracks(playlistId = playlist.id, limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
-                                val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
-                                conn.playQueue(
-                                    SpotifyPlaylistQueue(
-                                        playlistId = playlist.id,
-                                        title = playlist.name,
-                                        preloadItem = preloadItem,
+            } else {
+                itemsIndexed(
+                    items = playlists,
+                    key = { _, playlist -> playlist.id },
+                    contentType = { _, _ -> "spotify_playlist" },
+                ) { index, playlist ->
+                    val segmentPosition = yumaSegmentPosition(index, playlists.size)
+                    SpotifyLibraryPlaylistListItem(
+                        playlist = playlist,
+                        position = segmentPosition,
+                        navController = navController,
+                        onPlay = {
+                            playerConnection?.let { conn ->
+                                coroutineScope.launch {
+                                    val preloadTrack = Spotify.playlistTracks(playlistId = playlist.id, limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
+                                    val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                    conn.playQueue(
+                                        SpotifyPlaylistQueue(
+                                            playlistId = playlist.id,
+                                            title = playlist.name,
+                                            preloadItem = preloadItem,
+                                        )
                                     )
-                                )
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
     }

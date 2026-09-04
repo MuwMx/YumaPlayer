@@ -160,6 +160,13 @@ object SettingsDimensions {
     val YumaSwitchUncheckedThumbAlpha = 0.6f
     val YumaSwitchTrackAlpha = 0.3f
     val YumaSwitchUncheckedTrackColor = Color(0x0DFFFFFF)
+
+    // -- Library (YDS) -------------------------------------------------------
+    val LibraryChipHeight = 36.dp
+    val LibraryBadgeSize = 46.dp
+    val LibraryCardRadius = 16.dp
+    val LibrarySheetRadius = 24.dp
+    val LibrarySmallRadius = 12.dp
 }
 
 object SettingsAnimations {
