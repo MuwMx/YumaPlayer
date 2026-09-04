@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +59,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -82,6 +80,7 @@ import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
+import moe.rukamori.archivetune.ui.component.LibraryFilterChipBar
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -137,7 +136,6 @@ fun LibraryScreen(
 
     val currentFilter = libraryFilters.getOrElse(pagerState.currentPage) { LibraryFilter.LIBRARY }
 
-    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val headerState = rememberLibraryCollapsingHeaderState(LibraryHeaderHeight)
 
@@ -154,8 +152,6 @@ fun LibraryScreen(
         ) {
             LibraryCollapsingHeader(currentFilter = currentFilter, state = headerState)
 
-            val tabListState = rememberLazyListState()
-
             LaunchedEffect(defaultFilter, libraryFilters) {
                 val selectedFilter = defaultFilter.takeIf { it in libraryFilters } ?: LibraryFilter.LIBRARY
                 val selectedPage = libraryFilters.indexOf(selectedFilter).takeIf { it >= 0 } ?: 0
@@ -164,77 +160,26 @@ fun LibraryScreen(
                 }
             }
 
-            // Sync Pager -> Preference & lazy list centering
-            LaunchedEffect(pagerState.currentPage, libraryFilters) {
+            LaunchedEffect(pagerState.currentPage) {
                 headerState.reset()
-                val targetPage = pagerState.currentPage.coerceIn(0, libraryFilters.lastIndex)
-                val targetFilter = libraryFilters.getOrElse(targetPage) { LibraryFilter.LIBRARY }
-
-                // Centering the tab chip scroll alignment
-                val tabWidth =
-                    when (targetFilter) {
-                        LibraryFilter.LIBRARY -> 116.dp
-                        LibraryFilter.PLAYLISTS -> 132.dp
-                        LibraryFilter.SPOTIFY -> 168.dp
-                        LibraryFilter.SONGS -> 102.dp
-                        LibraryFilter.ARTISTS -> 116.dp
-                        LibraryFilter.ALBUMS -> 110.dp
-                        else -> 116.dp
-                    }
-                val screenWidth = configuration.screenWidthDp.dp
-                val targetOffsetDp = (screenWidth - tabWidth) / 2
-                val targetOffsetPx = with(density) { targetOffsetDp.roundToPx() }
-
-                tabListState.animateScrollToItem(targetPage, scrollOffset = -targetOffsetPx)
             }
 
-            // Expressive Tab Chips Row
-            LazyRow(
-                state = tabListState,
+            LibraryFilterChipBar(
+                selected = currentFilter,
+                onSelected = { filter ->
+                    val page = libraryFilters.indexOf(filter)
+                    if (page >= 0) {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(page)
+                        }
+                    }
+                },
+                chips = libraryFilters,
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                items(
-                    items = libraryFilters,
-                    key = { filter -> filter.name },
-                    contentType = { "library_filter_chip" },
-                ) { filter ->
-                    val page = libraryFilters.indexOf(filter)
-                    val label =
-                        when (filter) {
-                            LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
-                            LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                            LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
-                            LibraryFilter.SONGS -> stringResource(R.string.songs)
-                            LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                            LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                        }
-                    val iconRes =
-                        when (filter) {
-                            LibraryFilter.LIBRARY -> R.drawable.graphic_eq
-                            LibraryFilter.PLAYLISTS -> R.drawable.queue_music
-                            LibraryFilter.SPOTIFY -> R.drawable.spotify_icon
-                            LibraryFilter.SONGS -> R.drawable.music_note
-                            LibraryFilter.ARTISTS -> R.drawable.person
-                            LibraryFilter.ALBUMS -> R.drawable.album
-                        }
-                    ExpressiveTabChip(
-                        label = label,
-                        iconRes = iconRes,
-                        selected = currentFilter == filter,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(page)
-                            }
-                        },
-                    )
-                }
-            }
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -484,86 +429,6 @@ private fun PlaylistTagFilterChip(
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = contentColor,
-        )
-    }
-}
-
-@Composable
-fun ExpressiveTabChip(
-    label: String,
-    iconRes: Int,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue =
-            if (isPressed) {
-                0.92f
-            } else if (selected) {
-                1.05f
-            } else {
-                1.0f
-            },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "TabChipScale",
-    )
-
-    val bgColor by animateColorAsState(
-        targetValue =
-            if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "TabChipBgColor",
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue =
-            if (selected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "TabChipContentColor",
-    )
-
-    Row(
-        modifier =
-            Modifier
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clip(CircleShape)
-                .background(bgColor)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick,
-                ).padding(horizontal = 18.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            painter = painterResource(id = iconRes),
-            contentDescription = label,
-            tint = contentColor,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style =
-                MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                ),
             color = contentColor,
         )
     }

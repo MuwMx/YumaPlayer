@@ -41,3 +41,15 @@
 - ChangelogScreen: `ReleaseCard` YDS `yumaGlassCard 0.5dp 28/24dp`, `LocalYumaColors`, `SegmentedItemGap`, `ScreenHorizontalPadding`, резерв 180dp Coil gif, `LazyColumn key/contentType`
 - Без хардкода `ic_update_chara`
 - Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS (warning fixed `optString` null)
+
+## Library YDS Redesign Regressions Fix
+- `LibraryScreen.kt`:
+  - Заменен старый кастомный ряд чипсов (`ExpressiveTabChip` + ручной расчет центрирования) на компонент `LibraryFilterChipBar` (высота `SettingsDimensions.LibraryChipHeight` 36dp, форма `CircleShape`).
+  - Убран неиспользуемый код `ExpressiveTabChip` и `rememberLazyListState`.
+- `LibraryMixScreen.kt`:
+  - Корневой `LazyColumn` обновлен: `contentPadding` теперь использует `LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues()`, исключая двойной отступ от статус-бара.
+  - Вертикальный отступ приведен к `Arrangement.spacedBy(SettingsDimensions.SectionSpacing)`.
+- `LibrarySongsScreen.kt` & `LocalSongScreen.kt`:
+  - Отступ между элементами треков в `LazyColumn` заменен с `2.dp` на `6.dp` (`Arrangement.spacedBy(6.dp)`).
+  - `contentPadding` настроен на `LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues()`.
+- Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS

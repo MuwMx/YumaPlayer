@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -154,8 +156,8 @@ fun LibraryMixScreen(
     ) {
         LazyColumn(
             state = rememberLazyListState(),
-            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.ScreenBottomPadding),
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "most_played_album_spotlight", contentType = "spotlight") {
