@@ -167,6 +167,9 @@ object SettingsDimensions {
     val LibraryCardRadius = 16.dp
     val LibrarySheetRadius = 24.dp
     val LibrarySmallRadius = 12.dp
+    val LibraryTabHeight = 44.dp
+    val LibraryTabPaddingH = 18.dp
+    val LibraryItemGap = 6.dp
 }
 
 object SettingsAnimations {

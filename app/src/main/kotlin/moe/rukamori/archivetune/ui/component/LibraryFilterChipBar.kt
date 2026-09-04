@@ -49,7 +49,6 @@ fun LibraryFilterChipBar(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    rememberCoroutineScope()
 
     LaunchedEffect(selectedId, chips) {
         val index = chips.indexOfFirst { it.id == selectedId }
@@ -133,7 +132,7 @@ private fun LibraryFilterChipItem(
 
     Row(
         modifier = Modifier
-            .height(SettingsDimensions.LibraryChipHeight)
+            .height(SettingsDimensions.LibraryTabHeight)
             .yumaClickable(onClick = onClick)
             .yumaGlassCard(
                 shape = CircleShape,
@@ -142,7 +141,7 @@ private fun LibraryFilterChipItem(
                 strokeWidth = SettingsDimensions.GlassBorderThickness,
             )
             .clip(CircleShape)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = SettingsDimensions.LibraryTabPaddingH),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -158,7 +157,7 @@ private fun LibraryFilterChipItem(
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
+                fontSize = 15.sp,
             ),
             color = contentColor,
             maxLines = 1,

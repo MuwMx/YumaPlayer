@@ -7,9 +7,10 @@
 package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -44,7 +45,6 @@ import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
-import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 
 @Composable
 fun LibrarySpotifyPlaylistsScreen(
@@ -86,8 +86,8 @@ fun LibrarySpotifyPlaylistsScreen(
     ) {
         LazyColumn(
             state = rememberLazyListState(),
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.LibraryItemGap),
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -131,10 +131,9 @@ fun LibrarySpotifyPlaylistsScreen(
                     key = { _, playlist -> playlist.id },
                     contentType = { _, _ -> "spotify_playlist" },
                 ) { index, playlist ->
-                    val segmentPosition = yumaSegmentPosition(index, playlists.size)
                     SpotifyLibraryPlaylistListItem(
                         playlist = playlist,
-                        position = segmentPosition,
+                        position = YumaSegmentPosition.Single,
                         navController = navController,
                         onPlay = {
                             playerConnection?.let { conn ->

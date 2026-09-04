@@ -12,14 +12,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -42,7 +38,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -114,7 +109,6 @@ import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryPlaylistsViewModel
@@ -205,13 +199,6 @@ fun LibraryPlaylistsScreen(
             onDismiss = { showCreatePlaylistDialog = false },
         )
     }
-
-    // Issue 2: player-aware bottom padding
-    val playerAwareBottomPadding =
-        LocalPlayerAwareWindowInsets.current
-            .only(WindowInsetsSides.Bottom)
-            .asPaddingValues()
-            .calculateBottomPadding() + 12.dp
 
     val yumaColors = LocalYumaColors.current
 
@@ -496,8 +483,7 @@ fun LibraryPlaylistsScreen(
             if (isGridView) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
                         .fillMaxSize()
@@ -549,8 +535,8 @@ fun LibraryPlaylistsScreen(
                 val showDragHandles = sortType == PlaylistSortType.CUSTOM && !locked
                 LazyColumn(
                     state = lazyListState,
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.LibraryItemGap),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
@@ -570,7 +556,6 @@ fun LibraryPlaylistsScreen(
                             key = { _, playlist -> playlist.id },
                             contentType = { _, _ -> "playlist_list" },
                         ) { index, playlist ->
-                            val segmentPosition = yumaSegmentPosition(index, listPlaylists.size)
                             ReorderableItem(
                                 state = reorderableState,
                                 key = playlist.id,
@@ -581,7 +566,7 @@ fun LibraryPlaylistsScreen(
                             ) {
                                 PlaylistListCard(
                                     playlist = playlist,
-                                    position = segmentPosition,
+                                    position = YumaSegmentPosition.Single,
                                     onClick = {
                                         openPlaylist(navController, playlist)
                                     },

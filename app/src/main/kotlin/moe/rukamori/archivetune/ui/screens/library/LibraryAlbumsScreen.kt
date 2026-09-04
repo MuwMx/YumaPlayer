@@ -383,8 +383,7 @@ fun LibraryAlbumsScreen(
             if (isGridView) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier =
                         Modifier
@@ -611,8 +610,8 @@ fun LibraryAlbumsScreen(
             } else {
                 // List View
                 LazyColumn(
-                    contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+                    contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.LibraryItemGap),
                     modifier =
                         Modifier
                             .fillMaxSize()
