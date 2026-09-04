@@ -59,6 +59,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -759,26 +760,26 @@ private fun LocalSongScanSheet(
                 )
 
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(contentAlpha),
                     shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = heroContainerColor,
+                    modifier = Modifier.size(80.dp),
                 ) {
-                    AnimatedContent(
-                        targetState = heroIcon,
-                        transitionSpec = {
-                            fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
-                                fadeOut(spring(stiffness = Spring.StiffnessMedium))
-                        },
-                        label = "heroIcon",
-                    ) { icon ->
-                        Icon(
-                            painter = painterResource(icon),
-                            contentDescription = null,
-                            tint = heroTint,
-                            modifier = Modifier.size(SettingsDimensions.LibraryChipHeight),
-                        )
+                    Box(contentAlignment = Alignment.Center) {
+                        AnimatedContent(
+                            targetState = heroIcon,
+                            transitionSpec = {
+                                fadeIn(spring(stiffness = Spring.StiffnessLow)) togetherWith
+                                        fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                            },
+                            label = "heroIcon",
+                        ) { icon ->
+                            Icon(
+                                painter = painterResource(icon),
+                                contentDescription = null,
+                                tint = heroTint,
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
                     }
                 }
 
@@ -834,15 +835,13 @@ private fun LocalSongScanSheet(
                     }
                 }
 
-                Box(
+                // Блок информации о разрешениях и последнем сканировании
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .alpha(contentAlpha)
-                        .yumaGlassCard(
-                            shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                            position = YumaSegmentPosition.Single,
-                        )
-                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
+                        .alpha(contentAlpha),
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         ScanSheetInfoRow(
@@ -850,16 +849,13 @@ private fun LocalSongScanSheet(
                             title = stringResource(R.string.permission_storage_title),
                             description = stringResource(R.string.permission_storage_desc),
                             trailing = {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (hasStoragePermission) {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.errorContainer
-                                            },
-                                        ),
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (hasStoragePermission) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.errorContainer
+                                    },
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -867,38 +863,39 @@ private fun LocalSongScanSheet(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     ) {
                                         Icon(
-                                            painter =
-                                                painterResource(
-                                                    if (hasStoragePermission) R.drawable.done else R.drawable.close,
-                                                ),
+                                            painter = painterResource(
+                                                if (hasStoragePermission) R.drawable.done else R.drawable.close,
+                                            ),
                                             contentDescription = null,
-                                            tint =
-                                                if (hasStoragePermission) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onErrorContainer
-                                                },
+                                            tint = if (hasStoragePermission) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            },
                                             modifier = Modifier.size(14.dp),
                                         )
                                         Text(
-                                            text =
-                                                if (hasStoragePermission) {
-                                                    stringResource(R.string.permission_status_allowed)
-                                                } else {
-                                                    stringResource(R.string.not_allowed)
-                                                },
+                                            text = if (hasStoragePermission) {
+                                                stringResource(R.string.permission_status_allowed)
+                                            } else {
+                                                stringResource(R.string.not_allowed)
+                                            },
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.SemiBold,
-                                            color =
-                                                if (hasStoragePermission) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onErrorContainer
-                                                },
+                                            color = if (hasStoragePermission) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            },
                                         )
                                     }
                                 }
                             },
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(horizontal = 20.dp),
                         )
 
                         ScanSheetInfoRow(
@@ -912,15 +909,12 @@ private fun LocalSongScanSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Box(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .alpha(contentAlpha)
-                        .yumaGlassCard(
-                            shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                            position = YumaSegmentPosition.Single,
-                        )
-                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
+                        .alpha(contentAlpha),
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1159,14 +1153,10 @@ private fun LocalSongScanSettingCard(
     onActionClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .yumaGlassCard(
-                shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                position = YumaSegmentPosition.Single,
-            )
-            .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1177,19 +1167,19 @@ private fun LocalSongScanSettingCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                Surface(
+                    shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.size(44.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(iconRes),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
 
                 Column(
@@ -1208,31 +1198,31 @@ private fun LocalSongScanSettingCard(
                     )
 
                     if (actionLabel != null && onActionClick != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        Surface(
+                            shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             modifier = Modifier
                                 .padding(top = 8.dp)
                                 .heightIn(min = 40.dp)
-                                .yumaClickable(onClick = onActionClick)
-                                .yumaGlassCard(
-                                    shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
-                                )
-                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .yumaClickable(onClick = onActionClick),
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.add),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                text = actionLabel,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.add),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = actionLabel,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
                         }
                     }
                 }
