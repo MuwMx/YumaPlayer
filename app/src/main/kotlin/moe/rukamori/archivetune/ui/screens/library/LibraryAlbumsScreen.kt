@@ -632,7 +632,6 @@ fun LibraryAlbumsScreen(
                             key = { _, it -> it.id },
                             contentType = { _, _ -> "album_list_item" },
                         ) { index, album ->
-                            val segmentPosition = yumaSegmentPosition(index, filteredAlbums.size)
                             Row(
                                 modifier =
                                     Modifier
@@ -655,7 +654,7 @@ fun LibraryAlbumsScreen(
                                             shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
                                             backgroundColor = yumaColors.glassBackground,
                                             borderColor = yumaColors.glassBorder,
-                                            position = segmentPosition,
+                                            position = YumaSegmentPosition.Single
                                         )
                                         .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
                                         .padding(10.dp),
