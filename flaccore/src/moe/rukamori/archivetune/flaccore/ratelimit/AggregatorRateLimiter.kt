@@ -90,25 +90,6 @@ class AggregatorRateLimiter {
     val circuitResetEvents: SharedFlow<String> = _circuitResetEvents.asSharedFlow()
 
     init {
-        // ARCOD (Qobuz-DL proxy via arcod.xyz) runs one operator-paid Qobuz
-        // account behind a Supabase-gated job queue, with a per-account ~50
-        // downloads/hour cap. Stay deliberately conservative: 1 token / 2s,
-        // burst 2. CRITICAL: ARCOD's 429 = "you hit the hourly cap, slow down"
-        // — that's NORMAL operation against a quota, NOT a health failure. So
-        // `rateLimitTripsBreaker = false`: a 429 applies the backoff but must
-        // NOT trip the breaker. (Tripping it disabled ARCOD for 10 min on a
-        // real sync, so every track fell through to yt-dlp — verified on-device
-        // 2026-06-16.) Only genuine failures (5xx/network via reportFailure)
-        // trip the breaker.
-        configs["arcod"] = Config(
-            tokensPerSecond = 1.0 / 2.0,   // 1 token / 2 seconds
-            burstCapacity = 2.0,
-            backoff429Ms = 60_000L,        // 1 min pause on 429 (cap hit)
-            circuitBreakAfter = 5,
-            circuitBreakDurationMs = 10 * 60_000L, // 10 min
-            rateLimitTripsBreaker = false,
-        )
-
         // qbdlx (direct www.qobuz.com on shared real accounts + rotating token
         // pool). Slowest of the lossless sources: it hits Qobuz directly with
         // signed requests on accounts whose abuse heuristics we must not trip,

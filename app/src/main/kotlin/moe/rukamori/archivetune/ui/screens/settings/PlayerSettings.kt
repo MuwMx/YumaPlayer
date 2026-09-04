@@ -154,9 +154,6 @@ fun PlayerSettings(navController: NavController) {
         }
     }
 
-    val (squidCaptchaCookie, onSquidCaptchaCookieChange) = rememberPreference(moe.rukamori.archivetune.constants.SquidCaptchaCookieKey, "")
-    val (arcodStashKey, onArcodStashKeyChange) = rememberPreference(moe.rukamori.archivetune.constants.ArcodStashKeyKey, "")
-    val (arcodBearerToken, onArcodBearerTokenChange) = rememberPreference(moe.rukamori.archivetune.constants.ArcodBearerTokenKey, "")
     val (qobuzAppId, onQobuzAppIdChange) = rememberPreference(moe.rukamori.archivetune.constants.QobuzAppIdKey, "")
     val (qobuzAppSecret, onQobuzAppSecretChange) = rememberPreference(moe.rukamori.archivetune.constants.QobuzAppSecretKey, "")
     val (qobuzUserAuthToken, onQobuzUserAuthTokenChange) = rememberPreference(moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey, "")
@@ -262,12 +259,6 @@ fun PlayerSettings(navController: NavController) {
                         )
                     }
                     FlacTokenInputs(
-                        squidCaptchaCookie = squidCaptchaCookie,
-                        onSquidCaptchaCookieChange = onSquidCaptchaCookieChange,
-                        arcodStashKey = arcodStashKey,
-                        onArcodStashKeyChange = onArcodStashKeyChange,
-                        arcodBearerToken = arcodBearerToken,
-                        onArcodBearerTokenChange = onArcodBearerTokenChange,
                         qobuzAppId = qobuzAppId,
                         onQobuzAppIdChange = onQobuzAppIdChange,
                         qobuzAppSecret = qobuzAppSecret,
@@ -442,12 +433,6 @@ fun PlaybackSourceSelector(
 
 
 fun PreferenceGroupScope.FlacTokenInputs(
-    squidCaptchaCookie: String,
-    onSquidCaptchaCookieChange: (String) -> Unit,
-    arcodStashKey: String,
-    onArcodStashKeyChange: (String) -> Unit,
-    arcodBearerToken: String,
-    onArcodBearerTokenChange: (String) -> Unit,
     qobuzAppId: String,
     onQobuzAppIdChange: (String) -> Unit,
     qobuzAppSecret: String,
@@ -455,30 +440,6 @@ fun PreferenceGroupScope.FlacTokenInputs(
     qobuzUserAuthToken: String,
     onQobuzUserAuthTokenChange: (String) -> Unit
 ) {
-    item {
-        EditTextPreference(
-            title = { Text(stringResource(R.string.squid_captcha_cookie)) },
-            icon = { Icon(painterResource(R.drawable.lock), null) },
-            value = squidCaptchaCookie,
-            onValueChange = onSquidCaptchaCookieChange,
-        )
-    }
-    item {
-        EditTextPreference(
-            title = { Text(stringResource(R.string.arcod_stash_key)) },
-            icon = { Icon(painterResource(R.drawable.lock), null) },
-            value = arcodStashKey,
-            onValueChange = onArcodStashKeyChange,
-        )
-    }
-    item {
-        EditTextPreference(
-            title = { Text(stringResource(R.string.arcod_bearer_token)) },
-            icon = { Icon(painterResource(R.drawable.lock), null) },
-            value = arcodBearerToken,
-            onValueChange = onArcodBearerTokenChange,
-        )
-    }
     item {
         EditTextPreference(
             title = { Text(stringResource(R.string.qobuz_app_id)) },

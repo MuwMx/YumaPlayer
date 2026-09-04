@@ -119,4 +119,4 @@ Each record captures the context, decision, rationale, and consequences of a key
   - FLAC downloads are enqueued as unique WorkManager jobs (`flac_download_<songId>`, `ExistingWorkPolicy.KEEP`); the URL is resolved inside `FlacDownloadWorker.doWork()` through `FlacDownloaderEntryPoint`, with HTTP headers/timeouts and `sanitizeFileName` applied via `SafDirectoryManager`.
 - **Consequences:**
   - *Positive:* Lossless streaming works with public proxies (squid/kennyy) without filling in credentials; user-provided tokens take priority over built-in defaults; previously-cached URLs are reused without a new HTTP resolve until their expiry minus a safety margin.
-  - *Negative:* Direct Qobuz providers (qbdlx/arcod) still require real tokens to function.
+  - *Negative:* Direct Qobuz provider (qbdlx) still requires real tokens to function.

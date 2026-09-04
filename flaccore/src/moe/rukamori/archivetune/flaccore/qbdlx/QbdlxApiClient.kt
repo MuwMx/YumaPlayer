@@ -29,16 +29,6 @@ class QbdlxApiClient(
     private val signer: QbdlxSigner,
     private val signingResolver: QbdlxSigningResolver,
 ) {
-    // appId read from FlacConfig directly (like ArcodClient reads ARCOD_STREAM_BASE) —
-    // NOT a constructor String param, to avoid polluting the global Hilt String namespace.
-    // internal var so tests can override.
-    //
-    // Only a FALLBACK for tokens the resolver doesn't know: [get] sends each token's
-    // own app_id. This used to be the catalog-wide default, on the belief (written
-    // here, and wrong) that "search/metadata work under any valid app_id" — live
-    // probing on 2026-08-15 showed catalog/search answers 401 on an app_id mismatch
-    // exactly like getFileUrl does, which is what made two thirds of the pool look
-    // permanently dead.
     internal var appId: String = ""
     internal var httpClient: OkHttpClient = sharedClient  // direct www.qobuz.com; no interceptor
     internal var baseUrl: String = ORIGIN

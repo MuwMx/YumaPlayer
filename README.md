@@ -108,7 +108,7 @@ No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-p
 * **YouTube Music Home:** Full-catalog search across YouTube Music, charts, mood & genre categories, radio stations, and fast channel switching.
 
 ### 🎧 Audiophile Playback & Lossless FLAC
-* **Lossless FLAC:** Stream and download true lossless FLAC tracks (via Qobuz / QBDLX / Arcod backbone integration) using your own credentials or open community resolvers.
+* **Lossless FLAC:** Stream and download true lossless FLAC tracks (via Qobuz / QBDLX backbone integration) using your own credentials or open community resolvers.
 * **Seamless Fallback:** If a track is unavailable in lossless catalogs, playback instantly and silently routes through YouTube Music's high-bitrate stream (Opus / AAC).
 * **Local Audio Engine:** Built-in player for standalone files stored on your device (FLAC, MP3, AAC, OGG, WAV).
 * **Offline & Caching:** Automatic caching of played YouTube Music tracks for offline listening without recurring data usage *(FLAC offline caching in active development)*.
@@ -281,7 +281,7 @@ YumaPlayer is built on the shoulders of the open-source community:
 * **[Stash](https://github.com/rawnaldclark/Stash)** — for inspiration in organizing lossless FLAC streaming and download pipelines.
 * **[Metrolist](https://github.com/mostafaalagamy/Metrolist)** & **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** — for early lyrics parsing and interface inspirations.
 * **[PixelPlayer](https://github.com/theovilardo/PixelPlayer)** — for swipe kinematics ideas and queue structure.
-* **[QBDLX](https://github.com/ImAiiR/QobuzDownloaderX)** / **[arcod](https://arcod.xyz)** — for the lossless audio streaming infrastructure.
+* **[QBDLX](https://github.com/ImAiiR/QobuzDownloaderX)** — for the lossless audio streaming infrastructure.
 * **[LRCLIB](https://lrclib.net/)** & **[BetterLyrics](https://better-lyrics.boidu.dev/)** — for the open synchronized lyrics databases.
 
 ---

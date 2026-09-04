@@ -730,9 +730,6 @@
     <string name="update_version_format">Версия %s</string>
     <string name="update_action_download">Скачать обновление</string>
     <string name="update_action_later">Позже</string>
-    <string name="squid_captcha_cookie">Squid Captcha Cookie</string>
-    <string name="arcod_stash_key">Arcod Stash Key</string>
-    <string name="arcod_bearer_token">Arcod Bearer Token</string>
     <string name="qobuz_app_id">Qobuz App ID</string>
     <string name="qobuz_app_secret">Qobuz App Secret</string>
     <string name="qobuz_user_auth_token">Qobuz User Auth Token</string>

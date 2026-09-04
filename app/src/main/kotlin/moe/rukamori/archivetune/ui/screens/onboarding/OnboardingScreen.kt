@@ -1144,9 +1144,6 @@ private fun CustomizationPage(
     )
     val (enableLossless, onEnableLosslessChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.EnableLosslessKey, defaultValue = false)
 
-    val (squidCaptchaCookie, onSquidCaptchaCookieChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.SquidCaptchaCookieKey, "")
-    val (arcodStashKey, onArcodStashKeyChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.ArcodStashKeyKey, "")
-    val (arcodBearerToken, onArcodBearerTokenChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.ArcodBearerTokenKey, "")
     val (qobuzAppId, onQobuzAppIdChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.QobuzAppIdKey, "")
     val (qobuzAppSecret, onQobuzAppSecretChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.QobuzAppSecretKey, "")
     val (qobuzUserAuthToken, onQobuzUserAuthTokenChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey, "")
@@ -1310,12 +1307,6 @@ private fun CustomizationPage(
                     modifier = Modifier.widthIn(max = OnboardingContentMaxWidth).fillMaxWidth()
                 ) {
                     FlacTokenInputs(
-                        squidCaptchaCookie = squidCaptchaCookie,
-                        onSquidCaptchaCookieChange = onSquidCaptchaCookieChange,
-                        arcodStashKey = arcodStashKey,
-                        onArcodStashKeyChange = onArcodStashKeyChange,
-                        arcodBearerToken = arcodBearerToken,
-                        onArcodBearerTokenChange = onArcodBearerTokenChange,
                         qobuzAppId = qobuzAppId,
                         onQobuzAppIdChange = onQobuzAppIdChange,
                         qobuzAppSecret = qobuzAppSecret,

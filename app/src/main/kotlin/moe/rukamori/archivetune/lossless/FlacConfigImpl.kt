@@ -1,9 +1,6 @@
 package moe.rukamori.archivetune.lossless
 
 import android.content.Context
-import androidx.datastore.preferences.core.stringPreferencesKey
-import moe.rukamori.archivetune.constants.ArcodBearerTokenKey
-import moe.rukamori.archivetune.constants.ArcodStashKeyKey
 import moe.rukamori.archivetune.constants.EnableLosslessKey
 import moe.rukamori.archivetune.constants.QobuzAppIdKey
 import moe.rukamori.archivetune.constants.QobuzAppSecretKey
@@ -27,17 +24,5 @@ class FlacConfigImpl(private val context: Context) : FlacConfig {
 
     override suspend fun qbdlxTokenPool(): String {
         return context.dataStore.getAsync(QobuzUserAuthTokenKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.QOBUZ_USER_AUTH_TOKEN
-    }
-
-    override suspend fun arcodApiBase(): String {
-        return "https://arcod.xyz/api"
-    }
-
-    override suspend fun arcodStashKey(): String {
-        return context.dataStore.getAsync(ArcodStashKeyKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.ARCOD_STASH_KEY
-    }
-
-    override suspend fun arcodBearerToken(): String {
-        return context.dataStore.getAsync(ArcodBearerTokenKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.ARCOD_BEARER_TOKEN
     }
 }

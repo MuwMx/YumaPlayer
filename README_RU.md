@@ -109,7 +109,7 @@
 * **YouTube Music Home:** Классический поиск по всей базе YT Music, чарты, тематические подборки, радиостанции и быстрое переключение каналов.
 
 ### 🎧 Аудиофильский звук, FLAC и Воспроизведение
-* **Lossless FLAC:** Стриминг и загрузка треков в формате FLAC (через Qobuz / QBDLX / Arcod бэкбон) с указанием личного токена или публичных резолверов.
+* **Lossless FLAC:** Стриминг и загрузка треков в формате FLAC (через Qobuz / QBDLX бэкбон) с указанием личного токена или публичных резолверов.
 * **Бесшовный фоллбэк:** При отсутствии Lossless-версии трек гладко воспроизводится из YouTube Music (Opus / AAC).
 * **Локальная музыка:** Полноценный встроенный плеер для аудиофайлов на памяти телефона (FLAC, MP3, AAC, OGG, WAV).
 * **Оффлайн и Кэш:** Автоматическое кэширование прослушанных треков из YouTube Music для автономного прослушивания без интернета *(кэширование FLAC в активной разработке)*.
@@ -282,7 +282,7 @@ YumaPlayer распространяется бесплатно, не содер�
 * **[Stash](https://github.com/rawnaldclark/Stash)** — за вдохновение в организации Lossless FLAC стриминга и загрузок.
 * **[Metrolist](https://github.com/mostafaalagamy/Metrolist)** & **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** — за первоначальные парсеры текстов и интерфейсные идеи.
 * **[PixelPlayer](https://github.com/theovilardo/PixelPlayer)** — за идеи кинематики жестов и организацию очереди.
-* **[QBDLX](https://github.com/ImAiiR/QobuzDownloaderX)** / **[arcod](https://arcod.xyz)** — за инфраструктуру прямого Lossless аудио.
+* **[QBDLX](https://github.com/ImAiiR/QobuzDownloaderX)** — за инфраструктуру прямого Lossless аудио.
 * **[LRCLIB](https://lrclib.net/)** & **[BetterLyrics](https://better-lyrics.boidu.dev/)** — за открытую базу синхронизированной лирики.
 
 ---

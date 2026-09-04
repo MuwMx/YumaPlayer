@@ -13,7 +13,6 @@ import moe.rukamori.archivetune.flaccore.model.TrackQuery
  */
 class FlacStreamRegistry(
     private val qbdlx: suspend (TrackQuery, Int) -> FlacStreamUrl?,
-    private val arcod: suspend (TrackQuery, Int) -> FlacStreamUrl?,
 ) {
     private val logger = FlacLogger(TAG)
     internal var timeoutMs = 35_000L
@@ -21,7 +20,6 @@ class FlacStreamRegistry(
     suspend fun resolve(query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {
         val resolvers = listOf(
             "qbdlx" to qbdlx,
-            "arcod" to arcod,
         )
 
         logger.i("chain for '${query.title}': [${resolvers.joinToString(",") { it.first }}]")

@@ -269,38 +269,17 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideArcodClient(config: moe.rukamori.archivetune.flaccore.FlacConfig): moe.rukamori.archivetune.flaccore.arcod.ArcodClient {
-        val sharedClient = okhttp3.OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
-        return moe.rukamori.archivetune.flaccore.arcod.ArcodClient(
-            config = config,
-            sharedClient = sharedClient
-        )
-    }
-
-    @Singleton
-    @Provides
     fun provideQbdlxStreamResolver(source: moe.rukamori.archivetune.flaccore.qbdlx.QbdlxQobuzSource): moe.rukamori.archivetune.flaccore.streaming.QbdlxStreamResolver {
         return moe.rukamori.archivetune.flaccore.streaming.QbdlxStreamResolver(source)
     }
 
     @Singleton
     @Provides
-    fun provideArcodStreamResolver(client: moe.rukamori.archivetune.flaccore.arcod.ArcodClient): moe.rukamori.archivetune.flaccore.streaming.ArcodStreamResolver {
-        return moe.rukamori.archivetune.flaccore.streaming.ArcodStreamResolver(client)
-    }
-
-    @Singleton
-    @Provides
     fun provideFlacStreamRegistry(
         qbdlxResolver: moe.rukamori.archivetune.flaccore.streaming.QbdlxStreamResolver,
-        arcodResolver: moe.rukamori.archivetune.flaccore.streaming.ArcodStreamResolver
     ): moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry {
         return moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry(
             qbdlx = { q, ql -> qbdlxResolver.resolve(q, ql) },
-            arcod = { q, ql -> arcodResolver.resolve(q, ql) }
         )
     }
 

@@ -21,9 +21,6 @@ class QbdlxApiClientTest {
         override suspend fun qbdlxAppId() = "798273057"
         override suspend fun qbdlxAppSecret() = "secret"
         override suspend fun qbdlxTokenPool() = ""
-        override suspend fun arcodApiBase() = ""
-        override suspend fun arcodStashKey() = ""
-        override suspend fun arcodBearerToken() = ""
     }
 
     @Before fun setUp() {
