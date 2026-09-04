@@ -15,7 +15,7 @@ class FlacStreamRegistry(
     private val qbdlx: suspend (TrackQuery, Int) -> FlacStreamUrl?,
 ) {
     private val logger = FlacLogger(TAG)
-    internal var timeoutMs = 35_000L
+    var timeoutMs = 35_000L
 
     suspend fun resolve(query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {
         val resolvers = listOf(
