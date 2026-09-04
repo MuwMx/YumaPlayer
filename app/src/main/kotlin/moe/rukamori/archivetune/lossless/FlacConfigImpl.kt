@@ -15,14 +15,14 @@ class FlacConfigImpl(private val context: Context) : FlacConfig {
     }
 
     override suspend fun qbdlxAppId(): String {
-        return context.dataStore.getAsync(QobuzAppIdKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.QOBUZ_APP_ID
+        return context.dataStore.getAsync(QobuzAppIdKey, "")
     }
 
     override suspend fun qbdlxAppSecret(): String {
-        return context.dataStore.getAsync(QobuzAppSecretKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.QOBUZ_APP_SECRET
+        return context.dataStore.getAsync(QobuzAppSecretKey, "")
     }
 
     override suspend fun qbdlxTokenPool(): String {
-        return context.dataStore.getAsync(QobuzUserAuthTokenKey, "").takeIf { it.isNotEmpty() } ?: LosslessTokens.QOBUZ_USER_AUTH_TOKEN
+        return context.dataStore.getAsync(QobuzUserAuthTokenKey, "")
     }
 }
