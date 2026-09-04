@@ -727,17 +727,18 @@ private fun LocalSongScanSheet(
         containerColor = Color.Transparent,
         dragHandle = null,
     ) {
-        Box(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
                 .padding(bottom = SettingsDimensions.BottomSheetBottomPadding)
-                .navigationBarsPadding()
-                .yumaGlassCard(
-                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
-                    position = YumaSegmentPosition.Single,
-                )
-                .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius)),
+                .navigationBarsPadding(),
+            shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(
+                width = SettingsDimensions.GlassBorderThickness,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            ),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -757,12 +758,12 @@ private fun LocalSongScanSheet(
                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)),
                 )
 
-                Box(
-                    contentAlignment = Alignment.Center,
+                Surface(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
-                        .background(heroContainerColor),
+                        .fillMaxWidth()
+                        .alpha(contentAlpha),
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {
                     AnimatedContent(
                         targetState = heroIcon,
@@ -806,15 +807,12 @@ private fun LocalSongScanSheet(
                     enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
                     exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
                 ) {
-                    Box(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                            .yumaGlassCard(
-                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                                position = YumaSegmentPosition.Single,
-                            )
-                            .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius)),
+                            .alpha(contentAlpha),
+                        shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1122,15 +1120,10 @@ private fun LocalSongScanSheet(
                     enter = expandVertically(spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
                     exit = shrinkVertically(spring(stiffness = Spring.StiffnessLow)) + fadeOut(),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp)
-                            .yumaGlassCard(
-                                shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                                backgroundColor = MaterialTheme.colorScheme.errorContainer,
-                            )
-                            .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
