@@ -281,17 +281,21 @@ fun LyricsEnhanced(
         mutableIntStateOf(0)
     }
 
-    LaunchedEffect(lyricsEntries, isTtmlFormat) {
-        syncedLyrics = withContext(Dispatchers.Default) { buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap()) }
-        syncedLyricsRenderVersion += 1
-    }
+    LaunchedEffect(lyricsEntries, isTtmlFormat, romanizationPreferences, isReadyToParse) {
+        if (lyricsEntries.isEmpty()) {
+            syncedLyrics = SyncedLyrics(emptyList())
+            syncedLyricsRenderVersion += 1
+            return@LaunchedEffect
+        }
 
-    LaunchedEffect(lyricsEntries, romanizationPreferences, isReadyToParse) {
+        syncedLyrics =
+            withContext(Dispatchers.Default) { buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap()) }
+        syncedLyricsRenderVersion += 1
+
         if (!isReadyToParse) return@LaunchedEffect
         if (!romanizationPreferences.isEnabled) return@LaunchedEffect
-        if (lyricsEntries.isEmpty()) return@LaunchedEffect
 
-        val built =
+        val enriched =
             withContext(Dispatchers.Default) {
                 val toRomanize =
                     lyricsEntries.mapIndexedNotNull { index, entry ->
@@ -341,7 +345,7 @@ fun LyricsEnhanced(
                 }
                 buildSyncedLyrics(lyricsEntries, isTtmlFormat, tempMap)
             } ?: return@LaunchedEffect
-        syncedLyrics = built
+        syncedLyrics = enriched
         syncedLyricsRenderVersion += 1
     }
 
