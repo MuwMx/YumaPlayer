@@ -149,6 +149,12 @@ fun QueueScreen(
     }
 
     val fadeHeight = 24.dp
+    val darkScheme = darkColorScheme()
+    MaterialTheme(colorScheme = darkScheme) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White,
+            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+        ) {
     LazyColumn(
         state = lazyListState,
         userScrollEnabled = !(reorderableState.isAnyItemDragging || reorderHandleInUse),
@@ -207,12 +213,6 @@ fun QueueScreen(
             ReorderableItem(
                 state = reorderableState,
                 key = window.queueItemKey,
-                modifier =
-                    Modifier.graphicsLayer {
-                        compositingStrategy =
-                            if (queueFractionProvider() <= 0f) CompositingStrategy.Auto
-                            else CompositingStrategy.Offscreen
-                    },
             ) { isDragging ->
                 val scale by animateFloatAsState(
                     targetValue = if (isDragging) 1.02f else 1f,
@@ -278,9 +278,13 @@ fun QueueScreen(
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
+                                compositingStrategy =
+                                    if (isDragging) CompositingStrategy.Offscreen
+                                    else CompositingStrategy.Auto
                             },
                 )
             }
+        }
         }
     }
 }
@@ -371,16 +375,10 @@ private fun QueueItem(
             Modifier
         }
 
-    val darkScheme = darkColorScheme()
-    MaterialTheme(colorScheme = darkScheme) {
-        CompositionLocalProvider(
-            LocalContentColor provides Color.White,
-            LocalYumaColors provides darkYumaColorScheme(darkScheme),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier.fillMaxWidth(),
-            ) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Box(
             modifier =
                 Modifier
@@ -446,7 +444,5 @@ private fun QueueItem(
         }
 
         dragHandle()
-            }
-        }
     }
 }

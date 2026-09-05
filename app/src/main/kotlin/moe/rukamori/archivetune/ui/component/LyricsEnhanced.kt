@@ -274,7 +274,7 @@ fun LyricsEnhanced(
         }
     }
 
-    var syncedLyrics by remember(lyricsEntries, isTtmlFormat) {
+    var syncedLyrics by remember {
         mutableStateOf(SyncedLyrics(emptyList()))
     }
     var syncedLyricsRenderVersion by remember(lyricsEntries, isTtmlFormat) {
