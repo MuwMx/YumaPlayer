@@ -155,7 +155,7 @@ fun QueueScreen(
             LocalContentColor provides Color.White,
             LocalYumaColors provides darkYumaColorScheme(darkScheme),
         ) {
-    LazyColumn(
+            LazyColumn(
         state = lazyListState,
         userScrollEnabled = !(reorderableState.isAnyItemDragging || reorderHandleInUse),
         modifier =
@@ -284,9 +284,10 @@ fun QueueScreen(
                             },
                 )
             }
-        }
+            }
         }
     }
+}
 }
 
 @Composable
