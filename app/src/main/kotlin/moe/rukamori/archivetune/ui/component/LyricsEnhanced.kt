@@ -444,13 +444,14 @@ fun LyricsEnhanced(
     val playbackSyncPosition: () -> Int =
         remember {
             {
-                val baseMs = if (isManualScrolling) frozenPositionMs else playbackPositionMs.longValue
+                val frozen = frozenPositionMs
+                val baseMs = if (isManualScrolling && frozen > 0L) frozen else playbackPositionMs.longValue
                 (
-                    baseMs +
-                        latestLyricsSyncOffset.value.toLong() +
-                        latestLeadMs.value +
-                        LYRIC_VISUAL_TUNING_OFFSET_MS
-                ).coerceIn(0L, Int.MAX_VALUE.toLong())
+                        baseMs +
+                                latestLyricsSyncOffset.value.toLong() +
+                                latestLeadMs.value +
+                                LYRIC_VISUAL_TUNING_OFFSET_MS
+                        ).coerceIn(0L, Int.MAX_VALUE.toLong())
                     .toInt()
             }
         }
@@ -506,6 +507,8 @@ fun LyricsEnhanced(
     LaunchedEffect(isManualScrolling) {
         if (isManualScrolling) {
             frozenPositionMs = playbackPositionMs.longValue
+        } else {
+            frozenPositionMs = 0L
         }
     }
 
