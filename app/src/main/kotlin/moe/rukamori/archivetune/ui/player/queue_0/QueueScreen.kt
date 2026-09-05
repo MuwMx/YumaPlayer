@@ -209,7 +209,9 @@ fun QueueScreen(
                 key = window.queueItemKey,
                 modifier =
                     Modifier.graphicsLayer {
-                        compositingStrategy = CompositingStrategy.Offscreen
+                        compositingStrategy =
+                            if (queueFractionProvider() <= 0f) CompositingStrategy.Auto
+                            else CompositingStrategy.Offscreen
                     },
             ) { isDragging ->
                 val scale by animateFloatAsState(

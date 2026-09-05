@@ -68,6 +68,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -97,8 +98,10 @@ import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeLine
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
 import com.mocharealm.accompanist.lyrics.ui.composable.lyrics.KaraokeLyricsView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -244,90 +247,101 @@ fun LyricsEnhanced(
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!)) }
     val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
 
-    val lyricsEntries: List<LyricsEntry> =
-        remember(lyrics) {
-            if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
-            when {
-                isTtml(lyrics!!) -> {
-                    parseTtml(lyrics!!)
-                }
+    val lyricsEntries: List<LyricsEntry> by produceState(initialValue = emptyList(), key1 = lyrics) {
+        val raw = lyrics
+        if (raw == null || raw == LYRICS_NOT_FOUND) {
+            value = emptyList()
+        } else {
+            value =
+                withContext(Dispatchers.Default) {
+                    when {
+                        isTtml(raw) -> {
+                            parseTtml(raw)
+                        }
 
-                isLineSyncedLrc(lyrics!!) -> {
-                    parseLyrics(lyrics!!)
-                }
+                        isLineSyncedLrc(raw) -> {
+                            parseLyrics(raw)
+                        }
 
-                else -> {
-                    lyrics!!
-                        .lines()
-                        .filter { it.isNotBlank() }
-                        .map { line -> LyricsEntry(time = -1L, text = line.trim()) }
+                        else -> {
+                            raw
+                                .lines()
+                                .filter { it.isNotBlank() }
+                                .map { line -> LyricsEntry(time = -1L, text = line.trim()) }
+                        }
+                    }
                 }
-            }
         }
+    }
 
     var syncedLyrics by remember(lyricsEntries, isTtmlFormat) {
-        mutableStateOf(buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap()))
+        mutableStateOf(SyncedLyrics(emptyList()))
     }
     var syncedLyricsRenderVersion by remember(lyricsEntries, isTtmlFormat) {
         mutableIntStateOf(0)
     }
 
     LaunchedEffect(lyricsEntries, isTtmlFormat) {
-        syncedLyrics = buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap())
+        syncedLyrics = withContext(Dispatchers.Default) { buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap()) }
         syncedLyricsRenderVersion += 1
     }
 
     LaunchedEffect(lyricsEntries, romanizationPreferences, isReadyToParse) {
         if (!isReadyToParse) return@LaunchedEffect
         if (!romanizationPreferences.isEnabled) return@LaunchedEffect
+        if (lyricsEntries.isEmpty()) return@LaunchedEffect
 
-        val toRomanize =
-            lyricsEntries.mapIndexedNotNull { index, entry ->
-                val hasProviderRomanization =
-                    providedRomanizedTextForEntry(entry, romanizationPreferences) != null
-                if (hasProviderRomanization || shouldRomanizeLyricsLine(entry.text, romanizationPreferences)) {
-                    index to entry
-                } else {
-                    null
-                }
-            }
-        if (toRomanize.isEmpty()) return@LaunchedEffect
-
-        val jobs =
-            toRomanize.map { (index, entry) ->
-                async {
-                    val romanized: List<String?> =
-                        try {
-                            if (isTtmlFormat && entry.words != null) {
-                                val mainWordCount = entry.words!!.count { !it.isBackground }
-                                providedRomanizedWordsForEntry(entry, mainWordCount, romanizationPreferences)
-                                    ?: entry.words!!.filter { !it.isBackground }.map { word ->
-                                        romanizeLyricsWordWithLineContext(word.text, entry.text, romanizationPreferences)
-                                    }
-                            } else {
-                                listOf(
-                                    providedRomanizedTextForEntry(entry, romanizationPreferences)
-                                        ?: romanizeLyricsLine(entry.text, romanizationPreferences),
-                                )
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            reportException(e)
-                            if (isTtmlFormat && entry.words != null) {
-                                List(entry.words!!.count { !it.isBackground }) { null }
-                            } else {
-                                listOf(null)
-                            }
+        val built =
+            withContext(Dispatchers.Default) {
+                val toRomanize =
+                    lyricsEntries.mapIndexedNotNull { index, entry ->
+                        val hasProviderRomanization =
+                            providedRomanizedTextForEntry(entry, romanizationPreferences) != null
+                        if (hasProviderRomanization || shouldRomanizeLyricsLine(entry.text, romanizationPreferences)) {
+                            index to entry
+                        } else {
+                            null
                         }
-                    index to romanized
+                    }
+                if (toRomanize.isEmpty()) return@withContext null
+
+                val jobs =
+                    toRomanize.map { (index, entry) ->
+                        async {
+                            val romanized: List<String?> =
+                                try {
+                                    if (isTtmlFormat && entry.words != null) {
+                                        val mainWordCount = entry.words!!.count { !it.isBackground }
+                                        providedRomanizedWordsForEntry(entry, mainWordCount, romanizationPreferences)
+                                            ?: entry.words!!.filter { !it.isBackground }.map { word ->
+                                                romanizeLyricsWordWithLineContext(word.text, entry.text, romanizationPreferences)
+                                            }
+                                    } else {
+                                        listOf(
+                                            providedRomanizedTextForEntry(entry, romanizationPreferences)
+                                                ?: romanizeLyricsLine(entry.text, romanizationPreferences),
+                                        )
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    reportException(e)
+                                    if (isTtmlFormat && entry.words != null) {
+                                        List(entry.words!!.count { !it.isBackground }) { null }
+                                    } else {
+                                        listOf(null)
+                                    }
+                                }
+                            index to romanized
+                        }
+                    }
+                val tempMap = mutableMapOf<Int, List<String?>>()
+                jobs.awaitAll().forEach { (index, romanized) ->
+                    tempMap[index] = romanized
                 }
-            }
-        val tempMap = mutableMapOf<Int, List<String?>>()
-        jobs.awaitAll().forEach { (index, romanized) ->
-            tempMap[index] = romanized
-        }
-        syncedLyrics = buildSyncedLyrics(lyricsEntries, isTtmlFormat, tempMap)
+                buildSyncedLyrics(lyricsEntries, isTtmlFormat, tempMap)
+            } ?: return@LaunchedEffect
+        syncedLyrics = built
         syncedLyricsRenderVersion += 1
     }
 
