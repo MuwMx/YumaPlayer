@@ -194,7 +194,8 @@ private fun LyricsMenuMain(
     onNavigateTo: (LyricsMenuScreen) -> Unit
 ) {
     val font = LocalArchiveTuneFontFamily.current
-    val count = 5
+    val count = 6
+    val (showPlayerControls, setShowPlayerControls) = rememberPreference(ShowLyricsPlayerControlsKey, true)
 
     Column {
         Text(
@@ -218,6 +219,18 @@ private fun LyricsMenuMain(
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
+        SettingsSwitchRow(
+            title = "Player Controls",
+            subtitle = "Show playback controls panel over lyrics.",
+            checked = showPlayerControls,
+            onCheckedChange = setShowPlayerControls,
+            vibrantColor = Color(state.vibrantColor),
+            index = 1,
+            count = count,
+        )
+
+        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+
         SettingsMenuRow(
             title = "Edit Lyrics",
             subtitle = "Modify the lyric lines of this track manually",
@@ -226,7 +239,7 @@ private fun LyricsMenuMain(
                 onAction(PlayerAction.PrepareLyricsEdit)
                 onNavigateTo(LyricsMenuScreen.EDIT)
             },
-            index = 1,
+            index = 2,
             count = count,
         )
 
@@ -239,7 +252,7 @@ private fun LyricsMenuMain(
             onClick = {
                 onNavigateTo(LyricsMenuScreen.TRANSLATE)
             },
-            index = 2,
+            index = 3,
             count = count,
         )
 
@@ -252,7 +265,7 @@ private fun LyricsMenuMain(
             onClick = {
                 onNavigateTo(LyricsMenuScreen.SYNC_OFFSET)
             },
-            index = 3,
+            index = 4,
             count = count,
         )
 
@@ -266,7 +279,7 @@ private fun LyricsMenuMain(
                 onAction(PlayerAction.SearchLyrics)
                 onDismiss()
             },
-            index = 4,
+            index = 5,
             count = count,
         )
 
