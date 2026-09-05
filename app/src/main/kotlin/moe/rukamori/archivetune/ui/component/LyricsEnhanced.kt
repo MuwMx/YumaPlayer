@@ -366,6 +366,7 @@ fun LyricsEnhanced(
         }
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
+    var frozenPositionMs by remember { mutableLongStateOf(0L) }
     val defaultListState = key(lyricsSessionKey) { rememberLazyListState() }
     val listState = lazyListState ?: defaultListState
 
@@ -443,8 +444,9 @@ fun LyricsEnhanced(
     val playbackSyncPosition: () -> Int =
         remember {
             {
+                val baseMs = if (isManualScrolling) frozenPositionMs else playbackPositionMs.longValue
                 (
-                    playbackPositionMs.longValue +
+                    baseMs +
                         latestLyricsSyncOffset.value.toLong() +
                         latestLeadMs.value +
                         LYRIC_VISUAL_TUNING_OFFSET_MS
@@ -498,6 +500,12 @@ fun LyricsEnhanced(
         if (isManualScrolling) {
             delay(MANUAL_SCROLL_TIMEOUT_MS)
             isManualScrolling = false
+        }
+    }
+
+    LaunchedEffect(isManualScrolling) {
+        if (isManualScrolling) {
+            frozenPositionMs = playbackPositionMs.longValue
         }
     }
 
