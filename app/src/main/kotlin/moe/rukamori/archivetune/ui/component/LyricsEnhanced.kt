@@ -280,20 +280,24 @@ fun LyricsEnhanced(
     var syncedLyricsRenderVersion by remember(lyricsEntries, isTtmlFormat) {
         mutableIntStateOf(0)
     }
+    var appliedRomanizationKey by remember { mutableStateOf<Any?>(null) }
 
-    LaunchedEffect(lyricsEntries, isTtmlFormat, romanizationPreferences, isReadyToParse) {
+    LaunchedEffect(lyricsEntries, isTtmlFormat) {
+        appliedRomanizationKey = null
         if (lyricsEntries.isEmpty()) {
             syncedLyrics = SyncedLyrics(emptyList())
-            syncedLyricsRenderVersion += 1
             return@LaunchedEffect
         }
-
         syncedLyrics =
             withContext(Dispatchers.Default) { buildSyncedLyrics(lyricsEntries, isTtmlFormat, emptyMap()) }
-        syncedLyricsRenderVersion += 1
+    }
 
+    LaunchedEffect(lyricsEntries, romanizationPreferences, isReadyToParse) {
         if (!isReadyToParse) return@LaunchedEffect
         if (!romanizationPreferences.isEnabled) return@LaunchedEffect
+        if (lyricsEntries.isEmpty()) return@LaunchedEffect
+        val romanizationKey = Triple(lyricsEntries, isTtmlFormat, romanizationPreferences)
+        if (romanizationKey == appliedRomanizationKey) return@LaunchedEffect
 
         val enriched =
             withContext(Dispatchers.Default) {
@@ -346,6 +350,7 @@ fun LyricsEnhanced(
                 buildSyncedLyrics(lyricsEntries, isTtmlFormat, tempMap)
             } ?: return@LaunchedEffect
         syncedLyrics = enriched
+        appliedRomanizationKey = romanizationKey
         syncedLyricsRenderVersion += 1
     }
 
