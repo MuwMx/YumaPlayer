@@ -57,7 +57,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
@@ -176,30 +175,28 @@ fun SpotifyLoginSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (BuildConfig.DEBUG) {
-                var spDcInput by rememberSaveable { mutableStateOf("") }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+            var spDcInput by rememberSaveable { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = spDcInput,
+                    onValueChange = { spDcInput = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                )
+                Button(
+                    onClick = {
+                        val token = spDcInput.trim()
+                        if (token.isNotBlank()) onCookiesCaptured(token, "")
+                    },
+                    enabled = spDcInput.trim().isNotBlank(),
                 ) {
-                    OutlinedTextField(
-                        value = spDcInput,
-                        onValueChange = { spDcInput = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                    )
-                    Button(
-                        onClick = {
-                            val token = spDcInput.trim()
-                            if (token.isNotBlank()) onCookiesCaptured(token, "")
-                        },
-                        enabled = spDcInput.trim().isNotBlank(),
-                    ) {
-                        Text(text = stringResource(R.string.spotify_login_via_token))
-                    }
+                    Text(text = stringResource(R.string.spotify_login_via_token))
                 }
             }
             AndroidView(
