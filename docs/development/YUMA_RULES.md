@@ -73,3 +73,17 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **Keep Specs Updated:** Update documentation whenever architecture, APIs, workflows, or design rules change.
 - **No Hidden Conventions:** Do not introduce undocumented conventions.
 - **Centralized Decisions:** Long-term project decisions belong in `docs/`, not in pull request discussions or commit messages.
+
+---
+
+## 8. Gestures, Custom Layouts & Effect Guardrails
+
+- **BackHandler Cascading Hierarchy:** The top-level player `BackHandler` must never be disabled via child overlay flags (`!isLyricsVisible`, `!isOverlayVisible`). Back navigation must cascade strictly from top to bottom:
+  1. Dismiss open modal overlays (lyrics, queue).
+  2. Collapse the expanded player sheet.
+  3. Allow navigation pop in the underlying screen stack.
+- **Custom Layout Trimming (Borders):** Clipping modifiers (`clipToBounds`, offset layout shifts) must be applied directly to the container that renders the border or background (`sheetBackground`), never to nested child content. In custom `layout { ... }`, the layout must report `constraints.maxWidth` to the parent to enforce boundaries.
+- **Semantic Theme Tokens Only:** Never hardcode `Color.Black`, `Color.White`, or arbitrary hex codes for containers and text. Always use semantic design tokens (`surfaceContainerHighest`, `onSurface`, or YDS tokens) to ensure contrast in both light and dark themes.
+- **No Duplicate Side-Effect Writers:** Never keep duplicate `LaunchedEffect` blocks writing to the same `MutableState`. Before adding or extending an effect, remove or refactor existing writers.
+- **Single Source for UI Visibility:** Never pipe manual visibility callbacks (`onVisibilityChanged`) across composable layers if that state is already exposed by the ViewModel's UDF StateFlow. Read directly from the state source.
+- **Diff Cleanliness:** Zero trailing whitespace. Verify that any newly added modifier produces a verifiable layout or visual change before finalizing changes.

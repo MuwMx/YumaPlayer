@@ -59,6 +59,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
@@ -268,6 +269,7 @@ internal fun UnifiedPlayerSheetLayers(
                                     Modifier
                                 }
                             )
+                            .spotBorderCrop()
                             .sheetBackground(state)
                             .clipToBounds()
                     ) {
@@ -283,7 +285,6 @@ internal fun UnifiedPlayerSheetLayers(
                             onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
                             onSeek = onSeek,
                             onSeekStarted = onSeekStarted,
-                            modifier = Modifier.spotSheetContent()
                         )
                     }
                 }
@@ -323,6 +324,7 @@ internal fun UnifiedPlayerSheetLayers(
                                     Modifier
                                 }
                             )
+                            .spotBorderCrop()
                             .sheetBackground(state)
                             .clipToBounds()
                     ) {
@@ -336,7 +338,7 @@ internal fun UnifiedPlayerSheetLayers(
                             ),
                             queueFractionProvider = queueFractionProvider,
                             onReorderStateChange = { isQueueReordering = it },
-                            modifier = Modifier.fillMaxSize().spotSheetContent(),
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
@@ -485,26 +487,23 @@ private fun QueueSheetHeader(
     }
 }
 
-@Composable
-private fun Modifier.spotSheetContent(): Modifier {
-    val borderPx = with(LocalDensity.current) { SettingsDimensions.GlassBorderThickness.toPx() }
-    return this.layout { measurable, constraints ->
-        if (!constraints.hasBoundedWidth || borderPx <= 0f) {
+private fun Modifier.spotBorderCrop(borderWidth: Dp = SettingsDimensions.GlassBorderThickness): Modifier =
+    this.layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth) {
             val placeable = measurable.measure(constraints)
-            layout(placeable.width, placeable.height) {
+            return@layout layout(placeable.width, placeable.height) {
                 placeable.placeRelative(0, 0)
             }
-        } else {
-            val expandedWidth = constraints.maxWidth + (2 * borderPx).toInt()
-            val placeable = measurable.measure(
-                constraints.copy(maxWidth = expandedWidth, minWidth = expandedWidth)
-            )
-            layout(expandedWidth, placeable.height) {
-                placeable.placeRelative((-borderPx).toInt(), 0)
-            }
         }
-    }
-}
+        val borderPx = borderWidth.roundToPx()
+        val expandedWidth = constraints.maxWidth + (borderPx * 2)
+        val placeable = measurable.measure(
+            constraints.copy(minWidth = expandedWidth, maxWidth = expandedWidth)
+        )
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.placeRelative(-borderPx, 0)
+        }
+    }.clipToBounds()
 
 @Composable
 private fun Modifier.sheetBackground(state: PlayerUiState): Modifier {

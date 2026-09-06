@@ -93,8 +93,7 @@ fun UnifiedPlayerSheetV2(
     progressMsProvider: () -> Long,
     bottomBarHeight: Dp = 0.dp,
     onExpansionFractionChanged: (Float) -> Unit = {},
-    onLyricsClick: () -> Unit = {},
-    onOverlayVisibilityChanged: (Boolean) -> Unit = {}
+    onLyricsClick: () -> Unit = {}
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -186,11 +185,6 @@ fun UnifiedPlayerSheetV2(
 
         val lyricsFractionProvider = { lyricsFraction.value }
         val queueFractionProvider = { queueFraction.value }
-
-        LaunchedEffect(Unit) {
-            snapshotFlow { lyricsFraction.value > 0.01f || queueFraction.value > 0.01f }
-                .collect { onOverlayVisibilityChanged(it) }
-        }
 
         LaunchedEffect(Unit) {
             snapshotFlow { expansionFraction.value }.collect { fraction ->
