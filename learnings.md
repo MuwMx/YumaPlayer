@@ -42,6 +42,13 @@
 - Без хардкода `ic_update_chara`
 - Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS (warning fixed `optString` null)
 
+## Fullplayer 4-SRP (Spotify recents / stop-on-swipe / Back LIFO / sheet clip)
+- `SpotifyHomeScreen.kt` `SpotifyQuickGridCell`: фон `Color.White 0.1f` → `Color.Black`, shape `8.dp` → `SettingsDimensions.BadgeCornerRadius`, текст белый без изменений — светлая читаема, темная без регрессии
+- `PlayerSettings.kt`: тумблер `StopMusicOnTaskClearKey` дефолт off (`rememberPreference`), `SwitchPreference` + `R.string.stop_music_on_task_clear` + `R.drawable.swipe`, только UI-проброс (сервис `MusicService:4138/4282` и `MainActivity:514-529` не тронуты)
+- Back LIFO: `MainActivity` `BackHandler(fraction > 0.5f)` после `NavHost` (LIFO-победа над Nav pop) → `setLyricsVisible(false)` + `requestSheetCollapse()` (существующий канал, Together-хост цел)
+- `UnifiedPlayerSheetLayers.kt`: Spot-прием `clipToBounds()` после `sheetBackground()` на лирике и очереди, порядок `glassBorder->clip` внутри untouched, радиусы 32dp целы, без градиента/fade
+- Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS
+
 ## Library YDS Redesign Regressions Fix
 - `LibraryScreen.kt`:
   - Заменен старый кастомный ряд чипсов (`ExpressiveTabChip` + ручной расчет центрирования) на компонент `LibraryFilterChipBar` (высота `SettingsDimensions.LibraryChipHeight` 36dp, форма `CircleShape`).

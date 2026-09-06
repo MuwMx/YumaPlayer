@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlaybackSourceKey
 import moe.rukamori.archivetune.constants.SkipSilenceKey
+import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
@@ -116,6 +117,10 @@ fun PlayerSettings(navController: NavController) {
     )
     val (autoStartOnBluetooth, onAutoStartOnBluetoothChange) = rememberPreference(
         AutoStartOnBluetoothKey,
+        defaultValue = false,
+    )
+    val (stopMusicOnTaskClear, onStopMusicOnTaskClearChange) = rememberPreference(
+        StopMusicOnTaskClearKey,
         defaultValue = false,
     )
     val (wakelockEnabled, onWakelockChange) = rememberPreference(
@@ -393,6 +398,14 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.android_cell), null) },
                         checked = lowDataMode,
                         onCheckedChange = onLowDataModeChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.stop_music_on_task_clear)) },
+                        icon = { Icon(painterResource(R.drawable.swipe), null) },
+                        checked = stopMusicOnTaskClear,
+                        onCheckedChange = onStopMusicOnTaskClearChange,
                     )
                 }
             }
