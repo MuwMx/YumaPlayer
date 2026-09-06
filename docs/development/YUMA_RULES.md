@@ -87,6 +87,3 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **No Duplicate Side-Effect Writers:** Never keep duplicate `LaunchedEffect` blocks writing to the same `MutableState`. Before adding or extending an effect, remove or refactor existing writers.
 - **Single Source for UI Visibility:** Never pipe manual visibility callbacks (`onVisibilityChanged`) across composable layers if that state is already exposed by the ViewModel's UDF StateFlow. Read directly from the state source.
 - **Diff Cleanliness:** Zero trailing whitespace. Verify that any newly added modifier produces a verifiable layout or visual change before finalizing changes.
-
----
-
