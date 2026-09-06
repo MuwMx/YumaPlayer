@@ -21,6 +21,7 @@ import moe.rukamori.archivetune.constants.SpotifyAccessTokenExpiresAtKey
 import moe.rukamori.archivetune.constants.SpotifyAccessTokenKey
 import moe.rukamori.archivetune.constants.SpotifySpDcKey
 import moe.rukamori.archivetune.constants.SpotifySpKeyKey
+import moe.rukamori.archivetune.constants.SpotifySyncLikesKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.utils.dataStore
@@ -128,6 +129,11 @@ object SpotifySync {
         val app = context.applicationContext
         scope.launch {
             try {
+                val isSyncLikesEnabled = app.dataStore.data.first()[SpotifySyncLikesKey] ?: false
+                if (!isSyncLikesEnabled) {
+                    Timber.tag(TAG).d("Spotify like sync disabled in settings — skipped syncing $uri saved=$saved")
+                    return@launch
+                }
                 if (!ensureToken(app)) {
                     Timber.tag(TAG).w("no token — skipped syncing $uri saved=$saved")
                     return@launch

@@ -577,6 +577,7 @@ fun AccountSettings(
                             SwitchPreference(
                                 icon = { Icon(painterResource(R.drawable.sync), null) },
                                 title = { Text(stringResource(R.string.spotify_sync_likes)) },
+                                description = stringResource(R.string.spotify_sync_likes_desc),
                                 checked = spotifySyncLikes,
                                 onCheckedChange = onSpotifySyncLikesChange,
                             )
@@ -752,6 +753,45 @@ fun AccountSettings(
                                 Switch(
                                     checked = showSpotifyPlaylists,
                                     onCheckedChange = onShowSpotifyPlaylistsChange,
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .yumaClickable(onClick = {
+                                    onSpotifySyncLikesChange(!spotifySyncLikes)
+                                }),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.sync),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.spotify_sync_likes),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.spotify_sync_likes_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                    )
+                                }
+                                Switch(
+                                    checked = spotifySyncLikes,
+                                    onCheckedChange = onSpotifySyncLikesChange,
                                 )
                             }
                         }
