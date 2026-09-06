@@ -67,3 +67,11 @@
   - Отступ между элементами треков в `LazyColumn` заменен с `2.dp` на `6.dp` (`Arrangement.spacedBy(6.dp)`).
   - `contentPadding` настроен на `LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues()`.
 - Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS
+
+## 120fps Gesture Kinematics & Player Sheet Layer Architecture (ADR-010)
+- **Agent Freeze Policy:** Агентам строго запрещено модифицировать или рефакторить логику анимаций, свайпов, контроллеров жестов и слоев Лирики и Очереди (`UnifiedPlayerSheetV2`, `UnifiedPlayerSheetLayers`, `QueueScreen`, `LyricsColumn`).
+- **4 Правила производительности и рекомпозиции:**
+  1. **Draw Phase Isolation:** Запрещено читать непрерывные провайдеры (`queueFraction.value`, `lyricsFraction.value`, `fractionProvider()`) в теле Composable-функций (Composition фаза). Значения фракций должны читаться ИСКЛЮЧИТЕЛЬНО внутри `graphicsLayer { ... }` или `drawWithContent { ... }` (Draw фаза).
+  2. **Discrete BackHandler:** Запрещено размещать локальные `BackHandler` с условиями на непрерывные пороги (`queueFraction > 0.05f`) внутри дочерних экранов (`QueueScreen`, `LyricsColumn`). `BackHandler` привязывается централизованно к дискретным флагам `StateFlow` (`isQueueVisible`, `isLyricsVisible`).
+  3. **CompositingStrategy на LazyColumn:** Запрещен постоянный `CompositingStrategy.Offscreen` на списках во время активного движения пальца. Во время свайпа — `CompositingStrategy.Auto`, `Offscreen` только при статичном открытии `fraction >= 0.99f` для наложения маски фейда.
+  4. **Изоляция подложки (matchParentSize):** Срез боковых рамок (`layout { placeRelative(-borderPx, 0) }`) изолирован в фоновый `Box(Modifier.matchParentSize().sheetBackground())`. Контент (`QueueScreen`, `LyricsColumn`) размещается поверх как sibling с `Modifier.fillMaxSize()` в реальных неискаженных границах.

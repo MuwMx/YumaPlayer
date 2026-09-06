@@ -16,6 +16,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-007](#adr-007-pure-kotlin-domain-layer)** — Pure Kotlin Domain Layer (Zero Android Framework Imports)
 - **[ADR-008](#adr-008-multi-module-clean-architecture)** — Multi-Module Clean Architecture
 - **[ADR-009](#adr-009-lossless-flac-streaming-playback)** — Lossless FLAC Streaming Playback
+- **[ADR-010](#adr-010-120fps-gesture-kinematics--player-sheet-layer-architecture)** — 120fps Gesture Kinematics & Player Sheet Layer Architecture
 
 ---
 
@@ -120,3 +121,19 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Lossless streaming works with public proxies (squid/kennyy) without filling in credentials; user-provided tokens take priority over built-in defaults; previously-cached URLs are reused without a new HTTP resolve until their expiry minus a safety margin.
   - *Negative:* Direct Qobuz provider (qbdlx) still requires real tokens to function.
+
+---
+
+## ADR-010: 120fps Gesture Kinematics & Player Sheet Layer Architecture
+
+- **Status:** Accepted
+- **Context:** The player bottom sheets (Lyrics & Queue) require buttery-smooth 120fps physics-driven gestures. Common Compose pitfalls (reading animation fractions during composition, subscribing `BackHandler` to continuous floating-point thresholds, forcing continuous `CompositingStrategy.Offscreen` during gestures, and embedding content inside custom layout shift modifiers) introduce frame drops, composition thrashing, and GPU memory bandwidth bottlenecks.
+- **Decision:**
+  1. **Strict Draw-Phase Reading (Zero Composition Overhead):** Continuous animation fractions (`queueFraction.value`, `lyricsFraction.value`, `fractionProvider()`) must NEVER be read in the body of Composable functions. All fractional values must be observed exclusively inside Draw-phase blocks (`graphicsLayer { ... }` or `drawWithContent { ... }`), keeping the Composition tree completely static during gestures.
+  2. **Discrete BackHandler Binding:** Do not bind `BackHandler` to continuous thresholds (`fraction > 0.05f`) or place separate dynamic `BackHandler` instances inside child screens (`QueueScreen`, `LyricsColumn`). Back handling must be anchored centrally in `UnifiedPlayerSheetV2` using discrete boolean flags (`isQueueVisible`, `isLyricsVisible`).
+  3. **Adaptive CompositingStrategy on Lazy Lists:** Continuous `CompositingStrategy.Offscreen` allocates and renders to an offscreen GPU FBO every frame, which throttles mobile GPUs during gestures. During active swipe movement (`fraction < 0.99f`), lists must use `CompositingStrategy.Auto`. `CompositingStrategy.Offscreen` is engaged strictly when the layer is statically resting in fully-opened state (`fraction >= 0.99f`) to apply top/bottom edge fade masks.
+  4. **Isolated MatchParentSize Background Underlays:** Trimming lateral borders via negative layout translation (`layout { placeRelative(-borderPx, 0) }`) must be performed inside a dedicated underlay `Box(Modifier.matchParentSize().sheetBackground())`. Content composables (`QueueScreen`, `LyricsColumn`) render as siblings on top with standard `Modifier.fillMaxSize()`, ensuring clean, undistorted touch and layout coordinates.
+  5. **Agent Freeze Policy:** Automated agents are strictly prohibited from refactoring or modifying swipe physics, gesture handlers, or sheet layers (`UnifiedPlayerSheetV2`, `UnifiedPlayerSheetLayers`, `QueueScreen`, `LyricsColumn`) unless explicitly ordered by the user with exact specifications.
+- **Consequences:**
+  - *Positive:* Rock-solid 120fps gesture fluidity with 0ms startup delay, zero layout re-computations during drag, and optimal GPU resource utilization.
+  - *Negative:* Layer composition and background trimming require strict structural discipline.

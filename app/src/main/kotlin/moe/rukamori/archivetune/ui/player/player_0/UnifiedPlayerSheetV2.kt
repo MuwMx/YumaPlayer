@@ -360,7 +360,9 @@ fun UnifiedPlayerSheetV2(
             )
         }
 
-        BackHandler(enabled = state.isLyricsVisible || lyricsFraction.value > 0.01f || state.isQueueVisible || queueFraction.value > 0.01f) {
+        BackHandler(
+            enabled = state.isLyricsVisible || state.isQueueVisible
+        ) {
             if (lyricsFraction.value > 0.01f || state.isLyricsVisible) {
                 scope.launch {
                     lyricsFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
@@ -373,7 +375,7 @@ fun UnifiedPlayerSheetV2(
         }
 
         PlayerSheetPredictiveBackHandler(
-            enabled = currentSheetState == PlayerSheetState.EXPANDED && !state.isLyricsVisible && !state.isQueueVisible && lyricsFraction.value < 0.01f && queueFraction.value < 0.01f,
+            enabled = currentSheetState == PlayerSheetState.EXPANDED && !state.isLyricsVisible && !state.isQueueVisible,
             currentSheetState = currentSheetState,
             predictiveBackFractionValue = predictiveBackProgress,
             onPredictiveBackFractionChanged = { predictiveBackProgress = it },

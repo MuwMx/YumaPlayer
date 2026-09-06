@@ -97,13 +97,6 @@ fun QueueScreen(
     onReorderStateChange: (Boolean) -> Unit = {},
     onCloseClick: () -> Unit = {},
 ) {
-    val isQueueActive by remember(queueFractionProvider) {
-        derivedStateOf { queueFractionProvider() > 0.05f }
-    }
-
-    BackHandler(enabled = isQueueActive) {
-        onCloseClick()
-    }
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val haptics = rememberYumaHaptics()
@@ -173,7 +166,13 @@ fun QueueScreen(
                     modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            compositingStrategy = CompositingStrategy.Offscreen
+                            // Во время движения пальца GPU не тратит ресурсы на FBO-буфер
+                            compositingStrategy =
+                                if (queueFractionProvider() >= 0.99f) {
+                                    CompositingStrategy.Offscreen
+                                } else {
+                                    CompositingStrategy.Auto
+                                }
                         }
                         .drawWithContent {
                             drawContent()
@@ -183,11 +182,7 @@ fun QueueScreen(
                                 drawRect(
                                     brush =
                                         Brush.verticalGradient(
-                                            colors =
-                                                listOf(
-                                                    Color.Transparent,
-                                                    Color.Black,
-                                                ),
+                                            colors = listOf(Color.Transparent, Color.Black),
                                             startY = 0f,
                                             endY = fadeHeightPx,
                                         ),
@@ -196,11 +191,7 @@ fun QueueScreen(
                                 drawRect(
                                     brush =
                                         Brush.verticalGradient(
-                                            colors =
-                                                listOf(
-                                                    Color.Black,
-                                                    Color.Transparent,
-                                                ),
+                                            colors = listOf(Color.Black, Color.Transparent),
                                             startY = size.height - fadeHeightPx,
                                             endY = size.height,
                                         ),

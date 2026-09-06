@@ -121,7 +121,7 @@ internal fun UnifiedPlayerSheetLayers(
                     lyricsListState.firstVisibleItemScrollOffset == 0
         }
     }
-    val lyricsNestedScrollConnection = remember(dragHandler, canDragLyrics) {
+    val lyricsNestedScrollConnection = remember(dragHandler) {
         dragHandler?.createNestedScrollConnection(
             canDragProvider = { canDragLyrics },
             targetSheet = ActiveDragSheet.LYRICS
@@ -138,7 +138,7 @@ internal fun UnifiedPlayerSheetLayers(
                     queueListState.firstVisibleItemScrollOffset == 0
         }
     }
-    val queueNestedScrollConnection = remember(dragHandler, canDragQueue) {
+    val queueNestedScrollConnection = remember(dragHandler) {
         dragHandler?.createNestedScrollConnection(
             canDragProvider = { canDragQueue },
             targetSheet = ActiveDragSheet.QUEUE
