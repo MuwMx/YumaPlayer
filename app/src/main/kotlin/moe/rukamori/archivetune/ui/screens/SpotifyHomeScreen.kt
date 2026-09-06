@@ -76,6 +76,7 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
+import moe.rukamori.archivetune.ui.theme.glassBorder
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
@@ -586,13 +587,16 @@ private fun SpotifyQuickGridCell(
     onClick: () -> Unit,
     isArtist: Boolean
 ) {
+    val cardShape = RoundedCornerShape(SettingsDimensions.BadgeCornerRadius)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(SettingsDimensions.BadgeCornerRadius))
-            .background(Color.Black)
             .yumaClickable(onClick = onClick)
+            .clip(cardShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
+            .glassBorder(shape = cardShape, strokeWidth = SettingsDimensions.GlassBorderThickness)
     ) {
         AsyncImage(
             model = imageUrl,
@@ -600,15 +604,23 @@ private fun SpotifyQuickGridCell(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(56.dp)
-                // Если артист - круг, если альбом - скругляем только левые углы под форму плашки
-                .clip(if (isArtist) CircleShape else RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
+                .clip(
+                    if (isArtist) {
+                        CircleShape
+                    } else {
+                        RoundedCornerShape(
+                            topStart = SettingsDimensions.BadgeCornerRadius,
+                            bottomStart = SettingsDimensions.BadgeCornerRadius
+                        )
+                    }
+                )
         )
         Text(
             text = title,
-            style = MaterialTheme.typography.labelMedium.copy(
-                color = Color.White,
-                fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold
             ),
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Start,
