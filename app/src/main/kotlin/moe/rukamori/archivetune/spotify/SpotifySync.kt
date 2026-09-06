@@ -72,6 +72,15 @@ object SpotifySync {
         val app = context.applicationContext
         scope.launch {
             try {
+                val isSyncLikesEnabled = app.dataStore.data.first()[SpotifySyncLikesKey] ?: false
+                if (!isSyncLikesEnabled) {
+                    Timber.tag(TAG).d("Spotify like sync disabled in settings — skipped song ${song.id}")
+                    return@launch
+                }
+                if (!ensureToken(app)) {
+                    Timber.tag(TAG).w("no token — skipped syncing like for song ${song.id}")
+                    return@launch
+                }
                 val spotifyId = resolveSpotifyId(database, song, explicitSpotifyId)
                 if (!spotifyId.isNullOrBlank()) {
                     setSaved(app, spotifyId, "spotify:track:$spotifyId", isLiked)

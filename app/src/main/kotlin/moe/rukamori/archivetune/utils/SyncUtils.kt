@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.LastSpotifySyncKey
 import moe.rukamori.archivetune.constants.SelectedYtmPlaylistsKey
+import moe.rukamori.archivetune.constants.SpotifySyncLikesKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.ArtistEntity
@@ -226,14 +227,19 @@ class SyncUtils
 
         fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
             if (s.isLocal) return
-            SpotifySync.syncLikeForSong(context, database, s, s.liked, explicitSpotifyId)
             syncScope.launch {
-                if (!isLoggedIn()) {
-                    Timber.w("Skipping likeSong - user not logged in")
+                val isSpotifyLikesSyncEnabled =
+                    context.dataStore.data
+                        .map { it[SpotifySyncLikesKey] ?: false }
+                        .first()
+
+                if (isSpotifyLikesSyncEnabled) {
+                    SpotifySync.syncLikeForSong(context, database, s, s.liked, explicitSpotifyId)
                     return@launch
                 }
-                if (!isYtmSyncEnabled()) {
-                    Timber.w("Skipping likeSong - sync disabled")
+
+                if (!isLoggedIn() || !isYtmSyncEnabled()) {
+                    Timber.w("Skipping likeSong - user not logged in or YTM sync disabled")
                     return@launch
                 }
                 val gen = syncGeneration.get()
@@ -242,38 +248,29 @@ class SyncUtils
             }
         }
 
-        fun likeSongs(songs: Collection<SongEntity>) {
-            val uniqueSongs = songs.filterNot(SongEntity::isLocal).distinctBy { it.id }
-            if (uniqueSongs.isEmpty()) return
-            SpotifySync.syncLikeForSongs(context, database, uniqueSongs)
-
+        fun likeSongs(songs: List<SongEntity>) {
+            val nonLocal = songs.filterNot { it.isLocal }
+            if (nonLocal.isEmpty()) return
             syncScope.launch {
-                if (!isLoggedIn()) {
-                    Timber.w("Skipping likeSongs - user not logged in")
-                    return@launch
-                }
-                if (!isYtmSyncEnabled()) {
-                    Timber.w("Skipping likeSongs - sync disabled")
+                val isSpotifyLikesSyncEnabled =
+                    context.dataStore.data
+                        .map { it[SpotifySyncLikesKey] ?: false }
+                        .first()
+
+                if (isSpotifyLikesSyncEnabled) {
+                    SpotifySync.syncLikeForSongs(context, database, nonLocal)
                     return@launch
                 }
 
+                if (!isLoggedIn() || !isYtmSyncEnabled()) {
+                    Timber.w("Skipping likeSongs - user not logged in or YTM sync disabled")
+                    return@launch
+                }
                 val gen = syncGeneration.get()
-                uniqueSongs.chunked(8).forEach { batch ->
+                if (!isSyncStillEnabled(gen)) return@launch
+                nonLocal.forEach { s ->
                     if (!isSyncStillEnabled(gen)) return@launch
-
-                    coroutineScope {
-                        batch
-                            .map { song ->
-                                async {
-                                    if (!isSyncStillEnabled(gen)) return@async
-                                    YouTube
-                                        .likeVideo(song.id, song.liked)
-                                        .onFailure { error ->
-                                            Timber.w(error, "likeSongs: Failed to sync like for ${song.id}")
-                                        }
-                                }
-                            }.awaitAll()
-                    }
+                    YouTube.likeVideo(s.id, s.liked)
                 }
             }
         }
