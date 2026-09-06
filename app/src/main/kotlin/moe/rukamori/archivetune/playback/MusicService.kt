@@ -127,6 +127,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.spotify.SpotifySync
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
@@ -2504,6 +2505,9 @@ class MusicService :
                     } ?: return@launch
 
                 Timber.tag("MediaNotification").d("toggleLike() successful: song=${song.id}, liked=${song.liked}")
+                mediaMetadata.spotifyTrackId?.let { spotifyId ->
+                    SpotifySync.syncLike(this@MusicService, spotifyId, song.liked)
+                }
                 syncUtils.likeSong(song)
 
                 if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {

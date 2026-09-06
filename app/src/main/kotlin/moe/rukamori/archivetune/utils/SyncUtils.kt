@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyLibraryRepository
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
+import moe.rukamori.archivetune.spotify.SpotifySync
 import moe.rukamori.archivetune.spotify.Spotify
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -225,6 +226,7 @@ class SyncUtils
 
         fun likeSong(s: SongEntity) {
             if (s.isLocal) return
+            SpotifySync.syncLikeForSong(context, database, s, s.liked)
             syncScope.launch {
                 if (!isLoggedIn()) {
                     Timber.w("Skipping likeSong - user not logged in")
@@ -243,6 +245,7 @@ class SyncUtils
         fun likeSongs(songs: Collection<SongEntity>) {
             val uniqueSongs = songs.filterNot(SongEntity::isLocal).distinctBy { it.id }
             if (uniqueSongs.isEmpty()) return
+            SpotifySync.syncLikeForSongs(context, database, uniqueSongs)
 
             syncScope.launch {
                 if (!isLoggedIn()) {
