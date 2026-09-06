@@ -619,6 +619,11 @@ class MainActivity : ComponentActivity() {
                     .map { it.isLyricsVisible }
                     .distinctUntilChanged()
             }.collectAsStateWithLifecycle(initialValue = false)
+            val isPlayerQueueVisible by remember(playerViewModel) {
+                playerViewModel.uiState
+                    .map { it.isQueueVisible }
+                    .distinctUntilChanged()
+            }.collectAsStateWithLifecycle(initialValue = false)
             val isHomeScreenVisible by remember {
                 derivedStateOf { playerExpansionFraction < 0.99f }
             }
@@ -2452,6 +2457,9 @@ class MainActivity : ComponentActivity() {
                                 isPlayerLyricsVisible -> {
                                     playerViewModel.setLyricsVisible(false)
                                 }
+                                isPlayerQueueVisible -> {
+                                    playerViewModel.setQueueVisible(false)
+                                }
                                 else -> {
                                     playerViewModel.requestSheetCollapse()
                                 }
@@ -2875,6 +2883,8 @@ private fun ScopedPlayerSheet(
         },
         onLyricsClick = { playerViewModel.setLyricsVisible(true) },
         onCloseLyricsClick = { playerViewModel.setLyricsVisible(false) },
+        onOpenQueue = { playerViewModel.setQueueVisible(true) },
+        onCloseQueueClick = { playerViewModel.setQueueVisible(false) },
         onSearchLyricsClick = { playerViewModel.fetchLyrics() },
         onSeek = { position -> playerViewModel.seekTo(position.toLong()) },
         onSeekStarted = { playerViewModel.onSeekStarted() },

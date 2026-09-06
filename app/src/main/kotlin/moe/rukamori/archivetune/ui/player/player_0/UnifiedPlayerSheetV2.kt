@@ -93,7 +93,9 @@ fun UnifiedPlayerSheetV2(
     progressMsProvider: () -> Long,
     bottomBarHeight: Dp = 0.dp,
     onExpansionFractionChanged: (Float) -> Unit = {},
-    onLyricsClick: () -> Unit = {}
+    onLyricsClick: () -> Unit = {},
+    onOpenQueue: () -> Unit = {},
+    onCloseQueueClick: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -183,6 +185,17 @@ fun UnifiedPlayerSheetV2(
             }
         }
 
+        LaunchedEffect(state.isQueueVisible) {
+            val target = if (state.isQueueVisible) 1f else 0f
+            if (queueFraction.targetValue != target) {
+                withFrameNanos { }
+                queueFraction.animateTo(
+                    targetValue = target,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
+        }
+
         val lyricsFractionProvider = { lyricsFraction.value }
         val queueFractionProvider = { queueFraction.value }
 
@@ -191,6 +204,9 @@ fun UnifiedPlayerSheetV2(
                 if (fraction == 0f) {
                     if (state.isLyricsVisible) {
                         onCloseLyricsClick()
+                    }
+                    if (state.isQueueVisible) {
+                        onCloseQueueClick()
                     }
                     if (lyricsFraction.value > 0f) {
                         lyricsFraction.snapTo(0f)
@@ -326,34 +342,32 @@ fun UnifiedPlayerSheetV2(
                 onCollapseLyrics = {
                     onCloseLyricsClick()
                 },
-                onExpandQueue = {},
+                onExpandQueue = {
+                    onOpenQueue()
+                },
                 onCollapseQueue = {
-                    scope.launch {
-                        queueFraction.animateTo(
-                            0f,
-                            spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                        )
-                    }
+                    onCloseQueueClick()
                 }
             )
         }
 
-        BackHandler(enabled = state.isLyricsVisible || lyricsFraction.value > 0.01f || queueFraction.value > 0.01f) {
+        BackHandler(enabled = state.isLyricsVisible || lyricsFraction.value > 0.01f || state.isQueueVisible || queueFraction.value > 0.01f) {
             if (lyricsFraction.value > 0.01f || state.isLyricsVisible) {
                 scope.launch {
                     lyricsFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
                 }
                 onCloseLyricsClick()
             }
-            if (queueFraction.value > 0.01f) {
+            if (queueFraction.value > 0.01f || state.isQueueVisible) {
                 scope.launch {
                     queueFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
                 }
+                onCloseQueueClick()
             }
         }
 
         PlayerSheetPredictiveBackHandler(
-            enabled = currentSheetState == PlayerSheetState.EXPANDED && !state.isLyricsVisible && lyricsFraction.value < 0.01f && queueFraction.value < 0.01f,
+            enabled = currentSheetState == PlayerSheetState.EXPANDED && !state.isLyricsVisible && !state.isQueueVisible && lyricsFraction.value < 0.01f && queueFraction.value < 0.01f,
             currentSheetState = currentSheetState,
             predictiveBackFractionValue = predictiveBackProgress,
             onPredictiveBackFractionChanged = { predictiveBackProgress = it },
@@ -434,23 +448,9 @@ fun UnifiedPlayerSheetV2(
                     fullPlayerVisualState = fullPlayerVisualState,
                     onAction = onAction,
                     onCloseLyricsClick = onCloseLyricsClick,
-                    onCloseQueueClick = {
-                        scope.launch {
-                            queueFraction.animateTo(
-                                0f,
-                                spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                            )
-                        }
-                    },
+                    onCloseQueueClick = onCloseQueueClick,
                     onMoreQueueClick = { isQueueMenuVisible = true },
-                    onOpenQueue = {
-                        scope.launch {
-                            queueFraction.animateTo(
-                                1f,
-                                spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-                            )
-                        }
-                    },
+                    onOpenQueue = onOpenQueue,
                     onMoreLyricsClick = { isLyricsMenuVisible = true },
                     onSearchLyricsClick = onSearchLyricsClick,
                     onCollapseClick = {

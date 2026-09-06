@@ -28,6 +28,7 @@ data class PlayerUiState(
     val currentLineIndex: Int = -1,
     val isSynced: Boolean = false,
     val isLyricsVisible: Boolean = false,
+    val isQueueVisible: Boolean = false,
     val isRefreshingLyrics: Boolean = false,
     val isLoadingLyrics: Boolean = false,
     val lyricsError: String? = null,

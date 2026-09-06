@@ -1054,6 +1054,10 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun setQueueVisible(visible: Boolean) {
+        _uiState.update { it.copy(isQueueVisible = visible) }
+    }
+
     fun refreshLyrics() {
         fetchLyrics(force = true)
     }

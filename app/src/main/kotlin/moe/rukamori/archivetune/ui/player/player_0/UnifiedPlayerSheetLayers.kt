@@ -269,23 +269,46 @@ internal fun UnifiedPlayerSheetLayers(
                                     Modifier
                                 }
                             )
-                            .spotBorderCrop()
-                            .sheetBackground(state)
                             .clipToBounds()
                     ) {
-                        LyricsColumn(
-                            state = state,
-                            animateProgressProvider = lyricsFractionProvider,
-                            progressMsProvider = progressMsProvider,
-                            onCloseClick = onCloseLyricsClick,
-                            onMoreClick = onMoreLyricsClick,
-                            onSearchClick = onSearchLyricsClick,
-                            lazyListState = lyricsListState,
-                            onAction = onAction,
-                            onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
-                            onSeek = onSeek,
-                            onSeekStarted = onSeekStarted,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .layout { measurable, constraints ->
+                                    if (!constraints.hasBoundedWidth) {
+                                        val placeable = measurable.measure(constraints)
+                                        return@layout layout(placeable.width, placeable.height) {
+                                            placeable.placeRelative(0, 0)
+                                        }
+                                    }
+                                    val borderPx = 1.dp.roundToPx()
+                                    val expandedConstraints = constraints.copy(
+                                        minWidth = constraints.maxWidth + (borderPx * 2),
+                                        maxWidth = constraints.maxWidth + (borderPx * 2),
+                                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
+                                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
+                                    )
+                                    val placeable = measurable.measure(expandedConstraints)
+                                    layout(constraints.maxWidth, placeable.height) {
+                                        placeable.placeRelative(-borderPx, 0)
+                                    }
+                                }
+                                .sheetBackground(state)
+                        ) {
+                            LyricsColumn(
+                                state = state,
+                                animateProgressProvider = lyricsFractionProvider,
+                                progressMsProvider = progressMsProvider,
+                                onCloseClick = onCloseLyricsClick,
+                                onMoreClick = onMoreLyricsClick,
+                                onSearchClick = onSearchLyricsClick,
+                                lazyListState = lyricsListState,
+                                onAction = onAction,
+                                onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
+                                onSeek = onSeek,
+                                onSeekStarted = onSeekStarted,
+                            )
+                        }
                     }
                 }
             }
@@ -324,22 +347,45 @@ internal fun UnifiedPlayerSheetLayers(
                                     Modifier
                                 }
                             )
-                            .spotBorderCrop()
-                            .sheetBackground(state)
                             .clipToBounds()
                     ) {
-                        QueueScreen(
-                            state = queueState,
-                            onAction = onAction,
-                            lazyListState = queueListState,
-                            contentPadding = PaddingValues(
-                                top = 8.dp,
-                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
-                            ),
-                            queueFractionProvider = queueFractionProvider,
-                            onReorderStateChange = { isQueueReordering = it },
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .layout { measurable, constraints ->
+                                    if (!constraints.hasBoundedWidth) {
+                                        val placeable = measurable.measure(constraints)
+                                        return@layout layout(placeable.width, placeable.height) {
+                                            placeable.placeRelative(0, 0)
+                                        }
+                                    }
+                                    val borderPx = 1.dp.roundToPx()
+                                    val expandedConstraints = constraints.copy(
+                                        minWidth = constraints.maxWidth + (borderPx * 2),
+                                        maxWidth = constraints.maxWidth + (borderPx * 2),
+                                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
+                                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
+                                    )
+                                    val placeable = measurable.measure(expandedConstraints)
+                                    layout(constraints.maxWidth, placeable.height) {
+                                        placeable.placeRelative(-borderPx, 0)
+                                    }
+                                }
+                                .sheetBackground(state)
+                        ) {
+                            QueueScreen(
+                                state = queueState,
+                                onAction = onAction,
+                                lazyListState = queueListState,
+                                contentPadding = PaddingValues(
+                                    top = 8.dp,
+                                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
+                                ),
+                                queueFractionProvider = queueFractionProvider,
+                                onReorderStateChange = { isQueueReordering = it },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
                 }
             }
@@ -486,24 +532,6 @@ private fun QueueSheetHeader(
         }
     }
 }
-
-private fun Modifier.spotBorderCrop(borderWidth: Dp = SettingsDimensions.GlassBorderThickness): Modifier =
-    this.layout { measurable, constraints ->
-        if (!constraints.hasBoundedWidth) {
-            val placeable = measurable.measure(constraints)
-            return@layout layout(placeable.width, placeable.height) {
-                placeable.placeRelative(0, 0)
-            }
-        }
-        val borderPx = borderWidth.roundToPx()
-        val expandedWidth = constraints.maxWidth + (borderPx * 2)
-        val placeable = measurable.measure(
-            constraints.copy(minWidth = expandedWidth, maxWidth = expandedWidth)
-        )
-        layout(constraints.maxWidth, placeable.height) {
-            placeable.placeRelative(-borderPx, 0)
-        }
-    }.clipToBounds()
 
 @Composable
 private fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
