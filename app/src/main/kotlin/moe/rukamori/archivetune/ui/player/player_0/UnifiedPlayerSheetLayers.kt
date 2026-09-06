@@ -382,7 +382,7 @@ internal fun UnifiedPlayerSheetLayers(
                                     top = 8.dp,
                                     bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
                                 ),
-                                queueFractionProvider = queueFractionProvider,
+                                isQueueVisible = state.isQueueVisible,
                                 onReorderStateChange = { isQueueReordering = it },
                                 modifier = Modifier.fillMaxSize(),
                             )
