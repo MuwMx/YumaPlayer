@@ -89,6 +89,12 @@ object SpotifySync {
         val app = context.applicationContext
         scope.launch {
             try {
+                val isSyncLikesEnabled = app.dataStore.data.first()[SpotifySyncLikesKey] ?: false
+                if (!isSyncLikesEnabled) {
+                    Timber.tag(TAG).d("Spotify like sync disabled in settings — skipped batch sync")
+                    return@launch
+                }
+
                 val songsWithLikes = songs.filterNot(SongEntity::isLocal).distinctBy { it.id }
                 if (songsWithLikes.isEmpty()) return@launch
 
@@ -99,14 +105,64 @@ object SpotifySync {
                     emptyMap()
                 }
 
-                songsWithLikes.forEach { song ->
+                val resolvedTracks = songsWithLikes.mapNotNull { song ->
                     val spotifyId = if (song.id.startsWith("spotify:track:")) {
                         song.id.removePrefix("spotify:track:")
                     } else {
                         matches[song.id]?.spotifyId
                     }
                     if (!spotifyId.isNullOrBlank()) {
-                        setSaved(app, spotifyId, "spotify:track:$spotifyId", song.liked)
+                        "spotify:track:$spotifyId" to song.liked
+                    } else {
+                        null
+                    }
+                }
+
+                if (resolvedTracks.isEmpty()) return@launch
+
+                if (!ensureToken(app)) {
+                    Timber.tag(TAG).w("no token — skipped batch syncing ${resolvedTracks.size} tracks")
+                    return@launch
+                }
+
+                val toAddUris = resolvedTracks.filter { it.second }.map { it.first }
+                val toRemoveUris = resolvedTracks.filterNot { it.second }.map { it.first }
+
+                if (toAddUris.isNotEmpty()) {
+                    toAddUris.chunked(50).forEach { chunk ->
+                        val result = Spotify.addToLibrary(chunk)
+                        result.fold(
+                            onSuccess = { Timber.tag(TAG).d("synced batch add ${chunk.size} items") },
+                            onFailure = { error ->
+                                if ((error as? Spotify.SpotifyException)?.statusCode == 401 && refreshToken(app)) {
+                                    Spotify.addToLibrary(chunk).fold(
+                                        onSuccess = { Timber.tag(TAG).d("synced batch add ${chunk.size} items (after retry)") },
+                                        onFailure = { Timber.tag(TAG).w(it, "failed batch add ${chunk.size} items after retry") },
+                                    )
+                                } else {
+                                    Timber.tag(TAG).w(error, "failed batch add ${chunk.size} items")
+                                }
+                            },
+                        )
+                    }
+                }
+
+                if (toRemoveUris.isNotEmpty()) {
+                    toRemoveUris.chunked(50).forEach { chunk ->
+                        val result = Spotify.removeFromLibrary(chunk)
+                        result.fold(
+                            onSuccess = { Timber.tag(TAG).d("synced batch remove ${chunk.size} items") },
+                            onFailure = { error ->
+                                if ((error as? Spotify.SpotifyException)?.statusCode == 401 && refreshToken(app)) {
+                                    Spotify.removeFromLibrary(chunk).fold(
+                                        onSuccess = { Timber.tag(TAG).d("synced batch remove ${chunk.size} items (after retry)") },
+                                        onFailure = { Timber.tag(TAG).w(it, "failed batch remove ${chunk.size} items after retry") },
+                                    )
+                                } else {
+                                    Timber.tag(TAG).w(error, "failed batch remove ${chunk.size} items")
+                                }
+                            },
+                        )
                     }
                 }
             } catch (e: Throwable) {
@@ -180,6 +236,13 @@ object SpotifySync {
     private suspend fun refreshToken(context: Context): Boolean =
         tokenMutex.withLock {
             val prefs = context.dataStore.data.first()
+            val token = prefs[SpotifyAccessTokenKey].orEmpty()
+            val expiresAt = prefs[SpotifyAccessTokenExpiresAtKey] ?: 0L
+            if (token.isNotBlank() && expiresAt > System.currentTimeMillis() + TOKEN_EXPIRY_GRACE_MS) {
+                Spotify.accessToken = token
+                return true
+            }
+
             val spDc = prefs[SpotifySpDcKey].orEmpty()
             if (spDc.isBlank()) return false
             val spKey = prefs[SpotifySpKeyKey].orEmpty()
