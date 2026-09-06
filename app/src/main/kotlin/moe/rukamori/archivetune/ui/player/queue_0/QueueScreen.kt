@@ -7,6 +7,7 @@
 package moe.rukamori.archivetune.ui.player.queue_0
 
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -38,7 +39,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -93,7 +96,18 @@ fun QueueScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     queueFractionProvider: () -> Float = { 1f },
     onReorderStateChange: (Boolean) -> Unit = {},
+    onCloseClick: () -> Unit = {},
 ) {
+    val isQueueActive by remember(queueFractionProvider) {
+        derivedStateOf { queueFractionProvider() > 0.05f }
+    }
+
+    key(isQueueActive) {
+        BackHandler(enabled = isQueueActive) {
+            onCloseClick()
+        }
+    }
+
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val haptics = rememberYumaHaptics()
     val hapticView = LocalView.current

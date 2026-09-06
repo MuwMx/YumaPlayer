@@ -376,6 +376,7 @@ internal fun UnifiedPlayerSheetLayers(
                             QueueScreen(
                                 state = queueState,
                                 onAction = onAction,
+                                onCloseClick = onCloseQueueClick,
                                 lazyListState = queueListState,
                                 contentPadding = PaddingValues(
                                     top = 8.dp,
