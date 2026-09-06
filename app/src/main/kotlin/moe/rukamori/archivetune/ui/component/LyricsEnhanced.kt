@@ -366,7 +366,7 @@ fun LyricsEnhanced(
         }
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
-    var frozenPositionMs by remember { mutableLongStateOf(0L) }
+    var frozenPositionMs by remember { mutableLongStateOf(-1L) }
     val defaultListState = key(lyricsSessionKey) { rememberLazyListState() }
     val listState = lazyListState ?: defaultListState
 
@@ -374,6 +374,7 @@ fun LyricsEnhanced(
         playbackPositionMs.longValue = player.currentPosition.coerceAtLeast(0L)
         isManualScrolling = false
         lastManualScrollTime = 0L
+        frozenPositionMs = -1L
         isSelectionModeActive = false
         selectedLineKeys.clear()
     }
@@ -442,10 +443,15 @@ fun LyricsEnhanced(
     }
 
     val playbackSyncPosition: () -> Int =
-        remember {
+        remember(listState) {
             {
                 val frozen = frozenPositionMs
-                val baseMs = if (isManualScrolling && frozen > 0L) frozen else playbackPositionMs.longValue
+                val baseMs =
+                    if (isManualScrolling && listState.isScrollInProgress && frozen >= 0L) {
+                        frozen
+                    } else {
+                        playbackPositionMs.longValue
+                    }
                 (
                         baseMs +
                                 latestLyricsSyncOffset.value.toLong() +
@@ -508,7 +514,7 @@ fun LyricsEnhanced(
         if (isManualScrolling) {
             frozenPositionMs = playbackPositionMs.longValue
         } else {
-            frozenPositionMs = 0L
+            frozenPositionMs = -1L
         }
     }
 
@@ -767,6 +773,7 @@ fun LyricsEnhanced(
                                 if (isSelectionModeActive) {
                                     toggleSelectedLine(line.selectionKey())
                                 } else if (lyricsClick && isSynced && line.start > 0) {
+                                    frozenPositionMs = -1L
                                     player.seekTo(line.start.toLong())
                                 }
                             },
