@@ -248,32 +248,38 @@ class SyncUtils
             }
         }
 
-        fun likeSongs(songs: List<SongEntity>) {
-            val nonLocal = songs.filterNot { it.isLocal }
-            if (nonLocal.isEmpty()) return
-            syncScope.launch {
-                val isSpotifyLikesSyncEnabled =
-                    context.dataStore.data
-                        .map { it[SpotifySyncLikesKey] ?: false }
-                        .first()
+    fun likeSongs(songs: List<SongEntity>) {
+        val nonLocal = songs.filterNot { it.isLocal }.distinctBy { it.id }
+        if (nonLocal.isEmpty()) return
+        syncScope.launch {
+            val isSpotifyLikesSyncEnabled =
+                context.dataStore.data
+                    .map { it[SpotifySyncLikesKey] ?: false }
+                    .first()
 
-                if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSongs(context, database, nonLocal)
-                    return@launch
-                }
+            if (isSpotifyLikesSyncEnabled) {
+                SpotifySync.syncLikeForSongs(context, database, nonLocal)
+                return@launch
+            }
 
-                if (!isLoggedIn() || !isYtmSyncEnabled()) {
-                    Timber.w("Skipping likeSongs - user not logged in or YTM sync disabled")
-                    return@launch
-                }
-                val gen = syncGeneration.get()
+            if (!isLoggedIn() || !isYtmSyncEnabled()) {
+                Timber.w("Skipping likeSongs - user not logged in or YTM sync disabled")
+                return@launch
+            }
+            val gen = syncGeneration.get()
+            nonLocal.chunked(8).forEach { batch ->
                 if (!isSyncStillEnabled(gen)) return@launch
-                nonLocal.forEach { s ->
-                    if (!isSyncStillEnabled(gen)) return@launch
-                    YouTube.likeVideo(s.id, s.liked)
+                coroutineScope {
+                    batch.map { song ->
+                        async {
+                            if (!isSyncStillEnabled(gen)) return@async
+                            YouTube.likeVideo(song.id, song.liked)
+                        }
+                    }.awaitAll()
                 }
             }
         }
+    }
 
         suspend fun syncLikedSongs(authoritative: Boolean = false) =
             coroutineScope {
