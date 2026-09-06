@@ -505,13 +505,6 @@ fun LyricsEnhanced(
 
     LaunchedEffect(isManualScrolling, lastManualScrollTime) {
         if (isManualScrolling) {
-            delay(MANUAL_SCROLL_TIMEOUT_MS)
-            isManualScrolling = false
-        }
-    }
-
-    LaunchedEffect(isManualScrolling) {
-        if (isManualScrolling) {
             frozenPositionMs = playbackPositionMs.longValue
         } else {
             frozenPositionMs = -1L
