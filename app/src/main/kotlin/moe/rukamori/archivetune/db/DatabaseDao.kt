@@ -1643,6 +1643,18 @@ interface DatabaseDao {
             )
         }
 
+        if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+            insert(
+                SpotifyMatchEntity(
+                    spotifyId = mediaMetadata.spotifyTrackId,
+                    youtubeId = mediaMetadata.id,
+                    title = mediaMetadata.title,
+                    artist = mediaMetadata.artists.joinToString { it.name },
+                    matchScore = 1.0,
+                ),
+            )
+        }
+
         mediaMetadata.artists.forEachIndexed { index, artist ->
             val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
 
@@ -1744,6 +1756,18 @@ interface DatabaseDao {
                     songId = song.id,
                     artistId = artistId,
                     position = index,
+                ),
+            )
+        }
+
+        if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+            insert(
+                SpotifyMatchEntity(
+                    spotifyId = mediaMetadata.spotifyTrackId,
+                    youtubeId = song.id,
+                    title = mediaMetadata.title,
+                    artist = mediaMetadata.artists.joinToString { it.name },
+                    matchScore = 1.0,
                 ),
             )
         }

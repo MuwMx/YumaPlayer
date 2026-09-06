@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.constants.SpotifySpKeyKey
 import moe.rukamori.archivetune.constants.SpotifySyncLikesKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.utils.dataStore
 import timber.log.Timber
 
@@ -65,12 +66,13 @@ object SpotifySync {
         database: MusicDatabase,
         song: SongEntity,
         isLiked: Boolean,
+        explicitSpotifyId: String? = null,
     ) {
         if (song.isLocal) return
         val app = context.applicationContext
         scope.launch {
             try {
-                val spotifyId = resolveSpotifyId(database, song)
+                val spotifyId = resolveSpotifyId(database, song, explicitSpotifyId)
                 if (!spotifyId.isNullOrBlank()) {
                     setSaved(app, spotifyId, "spotify:track:$spotifyId", isLiked)
                 }
@@ -172,12 +174,56 @@ object SpotifySync {
         }
     }
 
-    private suspend fun resolveSpotifyId(database: MusicDatabase, song: SongEntity): String? {
+    private suspend fun resolveSpotifyId(
+        database: MusicDatabase,
+        song: SongEntity,
+        explicitSpotifyId: String? = null,
+    ): String? {
+        if (!explicitSpotifyId.isNullOrBlank()) {
+            val rawId = explicitSpotifyId.removePrefix("spotify:track:")
+            val songWithArtists = database.getSongById(song.id)
+            val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
+            database.insert(
+                SpotifyMatchEntity(
+                    spotifyId = rawId,
+                    youtubeId = song.id,
+                    title = song.title,
+                    artist = artistsText.ifBlank { song.albumName.orEmpty() },
+                    matchScore = 1.0,
+                ),
+            )
+            return rawId
+        }
         if (song.id.startsWith("spotify:track:")) {
             return song.id.removePrefix("spotify:track:")
         }
         val match = database.getSpotifyMatchesByYouTubeIds(listOf(song.id)).firstOrNull()
-        return match?.spotifyId
+        if (match != null && match.spotifyId.isNotBlank()) {
+            return match.spotifyId
+        }
+
+        val songWithArtists = database.getSongById(song.id)
+        val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
+        val query = "${song.title} $artistsText".trim()
+        if (query.isBlank()) return null
+
+        if (!ensureToken(App.instance)) return null
+        val searchResult = Spotify.search(query, types = listOf("track"), limit = 1).getOrNull()
+        val foundTrack = searchResult?.tracks?.items?.firstOrNull() ?: return null
+        val spotifyId = foundTrack.id
+        if (spotifyId.isNotBlank()) {
+            database.insert(
+                SpotifyMatchEntity(
+                    spotifyId = spotifyId,
+                    youtubeId = song.id,
+                    title = foundTrack.name,
+                    artist = foundTrack.artists.joinToString(" ") { it.name },
+                    matchScore = 1.0,
+                ),
+            )
+            return spotifyId
+        }
+        return null
     }
 
     private fun setSaved(context: Context, id: String, uri: String, saved: Boolean) {

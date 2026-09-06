@@ -2504,7 +2504,7 @@ class MusicService :
                     } ?: return@launch
 
                 Timber.tag("MediaNotification").d("toggleLike() successful: song=${song.id}, liked=${song.liked}")
-                syncUtils.likeSong(song)
+                syncUtils.likeSong(song, mediaMetadata.spotifyTrackId)
 
                 if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
                     val downloadRequest =

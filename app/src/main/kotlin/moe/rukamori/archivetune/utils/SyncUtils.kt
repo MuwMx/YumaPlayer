@@ -224,9 +224,9 @@ class SyncUtils
 
         private fun isSyncStillEnabled(gen: Long): Boolean = syncEnabled.value && syncGeneration.get() == gen
 
-        fun likeSong(s: SongEntity) {
+        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
             if (s.isLocal) return
-            SpotifySync.syncLikeForSong(context, database, s, s.liked)
+            SpotifySync.syncLikeForSong(context, database, s, s.liked, explicitSpotifyId)
             syncScope.launch {
                 if (!isLoggedIn()) {
                     Timber.w("Skipping likeSong - user not logged in")
@@ -1034,7 +1034,7 @@ class SyncUtils
                         resolvedTracks.forEachIndexed { index, resolved ->
                             val timestamp = likedSongTimestamp(now, index)
                             val dbSong = database.getSongByIdBlocking(resolved.metadata.id)
-                            
+
                             if (dbSong == null) {
                                 database.insert(resolved.metadata) { it.copy(liked = false, likedDate = null) }
                             }
