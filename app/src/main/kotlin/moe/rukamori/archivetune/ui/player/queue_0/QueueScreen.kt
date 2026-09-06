@@ -41,7 +41,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -102,10 +101,8 @@ fun QueueScreen(
         derivedStateOf { queueFractionProvider() > 0.05f }
     }
 
-    key(isQueueActive) {
-        BackHandler(enabled = isQueueActive) {
-            onCloseClick()
-        }
+    BackHandler(enabled = isQueueActive) {
+        onCloseClick()
     }
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -176,13 +173,7 @@ fun QueueScreen(
             modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val fraction = queueFractionProvider()
-                    compositingStrategy =
-                        if (fraction <= 0f || fraction < 1f) {
-                            CompositingStrategy.Auto
-                        } else {
-                            CompositingStrategy.Offscreen
-                        }
+                    compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithContent {
                     drawContent()

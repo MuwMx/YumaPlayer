@@ -188,7 +188,6 @@ fun UnifiedPlayerSheetV2(
         LaunchedEffect(state.isQueueVisible) {
             val target = if (state.isQueueVisible) 1f else 0f
             if (queueFraction.targetValue != target) {
-                withFrameNanos { }
                 queueFraction.animateTo(
                     targetValue = target,
                     animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
