@@ -39,8 +39,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +54,9 @@ import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -90,14 +93,16 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    isQueueVisible: Boolean = false,
+    queueFractionProvider: () -> Float = { 1f },
     onReorderStateChange: (Boolean) -> Unit = {},
     onCloseClick: () -> Unit = {},
 ) {
-    key(isQueueVisible) {
-        BackHandler(enabled = isQueueVisible) {
-            onCloseClick()
-        }
+    val isQueueActive by remember(queueFractionProvider) {
+        derivedStateOf { queueFractionProvider() > 0.05f }
+    }
+
+    BackHandler(enabled = isQueueActive) {
+        onCloseClick()
     }
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -154,6 +159,7 @@ fun QueueScreen(
         }
     }
 
+    val fadeHeight = 24.dp
     val darkScheme = darkColorScheme()
     MaterialTheme(colorScheme = darkScheme) {
         CompositionLocalProvider(
@@ -163,7 +169,45 @@ fun QueueScreen(
             LazyColumn(
                 state = lazyListState,
                 userScrollEnabled = !(reorderableState.isAnyItemDragging || reorderHandleInUse),
-                modifier = modifier.fillMaxSize(),
+                modifier =
+                    modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            if (queueFractionProvider() <= 0f) return@drawWithContent
+                            val fadeHeightPx = fadeHeight.toPx()
+                            if (size.height > 0f && fadeHeightPx > 0f) {
+                                drawRect(
+                                    brush =
+                                        Brush.verticalGradient(
+                                            colors =
+                                                listOf(
+                                                    Color.Transparent,
+                                                    Color.Black,
+                                                ),
+                                            startY = 0f,
+                                            endY = fadeHeightPx,
+                                        ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                                drawRect(
+                                    brush =
+                                        Brush.verticalGradient(
+                                            colors =
+                                                listOf(
+                                                    Color.Black,
+                                                    Color.Transparent,
+                                                ),
+                                            startY = size.height - fadeHeightPx,
+                                            endY = size.height,
+                                        ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
+                        },
                 contentPadding = contentPadding,
             ) {
                 itemsIndexed(

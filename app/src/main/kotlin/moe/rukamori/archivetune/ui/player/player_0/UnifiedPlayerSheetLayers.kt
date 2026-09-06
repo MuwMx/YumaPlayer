@@ -273,7 +273,7 @@ internal fun UnifiedPlayerSheetLayers(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .matchParentSize()
                                 .layout { measurable, constraints ->
                                     if (!constraints.hasBoundedWidth) {
                                         val placeable = measurable.measure(constraints)
@@ -294,21 +294,20 @@ internal fun UnifiedPlayerSheetLayers(
                                     }
                                 }
                                 .sheetBackground(state)
-                        ) {
-                            LyricsColumn(
-                                state = state,
-                                animateProgressProvider = lyricsFractionProvider,
-                                progressMsProvider = progressMsProvider,
-                                onCloseClick = onCloseLyricsClick,
-                                onMoreClick = onMoreLyricsClick,
-                                onSearchClick = onSearchLyricsClick,
-                                lazyListState = lyricsListState,
-                                onAction = onAction,
-                                onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
-                                onSeek = onSeek,
-                                onSeekStarted = onSeekStarted,
-                            )
-                        }
+                        )
+                        LyricsColumn(
+                            state = state,
+                            animateProgressProvider = lyricsFractionProvider,
+                            progressMsProvider = progressMsProvider,
+                            onCloseClick = onCloseLyricsClick,
+                            onMoreClick = onMoreLyricsClick,
+                            onSearchClick = onSearchLyricsClick,
+                            lazyListState = lyricsListState,
+                            onAction = onAction,
+                            onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
+                            onSeek = onSeek,
+                            onSeekStarted = onSeekStarted,
+                        )
                     }
                 }
             }
@@ -351,7 +350,7 @@ internal fun UnifiedPlayerSheetLayers(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .matchParentSize()
                                 .layout { measurable, constraints ->
                                     if (!constraints.hasBoundedWidth) {
                                         val placeable = measurable.measure(constraints)
@@ -372,21 +371,20 @@ internal fun UnifiedPlayerSheetLayers(
                                     }
                                 }
                                 .sheetBackground(state)
-                        ) {
-                            QueueScreen(
-                                state = queueState,
-                                onAction = onAction,
-                                onCloseClick = onCloseQueueClick,
-                                lazyListState = queueListState,
-                                contentPadding = PaddingValues(
-                                    top = 8.dp,
-                                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
-                                ),
-                                isQueueVisible = state.isQueueVisible,
-                                onReorderStateChange = { isQueueReordering = it },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                        )
+                        QueueScreen(
+                            state = queueState,
+                            onAction = onAction,
+                            queueFractionProvider = queueFractionProvider,
+                            onCloseClick = onCloseQueueClick,
+                            lazyListState = queueListState,
+                            contentPadding = PaddingValues(
+                                top = 8.dp,
+                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
+                            ),
+                            onReorderStateChange = { isQueueReordering = it },
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                 }
             }

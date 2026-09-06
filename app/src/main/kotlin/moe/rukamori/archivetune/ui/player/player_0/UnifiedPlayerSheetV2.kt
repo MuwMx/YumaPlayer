@@ -198,6 +198,20 @@ fun UnifiedPlayerSheetV2(
         val lyricsFractionProvider = { lyricsFraction.value }
         val queueFractionProvider = { queueFraction.value }
 
+        val handleOpenQueue: () -> Unit = {
+            scope.launch {
+                queueFraction.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+            }
+            onOpenQueue()
+        }
+
+        val handleCloseQueue: () -> Unit = {
+            scope.launch {
+                queueFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+            }
+            onCloseQueueClick()
+        }
+
         LaunchedEffect(Unit) {
             snapshotFlow { expansionFraction.value }.collect { fraction ->
                 if (fraction == 0f) {
@@ -341,12 +355,8 @@ fun UnifiedPlayerSheetV2(
                 onCollapseLyrics = {
                     onCloseLyricsClick()
                 },
-                onExpandQueue = {
-                    onOpenQueue()
-                },
-                onCollapseQueue = {
-                    onCloseQueueClick()
-                }
+                onExpandQueue = handleOpenQueue,
+                onCollapseQueue = handleCloseQueue
             )
         }
 
@@ -358,10 +368,7 @@ fun UnifiedPlayerSheetV2(
                 onCloseLyricsClick()
             }
             if (queueFraction.value > 0.01f || state.isQueueVisible) {
-                scope.launch {
-                    queueFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
-                }
-                onCloseQueueClick()
+                handleCloseQueue()
             }
         }
 
@@ -447,9 +454,9 @@ fun UnifiedPlayerSheetV2(
                     fullPlayerVisualState = fullPlayerVisualState,
                     onAction = onAction,
                     onCloseLyricsClick = onCloseLyricsClick,
-                    onCloseQueueClick = onCloseQueueClick,
+                    onCloseQueueClick = handleCloseQueue,
                     onMoreQueueClick = { isQueueMenuVisible = true },
-                    onOpenQueue = onOpenQueue,
+                    onOpenQueue = handleOpenQueue,
                     onMoreLyricsClick = { isLyricsMenuVisible = true },
                     onSearchLyricsClick = onSearchLyricsClick,
                     onCollapseClick = {
