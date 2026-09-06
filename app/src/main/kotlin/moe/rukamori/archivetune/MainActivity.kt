@@ -614,6 +614,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
+            var isPlayerOverlayVisible by remember { mutableStateOf(false) }
+            val isPlayerLyricsVisible by remember(playerViewModel) {
+                playerViewModel.uiState
+                    .map { it.isLyricsVisible }
+                    .distinctUntilChanged()
+            }.collectAsStateWithLifecycle(initialValue = false)
             val isHomeScreenVisible by remember {
                 derivedStateOf { playerExpansionFraction < 0.99f }
             }
@@ -2114,6 +2120,9 @@ class MainActivity : ComponentActivity() {
                                             onExpansionFractionChanged = { fraction ->
                                                 playerExpansionFraction = fraction
                                             },
+                                            onOverlayVisibilityChanged = { isVisible ->
+                                                isPlayerOverlayVisible = isVisible
+                                            },
                                         )
 
                                         if (useRail) return@Box
@@ -2442,8 +2451,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                        BackHandler(enabled = playerExpansionFraction > 0.5f) {
-                            playerViewModel.setLyricsVisible(false)
+                        BackHandler(enabled = playerExpansionFraction > 0.5f && !isPlayerLyricsVisible && !isPlayerOverlayVisible) {
                             playerViewModel.requestSheetCollapse()
                         }
 
@@ -2835,6 +2843,7 @@ private fun ScopedPlayerSheet(
     navController: NavController,
     bottomNavigationBarHeight: Dp,
     onExpansionFractionChanged: (Float) -> Unit,
+    onOverlayVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
     val queueState by playerViewModel.queueState.collectAsStateWithLifecycle()
@@ -2871,6 +2880,7 @@ private fun ScopedPlayerSheet(
         onImmersiveChanged = { playerViewModel.setImmersiveEnabled(it) },
         bottomBarHeight = bottomNavigationBarHeight,
         onExpansionFractionChanged = onExpansionFractionChanged,
+        onOverlayVisibilityChanged = onOverlayVisibilityChanged,
     )
 }
 

@@ -49,6 +49,13 @@
 - `UnifiedPlayerSheetLayers.kt`: Spot-прием `clipToBounds()` после `sheetBackground()` на лирике и очереди, порядок `glassBorder->clip` внутри untouched, радиусы 32dp целы, без градиента/fade
 - Build: `compileGmsMobileUniversalDebugKotlin` SUCCESS
 
+## Audit e222af6 (4-SRP, скепсис 2026-09-06)
+- Recents black: done по фону (`SpotifyHomeScreen.kt:594` `Color.Black`), shape no-op (`:593` токен = 8.dp), gap — внутр. скругление `:604` осталось хардкод `8.dp`.
+- Toggle off: done (`PlayerSettings.kt:122-125` дефолт false, `:404-409` UI), бэкенд pre-existing (`MusicService.kt:4138,4282`, `MainActivity.kt:522`) — проброс рабочий, gap — нет `description` у преференса.
+- Back-collapse: done (`MainActivity.kt:2445-2448` после NavHost, `fraction>0.5f` + `requestSheetCollapse()` `PlayerViewModel.kt:479`), gap-гигиена — `git diff --check` ругается на trailing whitespace `:26,2445-2449`.
+- clipToBounds: done (`UnifiedPlayerSheetLayers.kt:271,325` после `sheetBackground()`), внутр. `glassBorder->clip` (`:509-515`) и радиусы 32dp (`:506`) целы.
+- Регрессий/микро-драфта (TODO/FIXME/WIP, untracked) нет; сборка из описания коммита не перепроверялась (без запуска).
+
 ## Library YDS Redesign Regressions Fix
 - `LibraryScreen.kt`:
   - Заменен старый кастомный ряд чипсов (`ExpressiveTabChip` + ручной расчет центрирования) на компонент `LibraryFilterChipBar` (высота `SettingsDimensions.LibraryChipHeight` 36dp, форма `CircleShape`).

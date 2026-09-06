@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -281,7 +282,8 @@ internal fun UnifiedPlayerSheetLayers(
                             onAction = onAction,
                             onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
                             onSeek = onSeek,
-                            onSeekStarted = onSeekStarted
+                            onSeekStarted = onSeekStarted,
+                            modifier = Modifier.spotSheetContent()
                         )
                     }
                 }
@@ -334,7 +336,7 @@ internal fun UnifiedPlayerSheetLayers(
                             ),
                             queueFractionProvider = queueFractionProvider,
                             onReorderStateChange = { isQueueReordering = it },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().spotSheetContent(),
                         )
                     }
                 }
@@ -479,6 +481,27 @@ private fun QueueSheetHeader(
                     .matchParentSize()
                     .border(androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF)), capsuleShape)
             )
+        }
+    }
+}
+
+@Composable
+private fun Modifier.spotSheetContent(): Modifier {
+    val borderPx = with(LocalDensity.current) { SettingsDimensions.GlassBorderThickness.toPx() }
+    return this.layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth || borderPx <= 0f) {
+            val placeable = measurable.measure(constraints)
+            layout(placeable.width, placeable.height) {
+                placeable.placeRelative(0, 0)
+            }
+        } else {
+            val expandedWidth = constraints.maxWidth + (2 * borderPx).toInt()
+            val placeable = measurable.measure(
+                constraints.copy(maxWidth = expandedWidth, minWidth = expandedWidth)
+            )
+            layout(expandedWidth, placeable.height) {
+                placeable.placeRelative((-borderPx).toInt(), 0)
+            }
         }
     }
 }
