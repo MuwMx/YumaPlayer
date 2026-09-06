@@ -17,6 +17,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-008](#adr-008-multi-module-clean-architecture)** — Multi-Module Clean Architecture
 - **[ADR-009](#adr-009-lossless-flac-streaming-playback)** — Lossless FLAC Streaming Playback
 - **[ADR-010](#adr-010-120fps-gesture-kinematics--player-sheet-layer-architecture)** — 120fps Gesture Kinematics & Player Sheet Layer Architecture
+- **[ADR-011](#adr-011-spotify-sync-architecture)** — Spotify Sync Architecture
 
 ---
 
@@ -137,3 +138,19 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Rock-solid 120fps gesture fluidity with 0ms startup delay, zero layout re-computations during drag, and optimal GPU resource utilization.
   - *Negative:* Layer composition and background trimming require strict structural discipline.
+
+---
+
+## ADR-011: Spotify Sync Architecture
+
+- **Status:** Accepted
+- **Context:** Liking, unliking, or adding songs to library in YumaPlayer can optionally mirror into the user's Spotify account when tracks originate from or link to Spotify. Synchronous requests, blocking WorkManager overhead, repeated single-item network calls (N+1 queries), and unguarded sync calls can degrade UI responsiveness or trigger rate limits.
+- **Decision:**
+  1. **Fire-and-Forget IO Scope:** Use an asynchronous, non-blocking coroutine scope `CoroutineScope(SupervisorJob() + Dispatchers.IO)` in `SpotifySync`. Network sync runs completely decoupled from local database writes, never blocking Room transactions, UI threads, or requiring heavy WorkManager jobs.
+  2. **Thread-Safe Session Renewal with Double-Checked Locking:** Token management in `SpotifySync.refreshToken` executes inside `tokenMutex.withLock` with a double-check pattern. Before initiating network token requests, the method re-verifies whether another concurrent coroutine has already refreshed `SpotifyAccessTokenKey` and `SpotifyAccessTokenExpiresAtKey`.
+  3. **Batched Library Mutations (Elimination of N+1):** Multi-item operations in `syncLikeForSongs` group tracks by `liked` status and send batched requests (`Spotify.addToLibrary(chunk)` / `Spotify.removeFromLibrary(chunk)`) in chunks of up to 50 Spotify URIs per call.
+  4. **Strict Isolation by Preference Toggle & Auth Guard:** All sync operations are guarded by `SpotifySyncLikesKey` (default `false`) configured in `AccountSettings.kt`. If the user has disabled the toggle or is not authenticated to Spotify, operations terminate early with zero network traffic.
+  5. **Centralized Invocation Pipeline:** Direct calls to `SpotifySync` from UI components or `MusicService` are prohibited. All like/library synchronizations must route centrally through `SyncUtils.likeSong(song)` and `SyncUtils.likeSongs(songs)`.
+- **Consequences:**
+  - *Positive:* Instant local UI feedback, zero UI thread blocking, optimal network throughput with chunked batching, and full user control over background Spotify synchronization.
+  - *Negative:* Spotify library state reflects changes asynchronously with minor eventual-consistency delay.

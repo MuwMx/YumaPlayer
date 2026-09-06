@@ -75,3 +75,10 @@
   2. **Discrete BackHandler:** Запрещено размещать локальные `BackHandler` с условиями на непрерывные пороги (`queueFraction > 0.05f`) внутри дочерних экранов (`QueueScreen`, `LyricsColumn`). `BackHandler` привязывается централизованно к дискретным флагам `StateFlow` (`isQueueVisible`, `isLyricsVisible`).
   3. **CompositingStrategy на LazyColumn:** Запрещен постоянный `CompositingStrategy.Offscreen` на списках во время активного движения пальца. Во время свайпа — `CompositingStrategy.Auto`, `Offscreen` только при статичном открытии `fraction >= 0.99f` для наложения маски фейда.
   4. **Изоляция подложки (matchParentSize):** Срез боковых рамок (`layout { placeRelative(-borderPx, 0) }`) изолирован в фоновый `Box(Modifier.matchParentSize().sheetBackground())`. Контент (`QueueScreen`, `LyricsColumn`) размещается поверх как sibling с `Modifier.fillMaxSize()` в реальных неискаженных границах.
+
+## Spotify Sync Architecture (ADR-011)
+- **Фоновый fire-and-forget скоуп:** `CoroutineScope(SupervisorJob() + Dispatchers.IO)` в `SpotifySync` без блокировки UI, без транзакций Room и без тяжелых воркеров WorkManager.
+- **Double-Checked Locking при обновлении сессии:** В `SpotifySync.refreshToken` внутри `tokenMutex.withLock` выполняется повторная проверка валидности токена из DataStore перед обращением к сети.
+- **Пакетная синхронизация без N+1:** Мульти-трековые операции (`syncLikeForSongs`) группируют треки по статусу `liked` и отправляют пакетные запросы (`Spotify.addToLibrary` / `Spotify.removeFromLibrary`) пачками до 50 URI на один сетевой запрос.
+- **Изоляция тумблером и guard:** Синхронизация контролируется тумблером `SpotifySyncLikesKey` (дефолт `false`) в `AccountSettings.kt` и ранним возвратом при отсутствии токена.
+- **Централизация вызова:** Вызовы `SpotifySync` осуществляются строго через `SyncUtils.likeSong(song)` и `SyncUtils.likeSongs(songs)`, предотвращая двойные сетевые запросы из UI или `MusicService`.
