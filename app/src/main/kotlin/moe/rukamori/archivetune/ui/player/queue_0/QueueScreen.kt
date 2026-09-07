@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.ui.player.queue_0
 
+import android.util.Log
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
@@ -127,7 +128,10 @@ fun QueueScreen(
         }.distinctUntilChanged()
             .collect { shouldLoadMore ->
                 if (shouldLoadMore) {
+                    Log.d("TEMP_PAUSE_LOG", "QueueScreen: pagination resumed / active (loading more)")
                     playerConnection?.service?.onInfiniteQueueEnabled()
+                } else {
+                    Log.d("TEMP_PAUSE_LOG", "QueueScreen: pagination sleeping (hidden or not near end, fraction=${queueFractionProvider()})")
                 }
             }
     }

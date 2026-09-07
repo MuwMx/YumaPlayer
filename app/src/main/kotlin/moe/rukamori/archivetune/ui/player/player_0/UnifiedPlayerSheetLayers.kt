@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -202,6 +204,10 @@ internal fun UnifiedPlayerSheetLayers(
             }
             val isQueueVisible by remember {
                 derivedStateOf { queueFractionProvider() > 0.05f }
+            }
+
+            LaunchedEffect(isFullPlayerVisible) {
+                Log.d("TEMP_PAUSE_LOG", "UnifiedPlayerSheetLayers: isFullPlayerVisible=$isFullPlayerVisible")
             }
 
             Box(

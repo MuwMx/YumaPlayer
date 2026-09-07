@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -215,6 +216,7 @@ fun UnifiedPlayerSheetV2(
         LaunchedEffect(Unit) {
             snapshotFlow { expansionFraction.value }.collect { fraction ->
                 if (fraction == 0f) {
+                    Log.d("TEMP_PAUSE_LOG", "UnifiedPlayerSheetV2: player collapsed (fraction=0), resetting sheets")
                     if (state.isLyricsVisible) {
                         onCloseLyricsClick()
                     }

@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -63,7 +64,11 @@ fun PlayerSeekBar(
     }
 
     LaunchedEffect(isVisible, state.trackUrl) {
-        if (!isVisible) return@LaunchedEffect
+        if (!isVisible) {
+            Log.d("TEMP_PAUSE_LOG", "PlayerSeekBar: paused (!isVisible)")
+            return@LaunchedEffect
+        }
+        Log.d("TEMP_PAUSE_LOG", "PlayerSeekBar: resumed (isVisible=true)")
         progressMs = progressProvider()
         while (isActive) {
             val current = progressProvider()
