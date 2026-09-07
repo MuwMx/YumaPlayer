@@ -19,8 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,44 +37,8 @@ fun PlayerBottomBar(
     modifier: Modifier = Modifier,
     colorScheme: ColorScheme = MaterialTheme.colorScheme
 ) {
-    val isLightTheme = colorScheme.surface.luminance() > 0.5f
-    val isImmersive = state.isImmersiveEnabled && !state.isLyricsVisible
-    val isBlur = state.isBlurBackgroundEnabled
-    val isDarkOrIsolated = !isLightTheme || isImmersive || isBlur
-
-    val inactiveButtonColor = if (isDarkOrIsolated) {
-        Color.White.copy(alpha = 0.75f)
-    } else {
-        colorScheme.onSurface.copy(alpha = 0.75f)
-    }
-
-    val rawActiveColor = remember(state.vibrantColor, colorScheme) {
-        if (state.vibrantColor == 0) {
-            colorScheme.primary
-        } else {
-            Color(state.vibrantColor).copy(alpha = 1f)
-        }
-    }
-
-    val activeColor = remember(rawActiveColor, isLightTheme, isImmersive, isBlur, colorScheme) {
-        if (isImmersive || isBlur) {
-            Color.White
-        } else if (isLightTheme) {
-            val lum = rawActiveColor.luminance()
-            if (lum > 0.65f) {
-                colorScheme.primary
-            } else {
-                rawActiveColor
-            }
-        } else {
-            val lum = rawActiveColor.luminance()
-            if (lum < 0.35f) {
-                lerp(rawActiveColor, Color.White, 0.5f)
-            } else {
-                rawActiveColor
-            }
-        }
-    }
+    val inactiveButtonColor = Color.White.copy(alpha = 0.75f)
+    val activeColor = Color.White
 
     val isLyricsActive = state.isLyricsVisible
     val lyricsColor = if (isLyricsActive) activeColor else inactiveButtonColor

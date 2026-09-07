@@ -85,7 +85,7 @@ fun PlayerToolbar(
             ) {
                 Text(
                     text = stringResource(R.string.now_playing),
-                    color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
+                    color = Color.White,
                     fontSize = if (subtitle != null) 12.sp else 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = LocalArchiveTuneFontFamily.current,
@@ -97,7 +97,7 @@ fun PlayerToolbar(
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
+                        color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = LocalArchiveTuneFontFamily.current,
