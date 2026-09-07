@@ -1261,6 +1261,7 @@ fun MediaMetadataListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     shouldLoadImage: Boolean = true,
+    cropToSquare: Boolean? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     ListItem(
@@ -1279,6 +1280,7 @@ fun MediaMetadataListItem(
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
                 shape = RoundedCornerShape(ThumbnailCornerRadius),
+                cropToSquare = cropToSquare,
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
@@ -1577,11 +1579,14 @@ fun ItemThumbnail(
     shouldLoadImage: Boolean = true,
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
+    cropToSquare: Boolean? = null,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
+    val cropThumbnailToSquare = cropToSquare ?: rememberPreference(CropThumbnailToSquareKey, false).value
+    val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
+    val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
 
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.Center,
         modifier =
             modifier
@@ -1589,12 +1594,6 @@ fun ItemThumbnail(
                 .aspectRatio(thumbnailRatio)
                 .clip(shape),
     ) {
-        val (cropThumbnailToSquare, _) = rememberPreference(CropThumbnailToSquareKey, false)
-        val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
-        val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
-        val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
-        val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
-
         if (albumIndex == null) {
             if (placeholderIconRes != null) {
                 Box(
@@ -1615,16 +1614,12 @@ fun ItemThumbnail(
 
             if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
                 val request =
-                    remember(thumbnailUrl, widthPx, heightPx) {
+                    remember(thumbnailUrl) {
                         ImageRequest
                             .Builder(context)
-                            .data(thumbnailUrl?.resize(544, 544))
+                            .data(thumbnailUrl.resize(544, 544))
                             .allowHardware(true)
-                            .apply {
-                                if (widthPx != null && heightPx != null) {
-                                    size(widthPx, heightPx)
-                                }
-                            }.build()
+                            .build()
                     }
                 AsyncImage(
                     model = request,

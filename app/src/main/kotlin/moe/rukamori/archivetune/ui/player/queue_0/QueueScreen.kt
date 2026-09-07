@@ -39,9 +39,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -72,7 +70,9 @@ import androidx.core.view.ViewCompat
 import androidx.media3.common.Timeline
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.ui.component.MediaMetadataListItem
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -99,6 +99,7 @@ fun QueueScreen(
 ) {
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, false)
     val haptics = rememberYumaHaptics()
     val hapticView = LocalView.current
     val playerConnection = LocalPlayerConnection.current
@@ -209,6 +210,7 @@ fun QueueScreen(
             ReorderableItem(
                 state = reorderableState,
                 key = window.queueItemKey,
+                modifier = if (reorderableState.isAnyItemDragging) Modifier else Modifier.animateItem(),
             ) { isDragging ->
                 val scale by animateFloatAsState(
                     targetValue = if (isDragging) 1.02f else 1f,
@@ -225,6 +227,7 @@ fun QueueScreen(
                     index = index,
                     isActive = index == state.currentWindowIndex,
                     isDragging = isDragging,
+                    cropToSquare = cropToSquare,
                     enableHapticFeedback = enableHapticFeedback,
                     hapticView = hapticView,
                     onPlay = {
@@ -292,6 +295,7 @@ private fun QueueItem(
     index: Int,
     isActive: Boolean,
     isDragging: Boolean,
+    cropToSquare: Boolean,
     enableHapticFeedback: Boolean,
     hapticView: View,
     onPlay: () -> Unit,
@@ -302,9 +306,11 @@ private fun QueueItem(
     val metadata = window.mediaItem.metadata ?: return
     val dismissScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val itemWidthPx = remember(configuration.screenWidthDp, density) {
+        with(density) { (configuration.screenWidthDp.dp - 40.dp).toPx() }
+    }
     val dismissOffsetAnimatable = remember(window.queueItemKey) { Animatable(0f) }
-    var itemWidthPx by remember { mutableFloatStateOf(0f) }
-    var surfaceHeightPx by remember { mutableFloatStateOf(0f) }
 
     val dismissEnabled = !isDragging
     val dismissHandler =
@@ -377,23 +383,16 @@ private fun QueueItem(
         modifier = modifier.fillMaxWidth(),
     ) {
         Box(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .onGloballyPositioned { coordinates ->
-                        val measuredWidth = coordinates.size.width.toFloat()
-                        if (measuredWidth != itemWidthPx) itemWidthPx = measuredWidth
-                    },
+            modifier = Modifier.weight(1f),
         ) {
-            if (revealWidthPx > 0f && surfaceHeightPx > 0f) {
+            if (revealWidthPx > 0f) {
                 val revealWidthDp = with(density) { revealWidthPx.toDp() }
-                val surfaceHeightDp = with(density) { surfaceHeightPx.toDp() }
                 Box(
                     modifier =
                         Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 12.dp)
-                            .height(surfaceHeightDp)
+                            .height(ListItemHeight)
                             .width(revealWidthDp)
                             .clip(CircleShape)
                             .background(dismissBackgroundColor),
@@ -420,16 +419,13 @@ private fun QueueItem(
                     Modifier
                         .fillMaxWidth()
                         .graphicsLayer { translationX = currentOffsetPx }
-                        .onGloballyPositioned { coordinates ->
-                            val h = coordinates.size.height.toFloat()
-                            if (h != surfaceHeightPx) surfaceHeightPx = h
-                        }
                         .then(dismissGestureModifier),
             ) {
                 MediaMetadataListItem(
                     mediaMetadata = metadata,
                     isActive = isActive,
                     isPlaying = isActive,
+                    cropToSquare = cropToSquare,
                     modifier =
                         Modifier
                             .fillMaxWidth()
