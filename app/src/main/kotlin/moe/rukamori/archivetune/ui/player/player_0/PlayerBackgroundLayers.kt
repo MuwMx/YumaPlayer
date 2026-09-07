@@ -288,12 +288,13 @@ fun PlayerBackgroundLayers(
             .drawWithCache {
                 val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f)
 
-                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.24f else 0.40f
+                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.35f else 0.50f
 
                 val veilBrush = Brush.verticalGradient(
                     0.0f to Color.Transparent,
-                    0.60f to Color.Transparent,              // До 60% экрана вообще никакой вуали, чистый арт
-                    0.85f to tintVeil.copy(alpha = bottomAlpha * 0.5f), // Мягкий подъем только перед кнопками
+                    0.42f to Color.Transparent,
+                    0.55f to tintVeil.copy(alpha = bottomAlpha * 0.35f),
+                    0.75f to tintVeil.copy(alpha = bottomAlpha * 0.75f),
                     1.0f to tintVeil.copy(alpha = bottomAlpha),
                     startY = 0f,
                     endY = size.height
