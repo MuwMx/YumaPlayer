@@ -289,7 +289,7 @@ private fun HomeContent(
                             .fillMaxWidth()
                             .align(Alignment.TopCenter),
                 ) {
-                    if (uiState.showCategoryChips) {
+                    if (uiState.showCategoryChips && !uiState.homePage?.chips.isNullOrEmpty()) {
                         item(
                             key = "home_category_chips",
                             contentType = "category_chips",
