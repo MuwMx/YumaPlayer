@@ -542,14 +542,13 @@ private fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
     )
 
     val cardBackgroundBrush = remember(animatedDarkMuted) {
-        val startColor = lerp(animatedDarkMuted, Color.Black, 0.7f)
-        val midColor = animatedDarkMuted
-        val endColor = Color(0xFF121212)
+        val midTone = lerp(animatedDarkMuted, Color(0xFF101010), 0.35f)
+        val deepTone = lerp(animatedDarkMuted, Color(0xFF0A0A0A), 0.60f)
 
         Brush.verticalGradient(
-            0.0f to startColor,
-            0.2f to midColor,
-            1.0f to endColor,
+            0.0f to animatedDarkMuted,
+            0.50f to midTone,
+            1.0f to deepTone,
         )
     }
 
