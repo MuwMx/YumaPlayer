@@ -44,7 +44,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -98,7 +97,6 @@ fun QueueScreen(
     queueFractionProvider: () -> Float = { 1f },
     onReorderStateChange: (Boolean) -> Unit = {},
     onCloseClick: () -> Unit = {},
-    isQueueVisible: Boolean = true,
 ) {
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -117,11 +115,9 @@ fun QueueScreen(
     var dragToIndex by remember { mutableStateOf<Int?>(null) }
     var reorderHandleInUse by remember { mutableStateOf(false) }
 
-    val latestIsQueueVisible = rememberUpdatedState(isQueueVisible)
-
     LaunchedEffect(lazyListState) {
         snapshotFlow {
-            if (!latestIsQueueVisible.value) {
+            if (queueFractionProvider() <= 0.05f) {
                 false
             } else {
                 val layoutInfo = lazyListState.layoutInfo

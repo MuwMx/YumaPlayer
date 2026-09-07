@@ -384,7 +384,6 @@ internal fun UnifiedPlayerSheetLayers(
                             ),
                             onReorderStateChange = { isQueueReordering = it },
                             modifier = Modifier.fillMaxSize(),
-                            isQueueVisible = isQueueVisible,
                         )
                     }
                 }
