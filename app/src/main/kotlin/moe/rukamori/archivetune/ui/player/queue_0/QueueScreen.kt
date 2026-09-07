@@ -103,6 +103,11 @@ fun QueueScreen(
     val haptics = rememberYumaHaptics()
     val hapticView = LocalView.current
     val playerConnection = LocalPlayerConnection.current
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val itemWidthPx = remember(configuration.screenWidthDp, density) {
+        with(density) { (configuration.screenWidthDp.dp - 40.dp).toPx() }
+    }
 
     val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
     var dragFromIndex by remember { mutableStateOf<Int?>(null) }
@@ -228,6 +233,7 @@ fun QueueScreen(
                     isActive = index == state.currentWindowIndex,
                     isDragging = isDragging,
                     cropToSquare = cropToSquare,
+                    itemWidthPx = itemWidthPx,
                     enableHapticFeedback = enableHapticFeedback,
                     hapticView = hapticView,
                     onPlay = {
@@ -296,6 +302,7 @@ private fun QueueItem(
     isActive: Boolean,
     isDragging: Boolean,
     cropToSquare: Boolean,
+    itemWidthPx: Float,
     enableHapticFeedback: Boolean,
     hapticView: View,
     onPlay: () -> Unit,
@@ -306,10 +313,6 @@ private fun QueueItem(
     val metadata = window.mediaItem.metadata ?: return
     val dismissScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val itemWidthPx = remember(configuration.screenWidthDp, density) {
-        with(density) { (configuration.screenWidthDp.dp - 40.dp).toPx() }
-    }
     val dismissOffsetAnimatable = remember(window.queueItemKey) { Animatable(0f) }
 
     val dismissEnabled = !isDragging
