@@ -28,66 +28,76 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
     Box(
         modifier = modifier.clipToBounds()
     ) {
-        when (homeBackground.style) {
-            HomeBackgroundStyle.TONAL -> {
-                HomePremiumBackground(
-                    blobColor = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(430.dp)
-                        .align(Alignment.TopCenter)
-                )
-            }
-            HomeBackgroundStyle.CIRCLES -> {
-                CirclesBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                )
-            }
-            HomeBackgroundStyle.RINGS -> {
-                RingsBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                )
-            }
-            HomeBackgroundStyle.MESH -> {
-                MeshBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                )
-            }
-            HomeBackgroundStyle.GRID -> {
-                GridBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                )
-            }
-            HomeBackgroundStyle.PARTICLES -> {
-                ParticlesBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                    isVisible = isVisible,
-                )
-            }
-            HomeBackgroundStyle.SNOW -> {
-                SnowBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                )
-            }
-            HomeBackgroundStyle.SPACE -> {
-                SpaceBackground(
-                    parallaxEnabled = homeBackground.parallaxEnabled,
-                    parallaxSensitivity = homeBackground.parallaxSensitivity,
-                    brightness = homeBackground.brightness,
-                    isVisible = isVisible,
-                )
+        if (!isVisible) {
+            HomePremiumBackground(
+                blobColor = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(430.dp)
+                    .align(Alignment.TopCenter)
+            )
+        } else {
+            when (homeBackground.style) {
+                HomeBackgroundStyle.TONAL -> {
+                    HomePremiumBackground(
+                        blobColor = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(430.dp)
+                            .align(Alignment.TopCenter)
+                    )
+                }
+                HomeBackgroundStyle.CIRCLES -> {
+                    CirclesBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                    )
+                }
+                HomeBackgroundStyle.RINGS -> {
+                    RingsBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                    )
+                }
+                HomeBackgroundStyle.MESH -> {
+                    MeshBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                    )
+                }
+                HomeBackgroundStyle.GRID -> {
+                    GridBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                    )
+                }
+                HomeBackgroundStyle.PARTICLES -> {
+                    ParticlesBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                        isVisible = isVisible,
+                    )
+                }
+                HomeBackgroundStyle.SNOW -> {
+                    SnowBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                    )
+                }
+                HomeBackgroundStyle.SPACE -> {
+                    SpaceBackground(
+                        parallaxEnabled = homeBackground.parallaxEnabled,
+                        parallaxSensitivity = homeBackground.parallaxSensitivity,
+                        brightness = homeBackground.brightness,
+                        isVisible = isVisible,
+                    )
+                }
             }
         }
     }
