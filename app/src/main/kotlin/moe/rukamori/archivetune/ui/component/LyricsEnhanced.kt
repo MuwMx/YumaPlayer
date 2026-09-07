@@ -172,6 +172,7 @@ fun LyricsEnhanced(
     textColorOverride: Color? = null,
     lyricsLineBlurOverride: Boolean? = null,
     isReadyToParse: Boolean = true,
+    isLyricsVisible: Boolean = true,
     lazyListState: LazyListState? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -360,6 +361,7 @@ fun LyricsEnhanced(
     val latestLyricsSyncOffset = rememberUpdatedState(lyricsSyncOffset)
     val latestLeadMs = rememberUpdatedState(leadMs)
     val latestPlaybackSpeed = rememberUpdatedState(playbackParameters.speed)
+    val latestIsLyricsVisible = rememberUpdatedState(isLyricsVisible)
     val playbackPositionMs =
         remember(player) {
             mutableLongStateOf(player.currentPosition.coerceAtLeast(0L))
@@ -388,6 +390,13 @@ fun LyricsEnhanced(
         var anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
         var anchorFrameNanos = 0L
         while (isActive) {
+            if (!latestIsLyricsVisible.value) {
+                anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
+                anchorFrameNanos = 0L
+                delay(200L)
+                continue
+            }
+
             val sliderPosition = latestSliderPositionProvider.value()
             val isSliderActive = sliderPosition != null
             if (isSliderActive && !wasSliderActive) {
@@ -519,7 +528,7 @@ fun LyricsEnhanced(
 
         var forceNextScroll = true
         snapshotFlow {
-            if (isManualScrolling || isSelectionModeActive) {
+            if (!latestIsLyricsVisible.value || isManualScrolling || isSelectionModeActive) {
                 null
             } else {
                 syncedLyrics

@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
 import androidx.media3.common.Timeline
+import kotlinx.coroutines.flow.distinctUntilChanged
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
@@ -96,6 +98,7 @@ fun QueueScreen(
     queueFractionProvider: () -> Float = { 1f },
     onReorderStateChange: (Boolean) -> Unit = {},
     onCloseClick: () -> Unit = {},
+    isQueueVisible: Boolean = true,
 ) {
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -114,16 +117,23 @@ fun QueueScreen(
     var dragToIndex by remember { mutableStateOf<Int?>(null) }
     var reorderHandleInUse by remember { mutableStateOf(false) }
 
+    val latestIsQueueVisible = rememberUpdatedState(isQueueVisible)
+
     LaunchedEffect(lazyListState) {
         snapshotFlow {
-            val layoutInfo = lazyListState.layoutInfo
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
-            lastVisibleIndex != null && lastVisibleIndex >= layoutInfo.totalItemsCount - 3
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore) {
-                playerConnection?.service?.onInfiniteQueueEnabled()
+            if (!latestIsQueueVisible.value) {
+                false
+            } else {
+                val layoutInfo = lazyListState.layoutInfo
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                lastVisibleIndex != null && lastVisibleIndex >= layoutInfo.totalItemsCount - 3
             }
-        }
+        }.distinctUntilChanged()
+            .collect { shouldLoadMore ->
+                if (shouldLoadMore) {
+                    playerConnection?.service?.onInfiniteQueueEnabled()
+                }
+            }
     }
 
     val reorderableState =

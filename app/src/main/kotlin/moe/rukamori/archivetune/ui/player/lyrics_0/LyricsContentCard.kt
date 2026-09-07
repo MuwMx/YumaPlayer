@@ -78,6 +78,7 @@ fun LyricsContentCard(
             lyricsSyncOffset = state.lyricsSyncOffset,
             textColorOverride = Color.White,
             isReadyToParse = isReadyToParse,
+            isLyricsVisible = state.isLyricsVisible,
             lazyListState = lazyListState,
             modifier = Modifier.fillMaxSize(),
         )
@@ -142,6 +143,7 @@ fun LyricsContentCard(
                                 slideOffset = { 1f },
                                 onSeek = onSeek,
                                 onSeekStarted = onSeekStarted,
+                                isVisible = state.isLyricsVisible,
                             )
 
                             Row(
