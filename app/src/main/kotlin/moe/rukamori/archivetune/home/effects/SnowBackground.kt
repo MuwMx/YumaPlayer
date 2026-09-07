@@ -30,6 +30,7 @@ fun SnowBackground(
     parallaxEnabled: Boolean = true,
     parallaxSensitivity: Float = 0.6f,
     brightness: Float = 1f,
+    isVisible: Boolean = true,
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val snowColor = if (isDarkTheme) Color.White else Color(0xFF4A5F7A)
@@ -89,7 +90,11 @@ fun SnowBackground(
         }.sortedBy { it.depth }
     }
 
-    val animatedTime = rememberAnimatedTime(speedMultiplier = if (disableAnimations) 0f else 1f)
+    val animatedTime = rememberAnimatedTime(
+        speedMultiplier = if (disableAnimations) 0f else 1f,
+        isVisible = isVisible,
+        label = "SnowBackground",
+    )
     val alphaScale = brightness.coerceIn(0.1f, 2f)
     val reusablePaint = remember { Paint() }
 

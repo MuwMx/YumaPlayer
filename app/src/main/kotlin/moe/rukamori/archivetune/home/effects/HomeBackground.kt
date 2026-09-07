@@ -30,10 +30,6 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
     val homeBackground = LocalHomeBackgroundStyle.current
 
     LaunchedEffect(isVisible, homeBackground.style) {
-        Log.d(
-            "TEMP_PAUSE_LOG",
-            "ScreenBackground state: isVisible=$isVisible, style=${homeBackground.style}"
-        )
     }
 
     Box(
@@ -63,6 +59,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     parallaxEnabled = homeBackground.parallaxEnabled,
                     parallaxSensitivity = homeBackground.parallaxSensitivity,
                     brightness = homeBackground.brightness,
+                    isVisible = isVisible,
                 )
             }
             HomeBackgroundStyle.RINGS -> {
@@ -70,6 +67,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     parallaxEnabled = homeBackground.parallaxEnabled,
                     parallaxSensitivity = homeBackground.parallaxSensitivity,
                     brightness = homeBackground.brightness,
+                    isVisible = isVisible,
                 )
             }
             HomeBackgroundStyle.MESH -> {
@@ -77,6 +75,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     parallaxEnabled = homeBackground.parallaxEnabled,
                     parallaxSensitivity = homeBackground.parallaxSensitivity,
                     brightness = homeBackground.brightness,
+                    isVisible = isVisible,
                 )
             }
             HomeBackgroundStyle.GRID -> {
@@ -84,6 +83,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     parallaxEnabled = homeBackground.parallaxEnabled,
                     parallaxSensitivity = homeBackground.parallaxSensitivity,
                     brightness = homeBackground.brightness,
+                    isVisible = isVisible,
                 )
             }
             HomeBackgroundStyle.PARTICLES -> {
@@ -99,6 +99,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     parallaxEnabled = homeBackground.parallaxEnabled,
                     parallaxSensitivity = homeBackground.parallaxSensitivity,
                     brightness = homeBackground.brightness,
+                    isVisible = isVisible,
                 )
             }
             HomeBackgroundStyle.SPACE -> {

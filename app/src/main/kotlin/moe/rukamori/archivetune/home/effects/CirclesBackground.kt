@@ -44,6 +44,7 @@ fun CirclesBackground(
     parallaxEnabled: Boolean = true,
     parallaxSensitivity: Float = 0.6f,
     brightness: Float = 1f,
+    isVisible: Boolean = true,
 ) {
     val primaryColor   = MaterialTheme.colorScheme.primaryContainer
     val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
@@ -76,7 +77,11 @@ fun CirclesBackground(
         context = context
     )
 
-    val time = rememberAnimatedTime(speedMultiplier = if (disableAnimations) 0f else 1f)
+    val time = rememberAnimatedTime(
+        speedMultiplier = if (disableAnimations) 0f else 1f,
+        isVisible = isVisible,
+        label = "CirclesBackground",
+    )
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val t      = time.value
