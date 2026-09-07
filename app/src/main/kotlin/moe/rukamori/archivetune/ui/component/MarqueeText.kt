@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -51,10 +50,9 @@ fun MarqueeText(
     style: TextStyle = LocalTextStyle.current,
     isVisible: Boolean = true
 ) {
-    val isGlobalVisible = LocalGlobalVisibility.current
     var hasOverflow by remember(text) { mutableStateOf(false) }
 
-    val marqueeModifier = if (hasOverflow && isVisible && isGlobalVisible) {
+    val marqueeModifier = if (hasOverflow && isVisible) {
         Modifier
             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
             .drawWithContent {
