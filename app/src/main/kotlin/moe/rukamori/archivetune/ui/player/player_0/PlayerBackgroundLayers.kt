@@ -178,109 +178,109 @@ fun PlayerBackgroundLayers(
         label = "VibrantGradientColor"
     )
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = 1f - blurOverlayAlpha }
-                .drawWithCache {
-                    val brush = Brush.verticalGradient(
-                        colors = listOf(animatedBgColor, Color(0xFF121212)),
-                        startY = 0f,
-                        endY = size.height
-                    )
-                    onDrawBehind {
-                        drawRect(brush = brush)
-                    }
-                }
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = 1f - blurOverlayAlpha }
+            .drawWithCache {
+                // Оставляем цвет сочным: подмешиваем всего 50-65% темного, а не 92%
+                val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
+                val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Crossfade(
-                targetState = currentBlurPainter,
-                animationSpec = tween(500),
-                label = "BlurCrossfade"
-            ) { painter ->
-                if (painter != null) {
-                    Image(
-                        painter = painter,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = blurOverlayAlpha },
-                        contentScale = ContentScale.Crop
-                    )
+                val brush = Brush.verticalGradient(
+                    0.0f to animatedBgColor,
+                    0.50f to midTone,
+                    1.0f to deepTone,
+                    startY = 0f,
+                    endY = size.height
+                )
+                onDrawBehind {
+                    drawRect(brush = brush)
                 }
             }
+    )
 
-            Crossfade(
-                targetState = currentClearPainter,
-                animationSpec = tween(500),
-                label = "ClearCrossfade"
-            ) { painter ->
-                if (painter != null) {
-                    Image(
-                        painter = painter,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(0.75f)
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer {
-                                alpha = immersiveTransitionAlpha
-                                compositingStrategy = if (immersiveTransitionAlpha > 0f) {
-                                    CompositingStrategy.Offscreen
-                                } else {
-                                    CompositingStrategy.Auto
-                                }
-                            }
-                            .drawWithCache {
-                                val maskBrush = Brush.verticalGradient(
-                                    0.0f to Color.Black,
-                                    0.65f to Color.Black,
-                                    1.0f to Color.Transparent,
-                                    startY = 0f,
-                                    endY = size.height
-                                )
-                                onDrawWithContent {
-                                    drawContent()
-                                    drawRect(
-                                        brush = maskBrush,
-                                        blendMode = BlendMode.DstIn
-                                    )
-                                }
-                            },
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter
-                    )
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Crossfade(
+            targetState = currentBlurPainter,
+            animationSpec = tween(500),
+            label = "BlurCrossfade"
+        ) { painter ->
+            if (painter != null) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = blurOverlayAlpha },
+                    contentScale = ContentScale.Crop
+                )
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val baseVeil = lerp(standardVeilColor, Color.Black, blurOverlayAlpha)
-                    val bottomVeil = lerp(baseVeil, Color.Black, immersiveTransitionAlpha)
-
-                    val topAlpha = lerp(0.50f, 0.45f, blurOverlayAlpha) * (1f - immersiveTransitionAlpha)
-                    val midAlpha = 0.30f * (1f - immersiveTransitionAlpha)
-                    val bottom65Alpha = lerp(lerp(0.70f, 0.72f, blurOverlayAlpha), 0.35f, immersiveTransitionAlpha)
-                    val bottom100Alpha = lerp(lerp(0.70f, 0.72f, blurOverlayAlpha), 0.30f, immersiveTransitionAlpha)
-
-                    val veilBrush = Brush.verticalGradient(
-                        0.0f to baseVeil.copy(alpha = topAlpha),
-                        0.35f to baseVeil.copy(alpha = midAlpha),
-                        0.65f to bottomVeil.copy(alpha = bottom65Alpha),
-                        1.0f to bottomVeil.copy(alpha = bottom100Alpha),
-                        startY = 0f,
-                        endY = size.height
-                    )
-                    onDrawBehind {
-                        drawRect(brush = veilBrush)
-                    }
-                }
-        )
+        Crossfade(
+            targetState = currentClearPainter,
+            animationSpec = tween(500),
+            label = "ClearCrossfade"
+        ) { painter ->
+            if (painter != null) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.75f)
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer {
+                            alpha = immersiveTransitionAlpha
+                            compositingStrategy = if (immersiveTransitionAlpha > 0f) {
+                                CompositingStrategy.Offscreen
+                            } else {
+                                CompositingStrategy.Auto
+                            }
+                        }
+                        .drawWithCache {
+                            val maskBrush = Brush.verticalGradient(
+                                0.0f to Color.Black,
+                                0.80f to Color.Black,
+                                1.0f to Color.Transparent,
+                                startY = 0f,
+                                endY = size.height
+                            )
+                            onDrawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = maskBrush,
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                        },
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
+                )
+            }
+        }
     }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f)
+                val topAlpha = 0.05f
+                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.35f else 0.45f
+
+                val veilBrush = Brush.verticalGradient(
+                    0.0f to Color.Black.copy(alpha = topAlpha),
+                    0.40f to Color.Transparent,
+                    0.75f to tintVeil.copy(alpha = bottomAlpha * 0.6f),
+                    1.0f to tintVeil.copy(alpha = bottomAlpha),
+                    startY = 0f,
+                    endY = size.height
+                )
+                onDrawBehind {
+                    drawRect(brush = veilBrush)
+                }
+            }
+    )
 }
