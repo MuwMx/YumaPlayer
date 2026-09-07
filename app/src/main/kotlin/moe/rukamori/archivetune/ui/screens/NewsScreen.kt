@@ -54,7 +54,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -101,7 +100,6 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.NewsItem
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -161,11 +159,12 @@ fun NewsScreen(
                                     Text(text = stringResource(R.string.news_search_placeholder))
                                 },
                                 leadingIcon = {
-                                    IconButton(
+                                    AppIconButton(
                                         onClick = {
                                             viewModel.searchQuery.value = ""
                                             isSearchActive = false
                                         },
+                                        onLongClick = {},
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.arrow_back),
@@ -176,8 +175,9 @@ fun NewsScreen(
                                 trailingIcon =
                                     if (searchQuery.isNotEmpty()) {
                                         {
-                                            IconButton(
+                                            AppIconButton(
                                                 onClick = { viewModel.searchQuery.value = "" },
+                                                onLongClick = {},
                                             ) {
                                                 Icon(
                                                     painter = painterResource(R.drawable.close),
@@ -219,13 +219,19 @@ fun NewsScreen(
                             }
                         },
                         actions = {
-                            IconButton(onClick = { isSearchActive = true }) {
+                            AppIconButton(
+                                onClick = { isSearchActive = true },
+                                onLongClick = {},
+                            ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_search),
                                     contentDescription = stringResource(R.string.search),
                                 )
                             }
-                            IconButton(onClick = { viewModel.fetchNews() }) {
+                            AppIconButton(
+                                onClick = { viewModel.fetchNews() },
+                                onLongClick = {},
+                            ) {
                                 Icon(
                                     painter = painterResource(R.drawable.sync),
                                     contentDescription = stringResource(R.string.news_retry),
@@ -357,19 +363,12 @@ private fun NewsListHeader(
     isSearching: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalYumaColors.current
     val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
 
     Box(
         modifier =
             modifier
-                .yumaGlassCard(
-                    shape = shape,
-                    backgroundColor = colors.glassBackground,
-                    borderColor = colors.glassBorder,
-                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                )
-                .clip(shape)
+                .yumaGlassCard(shape = shape)
                 .padding(SettingsDimensions.BannerContentPadding),
     ) {
         Row(
@@ -430,7 +429,6 @@ private fun NewsCard(
     val hasImages = item.imageUrls.isNotEmpty()
     val hasId = item.id.isNotEmpty()
     var fullImageUrl by remember { mutableStateOf<String?>(null) }
-    val colors = LocalYumaColors.current
     val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
 
     Box(
@@ -441,13 +439,7 @@ private fun NewsCard(
                     enabled = hasId,
                     onClick = onNavigateToArticle,
                 )
-                .yumaGlassCard(
-                    shape = shape,
-                    backgroundColor = colors.glassBackground,
-                    borderColor = colors.glassBorder,
-                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                )
-                .clip(shape),
+                .yumaGlassCard(shape = shape),
     ) {
         Column {
             if (hasImages) {
@@ -752,19 +744,12 @@ private fun NewsCarouselIndicator(
     currentIndex: Int,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalYumaColors.current
     val shape = CircleShape
     Box(
         modifier =
             modifier
                 .heightIn(min = 48.dp)
-                .yumaGlassCard(
-                    shape = shape,
-                    backgroundColor = colors.glassBackground,
-                    borderColor = colors.glassBorder,
-                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                )
-                .clip(shape)
+                .yumaGlassCard(shape = shape)
                 .padding(horizontal = SettingsDimensions.RowHorizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
@@ -800,7 +785,6 @@ private fun NewsCarouselIndicator(
 
 @Composable
 private fun NewsLoadingState(modifier: Modifier = Modifier) {
-    val colors = LocalYumaColors.current
     val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
     Box(
         contentAlignment = Alignment.Center,
@@ -809,13 +793,7 @@ private fun NewsLoadingState(modifier: Modifier = Modifier) {
         Box(
             modifier =
                 Modifier
-                    .yumaGlassCard(
-                        shape = shape,
-                        backgroundColor = colors.glassBackground,
-                        borderColor = colors.glassBorder,
-                        strokeWidth = SettingsDimensions.GlassBorderThickness,
-                    )
-                    .clip(shape)
+                    .yumaGlassCard(shape = shape)
                     .padding(32.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -894,7 +872,6 @@ private fun NewsStatePanel(
     supportingText: String? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
-    val colors = LocalYumaColors.current
     val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
 
     Box(
@@ -906,13 +883,7 @@ private fun NewsStatePanel(
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 560.dp)
-                    .yumaGlassCard(
-                        shape = shape,
-                        backgroundColor = colors.glassBackground,
-                        borderColor = colors.glassBorder,
-                        strokeWidth = SettingsDimensions.GlassBorderThickness,
-                    )
-                    .clip(shape)
+                    .yumaGlassCard(shape = shape)
                     .padding(28.dp),
         ) {
             Column(

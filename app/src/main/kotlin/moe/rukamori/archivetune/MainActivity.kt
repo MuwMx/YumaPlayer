@@ -1817,8 +1817,9 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 actions = {
-                                                    TranslucentTopAppBarIconButton(
+                                                    IconButton(
                                                         onClick = { navController.navigate("history") },
+                                                        onLongClick = {},
                                                     ) {
                                                         Icon(
                                                             painter = painterResource(R.drawable.history),
@@ -1847,8 +1848,9 @@ class MainActivity : ComponentActivity() {
                                                         },
                                                         state = rememberTooltipState(),
                                                     ) {
-                                                        TranslucentTopAppBarIconButton(
+                                                        IconButton(
                                                             onClick = { navController.navigate("news") },
+                                                            onLongClick = {},
                                                         ) {
                                                             BadgedBox(badge = {
                                                                 if (hasUnreadNews) {
@@ -1862,16 +1864,18 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         }
                                                     }
-                                                    TranslucentTopAppBarIconButton(
+                                                    IconButton(
                                                         onClick = { navController.navigate("new_release") },
+                                                        onLongClick = {},
                                                     ) {
                                                         Icon(
                                                             painter = painterResource(R.drawable.new_release),
                                                             contentDescription = stringResource(R.string.new_release_albums),
                                                         )
                                                     }
-                                                    TranslucentTopAppBarIconButton(
+                                                    IconButton(
                                                         onClick = { navController.navigate("settings") },
+                                                        onLongClick = {},
                                                     ) {
                                                         BadgedBox(badge = {
                                                             if (updateState is UpdateState.SoftUpdate || updateState is UpdateState.CriticalUpdate) {
@@ -2757,27 +2761,6 @@ val LocalPlayerAwareWindowInsets =
     compositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
-
-private const val TopAppBarIconButtonContainerAlpha = 0.48f
-
-@Composable
-private fun TranslucentTopAppBarIconButton(
-    onClick: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        colors =
-            IconButtonDefaults.iconButtonColors(
-                containerColor =
-                    MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-                        alpha = TopAppBarIconButtonContainerAlpha,
-                    ),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-        content = content,
-    )
-}
 
 @Composable
 private fun OnlineSearchSortMenu(
