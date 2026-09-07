@@ -239,7 +239,8 @@ ksp {
 }
 
 dependencies {
-implementation(libs.animation.core)
+implementation(libs.androidx.foundation.layout)
+    implementation(libs.animation.core)
     implementation(libs.foundation.layout)
     //    implementation(libs.app.update.ktx)
     implementation(libs.guava)

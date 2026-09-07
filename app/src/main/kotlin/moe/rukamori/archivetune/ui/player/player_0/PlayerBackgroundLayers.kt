@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
@@ -229,7 +230,7 @@ fun PlayerBackgroundLayers(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(0.75f)
+                        .fillMaxHeight(0.72f) 
                         .align(Alignment.TopCenter)
                         .graphicsLayer {
                             alpha = immersiveTransitionAlpha
@@ -242,7 +243,8 @@ fun PlayerBackgroundLayers(
                         .drawWithCache {
                             val maskBrush = Brush.verticalGradient(
                                 0.0f to Color.Black,
-                                0.80f to Color.Black,
+                                0.35f to Color.Black,
+                                0.70f to Color.Black.copy(alpha = 0.5f),
                                 1.0f to Color.Transparent,
                                 startY = 0f,
                                 endY = size.height

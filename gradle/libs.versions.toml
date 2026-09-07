@@ -56,6 +56,7 @@ appUpdateKtx = "2.1.0"
 foundationLayout = "1.11.4"
 animationCore = "1.11.4"
 webkit = "1.17.0"
+foundationLayoutVersion = "1.12.0"
 
 
 [libraries]
@@ -174,6 +175,7 @@ animation-core = { group = "androidx.compose.animation", name = "animation-core"
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
 graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
 
 
 [plugins]
