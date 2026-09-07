@@ -1583,7 +1583,10 @@ fun ItemThumbnail(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val targetSizePx = with(density) { ListThumbnailSize.roundToPx() }
+    val targetDim = if (cropToSquare != null) 200 else 544
+    val targetSizePx = with(density) {
+        if (cropToSquare != null) ListThumbnailSize.roundToPx() else 544.dp.roundToPx()
+    }
     val cropThumbnailToSquare = cropToSquare ?: rememberPreference(CropThumbnailToSquareKey, false).value
     val isYouTubeThumb = thumbnailUrl?.contains("ytimg.com", ignoreCase = true) == true
     val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
@@ -1616,10 +1619,10 @@ fun ItemThumbnail(
 
             if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
                 val request =
-                    remember(thumbnailUrl, targetSizePx) {
+                    remember(thumbnailUrl, targetDim, targetSizePx) {
                         ImageRequest
                             .Builder(context)
-                            .data(thumbnailUrl.resize(200, 200))
+                            .data(thumbnailUrl.resize(targetDim, targetDim))
                             .size(targetSizePx, targetSizePx)
                             .allowHardware(true)
                             .build()
