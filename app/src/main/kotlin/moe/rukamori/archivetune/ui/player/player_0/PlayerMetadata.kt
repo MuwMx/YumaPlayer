@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 
 import moe.rukamori.archivetune.ui.component.MarqueeText
@@ -46,8 +47,10 @@ fun PlayerMetadata(
     state: PlayerUiState,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
+    onMoreClick: () -> Unit = {},
     isVisible: Boolean = true
 ) {
+    val haptics = rememberYumaHaptics()
     val gradientEdgeColor = Color.Black
     Row(
         modifier = modifier
@@ -151,49 +154,93 @@ fun PlayerMetadata(
 
         }
 
-        // Кнопка лайка
-        var lastLikeClickTime by remember { mutableLongStateOf(0L) }
-
-        val heartColor by animateColorAsState(
-            targetValue = if (state.isLiked) Color(state.vibrantColor) else Color.White.copy(alpha = 0.6f),
-            animationSpec = tween(300),
-            label = "MetadataHeartColor"
-        )
-
-        val interactionSource = remember { MutableInteractionSource() }
-        val isPressed by interactionSource.collectIsPressedAsState()
-        val scale by animateFloatAsState(
-            targetValue = if (isPressed) 0.85f else 1f,
-            label = "LikeBounce"
-        )
-
-        Box(
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .size(48.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null
-                ) {
-                    val now = System.currentTimeMillis()
-                    if (now - lastLikeClickTime > 450L) {
-                        lastLikeClickTime = now
-                        onAction(PlayerAction.Like)
-                    }
-                },
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            androidx.compose.material3.Icon(
-                painter = painterResource(id = if (state.isLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline),
-                contentDescription = null,
-                tint = heartColor,
-                modifier = Modifier.size(30.dp)
+            // Кнопка лайка
+            var lastLikeClickTime by remember { mutableLongStateOf(0L) }
+
+            val heartColor by animateColorAsState(
+                targetValue = if (state.isLiked) Color(state.vibrantColor) else Color.White.copy(alpha = 0.6f),
+                animationSpec = tween(300),
+                label = "MetadataHeartColor"
             )
+
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.85f else 1f,
+                label = "LikeBounce"
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .size(48.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastLikeClickTime > 450L) {
+                            lastLikeClickTime = now
+                            onAction(PlayerAction.Like)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = if (state.isLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline),
+                    contentDescription = null,
+                    tint = heartColor,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+
+            if (state.isImmersiveEnabled) {
+                var lastMoreClickTime by remember { mutableLongStateOf(0L) }
+                val moreInteractionSource = remember { MutableInteractionSource() }
+                val isMorePressed by moreInteractionSource.collectIsPressedAsState()
+                val moreScale by animateFloatAsState(
+                    targetValue = if (isMorePressed) 0.85f else 1f,
+                    label = "MetadataMoreBounce"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .size(48.dp)
+                        .graphicsLayer {
+                            scaleX = moreScale
+                            scaleY = moreScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = moreInteractionSource,
+                            indication = null
+                        ) {
+                            val now = System.currentTimeMillis()
+                            if (now - lastMoreClickTime > 450L) {
+                                lastMoreClickTime = now
+                                haptics.click()
+                                onMoreClick()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_more),
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     }
 }

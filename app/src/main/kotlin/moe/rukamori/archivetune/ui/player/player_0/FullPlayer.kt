@@ -172,6 +172,7 @@ fun FullPlayer(
                         artist = state.artist,
                         state = state,
                         onAction = onAction,
+                        onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
                         isVisible = isVisible
                     )
 

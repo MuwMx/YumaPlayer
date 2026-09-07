@@ -14,6 +14,8 @@ data class PlayerUiState(
     // Метаданные текущего трека
     val title: String = "Yuma",
     val artist: String = "Playback...",
+    val album: String? = null,
+    val queueTitle: String? = null,
     val coverUrl: String = "",
     val trackUrl: String = "",
 

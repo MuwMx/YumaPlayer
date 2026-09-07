@@ -92,15 +92,17 @@ fun LyricsHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Кнопка сворачивания
-            Box(
-                modifier = Modifier
-                    .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable(interactionSource = closeInteractionSource, indication = null) { onCloseClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
+            if (!state.isImmersiveEnabled) {
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable(interactionSource = closeInteractionSource, indication = null) { onCloseClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
+                }
             }
 
             // Центральная часть: Пластинка + Бегущий текст

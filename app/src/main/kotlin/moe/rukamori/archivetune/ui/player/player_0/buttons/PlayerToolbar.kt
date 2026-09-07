@@ -24,8 +24,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
@@ -71,99 +73,121 @@ fun PlayerToolbar(
             .fillMaxWidth()
             .height(56.dp)
     ) {
-        Text(
-            text = "Now Playing",
-            color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LocalArchiveTuneFontFamily.current,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-                .graphicsLayer { alpha = 0.6f }
-        )
+        if (!state.isImmersiveEnabled) {
+            val subtitle = state.queueTitle?.takeIf { it.isNotBlank() } ?: state.album?.takeIf { it.isNotBlank() }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .padding(horizontal = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.now_playing),
+                    color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
+                    fontSize = if (subtitle != null) 12.sp else 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.graphicsLayer { alpha = 0.6f }
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = if (isImmersiveOrBlur) Color.White else colorScheme.onSurface,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.graphicsLayer { alpha = 0.9f }
+                    )
+                }
+            }
 
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 0.dp, top = 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            if (!state.isImmersiveEnabled) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 0.dp, top = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
                 SleepTimerTopBadge(
                     state = state,
                     onClick = onTimerBadgeClick,
                     colorScheme = colorScheme
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = moreScale
+                            scaleY = moreScale
+                        }
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(buttonBackground)
+                        .border(1.dp, buttonBorderColor, RoundedCornerShape(50))
+                        .clickable(
+                            interactionSource = moreInteractionSource,
+                            indication = null
+                        ) {
+                            haptics.click()
+                            onMoreClick()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.size(24.dp)) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_more),
+                            contentDescription = "More Options",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(Alignment.Center)
+                        )
+                        if (hasUpdate) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .align(Alignment.TopEnd)
+                                    .background(colorScheme.error, RoundedCornerShape(50))
+                            )
+                        }
+                    }
+                }
             }
 
             Box(
                 modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 0.dp, top = 0.dp)
                     .graphicsLayer {
-                        scaleX = moreScale
-                        scaleY = moreScale
+                        scaleX = collapseScale
+                        scaleY = collapseScale
                     }
                     .size(40.dp)
                     .clip(RoundedCornerShape(50))
                     .background(buttonBackground)
                     .border(1.dp, buttonBorderColor, RoundedCornerShape(50))
                     .clickable(
-                        interactionSource = moreInteractionSource,
+                        interactionSource = collapseInteractionSource,
                         indication = null
                     ) {
-                        haptics.click()
-                        onMoreClick()
+                        onCollapseClick()
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_more),
-                        contentDescription = "More Options",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.Center)
-                    )
-                    if (hasUpdate) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .align(Alignment.TopEnd)
-                                .background(colorScheme.error, RoundedCornerShape(50))
-                        )
-                    }
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.ic_collapse),
+                    contentDescription = "Collapse Player",
+                    modifier = Modifier.size(20.dp)
+                )
             }
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 0.dp, top = 0.dp)
-                .graphicsLayer {
-                    scaleX = collapseScale
-                    scaleY = collapseScale
-                }
-                .size(40.dp)
-                .clip(RoundedCornerShape(50))
-                .background(buttonBackground)
-                .border(1.dp, buttonBorderColor, RoundedCornerShape(50))
-                .clickable(
-                    interactionSource = collapseInteractionSource,
-                    indication = null
-                ) {
-                    onCollapseClick()
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_collapse),
-                contentDescription = "Collapse Player",
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }

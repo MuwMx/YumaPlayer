@@ -193,11 +193,12 @@ class PlayerViewModel @Inject constructor(
                 .flatMapLatest { connection -> connection.mediaMetadata }
                 .collect { metadata ->
                     if (metadata == null) {
-                        _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
+                        _uiState.update { it.copy(trackUrl = "", title = "", artist = "", album = null, coverUrl = "", isPlaying = false) }
                         return@collect
                     }
                     val title = metadata.title
                     val artist = metadata.artists.joinToString { it.name }
+                    val album = metadata.album?.title
 
                     val resolvedDuration = if (metadata.duration > 0) {
                         metadata.duration * 1000L
@@ -228,6 +229,7 @@ class PlayerViewModel @Inject constructor(
                         currentUi.copy(
                             title = title,
                             artist = artist,
+                            album = album,
                             trackUrl = metadata.id,
                             durationMs = resolvedDuration,
                             coverUrl = coverUrl,
@@ -364,6 +366,7 @@ class PlayerViewModel @Inject constructor(
                 }
                 .collect { state ->
                     _queueState.value = state
+                    _uiState.update { it.copy(queueTitle = state.title) }
                 }
         }
 

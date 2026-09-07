@@ -455,17 +455,19 @@ private fun QueueSheetHeader(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable(interactionSource = closeInteractionSource, indication = null) {
-                        onCloseClick()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
+            if (!state.isImmersiveEnabled) {
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable(interactionSource = closeInteractionSource, indication = null) {
+                            onCloseClick()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
+                }
             }
             Column(
                 modifier = Modifier
