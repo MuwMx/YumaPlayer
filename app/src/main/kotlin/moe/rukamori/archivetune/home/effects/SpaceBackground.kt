@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.home.effects
 
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -55,68 +56,82 @@ fun SpaceBackground(
     val isVisibleState by rememberUpdatedState(isVisible)
 
     LaunchedEffect(Unit) {
+        Log.d("TEMP_PAUSE_LOG", "SpaceBackground: LaunchedEffect star physics loop started")
         var lastFrameMs = -1L
         var currentSpeed = targetSpeedState.floatValue
-        while (true) {
-            if (!isVisibleState) {
-                snapshotFlow { isVisibleState }.first { it }
-                lastFrameMs = -1L
-            }
+        try {
+            while (true) {
+                if (!isVisibleState) {
+                    Log.d("TEMP_PAUSE_LOG", "SpaceBackground: isVisible=false -> suspending/waiting in snapshotFlow")
+                    snapshotFlow { isVisibleState }.first { it }
+                    Log.d("TEMP_PAUSE_LOG", "SpaceBackground: isVisible=true -> resumed from snapshotFlow")
+                    lastFrameMs = -1L
+                }
 
-            withInfiniteAnimationFrameMillis { frameMs ->
-                if (lastFrameMs == -1L) lastFrameMs = frameMs
-                val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
-                lastFrameMs = frameMs
+                withInfiniteAnimationFrameMillis { frameMs ->
+                    if (lastFrameMs == -1L) lastFrameMs = frameMs
+                    val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
+                    lastFrameMs = frameMs
 
-                val speedBoost = 3f
-                currentSpeed += (1f + (targetSpeedState.floatValue - 1f) * speedBoost - currentSpeed) * (delta / 1000f) * 5.0f
+                    val speedBoost = 3f
+                    currentSpeed += (1f + (targetSpeedState.floatValue - 1f) * speedBoost - currentSpeed) * (delta / 1000f) * 5.0f
 
-                baseProgress += 0.0025f * currentSpeed * (delta / 16.67f)
+                    baseProgress += 0.0025f * currentSpeed * (delta / 16.67f)
 
-                stars.forEachIndexed { index, star ->
-                    val adjustedProgress = ((baseProgress * star.speed) + star.initialOffset) % 1f
-                    if (adjustedProgress !in 0.01f..0.98f) {
-                        if (star.lastRegen != baseProgress.toInt()) {
-                            var newX: Float; var newY: Float; var newDistance: Float
-                            do {
-                                val newAngle = Random.nextFloat() * 360f
-                                newDistance = sqrt(Random.nextFloat()) * 1.5f
-                                val newAngleRad = newAngle * (Math.PI / 180f).toFloat()
-                                newX = cos(newAngleRad) * newDistance
-                                newY = sin(newAngleRad) * newDistance
-                            } while (newDistance < 0.15f)
-                            stars[index] = star.copy(x = newX, y = newY, lastRegen = baseProgress.toInt())
+                    stars.forEachIndexed { index, star ->
+                        val adjustedProgress = ((baseProgress * star.speed) + star.initialOffset) % 1f
+                        if (adjustedProgress !in 0.01f..0.98f) {
+                            if (star.lastRegen != baseProgress.toInt()) {
+                                var newX: Float; var newY: Float; var newDistance: Float
+                                do {
+                                    val newAngle = Random.nextFloat() * 360f
+                                    newDistance = sqrt(Random.nextFloat()) * 1.5f
+                                    val newAngleRad = newAngle * (Math.PI / 180f).toFloat()
+                                    newX = cos(newAngleRad) * newDistance
+                                    newY = sin(newAngleRad) * newDistance
+                                } while (newDistance < 0.15f)
+                                stars[index] = star.copy(x = newX, y = newY, lastRegen = baseProgress.toInt())
+                            }
                         }
                     }
                 }
             }
+        } finally {
+            Log.d("TEMP_PAUSE_LOG", "SpaceBackground: LaunchedEffect star physics loop cancelled/finished")
         }
     }
 
     var meteor by remember { mutableStateOf<MeteorState?>(null) }
     val meteorProgress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(Random.nextLong(40000, 60000))
-            if (!isVisibleState) {
-                snapshotFlow { isVisibleState }.first { it }
+        Log.d("TEMP_PAUSE_LOG", "SpaceBackground: LaunchedEffect meteor loop started")
+        try {
+            while (true) {
+                delay(Random.nextLong(40000, 60000))
+                if (!isVisibleState) {
+                    Log.d("TEMP_PAUSE_LOG", "SpaceBackground meteor: isVisible=false -> suspending/waiting in snapshotFlow")
+                    snapshotFlow { isVisibleState }.first { it }
+                    Log.d("TEMP_PAUSE_LOG", "SpaceBackground meteor: isVisible=true -> resumed from snapshotFlow")
+                }
+                val direction = Random.nextInt(2)
+                val angle = when (direction) {
+                    0    -> 130f + Random.nextFloat() * 20f
+                    else -> 30f  + Random.nextFloat() * 20f
+                }
+                meteor = MeteorState(
+                    startX    = Random.nextFloat(),
+                    startY    = Random.nextFloat() * 0.3f,
+                    angle     = angle,
+                    length    = 200f + Random.nextFloat() * 150f,
+                    depth     = 0.4f + Random.nextFloat() * 0.6f,
+                    thickness = 4f
+                )
+                meteorProgress.snapTo(0f)
+                meteorProgress.animateTo(1f, tween(1200, easing = LinearOutSlowInEasing))
+                meteor = null
             }
-            val direction = Random.nextInt(2)
-            val angle = when (direction) {
-                0    -> 130f + Random.nextFloat() * 20f
-                else -> 30f  + Random.nextFloat() * 20f
-            }
-            meteor = MeteorState(
-                startX    = Random.nextFloat(),
-                startY    = Random.nextFloat() * 0.3f,
-                angle     = angle,
-                length    = 200f + Random.nextFloat() * 150f,
-                depth     = 0.4f + Random.nextFloat() * 0.6f,
-                thickness = 4f
-            )
-            meteorProgress.snapTo(0f)
-            meteorProgress.animateTo(1f, tween(1200, easing = LinearOutSlowInEasing))
-            meteor = null
+        } finally {
+            Log.d("TEMP_PAUSE_LOG", "SpaceBackground: LaunchedEffect meteor loop cancelled/finished")
         }
     }
 

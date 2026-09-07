@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.home.effects
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -98,50 +99,57 @@ fun ParticlesBackground(
 
     // Physics loop - runs every display frame independently of Compose animation clock
     LaunchedEffect(Unit) {
+        Log.d("TEMP_PAUSE_LOG", "ParticlesBackground: LaunchedEffect physics loop started")
         var lastFrameMs = -1L
         var currentSpeed = targetSpeedState.floatValue
-        while (true) {
-            if (!isVisibleState) {
-                snapshotFlow { isVisibleState }.first { it }
-                lastFrameMs = -1L
-            }
+        try {
+            while (true) {
+                if (!isVisibleState) {
+                    Log.d("TEMP_PAUSE_LOG", "ParticlesBackground: isVisible=false -> suspending/waiting in snapshotFlow")
+                    snapshotFlow { isVisibleState }.first { it }
+                    Log.d("TEMP_PAUSE_LOG", "ParticlesBackground: isVisible=true -> resumed from snapshotFlow")
+                    lastFrameMs = -1L
+                }
 
-            withInfiniteAnimationFrameMillis { frameMs ->
-                if (lastFrameMs == -1L) lastFrameMs = frameMs
-                val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
-                lastFrameMs = frameMs
+                withInfiniteAnimationFrameMillis { frameMs ->
+                    if (lastFrameMs == -1L) lastFrameMs = frameMs
+                    val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
+                    lastFrameMs = frameMs
 
-                // Lerp speed for smooth transitions
-                currentSpeed += (targetSpeedState.floatValue - currentSpeed) * (delta / 1000f) * 2.5f
-                val speedScale = currentSpeed * (delta / 16.67f)
+                    // Lerp speed for smooth transitions
+                    currentSpeed += (targetSpeedState.floatValue - currentSpeed) * (delta / 1000f) * 2.5f
+                    val speedScale = currentSpeed * (delta / 16.67f)
 
-                particles.forEachIndexed { index, p ->
-                    var nx  = p.x  + p.vx * speedScale
-                    var ny  = p.y  + p.vy * speedScale
-                    var nvx = p.vx
-                    var nvy = p.vy
+                    particles.forEachIndexed { index, p ->
+                        var nx  = p.x  + p.vx * speedScale
+                        var ny  = p.y  + p.vy * speedScale
+                        var nvx = p.vx
+                        var nvy = p.vy
 
-                    // Soft edge bounce - reverse velocity and nudge back inside
-                    if (nx < 0.02f) { nvx = abs(nvx); nx = 0.02f }
-                    if (nx > 0.98f) { nvx = -abs(nvx); nx = 0.98f }
-                    if (ny < 0.02f) { nvy = abs(nvy); ny = 0.02f }
-                    if (ny > 0.98f) { nvy = -abs(nvy); ny = 0.98f }
+                        // Soft edge bounce - reverse velocity and nudge back inside
+                        if (nx < 0.02f) { nvx = abs(nvx); nx = 0.02f }
+                        if (nx > 0.98f) { nvx = -abs(nvx); nx = 0.98f }
+                        if (ny < 0.02f) { nvy = abs(nvy); ny = 0.02f }
+                        if (ny > 0.98f) { nvy = -abs(nvy); ny = 0.98f }
 
-                    // Tiny random drift to avoid completely straight paths
-                    nvx += (Random.nextFloat() - 0.5f) * 0.000004f
-                    nvy += (Random.nextFloat() - 0.5f) * 0.000004f
+                        // Tiny random drift to avoid completely straight paths
+                        nvx += (Random.nextFloat() - 0.5f) * 0.000004f
+                        nvy += (Random.nextFloat() - 0.5f) * 0.000004f
 
-                    // Speed cap so particles never rocket across the screen
-                    val speed = sqrt(nvx * nvx + nvy * nvy)
-                    val maxSpeed = 0.00025f
-                    if (speed > maxSpeed) {
-                        nvx = nvx / speed * maxSpeed
-                        nvy = nvy / speed * maxSpeed
+                        // Speed cap so particles never rocket across the screen
+                        val speed = sqrt(nvx * nvx + nvy * nvy)
+                        val maxSpeed = 0.00025f
+                        if (speed > maxSpeed) {
+                            nvx = nvx / speed * maxSpeed
+                            nvy = nvy / speed * maxSpeed
+                        }
+
+                        particles[index] = p.copy(x = nx, y = ny, vx = nvx, vy = nvy)
                     }
-
-                    particles[index] = p.copy(x = nx, y = ny, vx = nvx, vy = nvy)
                 }
             }
+        } finally {
+            Log.d("TEMP_PAUSE_LOG", "ParticlesBackground: LaunchedEffect physics loop cancelled/finished")
         }
     }
 

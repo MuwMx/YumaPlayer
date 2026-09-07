@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.home.effects
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
         modifier = modifier.clipToBounds()
     ) {
         if (!isVisible) {
+            Log.d("TEMP_PAUSE_LOG", "ScreenBackground: isVisible=false -> static TONAL fallback")
             HomePremiumBackground(
                 blobColor = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier
@@ -37,6 +39,7 @@ fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
                     .align(Alignment.TopCenter)
             )
         } else {
+            Log.d("TEMP_PAUSE_LOG", "ScreenBackground: isVisible=true -> rendering style=${homeBackground.style}")
             when (homeBackground.style) {
                 HomeBackgroundStyle.TONAL -> {
                     HomePremiumBackground(
