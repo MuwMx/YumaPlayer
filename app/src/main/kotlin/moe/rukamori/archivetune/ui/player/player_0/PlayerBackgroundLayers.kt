@@ -85,15 +85,15 @@ fun PlayerBackgroundLayers(
     val blurImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
-            .size(128)
+            .size(240)
             .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
-            .allowHardware(false)
             .build()
     }
 
     val clearImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
+            .allowHardware(false)
             .build()
     }
 
@@ -116,10 +116,10 @@ fun PlayerBackgroundLayers(
         }
     }
 
-    LaunchedEffect(blurState) {
-        when (val s = blurState) {
+    LaunchedEffect(clearState) {
+        when (val s = clearState) {
             is AsyncImagePainter.State.Success -> {
-                currentBlurPainter = s.painter
+                currentClearPainter = s.painter
                 if (targetUrl != null) {
                     val cached = colorCache[targetUrl]
                     if (cached != null) {
@@ -140,14 +140,14 @@ fun PlayerBackgroundLayers(
             }
             is AsyncImagePainter.State.Error,
             is AsyncImagePainter.State.Empty -> {
-                currentBlurPainter = null
+                currentClearPainter = null
             }
             else -> {}
         }
     }
 
-    LaunchedEffect(blurState, gradientColor) {
-        when (blurState) {
+    LaunchedEffect(clearState, gradientColor) {
+        when (clearState) {
             is AsyncImagePainter.State.Success -> {
                 activeGradientColor = gradientColor
             }
@@ -159,14 +159,14 @@ fun PlayerBackgroundLayers(
         }
     }
 
-    LaunchedEffect(clearState) {
-        when (val s = clearState) {
+    LaunchedEffect(blurState) {
+        when (val s = blurState) {
             is AsyncImagePainter.State.Success -> {
-                currentClearPainter = s.painter
+                currentBlurPainter = s.painter
             }
             is AsyncImagePainter.State.Error,
             is AsyncImagePainter.State.Empty -> {
-                currentClearPainter = null
+                currentBlurPainter = null
             }
             else -> {}
         }
@@ -195,16 +195,15 @@ fun PlayerBackgroundLayers(
                 }
         )
 
-        Crossfade(
-            targetState = targetUrl,
-            animationSpec = tween(500),
-            label = "BackgroundCrossfade"
-        ) { _ ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                val blur = currentBlurPainter
-                if (blur != null) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Crossfade(
+                targetState = currentBlurPainter,
+                animationSpec = tween(500),
+                label = "BlurCrossfade"
+            ) { painter ->
+                if (painter != null) {
                     Image(
-                        painter = blur,
+                        painter = painter,
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
@@ -212,11 +211,16 @@ fun PlayerBackgroundLayers(
                         contentScale = ContentScale.Crop
                     )
                 }
+            }
 
-                val clear = currentClearPainter
-                if (clear != null) {
+            Crossfade(
+                targetState = currentClearPainter,
+                animationSpec = tween(500),
+                label = "ClearCrossfade"
+            ) { painter ->
+                if (painter != null) {
                     Image(
-                        painter = clear,
+                        painter = painter,
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -258,16 +262,18 @@ fun PlayerBackgroundLayers(
                 .fillMaxSize()
                 .drawWithCache {
                     val baseVeil = lerp(standardVeilColor, Color.Black, blurOverlayAlpha)
+                    val bottomVeil = lerp(baseVeil, Color.Black, immersiveTransitionAlpha)
+
                     val topAlpha = lerp(0.50f, 0.45f, blurOverlayAlpha) * (1f - immersiveTransitionAlpha)
                     val midAlpha = 0.30f * (1f - immersiveTransitionAlpha)
-                    val bottom65Alpha = lerp(0.70f, 0.35f, immersiveTransitionAlpha)
-                    val bottom100Alpha = lerp(0.72f, 0.30f, immersiveTransitionAlpha)
+                    val bottom65Alpha = lerp(lerp(0.70f, 0.72f, blurOverlayAlpha), 0.35f, immersiveTransitionAlpha)
+                    val bottom100Alpha = lerp(lerp(0.70f, 0.72f, blurOverlayAlpha), 0.30f, immersiveTransitionAlpha)
 
                     val veilBrush = Brush.verticalGradient(
                         0.0f to baseVeil.copy(alpha = topAlpha),
                         0.35f to baseVeil.copy(alpha = midAlpha),
-                        0.65f to Color.Black.copy(alpha = bottom65Alpha),
-                        1.0f to Color.Black.copy(alpha = bottom100Alpha),
+                        0.65f to bottomVeil.copy(alpha = bottom65Alpha),
+                        1.0f to bottomVeil.copy(alpha = bottom100Alpha),
                         startY = 0f,
                         endY = size.height
                     )
