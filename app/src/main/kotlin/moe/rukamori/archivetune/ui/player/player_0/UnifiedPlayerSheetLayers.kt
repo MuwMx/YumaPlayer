@@ -1,6 +1,5 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
-import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -204,10 +203,6 @@ internal fun UnifiedPlayerSheetLayers(
             }
             val isQueueVisible by remember {
                 derivedStateOf { queueFractionProvider() > 0.05f }
-            }
-
-            LaunchedEffect(isFullPlayerVisible) {
-                Log.d("TEMP_PAUSE_LOG", "UnifiedPlayerSheetLayers: isFullPlayerVisible=$isFullPlayerVisible")
             }
 
             Box(

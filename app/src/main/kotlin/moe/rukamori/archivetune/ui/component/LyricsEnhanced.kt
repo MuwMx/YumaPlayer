@@ -13,7 +13,6 @@
 package moe.rukamori.archivetune.ui.component
 
 import android.app.Activity
-import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -390,21 +389,12 @@ fun LyricsEnhanced(
         var wasSliderActive = false
         var anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
         var anchorFrameNanos = 0L
-        var wasSleeping = false
         while (isActive) {
             if (!latestIsLyricsVisible.value) {
-                if (!wasSleeping) {
-                    Log.d("TEMP_PAUSE_LOG", "LyricsEnhanced: timing loop sleeping (!isLyricsVisible), anchors reset")
-                    wasSleeping = true
-                }
                 anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
                 anchorFrameNanos = 0L
                 delay(200L)
                 continue
-            }
-            if (wasSleeping) {
-                Log.d("TEMP_PAUSE_LOG", "LyricsEnhanced: timing loop woke up (isLyricsVisible=true)")
-                wasSleeping = false
             }
 
             val sliderPosition = latestSliderPositionProvider.value()
@@ -548,11 +538,9 @@ fun LyricsEnhanced(
         }.distinctUntilChanged()
             .collectLatest { index ->
                 if (index == null) {
-                    Log.d("TEMP_PAUSE_LOG", "LyricsEnhanced: autoscroll null-target sleep, forceNextScroll=true (visible=${latestIsLyricsVisible.value}, manual=$isManualScrolling, sel=$isSelectionModeActive)")
                     forceNextScroll = true
                     return@collectLatest
                 }
-                Log.d("TEMP_PAUSE_LOG", "LyricsEnhanced: autoscroll target index=$index (force=$forceNextScroll)")
                 listState.scrollLyricIntoFocus(
                     index = index,
                     animateToNearbyItem = !forceNextScroll,

@@ -5,7 +5,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.util.Log
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.Lifecycle
@@ -32,36 +31,29 @@ fun rememberAnimatedTime(
     val isVisibleState by rememberUpdatedState(isVisible)
 
     LaunchedEffect(Unit) {
-        Log.d("TEMP_PAUSE_LOG", "$label: LaunchedEffect animation loop started")
         var lastFrameMs = -1L
         var currentSpeed = targetSpeed.floatValue
-        try {
-            while (true) {
-                if (!isVisibleState) {
-                    Log.d("TEMP_PAUSE_LOG", "$label: isVisible=false -> suspending/waiting in snapshotFlow")
-                    snapshotFlow { isVisibleState }.first { it }
-                    Log.d("TEMP_PAUSE_LOG", "$label: isVisible=true -> resumed from snapshotFlow")
-                    lastFrameMs = -1L
-                }
-                if (currentSpeed == 0f && targetSpeed.floatValue == 0f) {
-                    snapshotFlow { targetSpeed.floatValue }.first { it > 0f }
-                    lastFrameMs = -1L
-                }
-                withInfiniteAnimationFrameMillis { frameMs ->
-                    if (lastFrameMs == -1L) lastFrameMs = frameMs
-                    val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
-                    lastFrameMs = frameMs
-                    // Smooth lerp: 2.5/sec ramp — ~0.8s to reach target speed.
-                    // High enough to feel reactive, low enough to avoid jarring jumps.
-                    currentSpeed += (targetSpeed.floatValue - currentSpeed) * (delta / 1000f) * 2.5f
-                    if (kotlin.math.abs(currentSpeed) < 0.001f && targetSpeed.floatValue == 0f) {
-                        currentSpeed = 0f
-                    }
-                    time.floatValue += delta * currentSpeed
-                }
+        while (true) {
+            if (!isVisibleState) {
+                snapshotFlow { isVisibleState }.first { it }
+                lastFrameMs = -1L
             }
-        } finally {
-            Log.d("TEMP_PAUSE_LOG", "$label: LaunchedEffect animation loop cancelled/finished")
+            if (currentSpeed == 0f && targetSpeed.floatValue == 0f) {
+                snapshotFlow { targetSpeed.floatValue }.first { it > 0f }
+                lastFrameMs = -1L
+            }
+            withInfiniteAnimationFrameMillis { frameMs ->
+                if (lastFrameMs == -1L) lastFrameMs = frameMs
+                val delta = (frameMs - lastFrameMs).coerceIn(0L, 64L).toFloat()
+                lastFrameMs = frameMs
+                // Smooth lerp: 2.5/sec ramp — ~0.8s to reach target speed.
+                // High enough to feel reactive, low enough to avoid jarring jumps.
+                currentSpeed += (targetSpeed.floatValue - currentSpeed) * (delta / 1000f) * 2.5f
+                if (kotlin.math.abs(currentSpeed) < 0.001f && targetSpeed.floatValue == 0f) {
+                    currentSpeed = 0f
+                }
+                time.floatValue += delta * currentSpeed
+            }
         }
     }
     return time
