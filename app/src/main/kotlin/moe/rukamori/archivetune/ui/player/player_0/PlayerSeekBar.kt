@@ -3,12 +3,9 @@ package moe.rukamori.archivetune.ui.player.player_0
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -54,9 +51,20 @@ fun PlayerSeekBar(
     isVisible: Boolean = true,
 ) {
     var progressMs by remember { mutableLongStateOf(progressProvider()) }
+    var sliderPosition by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var localSeekTarget by remember { mutableStateOf<Float?>(null) }
 
-    LaunchedEffect(isVisible) {
+    LaunchedEffect(state.trackUrl) {
+        progressMs = 0L
+        sliderPosition = 0f
+        localSeekTarget = null
+        isDragging = false
+    }
+
+    LaunchedEffect(isVisible, state.trackUrl) {
         if (!isVisible) return@LaunchedEffect
+        progressMs = progressProvider()
         while (isActive) {
             val current = progressProvider()
             if (progressMs != current) {
@@ -65,10 +73,6 @@ fun PlayerSeekBar(
             delay(250)
         }
     }
-
-    var sliderPosition by remember { mutableStateOf(0f) }
-    val isDragging = remember { mutableStateOf(false) }
-    var localSeekTarget by remember { mutableStateOf<Float?>(null) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -89,7 +93,7 @@ fun PlayerSeekBar(
 
     LaunchedEffect(progressMs) {
         localSeekTarget?.let { target ->
-            if (abs(progressMs - target) < 2000) {
+            if (abs(progressMs - target) < 1500f) {
                 localSeekTarget = null
             }
         }
@@ -98,39 +102,43 @@ fun PlayerSeekBar(
     val maxRange = maxOf(1f, durationMs.toFloat())
     val baseProgress = when {
         durationMs == 0L -> 0f
-        isDragging.value -> sliderPosition
+        isDragging -> sliderPosition
         localSeekTarget != null -> localSeekTarget!!
         else -> progressMs.toFloat()
     }
 
+    val shouldSnap = isDragging || baseProgress <= 500f
     val animatedProgress by animateFloatAsState(
         targetValue = baseProgress.coerceIn(0f, maxRange),
-        animationSpec = if (isDragging.value) snap() else tween(durationMillis = 250, easing = LinearEasing),
+        animationSpec = if (shouldSnap) snap() else tween(durationMillis = 250, easing = LinearEasing),
         label = "SliderLineFluidAnimation"
     )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp) // Схлопывает сикбар по ширине, выравнивая его с метадатой и обложкой
+            .padding(horizontal = 16.dp)
     ) {
+        val progressFractionProvider = {
+            (animatedProgress / maxRange).coerceIn(0f, 1f)
+        }
+
         Slider(
             value = baseProgress.coerceIn(0f, maxRange),
             onValueChange = {
-                isDragging.value = true
+                isDragging = true
                 localSeekTarget = null
                 sliderPosition = it
                 onSeekStarted()
             },
             onValueChangeFinished = {
                 localSeekTarget = sliderPosition
-                isDragging.value = false
+                isDragging = false
                 onSeek(sliderPosition)
             },
             valueRange = 0f..maxRange,
             interactionSource = interactionSource,
             track = { _ ->
-                val fraction = (animatedProgress / maxRange).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -138,14 +146,12 @@ fun PlayerSeekBar(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f))
                         .drawBehind {
+                            val fraction = progressFractionProvider()
                             val fillWidth = size.width * fraction
                             drawRoundRect(
                                 color = if (isInteracting) animatedAccentColor else Color.White,
                                 size = Size(fillWidth, size.height),
-                                cornerRadius = CornerRadius(
-                                    x = size.height / 2f,
-                                    y = size.height / 2f
-                                )
+                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
                             )
                         }
                 )
@@ -167,7 +173,12 @@ fun PlayerSeekBar(
 
         val currentSecText by remember {
             derivedStateOf {
-                TimeUtils.formatMs(animatedProgress.coerceAtLeast(0f).toLong())
+                val displayMs = if (isDragging) {
+                    sliderPosition.toLong()
+                } else {
+                    progressMs
+                }
+                TimeUtils.formatMs(displayMs.coerceAtLeast(0L))
             }
         }
 
@@ -178,7 +189,7 @@ fun PlayerSeekBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp) // Оставили только небольшой зазор сверху, чтобы текст не прилипал к линии
+                .padding(top = 4.dp)
                 .graphicsLayer {
                     val offset = slideOffset()
                     alpha = if (offset > 0.5f) ((offset - 0.5f) / 0.5f) else 0f
@@ -191,13 +202,13 @@ fun PlayerSeekBar(
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.CenterStart)
             )
-            
+
             Row(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                androidx.compose.animation.AnimatedVisibility(
+                AnimatedVisibility(
                     visible = showCodecInfo && codecInfo.isNotEmpty(),
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300))
@@ -213,7 +224,7 @@ fun PlayerSeekBar(
                     )
                 }
 
-                androidx.compose.animation.AnimatedVisibility(
+                AnimatedVisibility(
                     visible = state.isImmersiveEnabled && sleepTimerRemainingSeconds != null,
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300))
@@ -235,4 +246,3 @@ fun PlayerSeekBar(
         }
     }
 }
-
