@@ -206,7 +206,7 @@ class PlayerViewModel @Inject constructor(
                         audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
                     }
 
-                    val coverUrl = metadata.thumbnailUrl ?: ""
+                    val incomingCoverUrl = metadata.thumbnailUrl?.trim()?.takeIf(String::isNotBlank)
 
                     val oldId = _uiState.value.trackUrl
                     val newId = metadata.id
@@ -226,13 +226,16 @@ class PlayerViewModel @Inject constructor(
                     }
 
                     _uiState.update { currentUi ->
+                        val resolvedCoverUrl = incomingCoverUrl
+                            ?: currentUi.coverUrl.takeIf { oldId == newId && it.isNotBlank() }
+                            ?: ""
                         currentUi.copy(
                             title = title,
                             artist = artist,
                             album = album,
                             trackUrl = metadata.id,
                             durationMs = resolvedDuration,
-                            coverUrl = coverUrl,
+                            coverUrl = resolvedCoverUrl,
                         )
                     }
                 }
@@ -547,10 +550,12 @@ class PlayerViewModel @Inject constructor(
         trackUrl: String
     ) {
         val current = _uiState.value
+        val cleanCoverUrl = coverUrl.trim()
 
         if (current.trackUrl == trackUrl && trackUrl.isNotEmpty()) {
+            val resolvedCoverUrl = cleanCoverUrl.takeIf(String::isNotBlank) ?: current.coverUrl
             _uiState.update {
-                it.copy(isPlaying = isPlaying, isLiked = isLiked, title = title, artist = artist)
+                it.copy(isPlaying = isPlaying, isLiked = isLiked, title = title, artist = artist, coverUrl = resolvedCoverUrl)
             }
             if (current.isPlaying != isPlaying) {
                 manageTicker(isPlaying)
@@ -573,13 +578,13 @@ class PlayerViewModel @Inject constructor(
                 lyricsError = null,
                 currentLineIndex = -1,
                 isLoadingLyrics = false,
-                coverUrl = coverUrl,
+                coverUrl = cleanCoverUrl,
             )
         }
 
         manageTicker(isPlaying)
 
-        if (coverUrl.isEmpty()) {
+        if (cleanCoverUrl.isEmpty()) {
             _uiState.update {
                 it.copy(
                     vibrantColor = android.graphics.Color.WHITE,

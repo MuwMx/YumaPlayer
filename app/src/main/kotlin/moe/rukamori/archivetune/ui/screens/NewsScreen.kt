@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -99,6 +100,10 @@ import coil3.request.crossfade
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.NewsItem
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.viewmodels.NewsUiState
 import moe.rukamori.archivetune.viewmodels.NewsViewModel
@@ -293,16 +298,16 @@ fun NewsScreen(
                             if (maxWidth > 840.dp) {
                                 (maxWidth - 760.dp) / 2
                             } else {
-                                16.dp
+                                SettingsDimensions.ScreenHorizontalPadding
                             }
 
                         LazyColumn(
                             state = listState,
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
                             contentPadding =
                                 PaddingValues(
-                                    top = innerPadding.calculateTopPadding() + 12.dp,
-                                    bottom = innerPadding.calculateBottomPadding() + 24.dp,
+                                    top = innerPadding.calculateTopPadding() + SettingsDimensions.SectionSpacing,
+                                    bottom = innerPadding.calculateBottomPadding() + SettingsDimensions.ScreenBottomPadding,
                                     start = horizontalPadding,
                                     end = horizontalPadding,
                                 ),
@@ -352,36 +357,44 @@ private fun NewsListHeader(
     isSearching: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        tonalElevation = 3.dp,
-        modifier = modifier,
+    val colors = LocalYumaColors.current
+    val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
+
+    Box(
+        modifier =
+            modifier
+                .yumaGlassCard(
+                    shape = shape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
+                .clip(shape)
+                .padding(SettingsDimensions.BannerContentPadding),
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.BannerIconSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(52.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = SettingsDimensions.BannerIconBgAlpha),
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(SettingsDimensions.ProfileCardAvatarSize),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(R.drawable.newspaper),
                         contentDescription = null,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(SettingsDimensions.BannerIconInnerSize),
                     )
                 }
             }
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(SettingsDimensions.BannerColumnSpacing),
             ) {
                 Text(
                     text =
@@ -396,11 +409,12 @@ private fun NewsListHeader(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = pluralStringResource(R.plurals.news_article_count, itemCount, itemCount),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = SettingsDimensions.BannerSubtitleAlpha),
                 )
             }
         }
@@ -416,23 +430,24 @@ private fun NewsCard(
     val hasImages = item.imageUrls.isNotEmpty()
     val hasId = item.id.isNotEmpty()
     var fullImageUrl by remember { mutableStateOf<String?>(null) }
+    val colors = LocalYumaColors.current
+    val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
 
-    ElevatedCard(
-        onClick = { if (hasId) onNavigateToArticle() },
-        enabled = hasId,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-        elevation =
-            CardDefaults.elevatedCardElevation(
-                defaultElevation = 2.dp,
-                pressedElevation = 6.dp,
-                focusedElevation = 4.dp,
-                hoveredElevation = 4.dp,
-            ),
-        modifier = modifier,
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .yumaClickable(
+                    enabled = hasId,
+                    onClick = onNavigateToArticle,
+                )
+                .yumaGlassCard(
+                    shape = shape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
+                .clip(shape),
     ) {
         Column {
             if (hasImages) {
@@ -443,7 +458,7 @@ private fun NewsCard(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(SettingsDimensions.BannerContentPadding)
                             .height(if (item.imageUrls.size > 1) 252.dp else 220.dp),
                 )
             }
@@ -451,12 +466,12 @@ private fun NewsCard(
             Column(
                 modifier =
                     Modifier.padding(
-                        start = 20.dp,
-                        top = if (hasImages) 6.dp else 20.dp,
-                        end = 20.dp,
-                        bottom = 16.dp,
+                        start = SettingsDimensions.SectionHeaderHorizontalPadding,
+                        top = if (hasImages) 6.dp else SettingsDimensions.SectionHeaderHorizontalPadding,
+                        end = SettingsDimensions.SectionHeaderHorizontalPadding,
+                        bottom = SettingsDimensions.BannerContentPadding,
                     ),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(SettingsDimensions.RowVerticalPadding),
             ) {
                 NewsMetaRow(item = item)
 
@@ -486,7 +501,7 @@ private fun NewsCard(
                     ) {
                         FilledTonalButton(
                             onClick = onNavigateToArticle,
-                            shape = MaterialTheme.shapes.extraLarge,
+                            shape = CircleShape,
                         ) {
                             Text(text = stringResource(R.string.more))
                         }
@@ -511,12 +526,12 @@ private fun NewsMetaRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.BadgeSpacing),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (item.important) {
             Surface(
-                shape = MaterialTheme.shapes.large,
+                shape = RoundedCornerShape(SettingsDimensions.BadgeCornerRadius),
                 color = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ) {
@@ -524,13 +539,17 @@ private fun NewsMetaRow(
                     text = stringResource(R.string.news_important_badge),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    modifier =
+                        Modifier.padding(
+                            horizontal = SettingsDimensions.BadgePaddingH,
+                            vertical = SettingsDimensions.BadgePaddingV,
+                        ),
                 )
             }
         }
 
         Surface(
-            shape = MaterialTheme.shapes.large,
+            shape = RoundedCornerShape(SettingsDimensions.BadgeCornerRadius),
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f, fill = false),
@@ -555,7 +574,11 @@ private fun NewsMetaRow(
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                modifier =
+                    Modifier.padding(
+                        horizontal = SettingsDimensions.BadgePaddingH,
+                        vertical = SettingsDimensions.BadgePaddingV,
+                    ),
             )
         }
     }
@@ -568,11 +591,12 @@ private fun NewsImageCarousel(
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val imageShape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
     if (imageUrls.size == 1) {
         Box(
             modifier =
                 modifier
-                    .clip(MaterialTheme.shapes.extraLarge)
+                    .clip(imageShape)
                     .clickable(role = Role.Image) { onImageClick(imageUrls.first()) },
         ) {
             NewsAsyncImage(
@@ -596,15 +620,15 @@ private fun NewsImageCarousel(
         HorizontalCenteredHeroCarousel(
             state = carouselState,
             maxItemWidth = 336.dp,
-            itemSpacing = 8.dp,
-            contentPadding = PaddingValues(horizontal = 14.dp),
+            itemSpacing = SettingsDimensions.FloatingBarBottomSpacing,
+            contentPadding = PaddingValues(horizontal = SettingsDimensions.RowHorizontalPadding),
             modifier = Modifier.fillMaxSize(),
         ) { index ->
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .maskClip(MaterialTheme.shapes.extraLarge)
+                        .maskClip(imageShape)
                         .clickable(role = Role.Image) { onImageClick(imageUrls[index]) },
             ) {
                 NewsAsyncImage(
@@ -621,7 +645,7 @@ private fun NewsImageCarousel(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(SettingsDimensions.SectionSpacing),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -728,14 +752,23 @@ private fun NewsCarouselIndicator(
     currentIndex: Int,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.heightIn(min = 48.dp),
+    val colors = LocalYumaColors.current
+    val shape = CircleShape
+    Box(
+        modifier =
+            modifier
+                .heightIn(min = 48.dp)
+                .yumaGlassCard(
+                    shape = shape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
+                .clip(shape)
+                .padding(horizontal = SettingsDimensions.RowHorizontalPadding),
+        contentAlignment = Alignment.Center,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -767,26 +800,35 @@ private fun NewsCarouselIndicator(
 
 @Composable
 private fun NewsLoadingState(modifier: Modifier = Modifier) {
+    val colors = LocalYumaColors.current
+    val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(SettingsDimensions.ScreenBottomPadding),
     ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 2.dp,
+        Box(
+            modifier =
+                Modifier
+                    .yumaGlassCard(
+                        shape = shape,
+                        backgroundColor = colors.glassBackground,
+                        borderColor = colors.glassBorder,
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                    )
+                    .clip(shape)
+                    .padding(32.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Column(
-                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(SettingsDimensions.PlayerControlsHorizontalPadding),
             ) {
                 CircularWavyProgressIndicator(modifier = Modifier.size(64.dp))
                 Text(
                     text = stringResource(R.string.news_loading),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -829,7 +871,7 @@ private fun NewsErrorState(
         action = {
             ElevatedButton(
                 onClick = onRetry,
-                shape = MaterialTheme.shapes.extraLarge,
+                shape = CircleShape,
                 colors =
                     ButtonDefaults.elevatedButtonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -852,24 +894,31 @@ private fun NewsStatePanel(
     supportingText: String? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
+    val colors = LocalYumaColors.current
+    val shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius)
+
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(SettingsDimensions.ScreenBottomPadding),
     ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 2.dp,
+        Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 560.dp),
+                    .widthIn(max = 560.dp)
+                    .yumaGlassCard(
+                        shape = shape,
+                        backgroundColor = colors.glassBackground,
+                        borderColor = colors.glassBorder,
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                    )
+                    .clip(shape)
+                    .padding(28.dp),
         ) {
             Column(
-                modifier = Modifier.padding(28.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
             ) {
                 Surface(
                     shape = CircleShape,

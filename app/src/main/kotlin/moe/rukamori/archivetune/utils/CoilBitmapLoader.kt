@@ -57,6 +57,7 @@ class CoilBitmapLoader(
                         .data(uri)
                         .allowHardware(false)
                         .size(1080, 1080)
+                        .memoryCacheKey("notification:$uri")
                         .build()
 
                 val result = context.imageLoader.execute(request)

@@ -38,6 +38,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
@@ -81,12 +82,19 @@ fun PlayerBackgroundLayers(
         label = "ImmersiveThemeTransition"
     )
 
-    val targetUrl = state.coverUrl.takeIf { it.isNotEmpty() }
+    val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
 
     val blurImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
+            .apply {
+                if (targetUrl != null) {
+                    memoryCacheKey("blur:$targetUrl")
+                    diskCacheKey(targetUrl)
+                }
+            }
             .size(240)
+            .crossfade(500)
             .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
             .build()
     }
@@ -94,6 +102,13 @@ fun PlayerBackgroundLayers(
     val clearImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
+            .apply {
+                if (targetUrl != null) {
+                    memoryCacheKey(targetUrl)
+                    diskCacheKey(targetUrl)
+                }
+            }
+            .crossfade(500)
             .allowHardware(false)
             .build()
     }
@@ -114,6 +129,10 @@ fun PlayerBackgroundLayers(
             if (cached != null) {
                 onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
             }
+        } else {
+            currentClearPainter = null
+            currentBlurPainter = null
+            activeGradientColor = Color(0xFF121212)
         }
     }
 
@@ -139,10 +158,10 @@ fun PlayerBackgroundLayers(
                     }
                 }
             }
-            is AsyncImagePainter.State.Error,
-            is AsyncImagePainter.State.Empty -> {
+            is AsyncImagePainter.State.Error -> {
                 currentClearPainter = null
             }
+            is AsyncImagePainter.State.Empty -> {}
             else -> {}
         }
     }
@@ -152,10 +171,10 @@ fun PlayerBackgroundLayers(
             is AsyncImagePainter.State.Success -> {
                 activeGradientColor = gradientColor
             }
-            is AsyncImagePainter.State.Error,
-            is AsyncImagePainter.State.Empty -> {
+            is AsyncImagePainter.State.Error -> {
                 activeGradientColor = Color(0xFF121212)
             }
+            is AsyncImagePainter.State.Empty -> {}
             else -> {}
         }
     }
@@ -165,10 +184,10 @@ fun PlayerBackgroundLayers(
             is AsyncImagePainter.State.Success -> {
                 currentBlurPainter = s.painter
             }
-            is AsyncImagePainter.State.Error,
-            is AsyncImagePainter.State.Empty -> {
+            is AsyncImagePainter.State.Error -> {
                 currentBlurPainter = null
             }
+            is AsyncImagePainter.State.Empty -> {}
             else -> {}
         }
     }
@@ -243,8 +262,7 @@ fun PlayerBackgroundLayers(
                         .drawWithCache {
                             val maskBrush = Brush.verticalGradient(
                                 0.0f to Color.Black,
-                                0.35f to Color.Black,
-                                0.70f to Color.Black.copy(alpha = 0.5f),
+                                0.50f to Color.Black,
                                 1.0f to Color.Transparent,
                                 startY = 0f,
                                 endY = size.height
@@ -269,13 +287,13 @@ fun PlayerBackgroundLayers(
             .fillMaxSize()
             .drawWithCache {
                 val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f)
-                val topAlpha = 0.05f
-                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.35f else 0.45f
+
+                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.24f else 0.40f
 
                 val veilBrush = Brush.verticalGradient(
-                    0.0f to Color.Black.copy(alpha = topAlpha),
-                    0.40f to Color.Transparent,
-                    0.75f to tintVeil.copy(alpha = bottomAlpha * 0.6f),
+                    0.0f to Color.Transparent,
+                    0.60f to Color.Transparent,              // До 60% экрана вообще никакой вуали, чистый арт
+                    0.85f to tintVeil.copy(alpha = bottomAlpha * 0.5f), // Мягкий подъем только перед кнопками
                     1.0f to tintVeil.copy(alpha = bottomAlpha),
                     startY = 0f,
                     endY = size.height

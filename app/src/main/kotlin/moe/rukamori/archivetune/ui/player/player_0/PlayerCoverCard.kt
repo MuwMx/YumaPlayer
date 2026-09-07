@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import kotlin.math.abs
@@ -73,26 +74,42 @@ fun PlayerCoverCard(
     var currentPainter by remember { mutableStateOf<Painter?>(null) }
     var activeVibrantColor by remember { mutableStateOf(Color.Transparent) }
     
-    val request = remember(coverUrl) {
+    val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
+
+    val request = remember(cleanUrl) {
         ImageRequest.Builder(context)
-            .data(coverUrl.takeIf { !it.isNullOrEmpty() })
+            .data(cleanUrl)
+            .apply {
+                if (cleanUrl != null) {
+                    memoryCacheKey(cleanUrl)
+                    diskCacheKey(cleanUrl)
+                }
+            }
+            .crossfade(500)
             .build()
     }
     
     val painter = rememberAsyncImagePainter(model = request)
     val state by painter.state.collectAsState()
     
+    LaunchedEffect(cleanUrl) {
+        if (cleanUrl == null) {
+            currentPainter = null
+            activeVibrantColor = Color.Transparent
+        }
+    }
+
     LaunchedEffect(state, vibrantColor) {
         when (state) {
             is AsyncImagePainter.State.Success -> {
                 currentPainter = state.painter
                 activeVibrantColor = vibrantColor
             }
-            is AsyncImagePainter.State.Error,
-            is AsyncImagePainter.State.Empty -> {
+            is AsyncImagePainter.State.Error -> {
                 currentPainter = null
                 activeVibrantColor = Color.Transparent
             }
+            is AsyncImagePainter.State.Empty -> {}
             else -> {
                 // Keep currentPainter and activeVibrantColor during Loading
             }
