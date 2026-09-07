@@ -1,10 +1,11 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -37,9 +38,11 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.transformations
 import coil3.toBitmap
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import moe.rukamori.archivetune.ui.theme.ExtractedColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.FastBlurTransformation
 
@@ -57,42 +60,7 @@ fun PlayerBackgroundLayers(
     val isLightTheme = colorScheme.surface.luminance() > 0.5f
     val standardVeilColor = if (isLightTheme) colorScheme.surface else Color.Black
 
-    val immersiveMaskBrush = remember {
-        Brush.verticalGradient(
-            0.0f to Color.Black,
-            0.65f to Color.Black,
-            1.0f to Color.Transparent
-        )
-    }
-
-    val standardVeilBrush = remember(standardVeilColor) {
-        Brush.verticalGradient(
-            colors = listOf(
-                standardVeilColor.copy(alpha = 0.50f),
-                standardVeilColor.copy(alpha = 0.30f),
-                standardVeilColor.copy(alpha = 0.70f)
-            )
-        )
-    }
-
-    val blurVeilBrush = remember {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color.Black.copy(alpha = 0.45f),
-                Color.Black.copy(alpha = 0.30f),
-                Color.Black.copy(alpha = 0.72f)
-            )
-        )
-    }
-
-    val immersiveVeilBrush = remember {
-        Brush.verticalGradient(
-            0.0f to Color.Transparent,
-            0.35f to Color.Transparent,
-            0.65f to Color.Black.copy(alpha = 0.35f),
-            1.0f to Color.Black.copy(alpha = 0.30f)
-        )
-    }
+    val colorCache = remember { ConcurrentHashMap<String, ExtractedColors>() }
 
     val blurOverlayAlpha by animateFloatAsState(
         targetValue = if (state.isBlurBackgroundEnabled) 1f else 0f,
@@ -107,7 +75,7 @@ fun PlayerBackgroundLayers(
     }
     val immersiveTransitionAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled && !isOverlayVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "ImmersiveThemeTransition"
     )
 
@@ -138,15 +106,34 @@ fun PlayerBackgroundLayers(
     val blurPainter = rememberAsyncImagePainter(model = blurImageRequest)
     val blurState by blurPainter.state.collectAsState()
 
+    LaunchedEffect(targetUrl) {
+        if (targetUrl != null) {
+            val cached = colorCache[targetUrl]
+            if (cached != null) {
+                onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
+            }
+        }
+    }
+
     LaunchedEffect(clearState) {
-        when (val state = clearState) {
+        when (val s = clearState) {
             is AsyncImagePainter.State.Success -> {
-                currentClearPainter = state.painter
-                val bitmap = runCatching { state.result.image.toBitmap() }.getOrNull()
-                if (bitmap != null) {
-                    withContext(Dispatchers.Default) {
-                        val colors = PlayerColorExtractor.extractColors(bitmap)
-                        onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
+                currentClearPainter = s.painter
+                if (targetUrl != null) {
+                    val cached = colorCache[targetUrl]
+                    if (cached != null) {
+                        onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
+                    } else {
+                        val bitmap = runCatching { s.result.image.toBitmap() }.getOrNull()
+                        if (bitmap != null) {
+                            withContext(Dispatchers.Default) {
+                                val colors = PlayerColorExtractor.extractColors(bitmap)
+                                colorCache[targetUrl] = colors
+                                withContext(Dispatchers.Main) {
+                                    onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -180,9 +167,7 @@ fun PlayerBackgroundLayers(
             is AsyncImagePainter.State.Empty -> {
                 currentBlurPainter = null
             }
-            else -> {
-                // Keep previous state during Loading
-            }
+            else -> {}
         }
     }
 
@@ -197,22 +182,26 @@ fun PlayerBackgroundLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = 1f - blurOverlayAlpha }
-                .drawBehind {
+                .drawWithCache {
                     val brush = Brush.verticalGradient(
-                        colors = listOf(animatedBgColor, Color(0xFF121212))
+                        colors = listOf(animatedBgColor, Color(0xFF121212)),
+                        startY = 0f,
+                        endY = size.height
                     )
-                    drawRect(brush = brush)
+                    onDrawBehind {
+                        drawRect(brush = brush)
+                    }
                 }
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
-            androidx.compose.animation.Crossfade(
+            Crossfade(
                 targetState = currentBlurPainter,
                 animationSpec = tween(500),
                 label = "BlurCrossfade"
             ) { painter ->
                 if (painter != null) {
-                    androidx.compose.foundation.Image(
+                    Image(
                         painter = painter,
                         contentDescription = null,
                         modifier = Modifier
@@ -223,13 +212,13 @@ fun PlayerBackgroundLayers(
                 }
             }
 
-            androidx.compose.animation.Crossfade(
+            Crossfade(
                 targetState = currentClearPainter,
                 animationSpec = tween(500),
                 label = "ClearCrossfade"
             ) { painter ->
                 if (painter != null) {
-                    androidx.compose.foundation.Image(
+                    Image(
                         painter = painter,
                         contentDescription = null,
                         modifier = Modifier
@@ -240,12 +229,21 @@ fun PlayerBackgroundLayers(
                                 alpha = immersiveTransitionAlpha
                                 compositingStrategy = CompositingStrategy.Offscreen
                             }
-                            .drawWithContent {
-                                drawContent()
-                                drawRect(
-                                    brush = immersiveMaskBrush,
-                                    blendMode = BlendMode.DstIn
+                            .drawWithCache {
+                                val maskBrush = Brush.verticalGradient(
+                                    0.0f to Color.Black,
+                                    0.65f to Color.Black,
+                                    1.0f to Color.Transparent,
+                                    startY = 0f,
+                                    endY = size.height
                                 )
+                                onDrawWithContent {
+                                    drawContent()
+                                    drawRect(
+                                        brush = maskBrush,
+                                        blendMode = BlendMode.DstIn
+                                    )
+                                }
                             },
                         contentScale = ContentScale.Crop,
                         alignment = Alignment.TopCenter
@@ -258,21 +256,59 @@ fun PlayerBackgroundLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = (1f - blurOverlayAlpha) * (1f - immersiveTransitionAlpha) }
-                .background(standardVeilBrush)
+                .drawWithCache {
+                    val veilBrush = Brush.verticalGradient(
+                        colors = listOf(
+                            standardVeilColor.copy(alpha = 0.50f),
+                            standardVeilColor.copy(alpha = 0.30f),
+                            standardVeilColor.copy(alpha = 0.70f)
+                        ),
+                        startY = 0f,
+                        endY = size.height
+                    )
+                    onDrawBehind {
+                        drawRect(brush = veilBrush)
+                    }
+                }
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = blurOverlayAlpha * (1f - immersiveTransitionAlpha) }
-                .background(blurVeilBrush)
+                .drawWithCache {
+                    val veilBrush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.45f),
+                            Color.Black.copy(alpha = 0.30f),
+                            Color.Black.copy(alpha = 0.72f)
+                        ),
+                        startY = 0f,
+                        endY = size.height
+                    )
+                    onDrawBehind {
+                        drawRect(brush = veilBrush)
+                    }
+                }
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = immersiveTransitionAlpha }
-                .background(immersiveVeilBrush)
+                .drawWithCache {
+                    val veilBrush = Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        0.35f to Color.Transparent,
+                        0.65f to Color.Black.copy(alpha = 0.35f),
+                        1.0f to Color.Black.copy(alpha = 0.30f),
+                        startY = 0f,
+                        endY = size.height
+                    )
+                    onDrawBehind {
+                        drawRect(brush = veilBrush)
+                    }
+                }
         )
     }
 }
