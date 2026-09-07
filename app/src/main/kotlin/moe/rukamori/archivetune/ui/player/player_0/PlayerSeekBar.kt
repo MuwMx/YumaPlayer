@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.TimeUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,87 +53,22 @@ fun PlayerSeekBar(
     onSeekStarted: () -> Unit,
     isVisible: Boolean = true,
 ) {
-    val maxRange = maxOf(1f, durationMs.toFloat())
-    var isDragging by remember { mutableStateOf(false) }
-    var dragPositionMs by remember { mutableFloatStateOf(0f) }
-    var seekHoldTargetFraction by remember { mutableStateOf<Float?>(null) }
-    var seekHoldStartTime by remember { mutableLongStateOf(0L) }
+    var progressMs by remember { mutableLongStateOf(progressProvider()) }
 
-    val rawProgressProvider = remember(progressProvider) {
-        derivedStateOf { progressProvider() }
-    }
-
-    val renderedProgress = remember {
-        val initialFraction = if (durationMs > 0L) {
-            (progressProvider().toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-        } else 0f
-        mutableFloatStateOf(initialFraction)
-    }
-
-    LaunchedEffect(state.trackUrl, state.title, state.artist) {
-        seekHoldTargetFraction = null
-        seekHoldStartTime = 0L
-        isDragging = false
-        dragPositionMs = 0f
-        val currentMs = progressProvider()
-        val fraction = if (durationMs > 0L) {
-            (currentMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-        } else 0f
-        renderedProgress.floatValue = fraction
-    }
-
-    LaunchedEffect(isVisible, state.isPlaying, state.trackUrl, durationMs) {
+    LaunchedEffect(isVisible) {
         if (!isVisible) return@LaunchedEffect
-        var lastFrameNanos = 0L
         while (isActive) {
-            withFrameNanos { frameTimeNanos ->
-                val now = System.currentTimeMillis()
-                val currentSeekHold = seekHoldTargetFraction
-                if (currentSeekHold != null) {
-                    if (now - seekHoldStartTime > 4500L) {
-                        seekHoldTargetFraction = null
-                    }
-                }
-
-                val currentMs = rawProgressProvider.value
-                val totalMs = durationMs.toFloat()
-                val currentFraction = if (totalMs > 0f) {
-                    (currentMs.toFloat() / totalMs).coerceIn(0f, 1f)
-                } else 0f
-
-                if (currentSeekHold != null) {
-                    if (abs(currentFraction - currentSeekHold) < 0.04f) {
-                        seekHoldTargetFraction = null
-                    }
-                }
-
-                val targetFraction = when {
-                    isDragging -> (dragPositionMs / maxRange).coerceIn(0f, 1f)
-                    seekHoldTargetFraction != null -> seekHoldTargetFraction!!
-                    else -> currentFraction
-                }
-
-                if (lastFrameNanos == 0L) {
-                    lastFrameNanos = frameTimeNanos
-                    renderedProgress.floatValue = targetFraction
-                    return@withFrameNanos
-                }
-
-                val dtSec = ((frameTimeNanos - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.25f)
-                lastFrameNanos = frameTimeNanos
-
-                val current = renderedProgress.floatValue
-                val delta = targetFraction - current
-
-                if (abs(delta) > 0.1f || isDragging) {
-                    renderedProgress.floatValue = targetFraction
-                } else {
-                    val factor = (dtSec * 10f).coerceIn(0f, 1f)
-                    renderedProgress.floatValue = current + delta * factor
-                }
+            val current = progressProvider()
+            if (progressMs != current) {
+                progressMs = current
             }
+            delay(250)
         }
     }
+
+    var sliderPosition by remember { mutableStateOf(0f) }
+    val isDragging = remember { mutableStateOf(false) }
+    var localSeekTarget by remember { mutableStateOf<Float?>(null) }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -151,51 +87,50 @@ fun PlayerSeekBar(
         label = "TrackHeightAnimation"
     )
 
-    val coarseSeconds by remember(durationMs) {
-        derivedStateOf {
-            val ms = when {
-                isDragging -> dragPositionMs.toLong()
-                seekHoldTargetFraction != null -> (seekHoldTargetFraction!! * durationMs).toLong()
-                else -> rawProgressProvider.value
+    LaunchedEffect(progressMs) {
+        localSeekTarget?.let { target ->
+            if (abs(progressMs - target) < 2000) {
+                localSeekTarget = null
             }
-            (ms.coerceIn(0L, durationMs) / 1000L)
         }
     }
 
-    val sliderValue by remember(durationMs) {
-        derivedStateOf {
-            if (isDragging) {
-                dragPositionMs.coerceIn(0f, maxRange)
-            } else {
-                (coarseSeconds * 1000f).coerceIn(0f, maxRange)
-            }
-        }
+    val maxRange = maxOf(1f, durationMs.toFloat())
+    val baseProgress = when {
+        durationMs == 0L -> 0f
+        isDragging.value -> sliderPosition
+        localSeekTarget != null -> localSeekTarget!!
+        else -> progressMs.toFloat()
     }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = baseProgress.coerceIn(0f, maxRange),
+        animationSpec = if (isDragging.value) snap() else tween(durationMillis = 250, easing = LinearEasing),
+        label = "SliderLineFluidAnimation"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp) // Схлопывает сикбар по ширине, выравнивая его с метадатой и обложкой
     ) {
         Slider(
-            value = sliderValue,
+            value = baseProgress.coerceIn(0f, maxRange),
             onValueChange = {
-                isDragging = true
-                seekHoldTargetFraction = null
-                dragPositionMs = it
+                isDragging.value = true
+                localSeekTarget = null
+                sliderPosition = it
                 onSeekStarted()
             },
             onValueChangeFinished = {
-                val targetMs = dragPositionMs
-                val targetFraction = (targetMs / maxRange).coerceIn(0f, 1f)
-                seekHoldTargetFraction = targetFraction
-                seekHoldStartTime = System.currentTimeMillis()
-                isDragging = false
-                onSeek(targetMs)
+                localSeekTarget = sliderPosition
+                isDragging.value = false
+                onSeek(sliderPosition)
             },
             valueRange = 0f..maxRange,
             interactionSource = interactionSource,
             track = { _ ->
+                val fraction = (animatedProgress / maxRange).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -203,7 +138,6 @@ fun PlayerSeekBar(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f))
                         .drawBehind {
-                            val fraction = renderedProgress.floatValue.coerceIn(0f, 1f)
                             val fillWidth = size.width * fraction
                             drawRoundRect(
                                 color = if (isInteracting) animatedAccentColor else Color.White,
@@ -233,7 +167,7 @@ fun PlayerSeekBar(
 
         val currentSecText by remember {
             derivedStateOf {
-                TimeUtils.formatMs(coarseSeconds * 1000L)
+                TimeUtils.formatMs(animatedProgress.coerceAtLeast(0f).toLong())
             }
         }
 
@@ -244,7 +178,7 @@ fun PlayerSeekBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp)
+                .padding(top = 4.dp) // Оставили только небольшой зазор сверху, чтобы текст не прилипал к линии
                 .graphicsLayer {
                     val offset = slideOffset()
                     alpha = if (offset > 0.5f) ((offset - 0.5f) / 0.5f) else 0f
@@ -257,7 +191,7 @@ fun PlayerSeekBar(
                 fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.CenterStart)
             )
-
+            
             Row(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
