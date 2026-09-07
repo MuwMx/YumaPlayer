@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 
@@ -26,84 +29,86 @@ val LocalHomeBackgroundStyle = compositionLocalOf { HomeBackgroundSettings() }
 fun ScreenBackground(modifier: Modifier = Modifier, isVisible: Boolean = true) {
     val homeBackground = LocalHomeBackgroundStyle.current
 
+    LaunchedEffect(isVisible, homeBackground.style) {
+        Log.d(
+            "TEMP_PAUSE_LOG",
+            "ScreenBackground state: isVisible=$isVisible, style=${homeBackground.style}"
+        )
+    }
+
     Box(
-        modifier = modifier.clipToBounds()
+        modifier = modifier
+            .clipToBounds()
+            .graphicsLayer {
+                alpha = if (isVisible) 1f else 0f
+            }
+            .drawWithContent {
+                if (isVisible) {
+                    drawContent()
+                }
+            }
     ) {
-        if (!isVisible) {
-            Log.d("TEMP_PAUSE_LOG", "ScreenBackground: isVisible=false -> static TONAL fallback")
-            HomePremiumBackground(
-                blobColor = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(430.dp)
-                    .align(Alignment.TopCenter)
-            )
-        } else {
-            Log.d("TEMP_PAUSE_LOG", "ScreenBackground: isVisible=true -> rendering style=${homeBackground.style}")
-            when (homeBackground.style) {
-                HomeBackgroundStyle.TONAL -> {
-                    HomePremiumBackground(
-                        blobColor = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(430.dp)
-                            .align(Alignment.TopCenter)
-                    )
-                }
-                HomeBackgroundStyle.CIRCLES -> {
-                    CirclesBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                    )
-                }
-                HomeBackgroundStyle.RINGS -> {
-                    RingsBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                    )
-                }
-                HomeBackgroundStyle.MESH -> {
-                    MeshBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                    )
-                }
-                HomeBackgroundStyle.GRID -> {
-                    GridBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                    )
-                }
-                HomeBackgroundStyle.PARTICLES -> {
-                    ParticlesBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                        isVisible = isVisible,
-                    )
-                }
-                HomeBackgroundStyle.SNOW -> {
-                    SnowBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                    )
-                }
-                HomeBackgroundStyle.SPACE -> {
-                    SpaceBackground(
-                        parallaxEnabled = homeBackground.parallaxEnabled,
-                        parallaxSensitivity = homeBackground.parallaxSensitivity,
-                        brightness = homeBackground.brightness,
-                        isVisible = isVisible,
-                    )
-                }
+        when (homeBackground.style) {
+            HomeBackgroundStyle.TONAL -> {
+                HomePremiumBackground(
+                    blobColor = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(430.dp)
+                        .align(Alignment.TopCenter)
+                )
+            }
+            HomeBackgroundStyle.CIRCLES -> {
+                CirclesBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                )
+            }
+            HomeBackgroundStyle.RINGS -> {
+                RingsBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                )
+            }
+            HomeBackgroundStyle.MESH -> {
+                MeshBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                )
+            }
+            HomeBackgroundStyle.GRID -> {
+                GridBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                )
+            }
+            HomeBackgroundStyle.PARTICLES -> {
+                ParticlesBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                    isVisible = isVisible,
+                )
+            }
+            HomeBackgroundStyle.SNOW -> {
+                SnowBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                )
+            }
+            HomeBackgroundStyle.SPACE -> {
+                SpaceBackground(
+                    parallaxEnabled = homeBackground.parallaxEnabled,
+                    parallaxSensitivity = homeBackground.parallaxSensitivity,
+                    brightness = homeBackground.brightness,
+                    isVisible = isVisible,
+                )
             }
         }
     }
 }
-
-
