@@ -1185,15 +1185,6 @@ interface DatabaseDao {
     @Query("DELETE FROM song WHERE isLocal = 1")
     fun clearLocalSongs()
 
-    @Query("DELETE FROM song_artist_map WHERE songId = :songId")
-    fun deleteSongArtistMaps(songId: String)
-
-    @Query("DELETE FROM song_album_map WHERE songId = :songId")
-    fun deleteSongAlbumMaps(songId: String)
-
-    @Query("DELETE FROM album_artist_map WHERE albumId IN (:albumIds)")
-    fun deleteAlbumArtistMapsByAlbumIds(albumIds: List<String>)
-
     @Delete
     fun delete(song: SongEntity)
 

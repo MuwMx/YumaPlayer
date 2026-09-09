@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.extensions.reversed
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
+import moe.rukamori.archivetune.ui.utils.resize
 import java.time.LocalDateTime
 
 @Dao
