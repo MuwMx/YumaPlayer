@@ -72,7 +72,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 @Dao
-interface DatabaseDao : LyricsDao, TagDao {
+interface DatabaseDao : LyricsDao, TagDao, SpotifyDao {
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
@@ -1959,27 +1959,5 @@ interface DatabaseDao : LyricsDao, TagDao {
 
     fun checkpoint() {
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
-    }
-
-    @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
-    fun spotifyMatch(spotifyId: String): Flow<SpotifyMatchEntity?>
-
-    @Query("SELECT * FROM spotify_match WHERE youtubeId = :youtubeId")
-    fun spotifyMatchByYouTubeId(youtubeId: String): Flow<SpotifyMatchEntity?>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(spotifyMatch: SpotifyMatchEntity)
-
-    @Transaction
-    @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifyId = :spotifyId")
-    fun playlistBySpotifyId(spotifyId: String): Flow<Playlist?>
-
-    @Query("SELECT * FROM spotify_match WHERE youtubeId IN (:youtubeIds)")
-    fun rawGetSpotifyMatchesByYouTubeIds(youtubeIds: List<String>): List<SpotifyMatchEntity>
-
-    fun getSpotifyMatchesByYouTubeIds(youtubeIds: List<String>): List<SpotifyMatchEntity> {
-        return youtubeIds.chunked(500).flatMap { chunk ->
-            rawGetSpotifyMatchesByYouTubeIds(chunk)
-        }
     }
 }
