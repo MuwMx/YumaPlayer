@@ -71,7 +71,8 @@ class MusicDatabase(
     HistoryDao by delegate.historyDao,
     ArtistDao by delegate.artistDao,
     AlbumDao by delegate.albumDao,
-    PlaylistDao by delegate.playlistDao {
+    PlaylistDao by delegate.playlistDao,
+    SongDao by delegate.songDao {
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
 
@@ -178,6 +179,7 @@ abstract class InternalDatabase : RoomDatabase() {
     abstract val artistDao: ArtistDao
     abstract val albumDao: AlbumDao
     abstract val playlistDao: PlaylistDao
+    abstract val songDao: SongDao
 
     companion object {
         const val DB_NAME = "song.db"

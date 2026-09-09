@@ -84,6 +84,9 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAlbumArtistMap(map: AlbumArtistMap)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertSetVideoIdInternal(setVideoIdEntity: SetVideoIdEntity)
+
     @Transaction
     fun insert(
         mediaMetadata: MediaMetadata,
@@ -92,7 +95,7 @@ interface DatabaseDao {
         if (insertSongInternal(mediaMetadata.toSongEntity().let(block)) == -1L) return
 
         if (mediaMetadata.setVideoId != null) {
-            insert(
+            insertSetVideoIdInternal(
                 SetVideoIdEntity(
                     videoId = mediaMetadata.id,
                     setVideoId = mediaMetadata.setVideoId,
