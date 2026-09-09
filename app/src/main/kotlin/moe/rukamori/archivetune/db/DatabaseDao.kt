@@ -32,23 +32,12 @@ import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.AlbumWithSongs
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.ArtistEntity
-import moe.rukamori.archivetune.db.entities.Event
-import moe.rukamori.archivetune.db.entities.EventWithSong
-import moe.rukamori.archivetune.db.entities.FormatEntity
-import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
-import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
-import moe.rukamori.archivetune.db.entities.ListeningBySlot
-import moe.rukamori.archivetune.db.entities.ListeningTotals
-import moe.rukamori.archivetune.db.entities.LyricsEntity
-import moe.rukamori.archivetune.db.entities.PlayCountEntity
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
-import moe.rukamori.archivetune.db.entities.PlaylistTagMap
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
-import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
@@ -612,22 +601,6 @@ interface DatabaseDao {
         artistId: String,
         previewSize: Int = 6,
     ): Flow<List<Album>>
-
-    @Query("SELECT sum(count) from playCount WHERE song = :songId")
-    fun getLifetimePlayCount(songId: String?): Flow<Int>
-
-    @Query("SELECT sum(count) from playCount WHERE song = :songId AND year = :year")
-    fun getPlayCountByYear(
-        songId: String?,
-        year: Int,
-    ): Flow<Int>
-
-    @Query("SELECT count from playCount WHERE song = :songId AND year = :year AND month = :month")
-    fun getPlayCountByMonth(
-        songId: String?,
-        year: Int,
-        month: Int,
-    ): Flow<Int>
 
     @Transaction
     @Query(
@@ -1310,135 +1283,6 @@ interface DatabaseDao {
     }
 
     @Transaction
-    @Query("SELECT * FROM event ORDER BY rowId DESC")
-    fun events(): Flow<List<EventWithSong>>
-
-    @Transaction
-    @Query(
-        """
-        SELECT song.*
-        FROM song
-        JOIN (
-            SELECT songId, MAX(rowId) AS latestRowId
-            FROM event
-            GROUP BY songId
-            ORDER BY latestRowId DESC
-            LIMIT :limit
-        ) recent ON song.id = recent.songId
-        ORDER BY recent.latestRowId DESC
-        """,
-    )
-    fun recentSongs(limit: Int = 100): Flow<List<Song>>
-
-    @Query("SELECT * FROM library_top_mix ORDER BY position LIMIT :limit")
-    fun libraryTopMixes(limit: Int): Flow<List<LibraryTopMixEntity>>
-
-    @Transaction
-    @Query(
-        """
-        SELECT song.*
-        FROM song
-        INNER JOIN library_top_mix_song_map ON library_top_mix_song_map.songId = song.id
-        WHERE library_top_mix_song_map.mixId = :mixId
-        ORDER BY library_top_mix_song_map.position
-        """,
-    )
-    fun libraryTopMixSongs(mixId: String): List<Song>
-
-    @Query(
-        """
-        SELECT CAST(strftime('%H', datetime(timestamp / 1000, 'unixepoch', 'localtime')) AS INTEGER) AS slot,
-               SUM(playTime) AS timeListened
-        FROM event
-        WHERE timestamp > :fromTimestamp AND timestamp <= :toTimestamp
-        GROUP BY slot
-        ORDER BY slot
-        """,
-    )
-    fun listeningByHour(
-        fromTimestamp: Long,
-        toTimestamp: Long,
-    ): Flow<List<ListeningBySlot>>
-
-    @Query(
-        """
-        SELECT CAST(strftime('%w', datetime(timestamp / 1000, 'unixepoch', 'localtime')) AS INTEGER) AS slot,
-               SUM(playTime) AS timeListened
-        FROM event
-        WHERE timestamp > :fromTimestamp AND timestamp <= :toTimestamp
-        GROUP BY slot
-        ORDER BY slot
-        """,
-    )
-    fun listeningByDayOfWeek(
-        fromTimestamp: Long,
-        toTimestamp: Long,
-    ): Flow<List<ListeningBySlot>>
-
-    @Query(
-        """
-        SELECT COUNT(1) AS totalPlayCount,
-               COALESCE(SUM(playTime), 0) AS totalTimeListened
-        FROM event
-        WHERE timestamp > :fromTimestamp AND timestamp <= :toTimestamp
-        """,
-    )
-    fun listeningTotals(
-        fromTimestamp: Long,
-        toTimestamp: Long,
-    ): Flow<ListeningTotals>
-
-    @Transaction
-    @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
-    fun firstEvent(): Flow<EventWithSong?>
-
-    @Query("SELECT songId FROM event ORDER BY rowId DESC LIMIT 1")
-    fun lastEventSongId(): Flow<String?>
-
-    @Transaction
-    @Query("DELETE FROM event")
-    fun clearListenHistory()
-
-    @Transaction
-    @Query("DELETE FROM event WHERE id IN (:eventIds)")
-    fun deleteEventsByIds(eventIds: List<Long>)
-
-    @Transaction
-    @Query("SELECT * FROM search_history WHERE `query` LIKE :query || '%' ORDER BY id DESC")
-    fun searchHistory(query: String = ""): Flow<List<SearchHistory>>
-
-    @Transaction
-    @Query("DELETE FROM search_history")
-    fun clearSearchHistory()
-
-    @Query("UPDATE song SET totalPlayTime = totalPlayTime + :playTime WHERE id = :songId")
-    fun incrementTotalPlayTime(
-        songId: String,
-        playTime: Long,
-    )
-
-    @Query("UPDATE playCount SET count = count + 1 WHERE song = :songId AND year = :year AND month = :month")
-    suspend fun incrementPlayCount(
-        songId: String,
-        year: Int,
-        month: Int,
-    )
-
-    /**
-     * Increment by one the play count with today's year and month.
-     */
-    suspend fun incrementPlayCount(songId: String) {
-        val time = LocalDateTime.now().atOffset(ZoneOffset.UTC)
-        val oldCount = getPlayCountByMonth(songId, time.year, time.monthValue).first()
-
-        // add new
-        if (oldCount <= 0) {
-            insert(PlayCountEntity(songId, time.year, time.monthValue, 0))
-        }
-        incrementPlayCount(songId, time.year, time.monthValue)
-    }
-
-    @Transaction
     @Query("UPDATE song SET inLibrary = :inLibrary WHERE id = :songId")
     fun inLibrary(
         songId: String,
@@ -1532,29 +1376,8 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(setVideoIdEntity: SetVideoIdEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(searchHistory: SearchHistory)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(event: Event): Long
-
-    @Query("UPDATE event SET playTime = :playTime WHERE id = :eventId")
-    fun updateEventPlayTime(
-        eventId: Long,
-        playTime: Long,
-    )
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(playCountEntity: PlayCountEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(libraryTopMix: LibraryTopMixEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(libraryTopMixSongMap: LibraryTopMixSongMap)
 
     @Transaction
     fun insert(
@@ -1846,9 +1669,6 @@ interface DatabaseDao {
     )
     fun pruneLocalArtists()
 
-    @Query("DELETE FROM playCount WHERE song NOT IN (SELECT id FROM song)")
-    fun prunePlayCounts()
-
     @Delete
     fun delete(song: SongEntity)
 
@@ -1872,15 +1692,6 @@ interface DatabaseDao {
 
     @Query("DELETE FROM playlist WHERE browseId = :browseId")
     fun deletePlaylistById(browseId: String)
-
-    @Delete
-    fun delete(searchHistory: SearchHistory)
-
-    @Delete
-    fun delete(event: Event)
-
-    @Query("DELETE FROM library_top_mix")
-    fun deleteLibraryTopMixes()
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")
