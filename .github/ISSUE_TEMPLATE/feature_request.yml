@@ -58,6 +58,13 @@ body:
     validations:
       required: false
 
+  - type: input
+    id: reference-implementation
+    attributes:
+      label: Reference Open-Source Implementation (Optional / Recommended)
+      description: Link to an existing FOSS Android player or repo that implements this feature natively.
+      placeholder: "https://github.com/owner/repo"
+
   - type: upload
     id: visual-evidence
     attributes:
