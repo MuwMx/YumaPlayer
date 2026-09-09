@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.db.entities.PlaylistTagMap
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
@@ -51,6 +52,10 @@ import moe.rukamori.archivetune.db.entities.SortedSongArtistMap
 import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.extensions.toSQLiteQuery
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.pages.AlbumPage
+import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.models.toMediaMetadata
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -105,6 +110,214 @@ class MusicDatabase(
     }
 
     fun close() = delegate.close()
+
+    fun insert(
+        mediaMetadata: MediaMetadata,
+        block: (SongEntity) -> SongEntity = { it },
+    ) {
+        delegate.runInTransaction {
+            if (this.insert(mediaMetadata.toSongEntity().let(block)) == -1L) return@runInTransaction
+
+            if (mediaMetadata.setVideoId != null) {
+                this.insert(
+                    SetVideoIdEntity(
+                        videoId = mediaMetadata.id,
+                        setVideoId = mediaMetadata.setVideoId,
+                    ),
+                )
+            }
+
+            if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+                this.insert(
+                    SpotifyMatchEntity(
+                        spotifyId = mediaMetadata.spotifyTrackId,
+                        youtubeId = mediaMetadata.id,
+                        title = mediaMetadata.title,
+                        artist = mediaMetadata.artists.joinToString { it.name },
+                        matchScore = 1.0,
+                    ),
+                )
+            }
+
+            mediaMetadata.artists.forEachIndexed { index, artist ->
+                val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+
+                this.insert(
+                    ArtistEntity(
+                        id = artistId,
+                        name = artist.name,
+                        channelId = artist.id,
+                    ),
+                )
+
+                this.insert(
+                    SongArtistMap(
+                        songId = mediaMetadata.id,
+                        artistId = artistId,
+                        position = index,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun insert(albumPage: AlbumPage) {
+        delegate.runInTransaction {
+            if (this.insert(
+                    AlbumEntity(
+                        id = albumPage.album.browseId,
+                        playlistId = albumPage.album.playlistId,
+                        title = albumPage.album.title,
+                        year = albumPage.album.year,
+                        thumbnailUrl = albumPage.album.thumbnail,
+                        songCount = albumPage.songs.size,
+                        duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
+                        explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
+                    ),
+                ) == -1L
+            ) {
+                return@runInTransaction
+            }
+            albumPage.songs
+                .map(SongItem::toMediaMetadata)
+                .onEach { this.insert(it) }
+                .onEach {
+                    val existingSong = this.getSongByIdBlocking(it.id)
+                    if (existingSong != null) {
+                        this.update(existingSong, it)
+                    }
+                }.mapIndexed { index, song ->
+                    SongAlbumMap(
+                        songId = song.id,
+                        albumId = albumPage.album.browseId,
+                        index = index,
+                    )
+                }.forEach { this.upsert(it) }
+            albumPage.album.artists
+                ?.map { artist ->
+                    ArtistEntity(
+                        id =
+                            artist.id ?: this.artistByName(artist.name)?.id
+                                ?: ArtistEntity.generateArtistId(),
+                        name = artist.name,
+                    )
+                }?.onEach { this.insert(it) }
+                ?.mapIndexed { index, artist ->
+                    AlbumArtistMap(
+                        albumId = albumPage.album.browseId,
+                        artistId = artist.id,
+                        order = index,
+                    )
+                }?.forEach { this.insert(it) }
+        }
+    }
+
+    fun update(
+        song: Song,
+        mediaMetadata: MediaMetadata,
+    ) {
+        delegate.runInTransaction {
+            this.update(
+                song.song.copy(
+                    title = mediaMetadata.title,
+                    duration = mediaMetadata.duration,
+                    thumbnailUrl = mediaMetadata.thumbnailUrl,
+                    albumId = mediaMetadata.album?.id,
+                    albumName = mediaMetadata.album?.title,
+                ),
+            )
+            this.songArtistMap(song.id).forEach { this.delete(it) }
+            mediaMetadata.artists.forEachIndexed { index, artist ->
+                val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+
+                this.insert(
+                    ArtistEntity(
+                        id = artistId,
+                        name = artist.name,
+                        channelId = artist.id,
+                    ),
+                )
+                this.insert(
+                    SongArtistMap(
+                        songId = song.id,
+                        artistId = artistId,
+                        position = index,
+                    ),
+                )
+            }
+
+            if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+                this.insert(
+                    SpotifyMatchEntity(
+                        spotifyId = mediaMetadata.spotifyTrackId,
+                        youtubeId = song.id,
+                        title = mediaMetadata.title,
+                        artist = mediaMetadata.artists.joinToString { it.name },
+                        matchScore = 1.0,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun update(
+        album: AlbumEntity,
+        albumPage: AlbumPage,
+        artists: List<ArtistEntity>? = emptyList(),
+    ) {
+        delegate.runInTransaction {
+            this.update(
+                album.copy(
+                    id = albumPage.album.browseId,
+                    playlistId = albumPage.album.playlistId,
+                    title = albumPage.album.title,
+                    year = albumPage.album.year,
+                    thumbnailUrl = albumPage.album.thumbnail,
+                    songCount = albumPage.songs.size,
+                    duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
+                    explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
+                ),
+            )
+            if (artists?.size != albumPage.album.artists?.size) {
+                artists?.forEach { this.delete(it) }
+            }
+            albumPage.songs
+                .map(SongItem::toMediaMetadata)
+                .onEach { this.insert(it) }
+                .onEach {
+                    val existingSong = this.getSongByIdBlocking(it.id)
+                    if (existingSong != null) {
+                        this.update(existingSong, it)
+                    }
+                }.mapIndexed { index, song ->
+                    SongAlbumMap(
+                        songId = song.id,
+                        albumId = albumPage.album.browseId,
+                        index = index,
+                    )
+                }.forEach { this.upsert(it) }
+
+            albumPage.album.artists?.let { albumArtists ->
+                this.albumArtistMaps(album.id).forEach { this.delete(it) }
+                albumArtists
+                    .map { artist ->
+                        ArtistEntity(
+                            id =
+                                artist.id ?: this.artistByName(artist.name)?.id
+                                    ?: ArtistEntity.generateArtistId(),
+                            name = artist.name,
+                        )
+                    }.onEach { this.insert(it) }
+                    .mapIndexed { index, artist ->
+                        AlbumArtistMap(
+                            albumId = albumPage.album.browseId,
+                            artistId = artist.id,
+                            order = index,
+                        )
+                    }.forEach { this.insert(it) }
+            }
+        }
+    }
 
     private suspend fun awaitExecutor(executor: Executor) {
         suspendCancellableCoroutine { cont ->
