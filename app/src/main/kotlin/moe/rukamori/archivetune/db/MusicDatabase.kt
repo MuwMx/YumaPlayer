@@ -24,6 +24,7 @@ import androidx.room.migration.Migration
 import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.SupportSQLiteQuery
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
@@ -68,8 +69,7 @@ private const val CURRENT_VERSION = 35
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
-) : DatabaseDao by delegate.dao,
-    LyricsDao by delegate.lyricsDao,
+) : LyricsDao by delegate.lyricsDao,
     TagDao by delegate.tagDao,
     SpotifyDao by delegate.spotifyDao,
     SearchDao by delegate.searchDao,
@@ -110,6 +110,13 @@ class MusicDatabase(
     }
 
     fun close() = delegate.close()
+
+    fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int =
+        openHelper.writableDatabase.query(supportSQLiteQuery).use { it.count }
+
+    fun checkpoint() {
+        raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
+    }
 
     fun insert(
         mediaMetadata: MediaMetadata,
@@ -383,7 +390,6 @@ class MusicDatabase(
 )
 @TypeConverters(Converters::class)
 abstract class InternalDatabase : RoomDatabase() {
-    abstract val dao: DatabaseDao
     abstract val lyricsDao: LyricsDao
     abstract val tagDao: TagDao
     abstract val spotifyDao: SpotifyDao
