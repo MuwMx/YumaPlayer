@@ -72,7 +72,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 @Dao
-interface DatabaseDao : LyricsDao, TagDao, SpotifyDao {
+interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
@@ -1953,6 +1953,9 @@ interface DatabaseDao : LyricsDao, TagDao, SpotifyDao {
 
     @Query("SELECT MAX(position) FROM playlist_song_map WHERE playlistId = :playlistId")
     fun maxPlaylistSongPosition(playlistId: String): Int?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(spotifyMatch: SpotifyMatchEntity)
 
     @RawQuery
     fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int

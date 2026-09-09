@@ -63,7 +63,12 @@ private const val CURRENT_VERSION = 35
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
-) : DatabaseDao by delegate.dao {
+) : DatabaseDao by delegate.dao,
+    LyricsDao by delegate.lyricsDao,
+    TagDao by delegate.tagDao,
+    SpotifyDao by delegate.spotifyDao {
+    override fun insert(spotifyMatch: SpotifyMatchEntity) = delegate.spotifyDao.insert(spotifyMatch)
+
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
 
@@ -162,6 +167,9 @@ class MusicDatabase(
 @TypeConverters(Converters::class)
 abstract class InternalDatabase : RoomDatabase() {
     abstract val dao: DatabaseDao
+    abstract val lyricsDao: LyricsDao
+    abstract val tagDao: TagDao
+    abstract val spotifyDao: SpotifyDao
 
     companion object {
         const val DB_NAME = "song.db"
