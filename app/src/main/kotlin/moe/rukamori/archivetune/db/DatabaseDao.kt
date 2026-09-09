@@ -1625,7 +1625,7 @@ interface DatabaseDao {
         }
 
         if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
-            insert(
+            insertSpotifyMatch(
                 SpotifyMatchEntity(
                     spotifyId = mediaMetadata.spotifyTrackId,
                     youtubeId = mediaMetadata.id,
@@ -1742,7 +1742,7 @@ interface DatabaseDao {
         }
 
         if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
-            insert(
+            insertSpotifyMatch(
                 SpotifyMatchEntity(
                     spotifyId = mediaMetadata.spotifyTrackId,
                     youtubeId = song.id,
@@ -1898,9 +1898,6 @@ interface DatabaseDao {
     )
     fun pruneLocalArtists()
 
-    @Query("DELETE FROM format WHERE id NOT IN (SELECT id FROM song)")
-    fun pruneFormats()
-
     @Query("DELETE FROM playCount WHERE song NOT IN (SELECT id FROM song)")
     fun prunePlayCounts()
 
@@ -1929,9 +1926,6 @@ interface DatabaseDao {
     fun deletePlaylistById(browseId: String)
 
     @Delete
-    fun delete(lyrics: LyricsEntity)
-
-    @Delete
     fun delete(searchHistory: SearchHistory)
 
     @Delete
@@ -1955,7 +1949,7 @@ interface DatabaseDao {
     fun maxPlaylistSongPosition(playlistId: String): Int?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(spotifyMatch: SpotifyMatchEntity)
+    fun insertSpotifyMatch(spotifyMatch: SpotifyMatchEntity)
 
     @RawQuery
     fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int

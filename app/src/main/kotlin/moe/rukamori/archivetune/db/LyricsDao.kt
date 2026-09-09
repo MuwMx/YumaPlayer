@@ -7,6 +7,7 @@
 package moe.rukamori.archivetune.db
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -79,4 +80,10 @@ interface LyricsDao {
 
     @Upsert
     fun upsert(format: FormatEntity)
+
+    @Query("DELETE FROM format WHERE id NOT IN (SELECT id FROM song)")
+    fun pruneFormats()
+
+    @Delete
+    fun delete(lyrics: LyricsEntity)
 }

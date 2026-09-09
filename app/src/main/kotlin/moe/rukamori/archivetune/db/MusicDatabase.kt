@@ -67,8 +67,6 @@ class MusicDatabase(
     LyricsDao by delegate.lyricsDao,
     TagDao by delegate.tagDao,
     SpotifyDao by delegate.spotifyDao {
-    override fun insert(spotifyMatch: SpotifyMatchEntity) = delegate.spotifyDao.insert(spotifyMatch)
-
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
 
