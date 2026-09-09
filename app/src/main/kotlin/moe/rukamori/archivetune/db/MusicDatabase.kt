@@ -111,111 +111,150 @@ class MusicDatabase(
 
     fun close() = delegate.close()
 
-    fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int =
-        openHelper.writableDatabase.query(supportSQLiteQuery).use { it.count }
+    fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int {
+        val t0 = System.currentTimeMillis()
+        val sql = supportSQLiteQuery.sql
+        val count = openHelper.writableDatabase.query(supportSQLiteQuery).use { it.count }
+        val dt = System.currentTimeMillis() - t0
+        Log.d("DB_STRESS", "raw sql=$sql count=$count dt=${dt}ms th=${Thread.currentThread().name}")
+        return count
+    }
 
     fun checkpoint() {
+        val t0 = System.currentTimeMillis()
+        Log.d("DB_STRESS", "checkpoint ENTER th=${Thread.currentThread().name}")
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
+        val dt = System.currentTimeMillis() - t0
+        Log.d("DB_STRESS", "checkpoint EXIT dt=${dt}ms th=${Thread.currentThread().name}")
     }
 
     fun insert(
         mediaMetadata: MediaMetadata,
         block: (SongEntity) -> SongEntity = { it },
     ) {
-        delegate.runInTransaction {
-            if (this.insert(mediaMetadata.toSongEntity().let(block)) == -1L) return@runInTransaction
+        val t0 = System.currentTimeMillis()
+        val th = Thread.currentThread().name
+        Log.d("DB_STRESS", "TX_ENTER insert(MediaMetadata) id=${mediaMetadata.id} th=$th t0=$t0")
+        try {
+            delegate.runInTransaction {
+                try {
+                    if (this.insert(mediaMetadata.toSongEntity().let(block)) == -1L) return@runInTransaction
 
-            if (mediaMetadata.setVideoId != null) {
-                this.insert(
-                    SetVideoIdEntity(
-                        videoId = mediaMetadata.id,
-                        setVideoId = mediaMetadata.setVideoId,
-                    ),
-                )
+                    if (mediaMetadata.setVideoId != null) {
+                        this.insert(
+                            SetVideoIdEntity(
+                                videoId = mediaMetadata.id,
+                                setVideoId = mediaMetadata.setVideoId,
+                            ),
+                        )
+                    }
+
+                    if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+                        this.insert(
+                            SpotifyMatchEntity(
+                                spotifyId = mediaMetadata.spotifyTrackId,
+                                youtubeId = mediaMetadata.id,
+                                title = mediaMetadata.title,
+                                artist = mediaMetadata.artists.joinToString { it.name },
+                                matchScore = 1.0,
+                            ),
+                        )
+                    }
+
+                    mediaMetadata.artists.forEachIndexed { index, artist ->
+                        val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+
+                        this.insert(
+                            ArtistEntity(
+                                id = artistId,
+                                name = artist.name,
+                                channelId = artist.id,
+                            ),
+                        )
+
+                        this.insert(
+                            SongArtistMap(
+                                songId = mediaMetadata.id,
+                                artistId = artistId,
+                                position = index,
+                            ),
+                        )
+                    }
+                } catch (e: Throwable) {
+                    Log.d("DB_STRESS", "TX_FAIL op=insert(MediaMetadata) id=${mediaMetadata.id} e=${e.message} th=${Thread.currentThread().name}")
+                    throw e
+                }
             }
-
-            if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
-                this.insert(
-                    SpotifyMatchEntity(
-                        spotifyId = mediaMetadata.spotifyTrackId,
-                        youtubeId = mediaMetadata.id,
-                        title = mediaMetadata.title,
-                        artist = mediaMetadata.artists.joinToString { it.name },
-                        matchScore = 1.0,
-                    ),
-                )
-            }
-
-            mediaMetadata.artists.forEachIndexed { index, artist ->
-                val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
-
-                this.insert(
-                    ArtistEntity(
-                        id = artistId,
-                        name = artist.name,
-                        channelId = artist.id,
-                    ),
-                )
-
-                this.insert(
-                    SongArtistMap(
-                        songId = mediaMetadata.id,
-                        artistId = artistId,
-                        position = index,
-                    ),
-                )
-            }
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "TX_EXIT insert(MediaMetadata) id=${mediaMetadata.id} dt=${dt}ms th=$th")
+        } catch (e: Throwable) {
+            throw e
         }
     }
 
     fun insert(albumPage: AlbumPage) {
-        delegate.runInTransaction {
-            if (this.insert(
-                    AlbumEntity(
-                        id = albumPage.album.browseId,
-                        playlistId = albumPage.album.playlistId,
-                        title = albumPage.album.title,
-                        year = albumPage.album.year,
-                        thumbnailUrl = albumPage.album.thumbnail,
-                        songCount = albumPage.songs.size,
-                        duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
-                        explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
-                    ),
-                ) == -1L
-            ) {
-                return@runInTransaction
-            }
-            albumPage.songs
-                .map(SongItem::toMediaMetadata)
-                .onEach { this.insert(it) }
-                .onEach {
-                    val existingSong = this.getSongByIdBlocking(it.id)
-                    if (existingSong != null) {
-                        this.update(existingSong, it)
+        val t0 = System.currentTimeMillis()
+        val th = Thread.currentThread().name
+        val albumId = albumPage.album.browseId
+        Log.d("DB_STRESS", "TX_ENTER insert(AlbumPage) id=$albumId th=$th t0=$t0")
+        try {
+            delegate.runInTransaction {
+                try {
+                    if (this.insert(
+                            AlbumEntity(
+                                id = albumPage.album.browseId,
+                                playlistId = albumPage.album.playlistId,
+                                title = albumPage.album.title,
+                                year = albumPage.album.year,
+                                thumbnailUrl = albumPage.album.thumbnail,
+                                songCount = albumPage.songs.size,
+                                duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
+                                explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
+                            ),
+                        ) == -1L
+                    ) {
+                        return@runInTransaction
                     }
-                }.mapIndexed { index, song ->
-                    SongAlbumMap(
-                        songId = song.id,
-                        albumId = albumPage.album.browseId,
-                        index = index,
-                    )
-                }.forEach { this.upsert(it) }
-            albumPage.album.artists
-                ?.map { artist ->
-                    ArtistEntity(
-                        id =
-                            artist.id ?: this.artistByName(artist.name)?.id
-                                ?: ArtistEntity.generateArtistId(),
-                        name = artist.name,
-                    )
-                }?.onEach { this.insert(it) }
-                ?.mapIndexed { index, artist ->
-                    AlbumArtistMap(
-                        albumId = albumPage.album.browseId,
-                        artistId = artist.id,
-                        order = index,
-                    )
-                }?.forEach { this.insert(it) }
+                    albumPage.songs
+                        .map(SongItem::toMediaMetadata)
+                        .onEach { this.insert(it) }
+                        .onEach {
+                            val existingSong = this.getSongByIdBlocking(it.id)
+                            if (existingSong != null) {
+                                this.update(existingSong, it)
+                            }
+                        }.mapIndexed { index, song ->
+                            SongAlbumMap(
+                                songId = song.id,
+                                albumId = albumPage.album.browseId,
+                                index = index,
+                            )
+                        }.forEach { this.upsert(it) }
+                    albumPage.album.artists
+                        ?.map { artist ->
+                            ArtistEntity(
+                                id =
+                                    artist.id ?: this.artistByName(artist.name)?.id
+                                        ?: ArtistEntity.generateArtistId(),
+                                name = artist.name,
+                            )
+                        }?.onEach { this.insert(it) }
+                        ?.mapIndexed { index, artist ->
+                            AlbumArtistMap(
+                                albumId = albumPage.album.browseId,
+                                artistId = artist.id,
+                                order = index,
+                            )
+                        }?.forEach { this.insert(it) }
+                } catch (e: Throwable) {
+                    Log.d("DB_STRESS", "TX_FAIL op=insert(AlbumPage) id=$albumId e=${e.message} th=${Thread.currentThread().name}")
+                    throw e
+                }
+            }
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "TX_EXIT insert(AlbumPage) id=$albumId dt=${dt}ms th=$th")
+        } catch (e: Throwable) {
+            throw e
         }
     }
 
@@ -223,47 +262,61 @@ class MusicDatabase(
         song: Song,
         mediaMetadata: MediaMetadata,
     ) {
-        delegate.runInTransaction {
-            this.update(
-                song.song.copy(
-                    title = mediaMetadata.title,
-                    duration = mediaMetadata.duration,
-                    thumbnailUrl = mediaMetadata.thumbnailUrl,
-                    albumId = mediaMetadata.album?.id,
-                    albumName = mediaMetadata.album?.title,
-                ),
-            )
-            this.songArtistMap(song.id).forEach { this.delete(it) }
-            mediaMetadata.artists.forEachIndexed { index, artist ->
-                val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+        val t0 = System.currentTimeMillis()
+        val th = Thread.currentThread().name
+        Log.d("DB_STRESS", "TX_ENTER update(Song) id=${song.id} th=$th t0=$t0")
+        try {
+            delegate.runInTransaction {
+                try {
+                    this.update(
+                        song.song.copy(
+                            title = mediaMetadata.title,
+                            duration = mediaMetadata.duration,
+                            thumbnailUrl = mediaMetadata.thumbnailUrl,
+                            albumId = mediaMetadata.album?.id,
+                            albumName = mediaMetadata.album?.title,
+                        ),
+                    )
+                    this.songArtistMap(song.id).forEach { this.delete(it) }
+                    mediaMetadata.artists.forEachIndexed { index, artist ->
+                        val artistId = artist.id ?: this.artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
 
-                this.insert(
-                    ArtistEntity(
-                        id = artistId,
-                        name = artist.name,
-                        channelId = artist.id,
-                    ),
-                )
-                this.insert(
-                    SongArtistMap(
-                        songId = song.id,
-                        artistId = artistId,
-                        position = index,
-                    ),
-                )
-            }
+                        this.insert(
+                            ArtistEntity(
+                                id = artistId,
+                                name = artist.name,
+                                channelId = artist.id,
+                            ),
+                        )
+                        this.insert(
+                            SongArtistMap(
+                                songId = song.id,
+                                artistId = artistId,
+                                position = index,
+                            ),
+                        )
+                    }
 
-            if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
-                this.insert(
-                    SpotifyMatchEntity(
-                        spotifyId = mediaMetadata.spotifyTrackId,
-                        youtubeId = song.id,
-                        title = mediaMetadata.title,
-                        artist = mediaMetadata.artists.joinToString { it.name },
-                        matchScore = 1.0,
-                    ),
-                )
+                    if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+                        this.insert(
+                            SpotifyMatchEntity(
+                                spotifyId = mediaMetadata.spotifyTrackId,
+                                youtubeId = song.id,
+                                title = mediaMetadata.title,
+                                artist = mediaMetadata.artists.joinToString { it.name },
+                                matchScore = 1.0,
+                            ),
+                        )
+                    }
+                } catch (e: Throwable) {
+                    Log.d("DB_STRESS", "TX_FAIL op=update(Song) id=${song.id} e=${e.message} th=${Thread.currentThread().name}")
+                    throw e
+                }
             }
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "TX_EXIT update(Song) id=${song.id} dt=${dt}ms th=$th")
+        } catch (e: Throwable) {
+            throw e
         }
     }
 
@@ -272,57 +325,72 @@ class MusicDatabase(
         albumPage: AlbumPage,
         artists: List<ArtistEntity>? = emptyList(),
     ) {
-        delegate.runInTransaction {
-            this.update(
-                album.copy(
-                    id = albumPage.album.browseId,
-                    playlistId = albumPage.album.playlistId,
-                    title = albumPage.album.title,
-                    year = albumPage.album.year,
-                    thumbnailUrl = albumPage.album.thumbnail,
-                    songCount = albumPage.songs.size,
-                    duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
-                    explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
-                ),
-            )
-            if (artists?.size != albumPage.album.artists?.size) {
-                artists?.forEach { this.delete(it) }
-            }
-            albumPage.songs
-                .map(SongItem::toMediaMetadata)
-                .onEach { this.insert(it) }
-                .onEach {
-                    val existingSong = this.getSongByIdBlocking(it.id)
-                    if (existingSong != null) {
-                        this.update(existingSong, it)
-                    }
-                }.mapIndexed { index, song ->
-                    SongAlbumMap(
-                        songId = song.id,
-                        albumId = albumPage.album.browseId,
-                        index = index,
+        val t0 = System.currentTimeMillis()
+        val th = Thread.currentThread().name
+        val albumId = album.id
+        Log.d("DB_STRESS", "TX_ENTER update(Album) id=$albumId th=$th t0=$t0")
+        try {
+            delegate.runInTransaction {
+                try {
+                    this.update(
+                        album.copy(
+                            id = albumPage.album.browseId,
+                            playlistId = albumPage.album.playlistId,
+                            title = albumPage.album.title,
+                            year = albumPage.album.year,
+                            thumbnailUrl = albumPage.album.thumbnail,
+                            songCount = albumPage.songs.size,
+                            duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
+                            explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
+                        ),
                     )
-                }.forEach { this.upsert(it) }
+                    if (artists?.size != albumPage.album.artists?.size) {
+                        artists?.forEach { this.delete(it) }
+                    }
+                    albumPage.songs
+                        .map(SongItem::toMediaMetadata)
+                        .onEach { this.insert(it) }
+                        .onEach {
+                            val existingSong = this.getSongByIdBlocking(it.id)
+                            if (existingSong != null) {
+                                this.update(existingSong, it)
+                            }
+                        }.mapIndexed { index, song ->
+                            SongAlbumMap(
+                                songId = song.id,
+                                albumId = albumPage.album.browseId,
+                                index = index,
+                            )
+                        }.forEach { this.upsert(it) }
 
-            albumPage.album.artists?.let { albumArtists ->
-                this.albumArtistMaps(album.id).forEach { this.delete(it) }
-                albumArtists
-                    .map { artist ->
-                        ArtistEntity(
-                            id =
-                                artist.id ?: this.artistByName(artist.name)?.id
-                                    ?: ArtistEntity.generateArtistId(),
-                            name = artist.name,
-                        )
-                    }.onEach { this.insert(it) }
-                    .mapIndexed { index, artist ->
-                        AlbumArtistMap(
-                            albumId = albumPage.album.browseId,
-                            artistId = artist.id,
-                            order = index,
-                        )
-                    }.forEach { this.insert(it) }
+                    albumPage.album.artists?.let { albumArtists ->
+                        this.albumArtistMaps(album.id).forEach { this.delete(it) }
+                        albumArtists
+                            .map { artist ->
+                                ArtistEntity(
+                                    id =
+                                        artist.id ?: this.artistByName(artist.name)?.id
+                                            ?: ArtistEntity.generateArtistId(),
+                                    name = artist.name,
+                                )
+                            }.onEach { this.insert(it) }
+                            .mapIndexed { index, artist ->
+                                AlbumArtistMap(
+                                    albumId = albumPage.album.browseId,
+                                    artistId = artist.id,
+                                    order = index,
+                                )
+                            }.forEach { this.insert(it) }
+                    }
+                } catch (e: Throwable) {
+                    Log.d("DB_STRESS", "TX_FAIL op=update(Album) id=$albumId e=${e.message} th=${Thread.currentThread().name}")
+                    throw e
+                }
             }
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "TX_EXIT update(Album) id=$albumId dt=${dt}ms th=$th")
+        } catch (e: Throwable) {
+            throw e
         }
     }
 
@@ -438,10 +506,12 @@ abstract class InternalDatabase : RoomDatabase() {
                     msg.contains("room openhelper verification failed")
             }
 
+            Log.d("DB_STRESS", "OPEN config name=$DB_NAME version=$CURRENT_VERSION th=${Thread.currentThread().name}")
             var db = build()
             try {
                 db.openHelper.writableDatabase
             } catch (t: Throwable) {
+                Log.d("DB_STRESS", "OPEN_FAIL e=${t.message} th=${Thread.currentThread().name}")
                 if (!shouldResetDb(t)) throw t
                 Log.e(TAG, "Database open failed, attempting schema repair", t)
                 runCatching { db.close() }
@@ -469,6 +539,8 @@ abstract class InternalDatabase : RoomDatabase() {
 private class DatabaseCallback : RoomDatabase.Callback() {
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
+        val t0 = System.currentTimeMillis()
+        Log.d("DB_STRESS", "ONOPEN_ENTER version=${db.version} th=${Thread.currentThread().name}")
         java.util.concurrent.Executors.newSingleThreadExecutor().execute {
             try {
                 db.query("PRAGMA busy_timeout = 60000").close()
@@ -480,8 +552,11 @@ private class DatabaseCallback : RoomDatabase.Callback() {
 
                 cleanupDuplicatePlaylistsOnOpen(db)
                 ensurePlaylistBrowseIdIndex(db)
+                val dt = System.currentTimeMillis() - t0
+                Log.d("DB_STRESS", "ONOPEN_EXIT dt=${dt}ms th=${Thread.currentThread().name}")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set PRAGMA settings", e)
+                Log.d("DB_STRESS", "ONOPEN_FAIL e=${e.message} th=${Thread.currentThread().name}")
             }
         }
     }
@@ -563,14 +638,20 @@ private class UniversalMigration(
     override fun migrate(db: SupportSQLiteDatabase) {
         val from = startVersion
         val to = endVersion
+        val t0 = System.currentTimeMillis()
+        Log.d("DB_STRESS", "MIGRATE_ENTER from=$from to=$to th=${Thread.currentThread().name}")
         Log.i(TAG, "Running universal migration from $from to $to")
 
         val expectedDb = Room.inMemoryDatabaseBuilder(context, InternalDatabase::class.java).build()
         try {
             val expected = expectedDb.openHelper.writableDatabase
             SchemaTools.reconcileDatabase(db = db, expectedDb = expected)
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "MIGRATE_EXIT from=$from to=$to dt=${dt}ms th=${Thread.currentThread().name}")
             Log.i(TAG, "Migration completed successfully")
         } catch (e: Exception) {
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "MIGRATE_FAIL from=$from to=$to dt=${dt}ms e=${e.message} th=${Thread.currentThread().name}")
             Log.e(TAG, "Migration failed", e)
             throw e
         } finally {
@@ -631,24 +712,34 @@ private object SchemaTools {
         db: SupportSQLiteDatabase,
         expectedDb: SupportSQLiteDatabase,
     ) {
-        val expectedMaster = readMasterEntries(expectedDb)
-        val expectedTables = expectedMaster.filter { it.type == "table" && it.name !in IGNORED_TABLES }
-        val expectedIndices =
-            expectedMaster.filter { it.type == "index" && it.sql != null && it.tblName !in IGNORED_TABLES }
-        val expectedViews = expectedMaster.filter { it.type == "view" && it.sql != null }
-        val expectedTriggers = expectedMaster.filter { it.type == "trigger" && it.sql != null }
+        val t0 = System.currentTimeMillis()
+        Log.d("DB_STRESS", "RECONCILE_ENTER version=${db.version} th=${Thread.currentThread().name}")
+        try {
+            val expectedMaster = readMasterEntries(expectedDb)
+            val expectedTables = expectedMaster.filter { it.type == "table" && it.name !in IGNORED_TABLES }
+            val expectedIndices =
+                expectedMaster.filter { it.type == "index" && it.sql != null && it.tblName !in IGNORED_TABLES }
+            val expectedViews = expectedMaster.filter { it.type == "view" && it.sql != null }
+            val expectedTriggers = expectedMaster.filter { it.type == "trigger" && it.sql != null }
 
-        db.execSQL("PRAGMA foreign_keys=OFF")
-        dropNonTableObjects(db)
+            db.execSQL("PRAGMA foreign_keys=OFF")
+            dropNonTableObjects(db)
 
-        expectedTables.forEach { table ->
-            ensureTableSchema(db = db, expectedDb = expectedDb, table = table, expectedIndices = expectedIndices)
+            expectedTables.forEach { table ->
+                ensureTableSchema(db = db, expectedDb = expectedDb, table = table, expectedIndices = expectedIndices)
+            }
+
+            expectedViews.forEach { db.execSQL(it.sql!!) }
+            expectedTriggers.forEach { db.execSQL(it.sql!!) }
+
+            db.execSQL("PRAGMA foreign_keys=ON")
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "RECONCILE_EXIT dt=${dt}ms th=${Thread.currentThread().name}")
+        } catch (e: Throwable) {
+            val dt = System.currentTimeMillis() - t0
+            Log.d("DB_STRESS", "RECONCILE_FAIL dt=${dt}ms e=${e.message} th=${Thread.currentThread().name}")
+            throw e
         }
-
-        expectedViews.forEach { db.execSQL(it.sql!!) }
-        expectedTriggers.forEach { db.execSQL(it.sql!!) }
-
-        db.execSQL("PRAGMA foreign_keys=ON")
     }
 
     private fun readIdentityHash(db: SupportSQLiteDatabase): String? =

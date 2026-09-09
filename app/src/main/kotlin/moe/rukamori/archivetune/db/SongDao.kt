@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.db
 
+import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -650,10 +651,19 @@ interface SongDao {
 
     @Transaction
     @Query("UPDATE song SET inLibrary = :inLibrary WHERE id = :songId")
-    fun inLibrary(
+    fun inLibraryInternal(
         songId: String,
         inLibrary: LocalDateTime?,
     )
+
+    @Transaction
+    fun inLibrary(
+        songId: String,
+        inLibrary: LocalDateTime?,
+    ) {
+        Log.d("DB_STRESS", "SongDao.inLibrary songId=$songId inLibrary=$inLibrary th=${Thread.currentThread().name}")
+        inLibraryInternal(songId, inLibrary)
+    }
 
     @Transaction
     @Query("SELECT COUNT(1) FROM related_song_map WHERE songId = :songId LIMIT 1")
@@ -690,10 +700,20 @@ interface SongDao {
     fun insert(map: RelatedSongMap)
 
     @Update
-    fun update(song: SongEntity)
+    fun updateInternal(song: SongEntity)
+
+    fun update(song: SongEntity) {
+        Log.d("DB_STRESS", "SongDao.update id=${song.id} liked=${song.liked} inLib=${song.inLibrary != null} th=${Thread.currentThread().name}")
+        updateInternal(song)
+    }
 
     @Upsert
-    fun upsert(song: SongEntity)
+    fun upsertInternal(song: SongEntity)
+
+    fun upsert(song: SongEntity) {
+        Log.d("DB_STRESS", "SongDao.upsert id=${song.id} liked=${song.liked} inLib=${song.inLibrary != null} th=${Thread.currentThread().name}")
+        upsertInternal(song)
+    }
 
     @Query("DELETE FROM song WHERE id IN (:songIds)")
     fun deleteSongsByIds(songIds: List<String>)
