@@ -72,7 +72,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 @Dao
-interface DatabaseDao {
+interface DatabaseDao : LyricsDao {
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
@@ -744,25 +744,6 @@ interface DatabaseDao {
 
     @Query("SELECT * FROM set_video_id WHERE videoId = :videoId")
     suspend fun getSetVideoId(videoId: String): SetVideoIdEntity?
-
-    @Transaction
-    @Query("SELECT * FROM format WHERE id = :id")
-    fun format(id: String?): Flow<FormatEntity?>
-
-    @Transaction
-    @Query("SELECT * FROM lyrics WHERE id = :id")
-    fun lyrics(id: String?): Flow<LyricsEntity?>
-
-    @Transaction
-    @Query("SELECT * FROM lyrics WHERE id = :id LIMIT 1")
-    suspend fun getLyricsById(id: String): LyricsEntity?
-
-    @Transaction
-    @Query("SELECT * FROM lyrics WHERE id IN (:ids)")
-    suspend fun getLyricsByIds(ids: List<String>): List<LyricsEntity>
-
-    @Query("DELETE FROM lyrics")
-    fun clearAllLyrics()
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1882,49 +1863,6 @@ interface DatabaseDao {
 
     @Upsert
     fun upsert(map: SongAlbumMap)
-
-    @Upsert
-    fun upsert(lyrics: LyricsEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(lyrics: LyricsEntity): Long
-
-    @Transaction
-    fun insertLyricsIfAbsent(
-        id: String,
-        lyrics: String,
-        source: String = LyricsEntity.Source.REMOTE.value,
-        updatedAt: Long = System.currentTimeMillis(),
-    ) {
-        insert(
-            LyricsEntity(
-                id = id,
-                lyrics = lyrics,
-                source = source,
-                updatedAt = updatedAt,
-            ),
-        )
-    }
-
-    @Transaction
-    fun replaceLyrics(
-        id: String,
-        lyrics: String,
-        source: String,
-        updatedAt: Long = System.currentTimeMillis(),
-    ) {
-        upsert(
-            LyricsEntity(
-                id = id,
-                lyrics = lyrics,
-                source = source,
-                updatedAt = updatedAt,
-            ),
-        )
-    }
-
-    @Upsert
-    fun upsert(format: FormatEntity)
 
     @Upsert
     fun upsert(artist: ArtistEntity)
