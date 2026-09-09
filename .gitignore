@@ -3,6 +3,8 @@
 *.ap_
 *.aab
 
+learning*.md
+
 # Files for the ART/Dalvik VM
 *.dex
 
