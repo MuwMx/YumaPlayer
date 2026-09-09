@@ -141,19 +141,20 @@ fun LibraryPlaylistsScreen(
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
 
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
-    val filteredPlaylistIds by database
+    val filteredPlaylistIds: List<String>? by database
         .playlistIdsByTags(
             if (selectedTagIds.isEmpty()) emptyList() else selectedTagIds.toList(),
-        ).collectAsStateWithLifecycle(initialValue = emptyList())
+        ).collectAsStateWithLifecycle(initialValue = null)
 
     var showHidden by rememberSaveable { mutableStateOf(false) }
 
     val visiblePlaylists =
         remember(playlists, selectedTagIds, filteredPlaylistIds, showHidden) {
+            val filterIds = filteredPlaylistIds
             playlists.filter { playlist ->
                 val name = playlist.playlist.name
                 val matchesName = !name.contains("episode", ignoreCase = true)
-                val matchesTags = selectedTagIds.isEmpty() || playlist.id in filteredPlaylistIds
+                val matchesTags = selectedTagIds.isEmpty() || (filterIds != null && playlist.id in filterIds)
                 val matchesVisibility = showHidden || !playlist.playlist.isHidden
                 matchesName && matchesTags && matchesVisibility
             }
@@ -490,13 +491,15 @@ fun LibraryPlaylistsScreen(
                         .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 ) {
                     if (visiblePlaylists.isEmpty()) {
-                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }, key = "empty_playlists_grid") {
-                            LibraryEmptyState(
-                                iconRes = R.drawable.queue_music,
-                                titleRes = R.string.no_playlists_yet,
-                                subtitleRes = R.string.library_playlists_subtitle,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
+                        if (selectedTagIds.isEmpty() || filteredPlaylistIds != null) {
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }, key = "empty_playlists_grid") {
+                                LibraryEmptyState(
+                                    iconRes = R.drawable.queue_music,
+                                    titleRes = R.string.no_playlists_yet,
+                                    subtitleRes = R.string.library_playlists_subtitle,
+                                    modifier = Modifier.padding(vertical = 24.dp),
+                                )
+                            }
                         }
                     } else {
                         items(
@@ -542,13 +545,15 @@ fun LibraryPlaylistsScreen(
                         .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                 ) {
                     if (listPlaylists.isEmpty()) {
-                        item(key = "empty_playlists") {
-                            LibraryEmptyState(
-                                iconRes = R.drawable.queue_music,
-                                titleRes = R.string.no_playlists_yet,
-                                subtitleRes = R.string.library_playlists_subtitle,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
+                        if (selectedTagIds.isEmpty() || filteredPlaylistIds != null) {
+                            item(key = "empty_playlists") {
+                                LibraryEmptyState(
+                                    iconRes = R.drawable.queue_music,
+                                    titleRes = R.string.no_playlists_yet,
+                                    subtitleRes = R.string.library_playlists_subtitle,
+                                    modifier = Modifier.padding(vertical = 24.dp),
+                                )
+                            }
                         }
                     } else {
                         itemsIndexed(
@@ -898,9 +903,9 @@ fun PlaylistListCard(
 
         if (showDragHandle) {
             Spacer(modifier = Modifier.width(4.dp))
-            IconButton(
-                onClick = {},
+            Box(
                 modifier = dragHandleModifier.size(SettingsDimensions.LibraryChipHeight),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.drag_handle),
