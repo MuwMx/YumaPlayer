@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
+import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import java.text.Collator
@@ -257,6 +258,10 @@ interface PlaylistDao {
 
     @Query("DELETE FROM playlist WHERE browseId = :browseId")
     fun deletePlaylistById(browseId: String)
+
+    @Transaction
+    @Query("SELECT * FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position")
+    fun playlistSongs(playlistId: String): Flow<List<PlaylistSong>>
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")
