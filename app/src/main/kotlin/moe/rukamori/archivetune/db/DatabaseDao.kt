@@ -59,38 +59,6 @@ interface DatabaseDao {
     fun songArtistMapInternal(songId: String): List<SongArtistMap>
 
     @Transaction
-    @Query("UPDATE song SET inLibrary = :inLibrary WHERE id = :songId")
-    fun inLibrary(
-        songId: String,
-        inLibrary: LocalDateTime?,
-    )
-
-    @Transaction
-    @Query("SELECT COUNT(1) FROM related_song_map WHERE songId = :songId LIMIT 1")
-    fun hasRelatedSongs(songId: String): Boolean
-
-    @Transaction
-    @Query(
-        "SELECT song.* FROM (SELECT * from related_song_map GROUP BY relatedSongId) map JOIN song ON song.id = map.relatedSongId where songId = :songId",
-    )
-    fun getRelatedSongs(songId: String): Flow<List<Song>>
-
-    @Transaction
-    @Query(
-        """
-        SELECT song.*
-        FROM (SELECT *
-              FROM related_song_map
-              GROUP BY relatedSongId) map
-                 JOIN
-             song
-             ON song.id = map.relatedSongId
-        WHERE songId = :songId
-        """,
-    )
-    fun relatedSongs(songId: String): List<Song>
-
-    @Transaction
     @Query("SELECT * FROM album_artist_map WHERE albumId = :albumId")
     fun albumArtistMapsInternal(albumId: String): List<AlbumArtistMap>
 
@@ -99,7 +67,7 @@ interface DatabaseDao {
     fun artistByNameInternal(name: String): ArtistEntity?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(song: SongEntity): Long
+    fun insertSongInternal(song: SongEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertArtist(artist: ArtistEntity)
@@ -116,18 +84,12 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAlbumArtistMap(map: AlbumArtistMap)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(setVideoIdEntity: SetVideoIdEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(map: RelatedSongMap)
-
     @Transaction
     fun insert(
         mediaMetadata: MediaMetadata,
         block: (SongEntity) -> SongEntity = { it },
     ) {
-        if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) return
+        if (insertSongInternal(mediaMetadata.toSongEntity().let(block)) == -1L) return
 
         if (mediaMetadata.setVideoId != null) {
             insert(
@@ -226,7 +188,7 @@ interface DatabaseDao {
         song: Song,
         mediaMetadata: MediaMetadata,
     ) {
-        update(
+        updateSongInternal(
             song.song.copy(
                 title = mediaMetadata.title,
                 duration = mediaMetadata.duration,
@@ -269,7 +231,7 @@ interface DatabaseDao {
     }
 
     @Update
-    fun update(song: SongEntity)
+    fun updateSongInternal(song: SongEntity)
 
     @Update
     fun updateAlbum(album: AlbumEntity)
@@ -335,18 +297,6 @@ interface DatabaseDao {
 
     @Upsert
     fun upsertSongAlbumMap(map: SongAlbumMap)
-
-    @Upsert
-    fun upsert(song: SongEntity)
-
-    @Query("DELETE FROM song WHERE id IN (:songIds)")
-    fun deleteSongsByIds(songIds: List<String>)
-
-    @Query("DELETE FROM song WHERE isLocal = 1")
-    fun clearLocalSongs()
-
-    @Delete
-    fun delete(song: SongEntity)
 
     @Delete
     fun deleteSongArtistMap(songArtistMap: SongArtistMap)

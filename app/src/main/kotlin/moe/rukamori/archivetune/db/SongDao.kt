@@ -7,19 +7,26 @@
 package moe.rukamori.archivetune.db
 
 import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RewriteQueriesToDropUnusedColumns
 import androidx.room.RoomWarnings
 import androidx.room.Transaction
+import androidx.room.Update
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.ArtistSongSortType
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
+import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongArtistMap
+import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.extensions.reversed
 import java.text.Collator
@@ -640,4 +647,60 @@ interface SongDao {
 
     @Query("SELECT * FROM set_video_id WHERE videoId = :videoId")
     suspend fun getSetVideoId(videoId: String): SetVideoIdEntity?
+
+    @Transaction
+    @Query("UPDATE song SET inLibrary = :inLibrary WHERE id = :songId")
+    fun inLibrary(
+        songId: String,
+        inLibrary: LocalDateTime?,
+    )
+
+    @Transaction
+    @Query("SELECT COUNT(1) FROM related_song_map WHERE songId = :songId LIMIT 1")
+    fun hasRelatedSongs(songId: String): Boolean
+
+    @Transaction
+    @Query(
+        "SELECT song.* FROM (SELECT * from related_song_map GROUP BY relatedSongId) map JOIN song ON song.id = map.relatedSongId where songId = :songId",
+    )
+    fun getRelatedSongs(songId: String): Flow<List<Song>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM (SELECT *
+              FROM related_song_map
+              GROUP BY relatedSongId) map
+                 JOIN
+             song
+             ON song.id = map.relatedSongId
+        WHERE songId = :songId
+        """,
+    )
+    fun relatedSongs(songId: String): List<Song>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(song: SongEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(setVideoIdEntity: SetVideoIdEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(map: RelatedSongMap)
+
+    @Update
+    fun update(song: SongEntity)
+
+    @Upsert
+    fun upsert(song: SongEntity)
+
+    @Query("DELETE FROM song WHERE id IN (:songIds)")
+    fun deleteSongsByIds(songIds: List<String>)
+
+    @Query("DELETE FROM song WHERE isLocal = 1")
+    fun clearLocalSongs()
+
+    @Delete
+    fun delete(song: SongEntity)
 }
