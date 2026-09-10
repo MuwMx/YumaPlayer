@@ -40,12 +40,12 @@ import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.extensions.toEnum
+import moe.rukamori.archivetune.lyrics.LrcParser
+import moe.rukamori.archivetune.lyrics.LrcParser.displayLyricsText
+import moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc
+import moe.rukamori.archivetune.lyrics.LrcParser.isTtml
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsResult
-import moe.rukamori.archivetune.lyrics.LyricsUtils
-import moe.rukamori.archivetune.lyrics.LyricsUtils.displayLyricsText
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
@@ -200,7 +200,7 @@ class LyricsMenuViewModel
                         LyricsEntity.Source.REMOTE,
                         LyricsEntity.Source.EMBEDDED,
                         LyricsEntity.Source.USER_SELECTION,
-                        -> LyricsUtils.lyricsOrNotFound(lyrics)
+                        -> LrcParser.lyricsOrNotFound(lyrics)
 
                         LyricsEntity.Source.USER_EDIT,
                         LyricsEntity.Source.AI_TRANSLATION,
@@ -283,7 +283,7 @@ class LyricsMenuViewModel
             val isTtmlLyrics = isTtml(lyrics)
             val ttmlEntries =
                 if (isTtmlLyrics) {
-                    runCatching { LyricsUtils.parseTtml(lyrics) }.getOrDefault(emptyList())
+                    runCatching { LrcParser.parseTtml(lyrics) }.getOrDefault(emptyList())
                 } else {
                     emptyList()
                 }

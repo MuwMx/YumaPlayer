@@ -6,7 +6,7 @@
 
 package moe.rukamori.archivetune.ai
 
-import moe.rukamori.archivetune.lyrics.LyricsUtils
+import moe.rukamori.archivetune.lyrics.LrcParser
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
@@ -33,7 +33,7 @@ sealed interface AiLyricsDocument {
 
 object AiLyricsDocumentParser {
     fun parse(rawLyrics: String): AiLyricsDocument =
-        if (LyricsUtils.isTtml(rawLyrics)) {
+        if (LrcParser.isTtml(rawLyrics)) {
             parseTtml(rawLyrics).getOrElse { parseLineBased(rawLyrics, formatName = "TTML fallback") }
         } else {
             parseLineBased(

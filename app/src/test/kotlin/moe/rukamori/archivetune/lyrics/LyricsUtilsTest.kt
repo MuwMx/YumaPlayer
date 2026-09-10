@@ -9,7 +9,7 @@ class LyricsUtilsTest {
     @Test
     fun `parseLyrics parses LRC line-synced lyrics`() {
         val lrc = "[00:12.34] Hello world"
-        val parsed = LyricsUtils.parseLyrics(lrc)
+        val parsed = LrcParser.parseLyrics(lrc)
         assertEquals(1, parsed.size)
         assertEquals(12340L, parsed[0].time)
         assertEquals("Hello world", parsed[0].text)
@@ -18,7 +18,7 @@ class LyricsUtilsTest {
     @Test
     fun `parseLyrics parses YRC word-synced lyrics`() {
         val yrc = "[123,456](0,100)Hello"
-        val parsed = LyricsUtils.parseLyrics(yrc)
+        val parsed = LrcParser.parseLyrics(yrc)
         assertEquals(1, parsed.size)
         assertEquals(123L, parsed[0].time)
         assertEquals("Hello", parsed[0].text)
@@ -35,7 +35,7 @@ class LyricsUtilsTest {
                 </body>
             </tt>
         """.trimIndent()
-        val parsed = LyricsUtils.parseTtml(ttml)
+        val parsed = LrcParser.parseTtml(ttml)
         assertEquals(1, parsed.size)
         assertEquals(12340L, parsed[0].time)
         assertEquals("Hello TTML", parsed[0].text)
@@ -47,7 +47,7 @@ class LyricsUtilsTest {
             [00:12.34] Hello world
             [00:12.34] Привет мир
         """.trimIndent()
-        val parsed = LyricsUtils.parseLyrics(lrc)
+        val parsed = LrcParser.parseLyrics(lrc)
         assertEquals(1, parsed.size)
         assertEquals(12340L, parsed[0].time)
         assertEquals("Hello world", parsed[0].text)
@@ -60,7 +60,7 @@ class LyricsUtilsTest {
             LyricsEntry(time = 10000L, text = "First line"),
             LyricsEntry(time = 20000L, text = "Last line")
         )
-        val withBreaks = LyricsUtils.insertInstrumentalBreaks(entries, 30000L)
+        val withBreaks = LrcParser.insertInstrumentalBreaks(entries, 30000L)
         
         // Intro break: 10000 - 1000 = 9000ms (> 5000ms threshold)
         // Outro break: 30000 - (20000 + 2500) = 7500ms (> 5000ms threshold)

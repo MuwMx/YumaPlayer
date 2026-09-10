@@ -28,7 +28,7 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
-import moe.rukamori.archivetune.lyrics.LyricsUtils
+import moe.rukamori.archivetune.lyrics.LrcParser
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
@@ -388,7 +388,7 @@ class LocalSongScanner
                                     contentUri = contentUri,
                                     displayName = displayName,
                                     mimeType = mimeType,
-                                )?.let(LyricsUtils::lyricsOrNotFound)
+                                )?.let(LrcParser::lyricsOrNotFound)
                                 ?.takeIf { lyrics -> lyrics != LyricsEntity.LYRICS_NOT_FOUND }
                         tracks +=
                             LocalTrackRecord(

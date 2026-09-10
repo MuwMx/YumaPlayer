@@ -143,7 +143,7 @@ class LyricsHelper
 
                         try {
                             provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
-                                val normalizedLyrics = LyricsUtils.lyricsOrNotFound(lyrics)
+                                val normalizedLyrics = LrcParser.lyricsOrNotFound(lyrics)
                                 if (normalizedLyrics == LYRICS_NOT_FOUND) return@lyricsCallback
                                 val result = LyricsResult(provider.name, normalizedLyrics)
                                 allResult += result
@@ -178,8 +178,8 @@ class LyricsHelper
 
             if (results.isEmpty()) return LYRICS_NOT_FOUND
 
-            results.firstOrNull { LyricsUtils.isTtml(it) }?.let { return it }
-            results.firstOrNull { LyricsUtils.isLineSyncedLrc(it) }?.let { return it }
+            results.firstOrNull { LrcParser.isTtml(it) }?.let { return it }
+            results.firstOrNull { LrcParser.isLineSyncedLrc(it) }?.let { return it }
             return results.first()
         }
 
@@ -198,7 +198,7 @@ class LyricsHelper
                         mediaMetadata.duration,
                     ).fold(
                         onSuccess = { lyrics ->
-                            LyricsUtils.lyricsOrNotFound(lyrics).takeIf { it != LYRICS_NOT_FOUND }
+                            LrcParser.lyricsOrNotFound(lyrics).takeIf { it != LYRICS_NOT_FOUND }
                         },
                         onFailure = {
                             reportException(it)
@@ -234,7 +234,7 @@ class LyricsHelper
             return userOrdered + rest
         }
 
-        private fun isMeaningfulLyrics(lyrics: String): Boolean = LyricsUtils.hasMeaningfulLyricsContent(lyrics)
+        private fun isMeaningfulLyrics(lyrics: String): Boolean = LrcParser.hasMeaningfulLyricsContent(lyrics)
 
         fun cancelCurrentLyricsJob() {
             currentLyricsJob?.cancel()

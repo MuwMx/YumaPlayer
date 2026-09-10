@@ -123,12 +123,12 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc
+import moe.rukamori.archivetune.lyrics.LrcParser.isTtml
+import moe.rukamori.archivetune.lyrics.LrcParser.parseLyrics
+import moe.rukamori.archivetune.lyrics.LrcParser.parseTtml
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
-import moe.rukamori.archivetune.lyrics.LyricsUtils.parseLyrics
-import moe.rukamori.archivetune.lyrics.LyricsUtils.parseTtml
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedRomanizedTextForEntry
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedRomanizedWordsForEntry
 import moe.rukamori.archivetune.lyrics.LyricsUtils.providedTranslationTextForEntry

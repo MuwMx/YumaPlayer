@@ -756,7 +756,7 @@ class PlayerViewModel @Inject constructor(
 
     private fun findCurrentLineIndex(lyricsList: List<LyricsEntry>, progressMs: Long, syncOffset: Int): Int {
         val adjustedProgressMs = (progressMs + syncOffset).coerceAtLeast(0L)
-        return moe.rukamori.archivetune.lyrics.LyricsUtils.findCurrentLineIndex(lyricsList, adjustedProgressMs, 300L)
+        return moe.rukamori.archivetune.lyrics.LrcParser.findCurrentLineIndex(lyricsList, adjustedProgressMs, 300L)
     }
 
     private fun updateLyricsProgress(progressMs: Long) {
@@ -1031,14 +1031,14 @@ class PlayerViewModel @Inject constructor(
             return emptyList()
         }
 
-        val normalized = moe.rukamori.archivetune.lyrics.LyricsUtils.normalizeLyricsText(rawLyrics)
+        val normalized = moe.rukamori.archivetune.lyrics.LrcParser.normalizeLyricsText(rawLyrics)
 
         val parsed = when {
-            moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml(normalized) -> {
-                moe.rukamori.archivetune.lyrics.LyricsUtils.parseTtml(normalized, (durationMs / 1000).toInt())
+            moe.rukamori.archivetune.lyrics.LrcParser.isTtml(normalized) -> {
+                moe.rukamori.archivetune.lyrics.LrcParser.parseTtml(normalized, (durationMs / 1000).toInt())
             }
-            moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc(normalized) -> {
-                moe.rukamori.archivetune.lyrics.LyricsUtils.parseLyrics(normalized)
+            moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc(normalized) -> {
+                moe.rukamori.archivetune.lyrics.LrcParser.parseLyrics(normalized)
             }
             else -> {
                 normalized.lines()
@@ -1049,7 +1049,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
 
-        return moe.rukamori.archivetune.lyrics.LyricsUtils.insertInstrumentalBreaks(parsed, durationMs)
+        return moe.rukamori.archivetune.lyrics.LrcParser.insertInstrumentalBreaks(parsed, durationMs)
     }
 
     fun setLyricsVisible(isVisible: Boolean) {
