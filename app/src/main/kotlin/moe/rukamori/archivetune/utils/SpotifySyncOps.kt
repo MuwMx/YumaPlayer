@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import moe.rukamori.archivetune.constants.LastSpotifySyncKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
@@ -215,7 +216,7 @@ class SpotifySyncOps
                             .filterNotNull()
                     }
 
-                val localLikedSongs = state.database.likedSongsByNameAsc().first()
+                val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.SPOTIFY).first()
                 val resolvedYoutubeIds = resolvedTracks.map { it.metadata.id }.toSet()
                 val resolvedSpotifyIds = resolvedTracks.map { it.track.id }.toSet()
 
@@ -231,7 +232,9 @@ class SpotifySyncOps
                         val dbSong = state.database.getSongByIdBlocking(resolved.metadata.id)
 
                         if (dbSong == null) {
-                            state.database.insert(resolved.metadata) { it.copy(liked = false, likedDate = null) }
+                            state.database.insert(resolved.metadata) { it.copy(likedSpotify = true, likedDate = timestamp) }
+                        } else if (!dbSong.song.likedSpotify || dbSong.song.likedDate != timestamp) {
+                            state.database.update(dbSong.song.copy(likedSpotify = true, likedDate = timestamp))
                         }
 
                         state.database.insert(
@@ -250,7 +253,7 @@ class SpotifySyncOps
                             if (song.id in resolvedYoutubeIds) continue
                             val match = matchByYtId[song.id] ?: continue
                             if (match.spotifyId !in resolvedSpotifyIds) {
-                                state.database.update(song.song.copy(liked = false, likedDate = null))
+                                state.database.update(song.song.copy(likedSpotify = false, likedDate = if (song.song.likedYtm) song.song.likedDate else null))
                             }
                         }
                     }

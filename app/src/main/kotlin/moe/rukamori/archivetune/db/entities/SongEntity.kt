@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.innertube.YouTube
 import java.time.LocalDateTime
 
@@ -52,24 +53,51 @@ data class SongEntity(
     @ColumnInfo(defaultValue = "0")
     val likedSpotify: Boolean = false,
 ) {
-    fun localToggleLike() =
-        copy(
-            liked = !liked,
-            likedDate = if (!liked) LocalDateTime.now() else null,
-        )
+    fun localToggleLike(source: LikeSource = LikeSource.YTM) =
+        when (source) {
+            LikeSource.YTM -> {
+                val newLiked = !likedYtm
+                copy(
+                    liked = newLiked,
+                    likedYtm = newLiked,
+                    likedDate = if (newLiked) LocalDateTime.now() else (if (likedSpotify) likedDate else null),
+                )
+            }
+            LikeSource.SPOTIFY -> {
+                val newLiked = !likedSpotify
+                copy(
+                    likedSpotify = newLiked,
+                    likedDate = if (newLiked) LocalDateTime.now() else (if (likedYtm) likedDate else null),
+                )
+            }
+        }
 
-    fun toggleLike() =
+    fun toggleLike(source: LikeSource = LikeSource.YTM): SongEntity =
         if (isLocal) {
-            localToggleLike()
+            localToggleLike(source)
         } else {
-            copy(
-                liked = !liked,
-                likedDate = if (!liked) LocalDateTime.now() else null,
-                inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
-            ).also {
-                CoroutineScope(Dispatchers.IO).launch {
-                    YouTube.likeVideo(id, !liked)
-                    this.cancel()
+            when (source) {
+                LikeSource.YTM -> {
+                    val newLiked = !likedYtm
+                    copy(
+                        liked = newLiked,
+                        likedYtm = newLiked,
+                        likedDate = if (newLiked) LocalDateTime.now() else (if (likedSpotify) likedDate else null),
+                        inLibrary = if (newLiked) inLibrary ?: LocalDateTime.now() else inLibrary,
+                    ).also {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            YouTube.likeVideo(id, newLiked)
+                            this.cancel()
+                        }
+                    }
+                }
+                LikeSource.SPOTIFY -> {
+                    val newLiked = !likedSpotify
+                    copy(
+                        likedSpotify = newLiked,
+                        likedDate = if (newLiked) LocalDateTime.now() else (if (likedYtm) likedDate else null),
+                        inLibrary = if (newLiked) inLibrary ?: LocalDateTime.now() else inLibrary,
+                    )
                 }
             }
         }
@@ -77,6 +105,8 @@ data class SongEntity(
     fun toggleLibrary() =
         copy(
             liked = if (inLibrary == null) liked else false,
+            likedYtm = if (inLibrary == null) likedYtm else false,
+            likedSpotify = if (inLibrary == null) likedSpotify else false,
             inLibrary = if (inLibrary == null) LocalDateTime.now() else null,
             likedDate = if (inLibrary == null) likedDate else null,
         )

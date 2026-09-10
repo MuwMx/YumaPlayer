@@ -18,6 +18,7 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SelectedYtmPlaylistsKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -182,7 +183,7 @@ class YtmSync
                         }
                         val remoteIds = remoteSongs.map { it.id }.toSet()
                         if (authoritative) {
-                            val localLikedSongs = state.database.likedSongsByNameAsc().first()
+                            val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.YTM).first()
                             if (!state.isSyncStillEnabled(gen)) return@onSuccess
                             val staleLikedSongs =
                                 localLikedSongs
@@ -190,7 +191,7 @@ class YtmSync
                                     .map { it.song }
                                     .filterNot { it.isLocal }
                                     .filterNot { it.id in remoteIds }
-                                    .map { it.copy(liked = false, likedDate = null) }
+                                    .map { it.copy(liked = false, likedYtm = false, likedDate = if (it.likedSpotify) it.likedDate else null) }
                                     .toList()
                             if (staleLikedSongs.isNotEmpty()) {
                                 state.database.withTransaction {
@@ -211,9 +212,9 @@ class YtmSync
                                     state.database.withTransaction {
                                         if (!state.isSyncStillEnabled(gen)) return@withTransaction
                                         if (dbSong == null) {
-                                            insert(song.toMediaMetadata()) { it.copy(liked = true, likedDate = timestamp) }
-                                        } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp) {
-                                            update(dbSong.song.copy(liked = true, likedDate = timestamp))
+                                            insert(song.toMediaMetadata()) { it.copy(liked = true, likedYtm = true, likedDate = timestamp) }
+                                        } else if (!dbSong.song.likedYtm || dbSong.song.likedDate != timestamp) {
+                                            update(dbSong.song.copy(liked = true, likedYtm = true, likedDate = timestamp))
                                         }
                                     }
                                 }
