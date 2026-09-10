@@ -47,6 +47,10 @@ data class SongEntity(
     @ColumnInfo(name = "isLocal", defaultValue = "0")
     val isLocal: Boolean = false,
     val isrc: String? = null,
+    @ColumnInfo(defaultValue = "0")
+    val likedYtm: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val likedSpotify: Boolean = false,
 ) {
     fun localToggleLike() =
         copy(

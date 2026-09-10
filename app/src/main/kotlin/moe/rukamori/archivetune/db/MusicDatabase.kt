@@ -65,7 +65,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 35
+private const val CURRENT_VERSION = 36
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -474,7 +474,7 @@ abstract class InternalDatabase : RoomDatabase() {
         fun newInstance(context: Context): MusicDatabase {
             val universalMigrations =
                 (2 until CURRENT_VERSION)
-                    .filter { it != 33 }
+                    .filter { it !in 33..35 }
                     .map { from -> UniversalMigration(context, from, CURRENT_VERSION) }
                     .toTypedArray()
 
@@ -485,6 +485,7 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_1_2,
                         MIGRATION_33_34,
                         MIGRATION_34_35,
+                        MIGRATION_35_36,
                         *universalMigrations,
                     ).addCallback(DatabaseCallback())
                     .fallbackToDestructiveMigration()
@@ -1243,5 +1244,27 @@ private val MIGRATION_34_35 =
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE song ADD COLUMN isrc TEXT DEFAULT NULL")
             db.execSQL("ALTER TABLE spotify_match ADD COLUMN isrc TEXT DEFAULT NULL")
+        }
+    }
+
+private val MIGRATION_35_36 =
+    object : Migration(35, 36) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE song ADD COLUMN likedYtm INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE song ADD COLUMN likedSpotify INTEGER NOT NULL DEFAULT 0")
+            db.execSQL(
+                """
+                UPDATE song
+                SET likedSpotify = 1
+                WHERE liked != 0 AND EXISTS (SELECT 1 FROM spotify_match WHERE spotify_match.youtubeId = song.id)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                UPDATE song
+                SET likedYtm = 1
+                WHERE liked != 0 AND NOT EXISTS (SELECT 1 FROM spotify_match WHERE spotify_match.youtubeId = song.id)
+                """.trimIndent(),
+            )
         }
     }
