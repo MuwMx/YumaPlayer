@@ -53,54 +53,72 @@ data class SongEntity(
     @ColumnInfo(defaultValue = "0")
     val likedSpotify: Boolean = false,
 ) {
-    fun localToggleLike(source: LikeSource = LikeSource.YTM) =
-        when (source) {
-            LikeSource.YTM -> {
-                val newLiked = !likedYtm
-                copy(
-                    liked = newLiked || likedSpotify,
-                    likedYtm = newLiked,
-                    likedDate = if (newLiked) LocalDateTime.now() else (if (likedSpotify) likedDate else null),
+    fun localToggleLike(source: LikeSource = LikeSource.YTM): SongEntity {
+        val isCurrentlyLiked = likedYtm || likedSpotify || liked
+        return if (isCurrentlyLiked) {
+            copy(
+                liked = false,
+                likedYtm = false,
+                likedSpotify = false,
+                likedDate = null,
+            )
+        } else {
+            when (source) {
+                LikeSource.YTM -> copy(
+                    liked = true,
+                    likedYtm = true,
+                    likedDate = LocalDateTime.now(),
                 )
-            }
-            LikeSource.SPOTIFY -> {
-                val newLiked = !likedSpotify
-                copy(
-                    liked = newLiked || likedYtm,
-                    likedSpotify = newLiked,
-                    likedDate = if (newLiked) LocalDateTime.now() else (if (likedYtm) likedDate else null),
+                LikeSource.SPOTIFY -> copy(
+                    liked = true,
+                    likedSpotify = true,
+                    likedDate = LocalDateTime.now(),
                 )
             }
         }
+    }
 
     fun toggleLike(source: LikeSource = LikeSource.YTM): SongEntity =
         if (isLocal) {
             localToggleLike(source)
         } else {
-            when (source) {
-                LikeSource.YTM -> {
-                    val newLiked = !likedYtm
-                    copy(
-                        liked = newLiked || likedSpotify,
-                        likedYtm = newLiked,
-                        likedDate = if (newLiked) LocalDateTime.now() else (if (likedSpotify) likedDate else null),
-                        inLibrary = if (newLiked) inLibrary ?: LocalDateTime.now() else inLibrary,
-                    ).also {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            YouTube.likeVideo(id, newLiked)
-                            this.cancel()
-                        }
-                    }
-                }
-                LikeSource.SPOTIFY -> {
-                    val newLiked = !likedSpotify
-                    copy(
-                        liked = newLiked || likedYtm,
-                        likedSpotify = newLiked,
-                        likedDate = if (newLiked) LocalDateTime.now() else (if (likedYtm) likedDate else null),
-                        inLibrary = if (newLiked) inLibrary ?: LocalDateTime.now() else inLibrary,
+            val isCurrentlyLiked = likedYtm || likedSpotify || liked
+            val newLiked = !isCurrentlyLiked
+            
+            val updated = if (isCurrentlyLiked) {
+                copy(
+                    liked = false,
+                    likedYtm = false,
+                    likedSpotify = false,
+                    likedDate = null,
+                    inLibrary = inLibrary,
+                )
+            } else {
+                when (source) {
+                    LikeSource.YTM -> copy(
+                        liked = true,
+                        likedYtm = true,
+                        likedDate = LocalDateTime.now(),
+                        inLibrary = inLibrary ?: LocalDateTime.now(),
+                    )
+                    LikeSource.SPOTIFY -> copy(
+                        liked = true,
+                        likedSpotify = true,
+                        likedDate = LocalDateTime.now(),
+                        inLibrary = inLibrary ?: LocalDateTime.now(),
                     )
                 }
+            }
+            
+            if (source == LikeSource.YTM) {
+                updated.also {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        YouTube.likeVideo(id, newLiked)
+                        this.cancel()
+                    }
+                }
+            } else {
+                updated
             }
         }
 
