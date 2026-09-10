@@ -260,10 +260,19 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             connectionHolder.connection
                 .filterNotNull()
-                .flatMapLatest { connection -> connection.currentSong }
-                .collect { song ->
+                .flatMapLatest { connection ->
+                    combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
+                        if (metadata == null || song == null) return@combine false
+                        val isSpotify = !metadata.spotifyTrackId.isNullOrBlank() ||
+                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue ||
+                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue ||
+                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyTracksQueue
+                        if (isSpotify) song.song.likedSpotify else song.song.likedYtm
+                    }
+                }
+                .collect { isLiked ->
                     _uiState.update { currentUi ->
-                        currentUi.copy(isLiked = song?.song?.liked == true)
+                        currentUi.copy(isLiked = isLiked)
                     }
                 }
         }

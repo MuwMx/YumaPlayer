@@ -241,7 +241,7 @@ fun YouTubeListItem(
         val song by database.song(item.id).collectAsState(initial = null)
         val album by database.album(item.id).collectAsState(initial = null)
 
-        if ((item is SongItem && song?.song?.liked == true) ||
+        if ((item is SongItem && song?.song?.likedYtm == true) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
         ) {
             ItemFavoriteBadge()
@@ -324,7 +324,7 @@ fun YouTubeGridItem(
         val song by database.song(item.id).collectAsState(initial = null)
         val album by database.album(item.id).collectAsState(initial = null)
 
-        if (item is SongItem && song?.song?.liked == true ||
+        if (item is SongItem && song?.song?.likedYtm == true ||
             item is AlbumItem && album?.album?.bookmarkedAt != null
         ) {
             ItemFavoriteBadge()

@@ -377,7 +377,10 @@ fun SongMenu(
                 (song.song.likedSpotify && !song.song.likedYtm && !song.song.liked)
         }
     val likeSource = if (isSpotifyOrigin) LikeSource.SPOTIFY else LikeSource.YTM
-    val isLiked = song.song.liked
+    val isLiked = when (likeSource) {
+        LikeSource.SPOTIFY -> song.song.likedSpotify
+        LikeSource.YTM -> song.song.likedYtm
+    }
 
     Surface(
         shape = RoundedCornerShape(28.dp),

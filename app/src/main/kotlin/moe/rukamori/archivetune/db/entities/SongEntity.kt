@@ -54,25 +54,21 @@ data class SongEntity(
     val likedSpotify: Boolean = false,
 ) {
     fun localToggleLike(source: LikeSource = LikeSource.YTM): SongEntity {
-        val isCurrentlyLiked = likedYtm || likedSpotify || liked
-        return if (isCurrentlyLiked) {
-            copy(
-                liked = false,
-                likedYtm = false,
-                likedSpotify = false,
-                likedDate = null,
-            )
-        } else {
-            when (source) {
-                LikeSource.YTM -> copy(
-                    liked = true,
-                    likedYtm = true,
-                    likedDate = LocalDateTime.now(),
+        return when (source) {
+            LikeSource.YTM -> {
+                val newLikedYtm = !likedYtm
+                copy(
+                    likedYtm = newLikedYtm,
+                    liked = newLikedYtm || likedSpotify,
+                    likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null
                 )
-                LikeSource.SPOTIFY -> copy(
-                    liked = true,
-                    likedSpotify = true,
-                    likedDate = LocalDateTime.now(),
+            }
+            LikeSource.SPOTIFY -> {
+                val newLikedSpotify = !likedSpotify
+                copy(
+                    likedSpotify = newLikedSpotify,
+                    liked = likedYtm || newLikedSpotify,
+                    likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null
                 )
             }
         }
@@ -82,30 +78,23 @@ data class SongEntity(
         if (isLocal) {
             localToggleLike(source)
         } else {
-            val isCurrentlyLiked = likedYtm || likedSpotify || liked
-            val newLiked = !isCurrentlyLiked
-            
-            val updated = if (isCurrentlyLiked) {
-                copy(
-                    liked = false,
-                    likedYtm = false,
-                    likedSpotify = false,
-                    likedDate = null,
-                    inLibrary = inLibrary,
-                )
-            } else {
-                when (source) {
-                    LikeSource.YTM -> copy(
-                        liked = true,
-                        likedYtm = true,
-                        likedDate = LocalDateTime.now(),
-                        inLibrary = inLibrary ?: LocalDateTime.now(),
+            val updated = when (source) {
+                LikeSource.YTM -> {
+                    val newLikedYtm = !likedYtm
+                    copy(
+                        likedYtm = newLikedYtm,
+                        liked = newLikedYtm || likedSpotify,
+                        likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null,
+                        inLibrary = if (newLikedYtm) (inLibrary ?: LocalDateTime.now()) else inLibrary
                     )
-                    LikeSource.SPOTIFY -> copy(
-                        liked = true,
-                        likedSpotify = true,
-                        likedDate = LocalDateTime.now(),
-                        inLibrary = inLibrary ?: LocalDateTime.now(),
+                }
+                LikeSource.SPOTIFY -> {
+                    val newLikedSpotify = !likedSpotify
+                    copy(
+                        likedSpotify = newLikedSpotify,
+                        liked = likedYtm || newLikedSpotify,
+                        likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null,
+                        inLibrary = if (newLikedSpotify) (inLibrary ?: LocalDateTime.now()) else inLibrary
                     )
                 }
             }
@@ -113,7 +102,7 @@ data class SongEntity(
             if (source == LikeSource.YTM) {
                 updated.also {
                     CoroutineScope(Dispatchers.IO).launch {
-                        YouTube.likeVideo(id, newLiked)
+                        YouTube.likeVideo(id, it.likedYtm)
                         this.cancel()
                     }
                 }
