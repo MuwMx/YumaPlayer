@@ -65,6 +65,7 @@ class SyncUtils
     @Inject
     constructor(
         private val state: SyncState,
+        private val syncLikes: SyncLikes,
     ) {
         private val database get() = state.database
         private val spotifyRepository get() = state.spotifyRepository
@@ -192,61 +193,9 @@ class SyncUtils
                     copies.reduce(::preferredPlaylistCopy)
                 }
 
-        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
-            if (s.isLocal) return
-            syncScope.launch {
-                val isSpotifyLikesSyncEnabled =
-                    context.dataStore.data
-                        .map { it[SpotifySyncLikesKey] ?: false }
-                        .first()
+        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) = syncLikes.likeSong(s, explicitSpotifyId)
 
-                if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSong(context, database, s, s.liked, explicitSpotifyId)
-                    return@launch
-                }
-
-                if (!isLoggedIn() || !isYtmSyncEnabled()) {
-                    Timber.w("Skipping likeSong - user not logged in or YTM sync disabled")
-                    return@launch
-                }
-                val gen = syncGeneration.get()
-                if (!isSyncStillEnabled(gen)) return@launch
-                YouTube.likeVideo(s.id, s.liked)
-            }
-        }
-
-        fun likeSongs(songs: List<SongEntity>) {
-            val nonLocal = songs.filterNot { it.isLocal }.distinctBy { it.id }
-            if (nonLocal.isEmpty()) return
-            syncScope.launch {
-                val isSpotifyLikesSyncEnabled =
-                    context.dataStore.data
-                        .map { it[SpotifySyncLikesKey] ?: false }
-                        .first()
-
-                if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSongs(context, database, nonLocal)
-                    return@launch
-                }
-
-                if (!isLoggedIn() || !isYtmSyncEnabled()) {
-                    Timber.w("Skipping likeSongs - user not logged in or YTM sync disabled")
-                    return@launch
-                }
-                val gen = syncGeneration.get()
-                nonLocal.chunked(8).forEach { batch ->
-                    if (!isSyncStillEnabled(gen)) return@launch
-                    coroutineScope {
-                        batch.map { song ->
-                            async {
-                                if (!isSyncStillEnabled(gen)) return@async
-                                YouTube.likeVideo(song.id, song.liked)
-                            }
-                        }.awaitAll()
-                    }
-                }
-            }
-        }
+        fun likeSongs(songs: List<SongEntity>) = syncLikes.likeSongs(songs)
 
         suspend fun syncLikedSongs(authoritative: Boolean = false) =
             coroutineScope {
