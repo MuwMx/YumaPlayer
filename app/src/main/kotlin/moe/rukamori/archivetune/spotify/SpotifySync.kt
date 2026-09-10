@@ -119,11 +119,13 @@ object SpotifySync {
                 val resolvedTracks = songsWithLikes.mapNotNull { song ->
                     val spotifyId = if (song.id.startsWith("spotify:track:")) {
                         song.id.removePrefix("spotify:track:")
+                    } else if (song.id.length == 22 && song.id.all { it.isLetterOrDigit() }) {
+                        song.id
                     } else {
                         matches[song.id]?.spotifyId
                     }
                     if (!spotifyId.isNullOrBlank()) {
-                        "spotify:track:$spotifyId" to song.liked
+                        "spotify:track:$spotifyId" to song.likedSpotify
                     } else {
                         null
                     }
@@ -190,21 +192,26 @@ object SpotifySync {
     ): String? {
         if (!explicitSpotifyId.isNullOrBlank()) {
             val rawId = explicitSpotifyId.removePrefix("spotify:track:")
-            val songWithArtists = database.getSongById(song.id)
-            val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
-            database.insert(
-                SpotifyMatchEntity(
-                    spotifyId = rawId,
-                    youtubeId = song.id,
-                    title = song.title,
-                    artist = artistsText.ifBlank { song.albumName.orEmpty() },
-                    matchScore = 1.0,
-                ),
-            )
-            return rawId
+            if (rawId.length == 22 && rawId.all { it.isLetterOrDigit() }) {
+                val songWithArtists = database.getSongById(song.id)
+                val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
+                database.insert(
+                    SpotifyMatchEntity(
+                        spotifyId = rawId,
+                        youtubeId = song.id,
+                        title = song.title,
+                        artist = artistsText.ifBlank { song.albumName.orEmpty() },
+                        matchScore = 1.0,
+                    ),
+                )
+                return rawId
+            }
         }
         if (song.id.startsWith("spotify:track:")) {
             return song.id.removePrefix("spotify:track:")
+        }
+        if (song.id.length == 22 && song.id.all { it.isLetterOrDigit() }) {
+            return song.id
         }
         val match = database.getSpotifyMatchesByYouTubeIds(listOf(song.id)).firstOrNull()
         if (match != null && match.spotifyId.isNotBlank()) {

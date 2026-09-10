@@ -1914,20 +1914,36 @@ class MusicService :
 
     private fun updateNotification() {
         try {
-            Timber.tag("MediaNotification").d("updateNotification: mediaId=${currentMediaMetadata.value?.id}, isLiked=${currentSong.value?.song?.liked}")
+            val song = currentSong.value?.song
+            val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata
+            val isSpotify = mediaMetadata != null && (
+                !mediaMetadata.spotifyTrackId.isNullOrBlank() ||
+                mediaMetadata.id.startsWith("spotify:") ||
+                (!mediaMetadata.id.isLocalMediaId() && mediaMetadata.id.length == 22 && mediaMetadata.id.all { it.isLetterOrDigit() }) ||
+                currentQueue is SpotifyLikedSongsQueue ||
+                currentQueue is SpotifyPlaylistQueue ||
+                currentQueue is SpotifyTracksQueue ||
+                (song?.likedSpotify == true && song.likedYtm != true)
+            )
+            val isLiked = if (song != null) {
+                if (isSpotify) song.likedSpotify else song.likedYtm
+            } else {
+                false
+            }
+            Timber.tag("MediaNotification").d("updateNotification: mediaId=${mediaMetadata?.id}, isLiked=$isLiked")
             val customLayout =
                 listOf(
                     CommandButton
                         .Builder()
                         .setDisplayName(
                             getString(
-                                if (currentSong.value?.song?.liked == true) {
+                                if (isLiked) {
                                     R.string.action_remove_like
                                 } else {
                                     R.string.action_like
                                 },
                             ),
-                        ).setIconResId(if (currentSong.value?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border)
+                        ).setIconResId(if (isLiked) R.drawable.favorite else R.drawable.favorite_border)
                         .setSessionCommand(CommandToggleLike)
                         .setEnabled(currentMediaMetadata.value != null || player.currentMediaItem != null)
                         .build(),
@@ -2489,10 +2505,14 @@ class MusicService :
     fun toggleLike() {
         val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata ?: return
         Timber.tag("MediaNotification").d("toggleLike() called for mediaId=${mediaMetadata.id}, title=${mediaMetadata.title}")
+        val currentSongSong = currentSong.value?.song
         val isSpotify = !mediaMetadata.spotifyTrackId.isNullOrBlank() ||
+            mediaMetadata.id.startsWith("spotify:") ||
+            (!mediaMetadata.id.isLocalMediaId() && mediaMetadata.id.length == 22 && mediaMetadata.id.all { it.isLetterOrDigit() }) ||
             currentQueue is SpotifyLikedSongsQueue ||
             currentQueue is SpotifyPlaylistQueue ||
-            currentQueue is SpotifyTracksQueue
+            currentQueue is SpotifyTracksQueue ||
+            (currentSongSong?.likedSpotify == true && currentSongSong.likedYtm != true)
         val source = if (isSpotify) LikeSource.SPOTIFY else LikeSource.YTM
         ioScope.launch {
             try {
@@ -2513,7 +2533,14 @@ class MusicService :
                     } ?: return@launch
 
                 Timber.tag("MediaNotification").d("toggleLike() successful: song=${song.id}, liked=${song.liked}")
-                syncUtils.likeSong(song, mediaMetadata.spotifyTrackId)
+                val spotifyId = if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
+                    mediaMetadata.spotifyTrackId
+                } else if (song.id.startsWith("spotify:") || (song.id.length == 22 && song.id.all { it.isLetterOrDigit() })) {
+                    song.id
+                } else {
+                    null
+                }
+                syncUtils.likeSong(song, spotifyId)
 
                 if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
                     val downloadRequest =

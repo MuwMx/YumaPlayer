@@ -370,11 +370,11 @@ fun SongMenu(
     }
 
     val isSpotifyOrigin =
-        remember(song.song.id, playlistBrowseId, song.song.likedSpotify, song.song.likedYtm, song.song.liked) {
+        remember(song.song.id, playlistBrowseId, song.song.likedSpotify, song.song.likedYtm) {
             song.song.id.startsWith("spotify:") ||
                 playlistBrowseId?.startsWith("spotify:") == true ||
                 (!song.song.isLocal && song.song.id.length == 22 && song.song.id.all { it.isLetterOrDigit() }) ||
-                (song.song.likedSpotify && !song.song.likedYtm && !song.song.liked)
+                (song.song.likedSpotify && !song.song.likedYtm)
         }
     val likeSource = if (isSpotifyOrigin) LikeSource.SPOTIFY else LikeSource.YTM
     val isLiked = when (likeSource) {
@@ -398,7 +398,8 @@ fun SongMenu(
                         database.query {
                             update(s)
                         }
-                        syncUtils.likeSong(s, if (isSpotifyOrigin) s.id else null)
+                        val spotifyId = if (s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })) s.id else null
+                        syncUtils.likeSong(s, spotifyId)
                     },
                 ) {
                     Icon(

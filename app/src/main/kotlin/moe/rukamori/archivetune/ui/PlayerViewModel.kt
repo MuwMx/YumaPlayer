@@ -264,9 +264,12 @@ class PlayerViewModel @Inject constructor(
                     combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
                         if (metadata == null || song == null) return@combine false
                         val isSpotify = !metadata.spotifyTrackId.isNullOrBlank() ||
+                            metadata.id.startsWith("spotify:") ||
+                            (!song.song.isLocal && metadata.id.length == 22 && metadata.id.all { it.isLetterOrDigit() }) ||
                             connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue ||
                             connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue ||
-                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyTracksQueue
+                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyTracksQueue ||
+                            (song.song.likedSpotify && !song.song.likedYtm)
                         if (isSpotify) song.song.likedSpotify else song.song.likedYtm
                     }
                 }

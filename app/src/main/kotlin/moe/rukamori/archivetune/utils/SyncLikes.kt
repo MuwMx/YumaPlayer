@@ -29,18 +29,23 @@ class SyncLikes
         fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
             if (s.isLocal) return
             state.syncScope.launch {
-                val isSpotifyTarget = explicitSpotifyId != null || s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })
+                val isSpotifyLikesSyncEnabled =
+                    state.context.dataStore.data
+                        .map { it[SpotifySyncLikesKey] ?: false }
+                        .first()
 
-                if (isSpotifyTarget) {
-                    val isSpotifyLikesSyncEnabled =
-                        state.context.dataStore.data
-                            .map { it[SpotifySyncLikesKey] ?: false }
-                            .first()
-                    if (isSpotifyLikesSyncEnabled) {
-                        SpotifySync.syncLikeForSong(state.context, state.database, s, s.likedSpotify, explicitSpotifyId)
-                    }
-                    return@launch
+                val hasExplicitSpotifyId = !explicitSpotifyId.isNullOrBlank() &&
+                    (explicitSpotifyId.startsWith("spotify:") || (explicitSpotifyId.length == 22 && explicitSpotifyId.all { it.isLetterOrDigit() }))
+
+                val isSpotifyId = s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })
+
+                val hasSpotifyMatch = hasExplicitSpotifyId || isSpotifyId || state.database.getSpotifyMatchesByYouTubeIds(listOf(s.id)).isNotEmpty()
+
+                if (isSpotifyLikesSyncEnabled && hasSpotifyMatch) {
+                    SpotifySync.syncLikeForSong(state.context, state.database, s, s.likedSpotify, if (hasExplicitSpotifyId) explicitSpotifyId else null)
                 }
+
+                if (isSpotifyId) return@launch
 
                 if (!state.isLoggedIn() || !state.isYtmSyncEnabled()) {
                     Timber.w("Skipping likeSong - user not logged in or YTM sync disabled")
@@ -65,8 +70,19 @@ class SyncLikes
                     s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })
                 }
 
-                if (isSpotifyLikesSyncEnabled && spotifyTargets.isNotEmpty()) {
-                    SpotifySync.syncLikeForSongs(state.context, state.database, spotifyTargets)
+                if (isSpotifyLikesSyncEnabled) {
+                    val ytIds = ytmTargets.map { it.id }
+                    val matches = if (ytIds.isNotEmpty()) {
+                        state.database.getSpotifyMatchesByYouTubeIds(ytIds).associateBy { it.youtubeId }
+                    } else {
+                        emptyMap()
+                    }
+                    val spotifyEligible = nonLocal.filter { s ->
+                        s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() }) || matches.containsKey(s.id)
+                    }
+                    if (spotifyEligible.isNotEmpty()) {
+                        SpotifySync.syncLikeForSongs(state.context, state.database, spotifyEligible)
+                    }
                 }
 
                 if (ytmTargets.isEmpty()) return@launch
