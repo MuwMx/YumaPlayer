@@ -37,7 +37,7 @@ class SyncLikes
                         .first()
 
                 if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSong(state.context, state.database, s, s.liked, explicitSpotifyId)
+                    SpotifySync.syncLikeForSong(state.context, state.database, s, s.likedSpotify, explicitSpotifyId)
                     return@launch
                 }
 
