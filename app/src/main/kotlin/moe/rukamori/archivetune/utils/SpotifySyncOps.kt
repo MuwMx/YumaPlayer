@@ -231,25 +231,46 @@ class SpotifySyncOps
 
                 if (!state.isSyncStillEnabled(gen)) return@withLock
                 val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.SPOTIFY).first()
+                if (!state.isSyncStillEnabled(gen)) return@withLock
+                val localLikedIds = localLikedSongs.map { it.id }.toSet()
                 val resolvedYoutubeIds = resolvedTracks.map { it.metadata.id }.toSet()
                 val resolvedSpotifyIds = resolvedTracks.map { it.track.id }.toSet()
 
-                val unlikeCandidateIds = localLikedSongs.map { it.id }.filter { it !in resolvedYoutubeIds }
-                val matchEntities = state.database.getSpotifyMatchesByYouTubeIds(unlikeCandidateIds)
-                val matchByYtId = matchEntities.associateBy { it.youtubeId }
+                val staleLikedSongs =
+                    if (authoritative) {
+                        val unlikeCandidateIds = localLikedSongs.map { it.id }.filter { it !in resolvedYoutubeIds }
+                        val matchEntities = state.database.getSpotifyMatchesByYouTubeIds(unlikeCandidateIds)
+                        val matchByYtId = matchEntities.associateBy { it.youtubeId }
+                        localLikedSongs
+                            .filter { song ->
+                                if (song.id in resolvedYoutubeIds) return@filter false
+                                val match = matchByYtId[song.id] ?: return@filter false
+                                match.spotifyId !in resolvedSpotifyIds
+                            }.map { it.song.copy(likedSpotify = false, likedDate = if (it.song.likedYtm) it.song.likedDate else null) }
+                    } else {
+                        emptyList()
+                    }
+
+                val newResolvedTracks = resolvedTracks.filter { it.metadata.id !in localLikedIds }
+
+                if (newResolvedTracks.isEmpty() && staleLikedSongs.isEmpty()) {
+                    Timber.d("syncSpotifyLikedSongs: No changes detected (stale: 0, new: 0), skipping database writes")
+                    return@withLock
+                }
 
                 val now = LocalDateTime.now()
 
                 state.database.withTransaction {
                     if (!state.isSyncStillEnabled(gen)) return@withTransaction
-                    resolvedTracks.forEachIndexed { index, resolved ->
+                    newResolvedTracks.forEachIndexed { index, resolved ->
                         val timestamp = likedSongTimestamp(now, index)
                         val dbSong = state.database.getSongByIdBlocking(resolved.metadata.id)
 
                         if (dbSong == null) {
                             state.database.insert(resolved.metadata) { it.copy(likedSpotify = true, likedDate = timestamp) }
-                        } else if (!dbSong.song.likedSpotify || dbSong.song.likedDate != timestamp) {
-                            state.database.update(dbSong.song.copy(likedSpotify = true, likedDate = timestamp))
+                        } else {
+                            val finalTimestamp = dbSong.song.likedDate ?: timestamp
+                            state.database.update(dbSong.song.copy(likedSpotify = true, likedDate = finalTimestamp))
                         }
 
                         state.database.insert(
@@ -263,14 +284,8 @@ class SpotifySyncOps
                         )
                     }
 
-                    if (authoritative) {
-                        for (song in localLikedSongs) {
-                            if (song.id in resolvedYoutubeIds) continue
-                            val match = matchByYtId[song.id] ?: continue
-                            if (match.spotifyId !in resolvedSpotifyIds) {
-                                state.database.update(song.song.copy(likedSpotify = false, likedDate = if (song.song.likedYtm) song.song.likedDate else null))
-                            }
-                        }
+                    staleLikedSongs.forEach { updatedSong ->
+                        state.database.update(updatedSong)
                     }
                 }
             } catch (e: Exception) {
