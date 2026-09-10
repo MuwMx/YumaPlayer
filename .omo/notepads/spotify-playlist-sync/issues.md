@@ -62,3 +62,4 @@
 - **Претензия 5 (В issues.md п. 4 утверждается, что фикс бейджей не попал в код)**:
   - **Вердикт**: `FALSE / CONFIRMED RECORD CONTRADICTION`.
   - **Доказательство**: Пункт 4 в issues.md фиксирует замену на union `song?.song?.liked == true`, и эта замена действительно присутствует в коде `SongItems.kt:244, 327`.
+union reads reverted on lists/counts per user, hearts stay union.

@@ -166,7 +166,7 @@ class AutoPlaylistViewModel
                                     }.filterExplicit(hideExplicit)
                                 }
                             } else {
-                                database.likedSongs(songSortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
+                                database.likedSongs(songSortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
                             }
                         }
 

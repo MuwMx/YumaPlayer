@@ -109,7 +109,7 @@ fun LibraryMixScreen(
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
 
-    val likedSongsCount by database.likedSongsCount().collectAsState(initial = 0)
+    val likedSongsCount by database.likedSongsCount(LikeSource.YTM).collectAsState(initial = 0)
     val recentSongs by database.recentSongs(15).collectAsState(initial = emptyList())
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()
