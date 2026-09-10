@@ -43,7 +43,6 @@ class SyncState
         val syncMutex = Mutex()
         val ytmPlaylistSyncMutex = Mutex()
         val spotifyPlaylistSyncMutex = Mutex()
-        val playlistSyncMutex = ytmPlaylistSyncMutex
         val dbWriteSemaphore = Semaphore(2)
 
         init {
