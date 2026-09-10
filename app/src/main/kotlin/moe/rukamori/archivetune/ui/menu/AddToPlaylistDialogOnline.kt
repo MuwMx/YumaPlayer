@@ -49,6 +49,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.LocalSyncUtils
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ListThumbnailSize
@@ -79,6 +80,7 @@ fun AddToPlaylistDialogOnline(
     onStatusChange: (String) -> Unit = {},
 ) {
     val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
     val coroutineScope = rememberCoroutineScope()
     var allPlaylists by remember { mutableStateOf(emptyList<Playlist>()) }
     val playlists = remember(allPlaylists) { playlistsForAddToPlaylist(allPlaylists).asReversed() }
@@ -171,9 +173,11 @@ fun AddToPlaylistDialogOnline(
                                                     }
                                                     if (addToLiked) {
                                                         val entity = media.toSongEntity()
+                                                        val updatedEntity = entity.localToggleLike(LikeSource.YTM)
                                                         database.query {
-                                                            update(entity.localToggleLike(LikeSource.YTM))
+                                                            update(updatedEntity)
                                                         }
+                                                        syncUtils.likeSong(updatedEntity, LikeSource.YTM)
                                                     }
                                                     success = true
                                                 } catch (e: Exception) {
