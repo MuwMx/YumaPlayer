@@ -45,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,7 +82,6 @@ import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.ui.utils.ItemWrapper
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -119,21 +117,17 @@ fun LibrarySongsScreen(
     val lazyListState = rememberLazyListState()
 
     LaunchedEffect(filter) {
-        if (songs.isEmpty() && !isRefreshing) {
+        if (!isRefreshing) {
             viewModel.refresh(filter)
         }
     }
 
-    val wrappedSongs = remember(songs) {
-        songs.map { item -> ItemWrapper(item) }.toMutableStateList()
-    }
-
     val hideExplicit by rememberPreference(HideExplicitKey, defaultValue = false)
-    val displaySongs = remember(wrappedSongs, hideExplicit) {
-        if (hideExplicit) wrappedSongs.filter { !it.item.song.explicit } else wrappedSongs
+    val displaySongs = remember(songs, hideExplicit) {
+        if (hideExplicit) songs.filter { !it.song.explicit } else songs
     }
 
-    val totalDurationSec = remember(displaySongs) { displaySongs.sumOf { it.item.song.duration } }
+    val totalDurationSec = remember(displaySongs) { displaySongs.sumOf { it.song.duration } }
     val totalDurationText = remember(totalDurationSec) {
         if (totalDurationSec <= 0) {
             ""
@@ -342,7 +336,7 @@ fun LibrarySongsScreen(
                                             playerConnection.playQueue(
                                                 ListQueue(
                                                     title = context.getString(R.string.queue_all_songs),
-                                                    items = displaySongs.map { it.item.toMediaItem() },
+                                                    items = displaySongs.map { it.toMediaItem() },
                                                 ),
                                             )
                                         }
@@ -393,10 +387,9 @@ fun LibrarySongsScreen(
                 } else {
                     itemsIndexed(
                         items = displaySongs,
-                        key = { index, songWrapper -> "${songWrapper.item.id}_$index" },
+                        key = { _, song -> song.id },
                         contentType = { _, _ -> CONTENT_TYPE_SONG },
-                    ) { index, songWrapper ->
-                        val song = songWrapper.item
+                    ) { index, song ->
                         val isActive = song.id == mediaMetadata?.id
 
                         Row(
@@ -417,11 +410,10 @@ fun LibrarySongsScreen(
                                         if (song.id == mediaMetadata?.id) {
                                             playerConnection.player.togglePlayPause()
                                         } else {
-                                            val visibleSongs = displaySongs.map { it.item }
                                             playerConnection.playQueue(
                                                 ListQueue(
                                                     title = context.getString(R.string.queue_all_songs),
-                                                    items = visibleSongs.map { it.toMediaItem() },
+                                                    items = displaySongs.map { it.toMediaItem() },
                                                     startIndex = index,
                                                 ),
                                             )
