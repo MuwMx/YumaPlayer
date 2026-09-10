@@ -1917,20 +1917,7 @@ class MusicService :
         try {
             val song = currentSong.value?.song
             val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata
-            val source = LikeSourceResolver.resolve(
-                mediaId = mediaMetadata?.id,
-                spotifyTrackId = mediaMetadata?.spotifyTrackId,
-                queue = currentQueue,
-                isLocal = song?.isLocal ?: (mediaMetadata?.id?.isLocalMediaId() == true),
-            )
-            val isLiked = if (song != null) {
-                when (source) {
-                    LikeSource.SPOTIFY -> song.likedSpotify
-                    LikeSource.YTM -> song.likedYtm
-                }
-            } else {
-                false
-            }
+            val isLiked = song?.liked == true
             Timber.tag("MediaNotification").d("updateNotification: mediaId=${mediaMetadata?.id}, isLiked=$isLiked")
             val customLayout =
                 listOf(

@@ -102,11 +102,15 @@ fun SelectionSongMenu(
         )
     }
 
-    val allLiked by remember(songSelection) {
+    val allLiked by remember(songSelection, likeSourceHint) {
         mutableStateOf(
             songSelection.isNotEmpty() &&
                 songSelection.all {
-                    it.song.liked
+                    when (likeSourceHint) {
+                        moe.rukamori.archivetune.constants.LikeSource.YTM -> it.song.likedYtm
+                        moe.rukamori.archivetune.constants.LikeSource.SPOTIFY -> it.song.likedSpotify
+                        null -> it.song.liked
+                    }
                 },
         )
     }
@@ -407,13 +411,26 @@ fun SelectionSongMenu(
                     },
                     onClick = {
                         onDismiss()
-                        val shouldUnlikeAll = songSelection.all { it.song.liked }
+                        val shouldUnlikeAll = songSelection.all {
+                            when (likeSourceHint) {
+                                moe.rukamori.archivetune.constants.LikeSource.YTM -> it.song.likedYtm
+                                moe.rukamori.archivetune.constants.LikeSource.SPOTIFY -> it.song.likedSpotify
+                                null -> it.song.liked
+                            }
+                        }
                         val updatedSongs =
                             songSelection
                                 .asSequence()
                                 .map { it.song }
                                 .distinctBy { it.id }
-                                .filter { song -> shouldUnlikeAll || !song.liked }
+                                .filter { song ->
+                                    val isLikedForHint = when (likeSourceHint) {
+                                        moe.rukamori.archivetune.constants.LikeSource.YTM -> song.likedYtm
+                                        moe.rukamori.archivetune.constants.LikeSource.SPOTIFY -> song.likedSpotify
+                                        null -> song.liked
+                                    }
+                                    shouldUnlikeAll || !isLikedForHint
+                                }
                                 .map { song ->
                                     val src = likeSourceHint ?: LikeSourceResolver.resolve(mediaId = song.id, isLocal = song.isLocal)
                                     song.localToggleLike(src)
@@ -962,9 +979,16 @@ fun SelectionMediaMetadataMenu(
                             songSelection
                                 .asSequence()
                                 .distinctBy { it.id }
-                                .filter { song -> allLiked || !song.liked }
-                                .map { song ->
-                                    val entity = song.toSongEntity()
+                                .map { it.toSongEntity() }
+                                .filter { song ->
+                                    val isLikedForHint = when (likeSourceHint) {
+                                        moe.rukamori.archivetune.constants.LikeSource.YTM -> song.likedYtm
+                                        moe.rukamori.archivetune.constants.LikeSource.SPOTIFY -> song.likedSpotify
+                                        null -> song.liked
+                                    }
+                                    allLiked || !isLikedForHint
+                                }
+                                .map { entity ->
                                     val src = likeSourceHint ?: LikeSourceResolver.resolve(mediaId = entity.id, isLocal = entity.isLocal)
                                     entity.localToggleLike(src)
                                 }

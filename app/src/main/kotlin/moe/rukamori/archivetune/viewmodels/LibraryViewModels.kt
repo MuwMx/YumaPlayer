@@ -130,7 +130,7 @@ class LibrarySongsViewModel
                         }
 
                         SongFilter.LIKED -> {
-                            database.likedSongs(sortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
+                            database.likedSongs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
                         }
 
                         SongFilter.DOWNLOADED -> {

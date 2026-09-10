@@ -590,7 +590,7 @@ class MediaLibrarySessionCallback
                         }
 
                         MusicService.PLAYLIST -> {
-                            val likedSongCount = database.likedSongsCount(LikeSource.YTM).first()
+                            val likedSongCount = database.likedSongsCount().first()
                             val downloadedSongCount = downloadUtil.downloads.value.size
                             listOf(
                                 queueMediaItem(
@@ -1373,7 +1373,7 @@ class MediaLibrarySessionCallback
         private suspend fun playlistHeaderItem(playlistId: String): MediaItem? =
             when (playlistId) {
                 PlaylistEntity.LIKED_PLAYLIST_ID -> {
-                    val count = database.likedSongsCount(LikeSource.YTM).first()
+                    val count = database.likedSongsCount().first()
                     queueMediaItem(
                         "${MusicService.PLAYLIST}/$playlistId",
                         context.getString(R.string.liked_songs),

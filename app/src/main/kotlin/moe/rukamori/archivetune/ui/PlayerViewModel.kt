@@ -264,16 +264,7 @@ class PlayerViewModel @Inject constructor(
                 .flatMapLatest { connection ->
                     combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
                         if (metadata == null || song == null) return@combine false
-                        val source = LikeSourceResolver.resolve(
-                            mediaId = metadata.id,
-                            spotifyTrackId = metadata.spotifyTrackId,
-                            queue = connection.service.currentQueue,
-                            isLocal = song.song.isLocal,
-                        )
-                        when (source) {
-                            LikeSource.SPOTIFY -> song.song.likedSpotify
-                            LikeSource.YTM -> song.song.likedYtm
-                        }
+                        song.song.liked
                     }
                 }
                 .collect { isLiked ->

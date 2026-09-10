@@ -42,3 +42,23 @@
 - LocalPlaylistScreen:1615 - Checked `playlist?.playlist?.browseId?.startsWith("spotify:") == true`, passed `LikeSource.SPOTIFY` if true, else null.
 - HistoryScreen:625 - Not a Spotify playlist, passed null (default).
 - OnlinePlaylistScreen:1326 - Checked `playlist?.id?.startsWith("spotify:") == true`, passed `LikeSource.SPOTIFY` if true, else null.
+
+## 7. Reviewer Claims Verification & Union Read Audit
+- **Претензия 1 (Иконки сердца в Player/Notification показывают пустое состояние для Spotify-треков вне Spotify очередей)**:
+  - **Вердикт**: `TRUE`.
+  - **Доказательство**: `PlayerViewModel.kt:267-276` и `MusicService.kt:1920-1930` вызывали `LikeSourceResolver.resolve(...)` и читали только `song.likedYtm` вне Spotify-очередей.
+  - **Исправление**: Чтение переведено на union `song.song.liked` / `song?.liked == true`, тогда как клики (запись) по-прежнему резолвятся через `LikeSourceResolver`.
+- **Претензия 2 (Фильтр LIKED в библиотеке хардкодит LikeSource.YTM)**:
+  - **Вердикт**: `TRUE`.
+  - **Доказательство**: `viewmodels/LibraryViewModels.kt:133` вызывал `database.likedSongs(..., LikeSource.YTM)`, исключая треки с `likedSpotify=true`.
+  - **Исправление**: `SongDao` расширен union-запросами `WHERE liked != 0` по умолчанию (`source = null`), а `LibraryViewModels.kt` и `AutoPlaylistViewModel.kt` переведены на union выборку.
+- **Претензия 3 (Бейджи в SongItems.kt проверяют только likedYtm)**:
+  - **Вердикт**: `FALSE`.
+  - **Доказательство**: В `SongItems.kt:62, 137, 244, 327` все бейджи уже используют union `song.song.liked` или `song?.song?.liked == true`.
+- **Претензия 4 (Мультивыбор !song.liked сбрасывает Spotify-лайки при проставлении YTM-лайка)**:
+  - **Вердикт**: `TRUE`.
+  - **Доказательство**: `SelectionSongsMenu.kt:416, 965` фильтровали по `!song.liked` (union), что отбрасывало Spotify-лайкнутые треки при попытке лайкнуть их в YTM при активном `likeSourceHint`.
+  - **Исправление**: Фильтрация переведена на проверку флага активного хинта (`when (likeSourceHint) { YTM -> !song.likedYtm, SPOTIFY -> !song.likedSpotify, null -> !song.liked }`).
+- **Претензия 5 (В issues.md п. 4 утверждается, что фикс бейджей не попал в код)**:
+  - **Вердикт**: `FALSE / CONFIRMED RECORD CONTRADICTION`.
+  - **Доказательство**: Пункт 4 в issues.md фиксирует замену на union `song?.song?.liked == true`, и эта замена действительно присутствует в коде `SongItems.kt:244, 327`.
