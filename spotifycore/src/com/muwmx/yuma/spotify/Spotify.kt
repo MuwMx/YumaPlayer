@@ -12,7 +12,6 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -30,7 +29,6 @@ import moe.rukamori.archivetune.spotify.models.SpotifyRecommendations
 import moe.rukamori.archivetune.spotify.models.SpotifySavedTrack
 import moe.rukamori.archivetune.spotify.models.SpotifySearchResult
 import moe.rukamori.archivetune.spotify.models.SpotifySimpleAlbum
-import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.spotify.models.SpotifyUser
 
@@ -92,98 +90,6 @@ object Spotify {
         crossinline block: io.ktor.client.request.HttpRequestBuilder.() -> Unit = {},
     ): T = SpotifyGraphqlClient.restGet(endpoint, failFastOn429, block)
 
-    // ── GQL response converters ──────────────────────────────────────────
-
-    private fun parseGqlImage(source: JsonObject): SpotifyImage? {
-        val url = source.str("url") ?: return null
-        return SpotifyImage(url = url, height = source.int("height"), width = source.int("width"))
-    }
-
-    private fun parseGqlImages(sources: JsonArray?): List<SpotifyImage> =
-        sources?.mapNotNull { parseGqlImage(it.jsonObject) } ?: emptyList()
-
-    private fun parseGqlSimpleArtist(artistObj: JsonObject): SpotifySimpleArtist? {
-        val uri = artistObj.str("uri") ?: return null
-        return SpotifySimpleArtist(
-            id = uri.substringAfterLast(":"),
-            name = artistObj.obj("profile")?.str("name") ?: "",
-            uri = uri,
-        )
-    }
-
-    /**
-     * Parses the common track data structure shared across multiple GQL
-     * operations (fetchPlaylist, fetchLibraryTracks, queryArtistOverview, etc.).
-     *
-     * @param albumOverride When non-null, used instead of the `albumOfTrack`
-     *   field (needed for album-track responses where no albumOfTrack is present).
-     * @param uriOverride When non-null, used as the track URI instead of
-     *   reading it from [trackData]. Needed when the URI lives on a wrapper
-     *   object (e.g. `track._uri`) rather than inside `track.data`.
-     */
-    private fun parseGqlTrack(
-        trackData: JsonObject,
-        albumOverride: SpotifySimpleAlbum? = null,
-        uriOverride: String? = null,
-    ): SpotifyTrack {
-        val uri =
-            uriOverride
-                ?: trackData.str("uri")
-                ?: trackData.str("_uri")
-                ?: ""
-        val trackId = uri.substringAfterLast(":")
-
-        val artists =
-            trackData.obj("artists")?.arr("items")?.mapNotNull { elem ->
-                parseGqlSimpleArtist(elem.jsonObject)
-            } ?: emptyList()
-
-        val album =
-            albumOverride ?: run {
-                val albumData = trackData.obj("albumOfTrack")
-                val albumUri = albumData?.str("uri") ?: ""
-                val albumId = albumUri.substringAfterLast(":")
-                SpotifySimpleAlbum(
-                    id = albumId,
-                    name = albumData?.str("name") ?: "",
-                    images = parseGqlImages(albumData?.obj("coverArt")?.arr("sources")),
-                    uri = albumUri.ifEmpty { null },
-                )
-            }
-
-        return SpotifyTrack(
-            id = trackId,
-            name = trackData.str("name") ?: "",
-            artists = artists,
-            album = album,
-            durationMs = parseGqlTrackDurationMs(trackData),
-            uri = uri.ifEmpty { null },
-        )
-    }
-
-    /**
-     * Extracts track duration in ms from GQL track payload.
-     * Tries multiple keys because different operations may return duration
-     * as nested (duration.totalMilliseconds) or flat (durationMs / duration_ms).
-     */
-    private fun parseGqlTrackDurationMs(trackData: JsonObject): Int {
-        trackData.obj("duration")?.int("totalMilliseconds")?.let { if (it > 0) return it }
-        trackData.int("durationMs")?.let { if (it > 0) return it }
-        trackData.int("duration_ms")?.let { if (it > 0) return it }
-        // Some APIs return duration in seconds
-        trackData.int("duration")?.let { sec -> if (sec > 0) return sec * 1000 }
-        return 0
-    }
-
-    /**
-     * Flattens the nested `images.items[].sources[]` structure used by
-     * playlists in the GQL response.
-     */
-    private fun parseGqlPlaylistImages(imagesObj: JsonObject?): List<SpotifyImage> =
-        imagesObj?.arr("items")?.flatMap { imageGroup ->
-            parseGqlImages(imageGroup.jsonObject.arr("sources"))
-        } ?: emptyList()
-
     // ── User Profile (GQL with REST fallback) ──────────────────────────
 
     suspend fun me(): Result<SpotifyUser> =
@@ -202,7 +108,7 @@ object Spotify {
                     id = uri.substringAfterLast(":"),
                     displayName = profile.str("name"),
                     email = null,
-                    images = parseGqlImages(profile.obj("avatar")?.arr("sources")),
+                    images = SpotifyParsers.parseGqlImages(profile.obj("avatar")?.arr("sources")),
                 )
             } catch (e: Exception) {
                 log("W", "GQL me() failed, falling back to REST: ${e.message}")
@@ -259,7 +165,7 @@ object Spotify {
                 libraryData.arr("items")?.mapNotNull { itemElem ->
                     val wrapper = itemElem.jsonObject.obj("item") ?: return@mapNotNull null
                     if (wrapper.str("__typename") != "PlaylistResponseWrapper") return@mapNotNull null
-                    parsePlaylistWrapper(wrapper)
+                    SpotifyParsers.parsePlaylistWrapper(wrapper)
                 } ?: emptyList()
 
             SpotifyPaging(
@@ -340,7 +246,7 @@ object Spotify {
                     val typeName = wrapper.str("__typename") ?: ""
                     when {
                         typeName == "PlaylistResponseWrapper" || typeName.contains("Playlist", ignoreCase = true) -> {
-                            parsePlaylistWrapper(wrapper)
+                            SpotifyParsers.parsePlaylistWrapper(wrapper)
                                 ?.let {
                                     moe.rukamori.archivetune.spotify.models.SpotifyLibraryItem
                                         .Playlist(it)
@@ -348,7 +254,7 @@ object Spotify {
                         }
 
                         typeName == "FolderResponseWrapper" || typeName.contains("Folder", ignoreCase = true) -> {
-                            parseFolderWrapper(wrapper)
+                            SpotifyParsers.parseFolderWrapper(wrapper)
                                 ?.let {
                                     moe.rukamori.archivetune.spotify.models.SpotifyLibraryItem
                                         .Folder(it)
@@ -356,7 +262,7 @@ object Spotify {
                                 ?: run {
                                     // Folder typename matched but parsing returned null —
                                     // likely a shape we don't know. Dump the keys so we
-                                    // can update parseFolderWrapper.
+                                    // can update SpotifyParsers.parseFolderWrapper.
                                     log(
                                         "W",
                                         "myLibraryNode: failed to parse folder wrapper, keys=${wrapper.keys}, dataKeys=${wrapper.obj(
@@ -381,59 +287,6 @@ object Spotify {
                 offset = pagingInfo?.int("offset") ?: offset,
             )
         }
-
-    private fun parsePlaylistWrapper(wrapper: JsonObject): SpotifyPlaylist? {
-        val data = wrapper.obj("data") ?: return null
-        if (data.str("__typename") != "Playlist") return null
-        val playlistUri = wrapper.str("_uri") ?: return null
-        val playlistId = playlistUri.substringAfterLast(":")
-        val ownerData = data.obj("ownerV2")?.obj("data")
-        val ownerId = ownerData?.str("uri")?.substringAfterLast(":") ?: ownerData?.str("id") ?: ""
-        return SpotifyPlaylist(
-            id = playlistId,
-            name = data.str("name") ?: "",
-            description = data.str("description"),
-            images = parseGqlPlaylistImages(data.obj("images")),
-            owner =
-                SpotifyPlaylistOwner(
-                    id = ownerId,
-                    displayName = ownerData?.str("name"),
-                    uri = ownerData?.str("uri"),
-                ),
-            tracks = SpotifyPlaylistTracksRef(total = parsePlaylistTrackCount(data)),
-            uri = playlistUri,
-        )
-    }
-
-    private fun parsePlaylistTrackCount(data: JsonObject): Int? =
-        data.obj("content")?.int("totalCount")
-            ?: data.obj("contents")?.int("totalCount")
-            ?: data.obj("tracks")?.int("totalCount")
-            ?: data.obj("tracksV2")?.int("totalCount")
-            ?: data.int("totalCount")
-            ?: data.int("trackCount")
-            ?: data.int("numTracks")
-
-    private fun parseFolderWrapper(wrapper: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyLibraryFolder? {
-        val uri = wrapper.str("_uri") ?: return null
-        // Spotify has shipped this object under several shapes over time; the name
-        // and child count have lived in `data` and at the root of the wrapper.
-        // Try both so we don't break on a future field reshuffle.
-        val name =
-            wrapper.obj("data")?.str("name")
-                ?: wrapper.str("name")
-                ?: return null
-        val total =
-            wrapper.obj("data")?.int("totalLength")
-                ?: wrapper.obj("data")?.int("numberOfItems")
-                ?: wrapper.int("totalLength")
-                ?: 0
-        return moe.rukamori.archivetune.spotify.models.SpotifyLibraryFolder(
-            uri = uri,
-            name = name,
-            totalChildren = total,
-        )
-    }
 
     // ── Library Artists (GQL: libraryV3 with Artists filter) ───────────
 
@@ -494,7 +347,7 @@ object Spotify {
                             .obj("visuals")
                             ?.obj("avatarImage")
                             ?.arr("sources")
-                            ?.let { parseGqlImages(it) }
+                            ?.let { SpotifyParsers.parseGqlImages(it) }
                             ?: emptyList()
 
                     SpotifyArtist(
@@ -540,7 +393,7 @@ object Spotify {
 
             val images =
                 playlist.obj("images")?.arr("items")?.firstOrNull()?.let {
-                    parseGqlImages(it.jsonObject.arr("sources"))
+                    SpotifyParsers.parseGqlImages(it.jsonObject.arr("sources"))
                 } ?: emptyList()
 
             SpotifyPlaylist(
@@ -554,7 +407,7 @@ object Spotify {
                         displayName = ownerData?.str("name"),
                         uri = ownerUri.ifEmpty { null },
                     ),
-                tracks = SpotifyPlaylistTracksRef(total = parsePlaylistTrackCount(playlist)),
+                tracks = SpotifyPlaylistTracksRef(total = SpotifyParsers.parsePlaylistTrackCount(playlist)),
                 collaborative = (playlist.obj("members")?.arr("items")?.size ?: 0) > 1,
             )
         }
@@ -590,7 +443,7 @@ object Spotify {
                     val wrapperUri = itemWrapper.str("_uri") ?: itemWrapper.str("uri")
                     val uid = elem.jsonObject.str("uid") ?: itemWrapper.str("uid")
                     SpotifyPlaylistTrack(
-                        track = parseGqlTrack(itemData, uriOverride = wrapperUri),
+                        track = SpotifyParsers.parseGqlTrack(itemData, uriOverride = wrapperUri),
                         uid = uid,
                     )
                 } ?: emptyList()
@@ -757,7 +610,7 @@ object Spotify {
                     val trackWrapper = elem.jsonObject.obj("track") ?: return@mapNotNull null
                     val trackData = trackWrapper.obj("data") ?: return@mapNotNull null
                     val wrapperUri = trackWrapper.str("_uri") ?: trackWrapper.str("uri")
-                    SpotifySavedTrack(track = parseGqlTrack(trackData, uriOverride = wrapperUri))
+                    SpotifySavedTrack(track = SpotifyParsers.parseGqlTrack(trackData, uriOverride = wrapperUri))
                 } ?: emptyList()
 
             SpotifyPaging(
@@ -902,7 +755,7 @@ object Spotify {
                     val data = itemWrapper.obj("data") ?: return@mapNotNull null
                     if (data.str("__typename") != "Track") return@mapNotNull null
                     val wrapperUri = itemWrapper.str("_uri") ?: itemWrapper.str("uri")
-                    parseGqlTrack(data, uriOverride = wrapperUri)
+                    SpotifyParsers.parseGqlTrack(data, uriOverride = wrapperUri)
                 } ?: emptyList()
 
             val albumsSection = searchData.obj("albumsV2")
@@ -912,7 +765,7 @@ object Spotify {
                     if (wrapper.str("__typename") != "AlbumResponseWrapper") return@mapNotNull null
                     val data = wrapper.obj("data") ?: return@mapNotNull null
                     if (data.str("__typename") != "Album") return@mapNotNull null
-                    parseGqlSearchAlbum(data)
+                    SpotifyParsers.parseGqlSearchAlbum(data)
                 } ?: emptyList()
 
             val artistsSection = searchData.obj("artists")
@@ -922,7 +775,7 @@ object Spotify {
                     if (wrapper.str("__typename") != "ArtistResponseWrapper") return@mapNotNull null
                     val data = wrapper.obj("data") ?: return@mapNotNull null
                     if (data.str("__typename") != "Artist") return@mapNotNull null
-                    parseGqlSearchArtist(data)
+                    SpotifyParsers.parseGqlSearchArtist(data)
                 } ?: emptyList()
 
             val playlistsSection = searchData.obj("playlists")
@@ -932,7 +785,7 @@ object Spotify {
                     if (wrapper.str("__typename") != "PlaylistResponseWrapper") return@mapNotNull null
                     val data = wrapper.obj("data") ?: return@mapNotNull null
                     if (data.str("__typename") != "Playlist") return@mapNotNull null
-                    parseGqlSearchPlaylist(data)
+                    SpotifyParsers.parseGqlSearchPlaylist(data)
                 } ?: emptyList()
 
             SpotifySearchResult(
@@ -968,52 +821,6 @@ object Spotify {
                     },
             )
         }
-
-    private fun parseGqlSearchAlbum(data: JsonObject): SpotifyAlbum {
-        val uri = data.str("uri") ?: ""
-        return SpotifyAlbum(
-            id = uri.substringAfterLast(":"),
-            name = data.str("name") ?: "",
-            albumType = data.str("type")?.lowercase(),
-            artists =
-                data.obj("artists")?.arr("items")?.mapNotNull {
-                    parseGqlSimpleArtist(it.jsonObject)
-                } ?: emptyList(),
-            images = parseGqlImages(data.obj("coverArt")?.arr("sources")),
-            releaseDate = data.obj("date")?.int("year")?.toString(),
-            uri = uri.ifEmpty { null },
-        )
-    }
-
-    private fun parseGqlSearchArtist(data: JsonObject): SpotifyArtist {
-        val uri = data.str("uri") ?: ""
-        return SpotifyArtist(
-            id = uri.substringAfterLast(":"),
-            name = data.obj("profile")?.str("name") ?: "",
-            images = parseGqlImages(data.obj("visuals")?.obj("avatarImage")?.arr("sources")),
-            uri = uri.ifEmpty { null },
-        )
-    }
-
-    private fun parseGqlSearchPlaylist(data: JsonObject): SpotifyPlaylist {
-        val uri = data.str("uri") ?: ""
-        val ownerData = data.obj("ownerV2")?.obj("data")
-        val ownerUri = ownerData?.str("uri") ?: ""
-
-        return SpotifyPlaylist(
-            id = uri.substringAfterLast(":"),
-            name = data.str("name") ?: "",
-            description = data.str("description"),
-            images = parseGqlPlaylistImages(data.obj("images")),
-            owner =
-                SpotifyPlaylistOwner(
-                    id = ownerUri.substringAfterLast(":"),
-                    displayName = ownerData?.str("name"),
-                    uri = ownerUri.ifEmpty { null },
-                ),
-            uri = uri.ifEmpty { null },
-        )
-    }
 
     // ── Browse: New Releases (GQL: queryWhatsNewFeed) ───────────────────
 
@@ -1056,9 +863,9 @@ object Spotify {
                         albumType = data.str("albumType")?.lowercase(),
                         artists =
                             data.obj("artists")?.arr("items")?.mapNotNull {
-                                parseGqlSimpleArtist(it.jsonObject)
+                                SpotifyParsers.parseGqlSimpleArtist(it.jsonObject)
                             } ?: emptyList(),
-                        images = parseGqlImages(data.obj("coverArt")?.arr("sources")),
+                        images = SpotifyParsers.parseGqlImages(data.obj("coverArt")?.arr("sources")),
                         releaseDate = data.obj("date")?.str("isoString"),
                         uri = uri,
                     )
@@ -1132,7 +939,7 @@ object Spotify {
             log("D", "spotifyHome: parsing ${sectionElements.size} raw sections")
             val sections =
                 sectionElements.mapNotNull { elem ->
-                    parseHomeSection(elem.jsonObject)
+                    SpotifyParsers.parseHomeSection(elem.jsonObject)
                 }
             log("D", "spotifyHome: parsed ${sections.size}/${sectionElements.size} sections successfully")
 
@@ -1141,127 +948,6 @@ object Spotify {
                 sections = sections,
             )
         }
-
-    private fun parseHomeSection(sectionObj: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedSection? {
-        val sectionData = sectionObj.obj("data") ?: return null
-        val typename = sectionData.str("__typename") ?: return null
-        val titleObj = sectionData.obj("title")
-        val title =
-            titleObj?.str("transformedLabel")
-                ?: titleObj?.str("translatedBaseText")
-                ?: titleObj?.str("text")
-
-        val sectionItems = sectionObj.obj("sectionItems")
-        val totalCount = sectionItems?.int("totalCount") ?: 0
-        val itemElements = sectionItems?.arr("items") ?: return null
-
-        val items =
-            itemElements.mapNotNull { itemElem ->
-                parseHomeItem(itemElem.jsonObject)
-            }
-
-        if (items.isEmpty()) return null
-
-        return moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedSection(
-            sectionUri = sectionObj.str("uri") ?: "",
-            title = title,
-            typename = typename,
-            totalCount = totalCount,
-            items = items,
-        )
-    }
-
-    private fun parseHomeItem(itemObj: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem? {
-        val content = itemObj.obj("content") ?: return null
-        val wrapper = content.str("__typename") ?: return null
-        val data = content.obj("data") ?: return null
-
-        return when (wrapper) {
-            "PlaylistResponseWrapper" -> parseHomePlaylist(data)
-            "AlbumResponseWrapper" -> parseHomeAlbum(data)
-            "ArtistResponseWrapper" -> parseHomeArtist(data)
-            else -> null
-        }
-    }
-
-    private fun parseHomePlaylist(data: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Playlist? {
-        val uri = data.str("uri") ?: return null
-        val imageItem =
-            data
-                .obj("images")
-                ?.arr("items")
-                ?.firstOrNull()
-                ?.jsonObject
-        val imageUrl =
-            imageItem
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
-        val colorHex = imageItem?.obj("extractedColors")?.obj("colorDark")?.str("hex")
-        val madeFor =
-            data
-                .arr("attributes")
-                ?.firstOrNull { it.jsonObject.str("key") == "madeFor.username" }
-                ?.jsonObject
-                ?.str("value")
-
-        return moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Playlist(
-            uri = uri,
-            id = uri.substringAfterLast(":"),
-            name = data.str("name") ?: "",
-            description = data.str("description"),
-            format = data.str("format"),
-            totalCount = data.obj("content")?.int("totalCount") ?: 0,
-            imageUrl = imageUrl,
-            extractedColorHex = colorHex,
-            ownerName = data.obj("ownerV2")?.obj("data")?.str("name"),
-            madeForUsername = madeFor,
-        )
-    }
-
-    private fun parseHomeAlbum(data: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Album? {
-        val uri = data.str("uri") ?: return null
-        val artists =
-            data.obj("artists")?.arr("items")?.mapNotNull {
-                parseGqlSimpleArtist(it.jsonObject)
-            } ?: emptyList()
-        val imageUrl =
-            data
-                .obj("coverArt")
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
-
-        return moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Album(
-            uri = uri,
-            id = uri.substringAfterLast(":"),
-            name = data.str("name") ?: "",
-            albumType = data.str("type")?.lowercase(),
-            artists = artists,
-            imageUrl = imageUrl,
-        )
-    }
-
-    private fun parseHomeArtist(data: JsonObject): moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Artist? {
-        val uri = data.str("uri") ?: return null
-        val profile = data.obj("profile")
-        val imageUrl =
-            data
-                .obj("visuals")
-                ?.obj("avatarImage")
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
-        return moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem.Artist(
-            uri = uri,
-            id = uri.substringAfterLast(":"),
-            name = profile?.str("name") ?: "",
-            imageUrl = imageUrl,
-        )
-    }
 
     // ── Albums (GQL: getAlbum) ──────────────────────────────────────────
 
@@ -1287,10 +973,10 @@ object Spotify {
 
             val artists =
                 albumData.obj("artists")?.arr("items")?.mapNotNull {
-                    parseGqlSimpleArtist(it.jsonObject)
+                    SpotifyParsers.parseGqlSimpleArtist(it.jsonObject)
                 } ?: emptyList()
 
-            val albumImages = parseGqlImages(albumData.obj("coverArt")?.arr("sources"))
+            val albumImages = SpotifyParsers.parseGqlImages(albumData.obj("coverArt")?.arr("sources"))
 
             val albumSimple =
                 SpotifySimpleAlbum(
@@ -1307,7 +993,7 @@ object Spotify {
             val trackItems =
                 tracksData?.arr("items")?.mapNotNull { elem ->
                     val trackObj = elem.jsonObject.obj("track") ?: return@mapNotNull null
-                    parseGqlTrack(trackObj, albumOverride = albumSimple)
+                    SpotifyParsers.parseGqlTrack(trackObj, albumOverride = albumSimple)
                 } ?: emptyList()
 
             SpotifyAlbum(
@@ -1346,7 +1032,7 @@ object Spotify {
             SpotifyArtist(
                 id = artistId,
                 name = artistData.obj("profile")?.str("name") ?: "",
-                images = parseGqlImages(artistData.obj("visuals")?.obj("avatarImage")?.arr("sources")),
+                images = SpotifyParsers.parseGqlImages(artistData.obj("visuals")?.obj("avatarImage")?.arr("sources")),
                 uri = "spotify:artist:$artistId",
             )
         }
@@ -1381,7 +1067,7 @@ object Spotify {
             val tracks =
                 topTracksItems.mapNotNull { elem ->
                     val trackObj = elem.jsonObject.obj("track") ?: return@mapNotNull null
-                    parseGqlTrack(trackObj)
+                    SpotifyParsers.parseGqlTrack(trackObj)
                 }
 
             ArtistTopTracksResponse(tracks = tracks)
@@ -1421,7 +1107,7 @@ object Spotify {
                 val id = uri.substringAfterLast(":")
                 val name = elem.jsonObject.obj("profile")?.str("name") ?: return@mapNotNull null
                 val images =
-                    parseGqlImages(
+                    SpotifyParsers.parseGqlImages(
                         elem.jsonObject
                             .obj("visuals")
                             ?.obj("avatarImage")
