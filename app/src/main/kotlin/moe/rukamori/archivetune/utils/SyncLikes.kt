@@ -63,12 +63,19 @@ class SyncLikes
             }
         }
 
-        fun likeSongs(songs: List<SongEntity>) {
+        fun likeSongs(songs: List<SongEntity>, source: LikeSource? = null) {
             val nonLocal = songs.filterNot { it.isLocal }.distinctBy { it.id }
             if (nonLocal.isEmpty()) return
             state.syncScope.launch {
-                val (spotifyTargets, ytmTargets) = nonLocal.partition { s ->
-                    LikeSourceResolver.isSpotifyId(s.id, s.isLocal)
+                val (spotifyTargets, ytmTargets) = if (source != null) {
+                    when (source) {
+                        LikeSource.SPOTIFY -> nonLocal to emptyList<SongEntity>()
+                        LikeSource.YTM -> emptyList<SongEntity>() to nonLocal
+                    }
+                } else {
+                    nonLocal.partition { s ->
+                        LikeSourceResolver.isSpotifyId(s.id, s.isLocal)
+                    }
                 }
 
                 if (spotifyTargets.isNotEmpty()) {

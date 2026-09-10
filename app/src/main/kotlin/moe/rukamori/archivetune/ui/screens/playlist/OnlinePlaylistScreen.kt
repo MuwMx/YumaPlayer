@@ -1335,6 +1335,7 @@ fun OnlinePlaylistScreen(
                                     onDismiss = menuState::dismiss,
                                     clearAction = { selection = false },
                                     currentItems = emptyList(),
+                                    likeSourceHint = if (playlist?.id?.startsWith("spotify:") == true) moe.rukamori.archivetune.constants.LikeSource.SPOTIFY else null,
                                 )
                             }
                         },

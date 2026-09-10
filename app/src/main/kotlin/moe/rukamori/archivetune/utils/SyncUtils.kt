@@ -27,8 +27,8 @@ class SyncUtils
             syncLikes.likeSong(s, source, explicitSpotifyId)
         }
 
-        fun likeSongs(songs: List<SongEntity>) {
-            syncLikes.likeSongs(songs)
+        fun likeSongs(songs: List<SongEntity>, source: LikeSource? = null) {
+            syncLikes.likeSongs(songs, source)
         }
 
         suspend fun syncLikedSongs(authoritative: Boolean = false) {

@@ -85,6 +85,7 @@ fun SelectionSongMenu(
     songPosition: List<PlaylistSongMap>? = emptyList(),
     isFromCache: Boolean = false,
     onRemoveFromCache: ((List<Song>) -> Unit)? = null,
+    likeSourceHint: moe.rukamori.archivetune.constants.LikeSource? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -414,7 +415,7 @@ fun SelectionSongMenu(
                                 .distinctBy { it.id }
                                 .filter { song -> shouldUnlikeAll || !song.liked }
                                 .map { song ->
-                                    val src = LikeSourceResolver.resolve(mediaId = song.id, isLocal = song.isLocal)
+                                    val src = likeSourceHint ?: LikeSourceResolver.resolve(mediaId = song.id, isLocal = song.isLocal)
                                     song.localToggleLike(src)
                                 }
                                 .toList()
@@ -425,7 +426,7 @@ fun SelectionSongMenu(
                             database.withTransaction {
                                 updatedSongs.forEach(::update)
                             }
-                            syncUtils.likeSongs(updatedSongs)
+                            syncUtils.likeSongs(updatedSongs, likeSourceHint)
                         }
                     },
                     index = 2,
@@ -640,6 +641,7 @@ fun SelectionMediaMetadataMenu(
     clearAction: () -> Unit,
     onRemoveFromQueue: ((List<Timeline.Window>) -> Unit)? = null,
     onRemoveFromHistory: (() -> Unit)? = null,
+    likeSourceHint: moe.rukamori.archivetune.constants.LikeSource? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -963,7 +965,7 @@ fun SelectionMediaMetadataMenu(
                                 .filter { song -> allLiked || !song.liked }
                                 .map { song ->
                                     val entity = song.toSongEntity()
-                                    val src = LikeSourceResolver.resolve(mediaId = entity.id, isLocal = entity.isLocal)
+                                    val src = likeSourceHint ?: LikeSourceResolver.resolve(mediaId = entity.id, isLocal = entity.isLocal)
                                     entity.localToggleLike(src)
                                 }
                                 .toList()
@@ -974,7 +976,7 @@ fun SelectionMediaMetadataMenu(
                             database.withTransaction {
                                 updatedSongs.forEach(::update)
                             }
-                            syncUtils.likeSongs(updatedSongs)
+                            syncUtils.likeSongs(updatedSongs, likeSourceHint)
                         }
                     },
                     index = removeQueueOffset + 1,

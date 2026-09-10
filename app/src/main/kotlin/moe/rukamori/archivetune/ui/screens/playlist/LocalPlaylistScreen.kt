@@ -1622,6 +1622,7 @@ fun LocalPlaylistScreen(
                                         selection = false
                                         selectedSongMapIds = emptySet()
                                     },
+                                    likeSourceHint = if (playlist?.playlist?.browseId?.startsWith("spotify:") == true) moe.rukamori.archivetune.constants.LikeSource.SPOTIFY else null,
                                 )
                             }
                         },
