@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,8 +40,10 @@ class SpotifySyncOps
     constructor(
         private val state: SyncState,
     ) {
+        private val isAutoSyncInFlight = AtomicBoolean(false)
+
         suspend fun syncSpotifyPlaylists(authoritative: Boolean = false) =
-            state.playlistSyncMutex.withLock {
+            state.spotifyPlaylistSyncMutex.withLock {
                 var remotePlaylistsCount = 0
                 try {
                     val session = state.spotifyRepository.restoreSession()
@@ -49,6 +52,9 @@ class SpotifySyncOps
                         return@withLock
                     }
 
+                    val gen = state.syncGeneration.get()
+                    if (!state.isSyncStillEnabled(gen)) return@withLock
+
                     val remotePlaylists = state.spotifyRepository.refreshPlaylists()
                     remotePlaylistsCount = remotePlaylists.size
                     val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
@@ -56,6 +62,7 @@ class SpotifySyncOps
 
                     if (authoritative) {
                         val localPlaylists = state.database.playlistsByNameAsc().first()
+                        if (!state.isSyncStillEnabled(gen)) return@withLock
                         val stalePlaylists =
                             localPlaylists
                                 .map { it.playlist }
@@ -63,6 +70,7 @@ class SpotifySyncOps
 
                         if (stalePlaylists.isNotEmpty()) {
                             state.database.withTransaction {
+                                if (!state.isSyncStillEnabled(gen)) return@withTransaction
                                 stalePlaylists.forEach { playlist ->
                                     state.database.clearPlaylist(playlist.id)
                                     state.database.delete(playlist)
@@ -74,6 +82,7 @@ class SpotifySyncOps
                     val resolveSemaphore = Semaphore(4)
 
                     for (playlist in remotePlaylists) {
+                        if (!state.isSyncStillEnabled(gen)) return@withLock
                         try {
                             val existingPlaylist = state.database.playlistBySpotifyId(playlist.id).firstOrNull()
                             val playlistEntity =
@@ -102,14 +111,16 @@ class SpotifySyncOps
                                 }
 
                             val tracks = state.spotifyRepository.playlistTracks(playlist.id)
+                            if (!state.isSyncStillEnabled(gen)) return@withLock
                             val resolvedTracks =
                                 coroutineScope {
                                     tracks
                                         .map { track ->
                                             async {
                                                 resolveSemaphore.withPermit {
+                                                    if (!state.isSyncStillEnabled(gen)) return@withPermit null
                                                     val metadata = SpotifyPlaybackResolver.resolveToMetadata(track)
-                                                    if (metadata != null) {
+                                                    if (metadata != null && state.isSyncStillEnabled(gen)) {
                                                         track to metadata
                                                     } else {
                                                         null
@@ -120,7 +131,9 @@ class SpotifySyncOps
                                         .filterNotNull()
                                 }
 
+                            if (!state.isSyncStillEnabled(gen)) return@withLock
                             state.database.withTransaction {
+                                if (!state.isSyncStillEnabled(gen)) return@withTransaction
                                 state.database.clearPlaylist(playlistEntity.id)
                                 resolvedTracks.forEachIndexed { idx, (track, metadata) ->
                                     val dbSong = state.database.getSongByIdBlocking(metadata.id)
@@ -162,7 +175,7 @@ class SpotifySyncOps
         suspend fun syncSpotifyLikedSongs(
             authoritative: Boolean = false,
             onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
-        ) = state.playlistSyncMutex.withLock {
+        ) = state.spotifyPlaylistSyncMutex.withLock {
             try {
                 val session = state.spotifyRepository.restoreSession()
                 if (!session.isAuthenticated) {
@@ -170,12 +183,16 @@ class SpotifySyncOps
                     return@withLock
                 }
 
+                val gen = state.syncGeneration.get()
+                if (!state.isSyncStillEnabled(gen)) return@withLock
+
                 val tracks = mutableListOf<SpotifyTrack>()
                 var offset = 0
                 val limit = 50
                 val maxPages = 60
 
                 for (page in 0 until maxPages) {
+                    if (!state.isSyncStillEnabled(gen)) break
                     val result = Spotify.likedSongs(limit = limit, offset = offset).getOrNull()
                     if (result == null || result.items.isEmpty()) break
                     tracks.addAll(result.items.mapNotNull { it.track })
@@ -196,9 +213,10 @@ class SpotifySyncOps
                             .map { track ->
                                 async {
                                     resolveSemaphore.withPermit {
+                                        if (!state.isSyncStillEnabled(gen)) return@withPermit null
                                         val metadata = SpotifyPlaybackResolver.resolveToMetadata(track)
                                         val result =
-                                            if (metadata != null) {
+                                            if (metadata != null && state.isSyncStillEnabled(gen)) {
                                                 Resolved(track, metadata)
                                             } else {
                                                 null
@@ -211,6 +229,7 @@ class SpotifySyncOps
                             .filterNotNull()
                     }
 
+                if (!state.isSyncStillEnabled(gen)) return@withLock
                 val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.SPOTIFY).first()
                 val resolvedYoutubeIds = resolvedTracks.map { it.metadata.id }.toSet()
                 val resolvedSpotifyIds = resolvedTracks.map { it.track.id }.toSet()
@@ -222,6 +241,7 @@ class SpotifySyncOps
                 val now = LocalDateTime.now()
 
                 state.database.withTransaction {
+                    if (!state.isSyncStillEnabled(gen)) return@withTransaction
                     resolvedTracks.forEachIndexed { index, resolved ->
                         val timestamp = likedSongTimestamp(now, index)
                         val dbSong = state.database.getSongByIdBlocking(resolved.metadata.id)
@@ -260,6 +280,10 @@ class SpotifySyncOps
         }
 
         fun trySpotifyAutoSync(authoritative: Boolean = false) {
+            if (!isAutoSyncInFlight.compareAndSet(false, true)) {
+                Timber.d("Spotify auto-sync already in flight, skipping")
+                return
+            }
             state.syncScope.launch {
                 try {
                     val session = state.spotifyRepository.restoreSession()
@@ -274,12 +298,18 @@ class SpotifySyncOps
 
                     syncSpotifyPlaylists(authoritative = authoritative)
                     syncSpotifyLikedSongs(authoritative = authoritative)
-
-                    state.context.dataStore.edit { prefs ->
-                        prefs[LastSpotifySyncKey] = System.currentTimeMillis()
-                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed trySpotifyAutoSync")
+                } finally {
+                    try {
+                        state.context.dataStore.edit { prefs ->
+                            prefs[LastSpotifySyncKey] = System.currentTimeMillis()
+                        }
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to update LastSpotifySyncKey")
+                    } finally {
+                        isAutoSyncInFlight.set(false)
+                    }
                 }
             }
         }

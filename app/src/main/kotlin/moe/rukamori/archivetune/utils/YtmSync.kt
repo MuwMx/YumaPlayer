@@ -459,7 +459,7 @@ class YtmSync
             }
 
         suspend fun syncSavedPlaylists(authoritative: Boolean = false) =
-            state.playlistSyncMutex.withLock {
+            state.ytmPlaylistSyncMutex.withLock {
                 try {
                     if (!state.isLoggedIn()) {
                         Timber.w("Skipping syncSavedPlaylists - user not logged in")
@@ -653,7 +653,7 @@ class YtmSync
             playlistId: String,
             propagateFailures: Boolean = false,
             onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
-        ) = state.playlistSyncMutex.withLock {
+        ) = state.ytmPlaylistSyncMutex.withLock {
             syncPlaylist(
                 browseId = browseId,
                 playlistId = playlistId,
