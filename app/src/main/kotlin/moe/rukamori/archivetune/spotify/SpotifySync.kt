@@ -61,6 +61,11 @@ object SpotifySync {
         setSaved(context, rawId, "spotify:artist:$rawId", followed)
     }
 
+    data class ResolvedSpotifyMatch(
+        val spotifyId: String,
+        val matchToPersist: SpotifyMatchEntity? = null,
+    )
+
     fun syncLikeForSong(
         context: Context,
         database: MusicDatabase,
@@ -81,9 +86,13 @@ object SpotifySync {
                     Timber.tag(TAG).w("no token — skipped syncing like for song ${song.id}")
                     return@launch
                 }
-                val spotifyId = resolveSpotifyId(database, song, explicitSpotifyId)
-                if (!spotifyId.isNullOrBlank()) {
-                    setSaved(app, spotifyId, "spotify:track:$spotifyId", isLiked)
+                val resolved = resolveSpotifyId(database, song, explicitSpotifyId)
+                if (resolved != null && resolved.spotifyId.isNotBlank()) {
+                    val uri = "spotify:track:${resolved.spotifyId}"
+                    val success = executeSetSaved(app, uri, isLiked)
+                    if (success && resolved.matchToPersist != null) {
+                        database.insert(resolved.matchToPersist)
+                    }
                 }
             } catch (e: Throwable) {
                 if (e is CancellationException) throw e
@@ -189,33 +198,38 @@ object SpotifySync {
         database: MusicDatabase,
         song: SongEntity,
         explicitSpotifyId: String? = null,
-    ): String? {
+    ): ResolvedSpotifyMatch? {
         if (!explicitSpotifyId.isNullOrBlank()) {
-            val rawId = explicitSpotifyId.removePrefix("spotify:track:")
+            val rawId = explicitSpotifyId.removePrefix("spotify:track:").removePrefix("spotify:")
             if (rawId.length == 22 && rawId.all { it.isLetterOrDigit() }) {
-                val songWithArtists = database.getSongById(song.id)
-                val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
-                database.insert(
+                val matchToPersist = if (song.id != rawId && !song.id.startsWith("spotify:")) {
+                    val songWithArtists = database.getSongById(song.id)
+                    val artistsText = songWithArtists?.artists?.joinToString(" ") { it.name }.orEmpty()
                     SpotifyMatchEntity(
                         spotifyId = rawId,
                         youtubeId = song.id,
                         title = song.title,
                         artist = artistsText.ifBlank { song.albumName.orEmpty() },
                         matchScore = 1.0,
-                    ),
-                )
-                return rawId
+                    )
+                } else {
+                    null
+                }
+                return ResolvedSpotifyMatch(spotifyId = rawId, matchToPersist = matchToPersist)
             }
         }
         if (song.id.startsWith("spotify:track:")) {
-            return song.id.removePrefix("spotify:track:")
+            return ResolvedSpotifyMatch(spotifyId = song.id.removePrefix("spotify:track:"))
+        }
+        if (song.id.startsWith("spotify:")) {
+            return ResolvedSpotifyMatch(spotifyId = song.id.removePrefix("spotify:"))
         }
         if (song.id.length == 22 && song.id.all { it.isLetterOrDigit() }) {
-            return song.id
+            return ResolvedSpotifyMatch(spotifyId = song.id)
         }
         val match = database.getSpotifyMatchesByYouTubeIds(listOf(song.id)).firstOrNull()
         if (match != null && match.spotifyId.isNotBlank()) {
-            return match.spotifyId
+            return ResolvedSpotifyMatch(spotifyId = match.spotifyId)
         }
 
         val songWithArtists = database.getSongById(song.id)
@@ -228,8 +242,9 @@ object SpotifySync {
         val foundTrack = searchResult?.tracks?.items?.firstOrNull() ?: return null
         val spotifyId = foundTrack.id
         if (spotifyId.isNotBlank()) {
-            database.insert(
-                SpotifyMatchEntity(
+            return ResolvedSpotifyMatch(
+                spotifyId = spotifyId,
+                matchToPersist = SpotifyMatchEntity(
                     spotifyId = spotifyId,
                     youtubeId = song.id,
                     title = foundTrack.name,
@@ -237,9 +252,54 @@ object SpotifySync {
                     matchScore = 1.0,
                 ),
             )
-            return spotifyId
         }
         return null
+    }
+
+    private suspend fun executeSetSaved(context: Context, uri: String, saved: Boolean): Boolean {
+        val app = context.applicationContext
+        val isSyncLikesEnabled = app.dataStore.data.first()[SpotifySyncLikesKey] ?: false
+        if (!isSyncLikesEnabled) {
+            Timber.tag(TAG).d("Spotify like sync disabled in settings — skipped syncing $uri saved=$saved")
+            return false
+        }
+        if (!ensureToken(app)) {
+            Timber.tag(TAG).w("no token — skipped syncing $uri saved=$saved")
+            return false
+        }
+        val result =
+            if (saved) Spotify.addToLibrary(listOf(uri))
+            else Spotify.removeFromLibrary(listOf(uri))
+        return result.fold(
+            onSuccess = {
+                Timber.tag(TAG).d("synced $uri saved=$saved")
+                true
+            },
+            onFailure = { error ->
+                if ((error as? Spotify.SpotifyException)?.statusCode == 401) {
+                    if (refreshToken(app)) {
+                        val retry =
+                            if (saved) Spotify.addToLibrary(listOf(uri))
+                            else Spotify.removeFromLibrary(listOf(uri))
+                        retry.fold(
+                            onSuccess = {
+                                Timber.tag(TAG).d("synced $uri saved=$saved (after retry)")
+                                true
+                            },
+                            onFailure = {
+                                Timber.tag(TAG).w(it, "failed syncing $uri saved=$saved after retry")
+                                false
+                            },
+                        )
+                    } else {
+                        false
+                    }
+                } else {
+                    Timber.tag(TAG).w(error, "failed syncing $uri saved=$saved")
+                    false
+                }
+            },
+        )
     }
 
     private fun setSaved(context: Context, id: String, uri: String, saved: Boolean) {
@@ -247,36 +307,7 @@ object SpotifySync {
         val app = context.applicationContext
         scope.launch {
             try {
-                val isSyncLikesEnabled = app.dataStore.data.first()[SpotifySyncLikesKey] ?: false
-                if (!isSyncLikesEnabled) {
-                    Timber.tag(TAG).d("Spotify like sync disabled in settings — skipped syncing $uri saved=$saved")
-                    return@launch
-                }
-                if (!ensureToken(app)) {
-                    Timber.tag(TAG).w("no token — skipped syncing $uri saved=$saved")
-                    return@launch
-                }
-                val result =
-                    if (saved) Spotify.addToLibrary(listOf(uri))
-                    else Spotify.removeFromLibrary(listOf(uri))
-                result.fold(
-                    onSuccess = { Timber.tag(TAG).d("synced $uri saved=$saved") },
-                    onFailure = { error ->
-                        if ((error as? Spotify.SpotifyException)?.statusCode == 401) {
-                            if (refreshToken(app)) {
-                                val retry =
-                                    if (saved) Spotify.addToLibrary(listOf(uri))
-                                    else Spotify.removeFromLibrary(listOf(uri))
-                                retry.fold(
-                                    onSuccess = { Timber.tag(TAG).d("synced $uri saved=$saved (after retry)") },
-                                    onFailure = { Timber.tag(TAG).w(it, "failed syncing $uri saved=$saved after retry") },
-                                )
-                            }
-                        } else {
-                            Timber.tag(TAG).w(error, "failed syncing $uri saved=$saved")
-                        }
-                    },
-                )
+                executeSetSaved(app, uri, saved)
             } catch (e: Throwable) {
                 if (e is CancellationException) throw e
                 Timber.tag(TAG).w(e, "exception syncing $uri saved=$saved")

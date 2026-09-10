@@ -172,7 +172,7 @@ fun AddToPlaylistDialogOnline(
                                                     if (addToLiked) {
                                                         val entity = media.toSongEntity()
                                                         database.query {
-                                                            update(entity.toggleLike(LikeSource.YTM))
+                                                            update(entity.localToggleLike(LikeSource.YTM))
                                                         }
                                                     }
                                                     success = true

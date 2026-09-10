@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.entities.SongEntity
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,8 +23,8 @@ class SyncUtils
 
         suspend fun cleanupDuplicatePlaylists() = ytmSync.cleanupDuplicatePlaylists()
 
-        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
-            syncLikes.likeSong(s, explicitSpotifyId)
+        fun likeSong(s: SongEntity, source: LikeSource, explicitSpotifyId: String? = null) {
+            syncLikes.likeSong(s, source, explicitSpotifyId)
         }
 
         fun likeSongs(songs: List<SongEntity>) {

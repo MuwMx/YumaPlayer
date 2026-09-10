@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.db.entities.formattedQuality
 import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.extensions.toEnum
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -263,14 +264,16 @@ class PlayerViewModel @Inject constructor(
                 .flatMapLatest { connection ->
                     combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
                         if (metadata == null || song == null) return@combine false
-                        val isSpotify = !metadata.spotifyTrackId.isNullOrBlank() ||
-                            metadata.id.startsWith("spotify:") ||
-                            (!song.song.isLocal && metadata.id.length == 22 && metadata.id.all { it.isLetterOrDigit() }) ||
-                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue ||
-                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue ||
-                            connection.service.currentQueue is moe.rukamori.archivetune.spotify.SpotifyTracksQueue ||
-                            (song.song.likedSpotify && !song.song.likedYtm)
-                        if (isSpotify) song.song.likedSpotify else song.song.likedYtm
+                        val source = LikeSourceResolver.resolve(
+                            mediaId = metadata.id,
+                            spotifyTrackId = metadata.spotifyTrackId,
+                            queue = connection.service.currentQueue,
+                            isLocal = song.song.isLocal,
+                        )
+                        when (source) {
+                            LikeSource.SPOTIFY -> song.song.likedSpotify
+                            LikeSource.YTM -> song.song.likedYtm
+                        }
                     }
                 }
                 .collect { isLiked ->

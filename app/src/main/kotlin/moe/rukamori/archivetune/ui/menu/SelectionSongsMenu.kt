@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.NewMenuItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import java.time.LocalDateTime
 
 @SuppressLint("MutableCollectionMutableState")
@@ -412,7 +413,10 @@ fun SelectionSongMenu(
                                 .map { it.song }
                                 .distinctBy { it.id }
                                 .filter { song -> shouldUnlikeAll || !song.liked }
-                                .map { song -> song.localToggleLike() }
+                                .map { song ->
+                                    val src = LikeSourceResolver.resolve(mediaId = song.id, isLocal = song.isLocal)
+                                    song.localToggleLike(src)
+                                }
                                 .toList()
 
                         if (updatedSongs.isEmpty()) return@NewMenuItem
@@ -957,7 +961,11 @@ fun SelectionMediaMetadataMenu(
                                 .asSequence()
                                 .distinctBy { it.id }
                                 .filter { song -> allLiked || !song.liked }
-                                .map { song -> song.toSongEntity().localToggleLike() }
+                                .map { song ->
+                                    val entity = song.toSongEntity()
+                                    val src = LikeSourceResolver.resolve(mediaId = entity.id, isLocal = entity.isLocal)
+                                    entity.localToggleLike(src)
+                                }
                                 .toList()
 
                         if (updatedSongs.isEmpty()) return@NewMenuItem

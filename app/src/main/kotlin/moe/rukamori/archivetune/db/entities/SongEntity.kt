@@ -11,12 +11,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.LikeSource
-import moe.rukamori.archivetune.innertube.YouTube
 import java.time.LocalDateTime
 
 @Immutable
@@ -60,7 +55,8 @@ data class SongEntity(
                 copy(
                     likedYtm = newLikedYtm,
                     liked = newLikedYtm || likedSpotify,
-                    likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null
+                    likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null,
+                    inLibrary = if (newLikedYtm) (inLibrary ?: LocalDateTime.now()) else inLibrary,
                 )
             }
             LikeSource.SPOTIFY -> {
@@ -68,48 +64,12 @@ data class SongEntity(
                 copy(
                     likedSpotify = newLikedSpotify,
                     liked = likedYtm || newLikedSpotify,
-                    likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null
+                    likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null,
+                    inLibrary = if (newLikedSpotify) (inLibrary ?: LocalDateTime.now()) else inLibrary,
                 )
             }
         }
     }
-
-    fun toggleLike(source: LikeSource = LikeSource.YTM): SongEntity =
-        if (isLocal) {
-            localToggleLike(source)
-        } else {
-            val updated = when (source) {
-                LikeSource.YTM -> {
-                    val newLikedYtm = !likedYtm
-                    copy(
-                        likedYtm = newLikedYtm,
-                        liked = newLikedYtm || likedSpotify,
-                        likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null,
-                        inLibrary = if (newLikedYtm) (inLibrary ?: LocalDateTime.now()) else inLibrary
-                    )
-                }
-                LikeSource.SPOTIFY -> {
-                    val newLikedSpotify = !likedSpotify
-                    copy(
-                        likedSpotify = newLikedSpotify,
-                        liked = likedYtm || newLikedSpotify,
-                        likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null,
-                        inLibrary = if (newLikedSpotify) (inLibrary ?: LocalDateTime.now()) else inLibrary
-                    )
-                }
-            }
-            
-            if (source == LikeSource.YTM) {
-                updated.also {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        YouTube.likeVideo(id, it.likedYtm)
-                        this.cancel()
-                    }
-                }
-            } else {
-                updated
-            }
-        }
 
     fun toggleLibrary() =
         copy(

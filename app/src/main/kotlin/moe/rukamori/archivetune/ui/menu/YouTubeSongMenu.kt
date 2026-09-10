@@ -290,7 +290,7 @@ fun YouTubeSongMenu(
                                     updatedSong = librarySong.song.localToggleLike(LikeSource.YTM)
                                     update(updatedSong)
                                 }
-                                syncUtils.likeSong(updatedSong)
+                                syncUtils.likeSong(updatedSong, LikeSource.YTM)
                             }
                         }
                     },

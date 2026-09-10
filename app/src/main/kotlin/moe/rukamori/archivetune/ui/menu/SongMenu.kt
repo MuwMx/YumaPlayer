@@ -107,6 +107,7 @@ import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
@@ -369,14 +370,17 @@ fun SongMenu(
         }
     }
 
-    val isSpotifyOrigin =
-        remember(song.song.id, playlistBrowseId, song.song.likedSpotify, song.song.likedYtm) {
-            song.song.id.startsWith("spotify:") ||
-                playlistBrowseId?.startsWith("spotify:") == true ||
-                (!song.song.isLocal && song.song.id.length == 22 && song.song.id.all { it.isLetterOrDigit() }) ||
-                (song.song.likedSpotify && !song.song.likedYtm)
+    val likeSource =
+        remember(song.song.id, playlistBrowseId, song.song.isLocal) {
+            if (playlistBrowseId?.startsWith("spotify:") == true) {
+                LikeSource.SPOTIFY
+            } else {
+                LikeSourceResolver.resolve(
+                    mediaId = song.song.id,
+                    isLocal = song.song.isLocal,
+                )
+            }
         }
-    val likeSource = if (isSpotifyOrigin) LikeSource.SPOTIFY else LikeSource.YTM
     val isLiked = when (likeSource) {
         LikeSource.SPOTIFY -> song.song.likedSpotify
         LikeSource.YTM -> song.song.likedYtm
@@ -394,12 +398,12 @@ fun SongMenu(
             trailingContent = {
                 IconButton(
                     onClick = {
-                        val s = song.song.toggleLike(likeSource)
+                        val s = song.song.localToggleLike(likeSource)
                         database.query {
                             update(s)
                         }
-                        val spotifyId = if (s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })) s.id else null
-                        syncUtils.likeSong(s, spotifyId)
+                        val spotifyId = if (LikeSourceResolver.isSpotifyId(s.id, s.isLocal)) s.id else null
+                        syncUtils.likeSong(s, likeSource, spotifyId)
                     },
                 ) {
                     Icon(

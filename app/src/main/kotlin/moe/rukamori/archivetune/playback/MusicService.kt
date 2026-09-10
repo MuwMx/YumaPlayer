@@ -250,6 +250,7 @@ import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
 import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -1916,17 +1917,17 @@ class MusicService :
         try {
             val song = currentSong.value?.song
             val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata
-            val isSpotify = mediaMetadata != null && (
-                !mediaMetadata.spotifyTrackId.isNullOrBlank() ||
-                mediaMetadata.id.startsWith("spotify:") ||
-                (!mediaMetadata.id.isLocalMediaId() && mediaMetadata.id.length == 22 && mediaMetadata.id.all { it.isLetterOrDigit() }) ||
-                currentQueue is SpotifyLikedSongsQueue ||
-                currentQueue is SpotifyPlaylistQueue ||
-                currentQueue is SpotifyTracksQueue ||
-                (song?.likedSpotify == true && song.likedYtm != true)
+            val source = LikeSourceResolver.resolve(
+                mediaId = mediaMetadata?.id,
+                spotifyTrackId = mediaMetadata?.spotifyTrackId,
+                queue = currentQueue,
+                isLocal = song?.isLocal ?: (mediaMetadata?.id?.isLocalMediaId() == true),
             )
             val isLiked = if (song != null) {
-                if (isSpotify) song.likedSpotify else song.likedYtm
+                when (source) {
+                    LikeSource.SPOTIFY -> song.likedSpotify
+                    LikeSource.YTM -> song.likedYtm
+                }
             } else {
                 false
             }
@@ -2506,14 +2507,12 @@ class MusicService :
         val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata ?: return
         Timber.tag("MediaNotification").d("toggleLike() called for mediaId=${mediaMetadata.id}, title=${mediaMetadata.title}")
         val currentSongSong = currentSong.value?.song
-        val isSpotify = !mediaMetadata.spotifyTrackId.isNullOrBlank() ||
-            mediaMetadata.id.startsWith("spotify:") ||
-            (!mediaMetadata.id.isLocalMediaId() && mediaMetadata.id.length == 22 && mediaMetadata.id.all { it.isLetterOrDigit() }) ||
-            currentQueue is SpotifyLikedSongsQueue ||
-            currentQueue is SpotifyPlaylistQueue ||
-            currentQueue is SpotifyTracksQueue ||
-            (currentSongSong?.likedSpotify == true && currentSongSong.likedYtm != true)
-        val source = if (isSpotify) LikeSource.SPOTIFY else LikeSource.YTM
+        val source = LikeSourceResolver.resolve(
+            mediaId = mediaMetadata.id,
+            spotifyTrackId = mediaMetadata.spotifyTrackId,
+            queue = currentQueue,
+            isLocal = currentSongSong?.isLocal ?: mediaMetadata.id.isLocalMediaId(),
+        )
         ioScope.launch {
             try {
                 val song =
@@ -2528,19 +2527,19 @@ class MusicService :
                                         getSongById(mediaMetadata.id)
                                     }
                                     ?: return@withTransaction null
-                            currentSongEntity.song.toggleLike(source).also(::update)
+                            currentSongEntity.song.localToggleLike(source).also(::update)
                         }
                     } ?: return@launch
 
                 Timber.tag("MediaNotification").d("toggleLike() successful: song=${song.id}, liked=${song.liked}")
                 val spotifyId = if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
                     mediaMetadata.spotifyTrackId
-                } else if (song.id.startsWith("spotify:") || (song.id.length == 22 && song.id.all { it.isLetterOrDigit() })) {
+                } else if (LikeSourceResolver.isSpotifyId(song.id, song.isLocal)) {
                     song.id
                 } else {
                     null
                 }
-                syncUtils.likeSong(song, spotifyId)
+                syncUtils.likeSong(song, source, spotifyId)
 
                 if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
                     val downloadRequest =
