@@ -173,13 +173,16 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
         )
     }
 
-    val applyPlaybackParameters: (Float, Float) -> Unit = { speed, pitchMultiplier ->
-        playerConnection.player.playbackParameters =
-            PlaybackParameters(
-                speed.coerceIn(TempoMin, TempoMax),
-                pitchMultiplier.coerceIn(PitchMin, PitchMax),
-            )
-    }
+    val applyPlaybackParameters: (Float, Float) -> Unit =
+        remember(playerConnection) {
+            { speed, pitchMultiplier ->
+                playerConnection.player.playbackParameters =
+                    PlaybackParameters(
+                        speed.coerceIn(TempoMin, TempoMax),
+                        pitchMultiplier.coerceIn(PitchMin, PitchMax),
+                    )
+            }
+        }
 
     AlertDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -293,7 +296,7 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
                 ) {
-                    val presets = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+                    val presets = MultiplierPresets
                     presets.forEach { preset ->
                         val selected = abs(tempo - preset) < 0.005f
                         FilterChip(
@@ -390,7 +393,7 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
                                     .fillMaxWidth()
                                     .horizontalScroll(rememberScrollState()),
                         ) {
-                            val presets = listOf(-12, -7, -5, 0, 5, 7, 12)
+                            val presets = SemitonePresets
                             presets.forEach { preset ->
                                 val selected = currentSemitones == preset
                                 FilterChip(
@@ -460,7 +463,7 @@ fun TempoPitchDialog(onDismiss: () -> Unit) {
                                     .fillMaxWidth()
                                     .horizontalScroll(rememberScrollState()),
                         ) {
-                            val presets = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+                            val presets = MultiplierPresets
                             presets.forEach { preset ->
                                 val selected = abs(pitch - preset) < 0.005f
                                 FilterChip(
@@ -489,6 +492,8 @@ private const val TempoMin = 0.25f
 private const val TempoMax = 2f
 private const val PitchMin = 0.25f
 private const val PitchMax = 2f
+private val MultiplierPresets = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+private val SemitonePresets = listOf(-12, -7, -5, 0, 5, 7, 12)
 
 private fun Float.safeCoerceIn(
     min: Float,

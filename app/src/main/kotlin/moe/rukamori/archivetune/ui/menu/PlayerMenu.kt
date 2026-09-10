@@ -72,7 +72,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -174,12 +174,12 @@ fun PlayerMenu(
         }
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
-    val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
+    val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
 
     val download by LocalDownloadUtil.current
         .getDownload(mediaMetadata.id)
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
 
     val artists =
         remember(mediaMetadata.artists) {
@@ -262,10 +262,15 @@ fun PlayerMenu(
     }
 
     if (showSelectArtistDialog) {
+        val artistChoices = remember(splitArtists) { splitArtists.distinctBy { it.name } }
         ListDialog(
             onDismiss = { showSelectArtistDialog = false },
         ) {
-            items(splitArtists.distinctBy { it.name }) { splitArtist ->
+            items(
+                items = artistChoices,
+                key = { it.name },
+                contentType = { "artist_pick" },
+            ) { splitArtist ->
                 ListItem(
                     headlineContent = {
                         Text(
@@ -904,7 +909,7 @@ fun PlayerMenu(
                                 )
                             },
                             supportingContent = {
-                                val playbackParameters by playerConnection.playbackParameters.collectAsState()
+                                val playbackParameters by playerConnection.playbackParameters.collectAsStateWithLifecycle()
                                 Text(
                                     text = "x${formatMultiplier(
                                         playbackParameters.speed,

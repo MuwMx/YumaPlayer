@@ -72,7 +72,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -161,7 +161,7 @@ fun EqualizerDialog(
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val eqCapabilities by playerConnection.service.eqCapabilities.collectAsState()
+    val eqCapabilities by playerConnection.service.eqCapabilities.collectAsStateWithLifecycle()
 
     val (eqEnabled, setEqEnabled) = rememberPreference(EqualizerEnabledKey, defaultValue = false)
     val (selectedProfileId, setSelectedProfileId) = rememberPreference(EqualizerSelectedProfileIdKey, defaultValue = "flat")
@@ -370,6 +370,7 @@ fun EqualizerDialog(
             items(
                 items = profiles,
                 key = { it.id },
+                contentType = { "eq_profile" },
             ) { profile ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
