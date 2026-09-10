@@ -1135,18 +1135,18 @@ class PlayerViewModel @Inject constructor(
                 ensureActive()
                 if (lyricsFetchGeneration.get() != generation) return@launch
 
-                val provided = moe.rukamori.archivetune.lyrics.LyricsUtils.providedRomanizedTextForEntry(entry, prefs)
+                val provided = moe.rukamori.archivetune.lyrics.Romanizer.providedRomanizedTextForEntry(entry, prefs)
                 if (provided != null) {
                     entry.romanizedTextFlow.value = provided
                     continue
                 }
 
-                if (!moe.rukamori.archivetune.lyrics.LyricsUtils.shouldRomanizeLyricsLine(entry.text, prefs)) {
+                if (!moe.rukamori.archivetune.lyrics.Romanizer.shouldRomanizeLyricsLine(entry.text, prefs)) {
                     entry.romanizedTextFlow.value = null
                     continue
                 }
 
-                val romanized = moe.rukamori.archivetune.lyrics.LyricsUtils.romanizeLyricsLine(entry.text, prefs)
+                val romanized = moe.rukamori.archivetune.lyrics.Romanizer.romanizeLyricsLine(entry.text, prefs)
                 if (lyricsFetchGeneration.get() == generation) {
                     entry.romanizedTextFlow.value = romanized
                 }

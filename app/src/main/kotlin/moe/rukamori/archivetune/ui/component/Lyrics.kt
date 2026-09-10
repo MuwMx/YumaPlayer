@@ -151,11 +151,11 @@ import moe.rukamori.archivetune.lyrics.LrcParser.parseLyrics
 import moe.rukamori.archivetune.lyrics.LrcParser.parseTtml
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isChinese
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isJapanese
-import moe.rukamori.archivetune.lyrics.LyricsUtils.isKorean
-import moe.rukamori.archivetune.lyrics.LyricsUtils.romanizeLyricsLine
-import moe.rukamori.archivetune.lyrics.LyricsUtils.shouldRomanizeLyricsLine
+import moe.rukamori.archivetune.lyrics.Romanizer.isChinese
+import moe.rukamori.archivetune.lyrics.Romanizer.isJapanese
+import moe.rukamori.archivetune.lyrics.Romanizer.isKorean
+import moe.rukamori.archivetune.lyrics.Romanizer.romanizeLyricsLine
+import moe.rukamori.archivetune.lyrics.Romanizer.shouldRomanizeLyricsLine
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode

@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class LyricsUtilsTest {
+class LrcParserTest {
 
     @Test
     fun `parseLyrics parses LRC line-synced lyrics`() {
