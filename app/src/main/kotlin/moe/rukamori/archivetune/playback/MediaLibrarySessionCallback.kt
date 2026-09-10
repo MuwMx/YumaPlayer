@@ -41,6 +41,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.MediaSessionConstants
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.PlaylistSortType
@@ -540,6 +541,7 @@ class MediaLibrarySessionCallback
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
+                                    source = LikeSource.YTM,
                                 ).first()
                                 .map { it.toMediaItem(parentId) }
                         }
@@ -588,7 +590,7 @@ class MediaLibrarySessionCallback
                         }
 
                         MusicService.PLAYLIST -> {
-                            val likedSongCount = database.likedSongsCount().first()
+                            val likedSongCount = database.likedSongsCount(LikeSource.YTM).first()
                             val downloadedSongCount = downloadUtil.downloads.value.size
                             listOf(
                                 queueMediaItem(
@@ -1026,6 +1028,7 @@ class MediaLibrarySessionCallback
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
+                                    source = LikeSource.YTM,
                                 ).first()
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
@@ -1370,7 +1373,7 @@ class MediaLibrarySessionCallback
         private suspend fun playlistHeaderItem(playlistId: String): MediaItem? =
             when (playlistId) {
                 PlaylistEntity.LIKED_PLAYLIST_ID -> {
-                    val count = database.likedSongsCount().first()
+                    val count = database.likedSongsCount(LikeSource.YTM).first()
                     queueMediaItem(
                         "${MusicService.PLAYLIST}/$playlistId",
                         context.getString(R.string.liked_songs),
@@ -1419,6 +1422,7 @@ class MediaLibrarySessionCallback
                         .likedSongs(
                             songSortType,
                             descending = sortOption?.descending ?: true,
+                            source = LikeSource.YTM,
                         ).first()
                 }
 

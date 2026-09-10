@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LibraryFilter
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
@@ -108,7 +109,7 @@ fun LibraryMixScreen(
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
 
-    val likedSongsCount by database.likedSongsCount().collectAsState(initial = 0)
+    val likedSongsCount by database.likedSongsCount(LikeSource.YTM).collectAsState(initial = 0)
     val recentSongs by database.recentSongs(15).collectAsState(initial = emptyList())
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()

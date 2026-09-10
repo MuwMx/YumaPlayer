@@ -20,6 +20,7 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.ArtistSongSortType
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
@@ -154,40 +155,81 @@ interface SongDao {
     fun songsByPlayTimeAscNoVideo(): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT * FROM song WHERE liked ORDER BY rowId")
-    fun likedSongsByRowIdAsc(): Flow<List<Song>>
+    @Query("SELECT * FROM song WHERE likedYtm != 0 ORDER BY rowId")
+    fun likedSongsByRowIdAscYtm(): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT * FROM song WHERE liked ORDER BY likedDate, rowId")
-    fun likedSongsByCreateDateAsc(): Flow<List<Song>>
+    @Query("SELECT * FROM song WHERE likedSpotify != 0 ORDER BY rowId")
+    fun likedSongsByRowIdAscSpotify(): Flow<List<Song>>
+
+    fun likedSongsByRowIdAsc(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByRowIdAscYtm()
+            LikeSource.SPOTIFY -> likedSongsByRowIdAscSpotify()
+        }
 
     @Transaction
-    @Query("SELECT * FROM song WHERE liked ORDER BY title")
-    fun likedSongsByNameAsc(): Flow<List<Song>>
+    @Query("SELECT * FROM song WHERE likedYtm != 0 ORDER BY likedDate, rowId")
+    fun likedSongsByCreateDateAscYtm(): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT * FROM song WHERE liked ORDER BY totalPlayTime")
-    fun likedSongsByPlayTimeAsc(): Flow<List<Song>>
+    @Query("SELECT * FROM song WHERE likedSpotify != 0 ORDER BY likedDate, rowId")
+    fun likedSongsByCreateDateAscSpotify(): Flow<List<Song>>
+
+    fun likedSongsByCreateDateAsc(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByCreateDateAscYtm()
+            LikeSource.SPOTIFY -> likedSongsByCreateDateAscSpotify()
+        }
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE likedYtm != 0 ORDER BY title")
+    fun likedSongsByNameAscYtm(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE likedSpotify != 0 ORDER BY title")
+    fun likedSongsByNameAscSpotify(): Flow<List<Song>>
+
+    fun likedSongsByNameAsc(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByNameAscYtm()
+            LikeSource.SPOTIFY -> likedSongsByNameAscSpotify()
+        }
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE likedYtm != 0 ORDER BY totalPlayTime")
+    fun likedSongsByPlayTimeAscYtm(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE likedSpotify != 0 ORDER BY totalPlayTime")
+    fun likedSongsByPlayTimeAscSpotify(): Flow<List<Song>>
+
+    fun likedSongsByPlayTimeAsc(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByPlayTimeAscYtm()
+            LikeSource.SPOTIFY -> likedSongsByPlayTimeAscSpotify()
+        }
 
     fun likedSongs(
         sortType: SongSortType,
         descending: Boolean,
         filterVideo: Boolean = false,
+        source: LikeSource = LikeSource.YTM,
     ) = when (sortType) {
         SongSortType.CREATE_DATE -> {
             if (filterVideo) {
-                likedSongsByCreateDateAscNoVideo()
+                likedSongsByCreateDateAscNoVideo(source)
             } else {
-                likedSongsByCreateDateAsc()
+                likedSongsByCreateDateAsc(source)
             }
         }
 
         SongSortType.NAME -> {
             (
                 if (filterVideo) {
-                    likedSongsByNameAscNoVideo()
+                    likedSongsByNameAscNoVideo(source)
                 } else {
-                    likedSongsByNameAsc()
+                    likedSongsByNameAsc(source)
                 }
             ).map { songs ->
                 val collator = Collator.getInstance(Locale.getDefault())
@@ -199,9 +241,9 @@ interface SongDao {
         SongSortType.ARTIST -> {
             (
                 if (filterVideo) {
-                    likedSongsByRowIdAscNoVideo()
+                    likedSongsByRowIdAscNoVideo(source)
                 } else {
-                    likedSongsByRowIdAsc()
+                    likedSongsByRowIdAsc(source)
                 }
             ).map { songs ->
                 val collator = Collator.getInstance(Locale.getDefault())
@@ -215,7 +257,11 @@ interface SongDao {
         }
 
         SongSortType.PLAY_TIME -> {
-            likedSongsByPlayTimeAsc()
+            if (filterVideo) {
+                likedSongsByPlayTimeAscNoVideo(source)
+            } else {
+                likedSongsByPlayTimeAsc(source)
+            }
         }
     }.map { songs ->
         songs.filter { song -> song.artists.none { it.blockedAt != null } }.reversed(descending)
@@ -227,11 +273,11 @@ interface SongDao {
         SELECT song.*
         FROM song
         LEFT JOIN set_video_id ON set_video_id.videoId = song.id
-        WHERE liked AND set_video_id.setVideoId IS NULL
+        WHERE likedYtm != 0 AND set_video_id.setVideoId IS NULL
         ORDER BY song.rowid
         """,
     )
-    fun likedSongsByRowIdAscNoVideo(): Flow<List<Song>>
+    fun likedSongsByRowIdAscNoVideoYtm(): Flow<List<Song>>
 
     @Transaction
     @Query(
@@ -239,11 +285,29 @@ interface SongDao {
         SELECT song.*
         FROM song
         LEFT JOIN set_video_id ON set_video_id.videoId = song.id
-        WHERE liked AND set_video_id.setVideoId IS NULL
+        WHERE likedSpotify != 0 AND set_video_id.setVideoId IS NULL
+        ORDER BY song.rowid
+        """,
+    )
+    fun likedSongsByRowIdAscNoVideoSpotify(): Flow<List<Song>>
+
+    fun likedSongsByRowIdAscNoVideo(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByRowIdAscNoVideoYtm()
+            LikeSource.SPOTIFY -> likedSongsByRowIdAscNoVideoSpotify()
+        }
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        LEFT JOIN set_video_id ON set_video_id.videoId = song.id
+        WHERE likedYtm != 0 AND set_video_id.setVideoId IS NULL
         ORDER BY likedDate, song.rowid
         """,
     )
-    fun likedSongsByCreateDateAscNoVideo(): Flow<List<Song>>
+    fun likedSongsByCreateDateAscNoVideoYtm(): Flow<List<Song>>
 
     @Transaction
     @Query(
@@ -251,11 +315,29 @@ interface SongDao {
         SELECT song.*
         FROM song
         LEFT JOIN set_video_id ON set_video_id.videoId = song.id
-        WHERE liked AND set_video_id.setVideoId IS NULL
+        WHERE likedSpotify != 0 AND set_video_id.setVideoId IS NULL
+        ORDER BY likedDate, song.rowid
+        """,
+    )
+    fun likedSongsByCreateDateAscNoVideoSpotify(): Flow<List<Song>>
+
+    fun likedSongsByCreateDateAscNoVideo(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByCreateDateAscNoVideoYtm()
+            LikeSource.SPOTIFY -> likedSongsByCreateDateAscNoVideoSpotify()
+        }
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        LEFT JOIN set_video_id ON set_video_id.videoId = song.id
+        WHERE likedYtm != 0 AND set_video_id.setVideoId IS NULL
         ORDER BY title
         """,
     )
-    fun likedSongsByNameAscNoVideo(): Flow<List<Song>>
+    fun likedSongsByNameAscNoVideoYtm(): Flow<List<Song>>
 
     @Transaction
     @Query(
@@ -263,15 +345,61 @@ interface SongDao {
         SELECT song.*
         FROM song
         LEFT JOIN set_video_id ON set_video_id.videoId = song.id
-        WHERE liked AND set_video_id.setVideoId IS NULL
+        WHERE likedSpotify != 0 AND set_video_id.setVideoId IS NULL
+        ORDER BY title
+        """,
+    )
+    fun likedSongsByNameAscNoVideoSpotify(): Flow<List<Song>>
+
+    fun likedSongsByNameAscNoVideo(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByNameAscNoVideoYtm()
+            LikeSource.SPOTIFY -> likedSongsByNameAscNoVideoSpotify()
+        }
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        LEFT JOIN set_video_id ON set_video_id.videoId = song.id
+        WHERE likedYtm != 0 AND set_video_id.setVideoId IS NULL
         ORDER BY totalPlayTime
         """,
     )
-    fun likedSongsByPlayTimeAscNoVideo(): Flow<List<Song>>
+    fun likedSongsByPlayTimeAscNoVideoYtm(): Flow<List<Song>>
 
     @Transaction
-    @Query("SELECT COUNT(1) FROM song WHERE liked")
-    fun likedSongsCount(): Flow<Int>
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        LEFT JOIN set_video_id ON set_video_id.videoId = song.id
+        WHERE likedSpotify != 0 AND set_video_id.setVideoId IS NULL
+        ORDER BY totalPlayTime
+        """,
+    )
+    fun likedSongsByPlayTimeAscNoVideoSpotify(): Flow<List<Song>>
+
+    fun likedSongsByPlayTimeAscNoVideo(source: LikeSource = LikeSource.YTM): Flow<List<Song>> =
+        when (source) {
+            LikeSource.YTM -> likedSongsByPlayTimeAscNoVideoYtm()
+            LikeSource.SPOTIFY -> likedSongsByPlayTimeAscNoVideoSpotify()
+        }
+
+    @Transaction
+    @Query("SELECT COUNT(1) FROM song WHERE likedYtm != 0")
+    fun likedSongsCountYtm(): Flow<Int>
+
+    @Transaction
+    @Query("SELECT COUNT(1) FROM song WHERE likedSpotify != 0")
+    fun likedSongsCountSpotify(): Flow<Int>
+
+    fun likedSongsCount(source: LikeSource = LikeSource.YTM): Flow<Int> =
+        when (source) {
+            LikeSource.YTM -> likedSongsCountYtm()
+            LikeSource.SPOTIFY -> likedSongsCountSpotify()
+        }
 
     @Transaction
     @Query("SELECT song.* FROM song JOIN song_album_map ON song.id = song_album_map.songId WHERE song_album_map.albumId = :albumId")

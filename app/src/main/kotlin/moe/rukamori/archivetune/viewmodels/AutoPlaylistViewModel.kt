@@ -31,6 +31,7 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.LikedSongsSourceKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterExplicit
@@ -165,7 +166,7 @@ class AutoPlaylistViewModel
                                     }.filterExplicit(hideExplicit)
                                 }
                             } else {
-                                database.likedSongs(songSortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
+                                database.likedSongs(songSortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
                             }
                         }
 

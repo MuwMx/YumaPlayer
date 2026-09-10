@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
@@ -119,7 +120,7 @@ class LibraryTopMixRepository
             hideExplicitEnabled()
                 .flatMapLatest { hideExplicit ->
                     database
-                        .likedSongsByCreateDateAsc()
+                        .likedSongsByCreateDateAsc(LikeSource.YTM)
                         .map { songs ->
                             songs
                                 .filterExplicit(hideExplicit)
