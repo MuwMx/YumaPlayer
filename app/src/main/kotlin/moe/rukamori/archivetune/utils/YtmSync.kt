@@ -176,10 +176,12 @@ class YtmSync
                             return@onSuccess
                         }
                         val remoteIds = remoteSongs.map { it.id }.toSet()
-                        if (authoritative) {
-                            val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.YTM).first()
-                            if (!state.isSyncStillEnabled(gen)) return@onSuccess
-                            val staleLikedSongs =
+                        val localLikedSongs = state.database.likedSongsByNameAsc(LikeSource.YTM).first()
+                        if (!state.isSyncStillEnabled(gen)) return@onSuccess
+                        val localLikedIds = localLikedSongs.map { it.id }.toSet()
+
+                        val staleLikedSongs =
+                            if (authoritative) {
                                 localLikedSongs
                                     .asSequence()
                                     .map { it.song }
@@ -187,35 +189,39 @@ class YtmSync
                                     .filterNot { it.id in remoteIds }
                                     .map { it.copy(liked = it.likedSpotify, likedYtm = false, likedDate = if (it.likedSpotify) it.likedDate else null) }
                                     .toList()
-                            if (staleLikedSongs.isNotEmpty()) {
-                                state.dbWriteSemaphore.withPermit {
-                                    state.database.withTransaction {
-                                        staleLikedSongs.forEach { update(it) }
-                                    }
-                                }
+                            } else {
+                                emptyList()
                             }
-                        }
-                        val baseTimestamp = LocalDateTime.now()
 
-                        remoteSongs.chunked(100).forEachIndexed { chunkIndex, chunk ->
-                            launch {
-                                if (!state.isSyncStillEnabled(gen)) return@launch
-                                val songIds = chunk.map { it.id }
-                                val dbSongsById = state.database.getSongsByIds(songIds).associateBy { it.id }
-                                state.dbWriteSemaphore.withPermit {
-                                    if (!state.isSyncStillEnabled(gen)) return@withPermit
-                                    state.database.withTransaction {
-                                        if (!state.isSyncStillEnabled(gen)) return@withTransaction
-                                        chunk.forEachIndexed { innerIndex, song ->
-                                            val index = chunkIndex * 100 + innerIndex
-                                            val timestamp = likedSongTimestamp(baseTimestamp, index)
-                                            val dbSong = dbSongsById[song.id]
-                                            if (dbSong == null) {
-                                                insert(song.toMediaMetadata()) { it.copy(liked = true, likedYtm = true, likedDate = timestamp) }
-                                            } else if (!dbSong.song.likedYtm || dbSong.song.likedDate != timestamp) {
-                                                update(dbSong.song.copy(liked = true, likedYtm = true, likedDate = timestamp))
-                                            }
-                                        }
+                        val newRemoteSongs = remoteSongs.filter { it.id !in localLikedIds }
+
+                        if (staleLikedSongs.isEmpty() && newRemoteSongs.isEmpty()) {
+                            Timber.d("syncLikedSongs: No changes detected (stale: 0, new: 0), skipping database writes")
+                            return@onSuccess
+                        }
+
+                        val baseTimestamp = LocalDateTime.now()
+                        val newSongIds = newRemoteSongs.map { it.id }
+                        val dbSongsById =
+                            if (newSongIds.isNotEmpty()) {
+                                state.database.getSongsByIds(newSongIds).associateBy { it.id }
+                            } else {
+                                emptyMap()
+                            }
+
+                        state.dbWriteSemaphore.withPermit {
+                            if (!state.isSyncStillEnabled(gen)) return@withPermit
+                            state.database.withTransaction {
+                                if (!state.isSyncStillEnabled(gen)) return@withTransaction
+                                staleLikedSongs.forEach { update(it) }
+                                newRemoteSongs.forEachIndexed { innerIndex, song ->
+                                    val timestamp = likedSongTimestamp(baseTimestamp, innerIndex)
+                                    val dbSong = dbSongsById[song.id]
+                                    if (dbSong == null) {
+                                        insert(song.toMediaMetadata()) { it.copy(liked = true, likedYtm = true, likedDate = timestamp) }
+                                    } else {
+                                        val finalTimestamp = dbSong.song.likedDate ?: timestamp
+                                        update(dbSong.song.copy(liked = true, likedYtm = true, likedDate = finalTimestamp))
                                     }
                                 }
                             }
