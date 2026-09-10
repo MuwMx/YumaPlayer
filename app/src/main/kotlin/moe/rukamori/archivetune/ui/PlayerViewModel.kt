@@ -42,27 +42,18 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.lyrics.LyricsTranslator
-import moe.rukamori.archivetune.ai.AiLyricsTranslator
-import moe.rukamori.archivetune.ai.AiServiceConfig
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.db.entities.formattedQuality
 import moe.rukamori.archivetune.db.entities.formattedBitrate
-import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.flow.first
-import me.bush.translator.Language
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
 
 
 private val MascotAssets = listOf(
@@ -116,12 +107,39 @@ class PlayerViewModel @Inject constructor(
 
     val progressMsProvider: () -> Long = { audioPlayer?.currentPosition ?: _playbackProgress.value }
 
-    private var lastFetchedTrackKey: String = ""
-    private var isUserSeeking = false
-    private var tickerJob: Job? = null
-    private var lyricsJob: Job? = null
-    private var romanizationJob: Job? = null
-    private val lyricsFetchGeneration = AtomicLong(0)
+    val lyricsDelegate = LyricsDelegate(
+        application = application,
+        coroutineScope = viewModelScope,
+        lyricsHelper = lyricsHelper,
+        playerConnectionProvider = { playerConnection },
+        audioPlayerProvider = { audioPlayer },
+        uiState = _uiState.asStateFlow(),
+        updateUiState = { transform -> _uiState.update(transform) },
+        playbackProgressProvider = { _playbackProgress.value },
+    )
+
+    val progressTicker = ProgressTicker(
+        coroutineScope = viewModelScope,
+        audioPlayerProvider = { audioPlayer },
+        updatePlaybackProgress = { progressMs -> _playbackProgress.value = progressMs },
+        updateDuration = { durationMs ->
+            _uiState.update { current ->
+                if (current.durationMs <= 0L || current.durationMs != durationMs) {
+                    current.copy(durationMs = durationMs)
+                } else {
+                    current
+                }
+            }
+        },
+        onLyricsProgressUpdate = { progressMs -> lyricsDelegate.updateLyricsProgress(progressMs) },
+    )
+
+    var isUserSeeking: Boolean
+        get() = progressTicker.isUserSeeking
+        set(value) {
+            progressTicker.isUserSeeking = value
+        }
+
     private var likeJob: Job? = null
     private val _event = Channel<PlayerEvent>(Channel.BUFFERED)
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
@@ -149,7 +167,7 @@ class PlayerViewModel @Inject constructor(
                         val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
                         val parsedLines = parseLyrics(cached.lyrics, durationMs)
                         val isSynced = parsedLines.any { line -> line.time > 0 }
-                        startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
+                        startRomanizationJob(parsedLines)
                         _uiState.update {
                             val targetIndex = if (isSynced) findCurrentLineIndex(parsedLines, _playbackProgress.value, it.lyricsSyncOffset) else -1
                             it.copy(
@@ -212,18 +230,7 @@ class PlayerViewModel @Inject constructor(
                     val oldId = _uiState.value.trackUrl
                     val newId = metadata.id
                     if (oldId != newId && oldId.isNotEmpty()) {
-                        lyricsFetchGeneration.incrementAndGet()
-                        lyricsJob?.cancel()
-                        romanizationJob?.cancel()
-                        _uiState.update {
-                            it.copy(
-                                lyricsList = emptyList(),
-                                isSynced = false,
-                                currentLineIndex = -1,
-                                lyricsError = null,
-                                isLoadingLyrics = false
-                            )
-                        }
+                        lyricsDelegate.resetLyrics()
                     }
 
                     _uiState.update { currentUi ->
@@ -347,7 +354,7 @@ class PlayerViewModel @Inject constructor(
             settingsRepository.lyricsRomanizationPrefsFlow.collect { prefs ->
                 _uiState.update { it.copy(lyricsRomanizationPrefs = prefs) }
                 if (_uiState.value.lyricsList.isNotEmpty()) {
-                    startRomanizationJob(_uiState.value.lyricsList, lyricsFetchGeneration.get())
+                    startRomanizationJob(_uiState.value.lyricsList)
                 }
             }
         }
@@ -569,9 +576,7 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
-        lyricsFetchGeneration.incrementAndGet()
-        lyricsJob?.cancel()
-        romanizationJob?.cancel()
+        lyricsDelegate.cancelJobs()
 
         _uiState.update {
             it.copy(
@@ -615,23 +620,15 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun onPlaybackProgress(currentTimeSec: Int, durationSec: Int) {
-        if (!isUserSeeking) {
-            val progressMs = currentTimeSec * 1000L
-            val durationMs = durationSec * 1000L
-            _playbackProgress.value = progressMs
-            _uiState.update {
-                it.copy(durationMs = durationMs)
-            }
-            updateLyricsProgress(progressMs)
-        }
+        progressTicker.onPlaybackProgress(currentTimeSec, durationSec)
     }
 
     fun onSeekStarted() {
-        isUserSeeking = true
+        progressTicker.onSeekStarted()
     }
 
     fun onSeekFinished() {
-        isUserSeeking = false
+        progressTicker.onSeekFinished()
     }
 
 
@@ -727,345 +724,43 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun deleteLyricsCache() {
-        _uiState.update {
-            it.copy(lyricsList = emptyList(), currentLineIndex = -1, lyricsError = null)
-        }
+        lyricsDelegate.deleteLyricsCache()
     }
 
-    private fun manageTicker(isPlaying: Boolean) {
-        tickerJob?.cancel()
-        if (isPlaying) {
-            tickerJob = viewModelScope.launch {
-                while (isActive) {
-                    val player = audioPlayer
-                    if (player != null && !isUserSeeking) {
-                        val position = player.currentPosition
-                        _playbackProgress.value = position
-                        val duration = player.duration
-                        val validDuration = if (duration > 0L && duration != androidx.media3.common.C.TIME_UNSET) duration else null
-                        if (validDuration != null) {
-                            _uiState.update { current ->
-                                if (current.durationMs <= 0L || current.durationMs != validDuration) {
-                                    current.copy(durationMs = validDuration)
-                                } else {
-                                    current
-                                }
-                            }
-                        }
-                        updateLyricsProgress(position)
-                    }
-                    delay(250) // 4 обновления в секунду достаточно для плавной отрисовки без перегрузки CPU
-                }
-            }
-        }
+    fun manageTicker(isPlaying: Boolean) {
+        progressTicker.manageTicker(isPlaying)
     }
 
-    private fun findCurrentLineIndex(lyricsList: List<LyricsEntry>, progressMs: Long, syncOffset: Int): Int {
-        val adjustedProgressMs = (progressMs + syncOffset).coerceAtLeast(0L)
-        return moe.rukamori.archivetune.lyrics.LrcParser.findCurrentLineIndex(lyricsList, adjustedProgressMs, 300L)
+    fun findCurrentLineIndex(lyricsList: List<LyricsEntry>, progressMs: Long, syncOffset: Int): Int {
+        return lyricsDelegate.findCurrentLineIndex(lyricsList, progressMs, syncOffset)
     }
 
-    private fun updateLyricsProgress(progressMs: Long) {
-        val state = _uiState.value
-        if (state.lyricsList.isEmpty() || !state.isLyricsVisible) return
-
-        if (!state.isSynced || state.lyricsList.all { it.time == -1L }) {
-            if (state.currentLineIndex != -1) {
-                _uiState.update { it.copy(currentLineIndex = -1) }
-            }
-            return
-        }
-
-        val targetIndex = findCurrentLineIndex(state.lyricsList, progressMs, state.lyricsSyncOffset)
-
-        if (targetIndex != state.currentLineIndex) {
-            _uiState.update { it.copy(currentLineIndex = targetIndex) }
-        }
+    fun updateLyricsProgress(progressMs: Long) {
+        lyricsDelegate.updateLyricsProgress(progressMs)
     }
 
-    private fun prepareLyricsEditText() {
-        val trackId = _uiState.value.trackUrl
-        if (trackId.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            val db = playerConnection?.database
-            val cached = db?.getLyricsById(trackId)
-            var rawText = cached?.lyrics ?: ""
-            if (rawText.isBlank()) {
-                rawText = _uiState.value.lyricsList.joinToString("\n") { line ->
-                    val min = line.time / 60000
-                    val sec = (line.time % 60000) / 1000
-                    val ms = (line.time % 1000) / 10
-                    String.format(java.util.Locale.US, "[%02d:%02d.%02d] %s", min, sec, ms, line.text)
-                }
-            }
-            withContext(Dispatchers.Main) {
-                _uiState.update { it.copy(lyricsEditText = rawText) }
-            }
-        }
+    fun prepareLyricsEditText() {
+        lyricsDelegate.prepareLyricsEditText()
     }
 
-    private fun saveLyrics(text: String) {
-        val metadata = playerConnection?.mediaMetadata?.value ?: return
-        val trackId = metadata.id ?: return
-        if (trackId.isEmpty()) return
-        val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
-        viewModelScope.launch(Dispatchers.IO) {
-            playerConnection?.database?.query {
-                replaceLyrics(
-                    id = trackId,
-                    lyrics = text,
-                    source = moe.rukamori.archivetune.db.entities.LyricsEntity.Source.USER_EDIT.value
-                )
-            }
-            val parsedLines = parseLyrics(text, durationMs)
-            startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
-            withContext(Dispatchers.Main) {
-                _uiState.update { it.copy(lyricsList = parsedLines, isSynced = parsedLines.any { line -> line.time > 0 }) }
-            }
-        }
+    fun saveLyrics(text: String) {
+        lyricsDelegate.saveLyrics(text)
     }
 
-    private fun translateLyrics(langCode: String, useAi: Boolean) {
-        val metadata = playerConnection?.mediaMetadata?.value ?: return
-        val trackId = metadata.id ?: return
-        if (trackId.isEmpty()) return
-        val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
-
-        viewModelScope.launch(Dispatchers.IO) {
-            if (useAi) {
-                withContext(Dispatchers.Main) {
-                    _uiState.update { it.copy(isAiTranslating = true, aiTranslationError = null) }
-                }
-                try {
-                    val db = playerConnection?.database ?: return@launch
-                    val cached = db.getLyricsById(trackId)
-                    var rawText = cached?.lyrics ?: ""
-                    if (rawText.isBlank()) {
-                        rawText = _uiState.value.lyricsList.joinToString("\n") { line ->
-                            val min = line.time / 60000
-                            val sec = (line.time % 60000) / 1000
-                            val ms = (line.time % 1000) / 10
-                            String.format(java.util.Locale.US, "[%02d:%02d.%02d] %s", min, sec, ms, line.text)
-                        }
-                    }
-                    if (rawText.isBlank()) {
-                        throw IllegalStateException("Lyrics are empty")
-                    }
-
-                    val prefs = application.dataStore.data.first()
-                    val translatedLyrics = AiLyricsTranslator().translate(
-                        config = AiServiceConfig(
-                            provider = prefs[AiProviderKey].toEnum(AiProvider.NONE),
-                            apiKey = prefs[AiApiKeyKey].orEmpty(),
-                            customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
-                            model = if (prefs[AiProviderKey].toEnum(AiProvider.NONE) == AiProvider.CUSTOM) {
-                                prefs[AiCustomModelKey].orEmpty()
-                            } else {
-                                prefs[AiSelectedModelKey].orEmpty()
-                            },
-                        ),
-                        lyrics = rawText,
-                        targetLanguage = langCode.ifBlank { "ENGLISH" },
-                    )
-
-                    db.query {
-                        replaceLyrics(
-                            id = trackId,
-                            lyrics = translatedLyrics,
-                            source = moe.rukamori.archivetune.db.entities.LyricsEntity.Source.AI_TRANSLATION.value,
-                        )
-                    }
-
-                    application.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.SUCCESS.name
-                    }
-                    val parsedLines = parseLyrics(translatedLyrics, durationMs)
-                    startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
-                    withContext(Dispatchers.Main) {
-                        _uiState.update { it.copy(isAiTranslating = false, lyricsList = parsedLines, isSynced = parsedLines.any { line -> line.time > 0 }) }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    application.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.FAILED.name
-                    }
-                    withContext(Dispatchers.Main) {
-                        _uiState.update { it.copy(isAiTranslating = false, aiTranslationError = e.localizedMessage ?: e.toString()) }
-                    }
-                }
-            } else {
-                withContext(Dispatchers.Main) {
-                    _uiState.update { it.copy(isStandardTranslating = true, aiTranslationError = null) }
-                }
-                try {
-                    val db = playerConnection?.database ?: return@launch
-                    val cached = db.getLyricsById(trackId)
-                    var rawText = cached?.lyrics ?: ""
-                    if (rawText.isBlank()) {
-                        rawText = _uiState.value.lyricsList.joinToString("\n") { line ->
-                            val min = line.time / 60000
-                            val sec = (line.time % 60000) / 1000
-                            val ms = (line.time % 1000) / 10
-                            String.format(java.util.Locale.US, "[%02d:%02d.%02d] %s", min, sec, ms, line.text)
-                        }
-                    }
-                    if (rawText.isBlank()) {
-                        throw IllegalStateException("Lyrics are empty")
-                    }
-
-                    val lang = try {
-                        Language(langCode)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    if (lang == null) {
-                        throw IllegalArgumentException("Unsupported language code: $langCode")
-                    }
-
-                    val translatedLyrics = LyricsTranslator.translate(rawText, lang)
-                    db.query {
-                        replaceLyrics(
-                            id = trackId,
-                            lyrics = translatedLyrics,
-                            source = moe.rukamori.archivetune.db.entities.LyricsEntity.Source.AI_TRANSLATION.value,
-                        )
-                    }
-                    val parsedLines = parseLyrics(translatedLyrics, durationMs)
-                    startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
-                    withContext(Dispatchers.Main) {
-                        _uiState.update { it.copy(isStandardTranslating = false, lyricsList = parsedLines, isSynced = parsedLines.any { line -> line.time > 0 }) }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.update { it.copy(isStandardTranslating = false, aiTranslationError = e.localizedMessage ?: e.toString()) }
-                    }
-                }
-            }
-        }
+    fun translateLyrics(langCode: String, useAi: Boolean) {
+        lyricsDelegate.translateLyrics(langCode, useAi)
     }
 
     fun fetchLyrics(force: Boolean = false) {
-        val currentState = _uiState.value
-        val trackUrl = currentState.trackUrl
-        val title = currentState.title
-        val artist = currentState.artist
-
-        if (trackUrl.isEmpty() || title.isEmpty()) return
-
-        val generation = lyricsFetchGeneration.incrementAndGet()
-        lyricsJob?.cancel()
-        romanizationJob?.cancel()
-
-        _uiState.update { it.copy(isLoadingLyrics = true, lyricsError = null) }
-
-        lyricsJob = viewModelScope.launch(Dispatchers.IO) {
-            var success = false
-            try {
-                val db = playerConnection?.database
-                val cached = if (force) null else db?.getLyricsById(trackUrl)
-                
-                if (cached != null && cached.lyrics != moe.rukamori.archivetune.db.entities.LyricsEntity.LYRICS_NOT_FOUND) {
-                    success = true
-                    return@launch
-                }
-
-                // 👇 АДАПТИРУЙ под свою сигнатуру MediaMetadata
-                val currentMetadata = playerConnection?.mediaMetadata?.value
-                val metadata = moe.rukamori.archivetune.models.MediaMetadata(
-                    id = trackUrl,
-                    title = title,
-                    artists = listOf(moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null,  name = artist)),
-                    duration = (currentState.durationMs / 1000).toInt(),
-                    album = currentMetadata?.album
-                )
-
-                val rawLyrics = kotlinx.coroutines.withTimeoutOrNull(15000) {
-                    lyricsHelper.getLyrics(metadata)
-                } ?: ""
-
-                ensureActive()
-                if (generation != lyricsFetchGeneration.get()) return@launch
-
-                if (rawLyrics.isNotBlank()) {
-                    playerConnection?.database?.query {
-                        replaceLyrics(
-                            id = trackUrl,
-                            lyrics = rawLyrics,
-                            source = moe.rukamori.archivetune.db.entities.LyricsEntity.Source.REMOTE.value
-                        )
-                    }
-                    success = true
-                } else {
-                    if (generation != lyricsFetchGeneration.get()) return@launch
-                    withContext(Dispatchers.Main) {
-                        _uiState.update {
-                            it.copy(
-                                lyricsError = "lyrics_not_found"
-                            )
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                if (generation != lyricsFetchGeneration.get()) return@launch
-                withContext(Dispatchers.Main) {
-                    _uiState.update {
-                        it.copy(
-                            lyricsError = "lyrics_error_loading"
-                        )
-                    }
-                }
-            } finally {
-                if (generation == lyricsFetchGeneration.get()) {
-                    withContext(kotlinx.coroutines.NonCancellable) {
-                        withContext(Dispatchers.Main) {
-                            if (generation == lyricsFetchGeneration.get() && !success) {
-                                _uiState.update { it.copy(isLoadingLyrics = false) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        lyricsDelegate.fetchLyrics(force)
     }
 
-    private fun parseLyrics(rawLyrics: String, durationMs: Long): List<LyricsEntry> {
-        if (rawLyrics.isBlank() || rawLyrics == moe.rukamori.archivetune.db.entities.LyricsEntity.LYRICS_NOT_FOUND) {
-            return emptyList()
-        }
-
-        val normalized = moe.rukamori.archivetune.lyrics.LrcParser.normalizeLyricsText(rawLyrics)
-
-        val parsed = when {
-            moe.rukamori.archivetune.lyrics.LrcParser.isTtml(normalized) -> {
-                moe.rukamori.archivetune.lyrics.LrcParser.parseTtml(normalized, (durationMs / 1000).toInt())
-            }
-            moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc(normalized) -> {
-                moe.rukamori.archivetune.lyrics.LrcParser.parseLyrics(normalized)
-            }
-            else -> {
-                normalized.lines()
-                    .filter { it.isNotBlank() }
-                    .map { line ->
-                        LyricsEntry(time = -1L, text = line.trim())
-                    }
-            }
-        }
-
-        return moe.rukamori.archivetune.lyrics.LrcParser.insertInstrumentalBreaks(parsed, durationMs)
+    fun parseLyrics(rawLyrics: String, durationMs: Long): List<LyricsEntry> {
+        return lyricsDelegate.parseLyrics(rawLyrics, durationMs)
     }
 
     fun setLyricsVisible(isVisible: Boolean) {
-        _uiState.update { 
-            val targetIndex = if (!isVisible || !it.isSynced || it.lyricsList.all { line -> line.time == -1L }) -1 else findCurrentLineIndex(it.lyricsList, _playbackProgress.value, it.lyricsSyncOffset)
-            it.copy(isLyricsVisible = isVisible, currentLineIndex = targetIndex) 
-        }
-        if (isVisible && _uiState.value.lyricsList.isEmpty()) {
-            fetchLyrics()
-        }
+        lyricsDelegate.setLyricsVisible(isVisible)
     }
 
     fun setQueueVisible(visible: Boolean) {
@@ -1073,7 +768,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun refreshLyrics() {
-        fetchLyrics(force = true)
+        lyricsDelegate.refreshLyrics()
     }
 
     fun togglePlayPause() {
@@ -1086,7 +781,7 @@ class PlayerViewModel @Inject constructor(
 
     fun seekTo(positionMs: Long) {
         audioPlayer?.seekTo(positionMs)
-        isUserSeeking = false
+        progressTicker.onSeekFinished()
         _playbackProgress.value = positionMs
     }
 
@@ -1126,37 +821,7 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private fun startRomanizationJob(entries: List<moe.rukamori.archivetune.lyrics.LyricsEntry>, generation: Long) {
-        romanizationJob?.cancel()
-        if (entries.isEmpty()) return
-
-        val prefs = _uiState.value.lyricsRomanizationPrefs ?: moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences()
-        if (!prefs.isEnabled) {
-            entries.forEach { it.romanizedTextFlow.value = null }
-            return
-        }
-
-        romanizationJob = viewModelScope.launch(Dispatchers.Default) {
-            for (entry in entries) {
-                ensureActive()
-                if (lyricsFetchGeneration.get() != generation) return@launch
-
-                val provided = moe.rukamori.archivetune.lyrics.Romanizer.providedRomanizedTextForEntry(entry, prefs)
-                if (provided != null) {
-                    entry.romanizedTextFlow.value = provided
-                    continue
-                }
-
-                if (!moe.rukamori.archivetune.lyrics.Romanizer.shouldRomanizeLyricsLine(entry.text, prefs)) {
-                    entry.romanizedTextFlow.value = null
-                    continue
-                }
-
-                val romanized = moe.rukamori.archivetune.lyrics.Romanizer.romanizeLyricsLine(entry.text, prefs)
-                if (lyricsFetchGeneration.get() == generation) {
-                    entry.romanizedTextFlow.value = romanized
-                }
-            }
-        }
+    fun startRomanizationJob(entries: List<LyricsEntry>, generation: Long = lyricsDelegate.currentGeneration) {
+        lyricsDelegate.startRomanizationJob(entries, generation)
     }
 }
