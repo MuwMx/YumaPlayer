@@ -31,13 +31,16 @@ class SyncLikes
             Log.d("SPLIT_STRESS", "LIKES_IMPL likeSong id=${s.id} liked=${s.liked} isLocal=${s.isLocal} thread=${Thread.currentThread().name}")
             if (s.isLocal) return
             state.syncScope.launch {
-                val isSpotifyLikesSyncEnabled =
-                    state.context.dataStore.data
-                        .map { it[SpotifySyncLikesKey] ?: false }
-                        .first()
+                val isSpotifyTarget = explicitSpotifyId != null || s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })
 
-                if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSong(state.context, state.database, s, s.likedSpotify, explicitSpotifyId)
+                if (isSpotifyTarget) {
+                    val isSpotifyLikesSyncEnabled =
+                        state.context.dataStore.data
+                            .map { it[SpotifySyncLikesKey] ?: false }
+                            .first()
+                    if (isSpotifyLikesSyncEnabled) {
+                        SpotifySync.syncLikeForSong(state.context, state.database, s, s.likedSpotify, explicitSpotifyId)
+                    }
                     return@launch
                 }
 
@@ -47,7 +50,7 @@ class SyncLikes
                 }
                 val gen = state.syncGeneration.get()
                 if (!state.isSyncStillEnabled(gen)) return@launch
-                YouTube.likeVideo(s.id, s.liked)
+                YouTube.likeVideo(s.id, s.likedYtm)
             }
         }
 
@@ -61,23 +64,28 @@ class SyncLikes
                         .map { it[SpotifySyncLikesKey] ?: false }
                         .first()
 
-                if (isSpotifyLikesSyncEnabled) {
-                    SpotifySync.syncLikeForSongs(state.context, state.database, nonLocal)
-                    return@launch
+                val (spotifyTargets, ytmTargets) = nonLocal.partition { s ->
+                    s.id.startsWith("spotify:") || (s.id.length == 22 && s.id.all { it.isLetterOrDigit() })
                 }
+
+                if (isSpotifyLikesSyncEnabled && spotifyTargets.isNotEmpty()) {
+                    SpotifySync.syncLikeForSongs(state.context, state.database, spotifyTargets)
+                }
+
+                if (ytmTargets.isEmpty()) return@launch
 
                 if (!state.isLoggedIn() || !state.isYtmSyncEnabled()) {
                     Timber.w("Skipping likeSongs - user not logged in or YTM sync disabled")
                     return@launch
                 }
                 val gen = state.syncGeneration.get()
-                nonLocal.chunked(8).forEach { batch ->
+                ytmTargets.chunked(8).forEach { batch ->
                     if (!state.isSyncStillEnabled(gen)) return@launch
                     coroutineScope {
                         batch.map { song ->
                             async {
                                 if (!state.isSyncStillEnabled(gen)) return@async
-                                YouTube.likeVideo(song.id, song.liked)
+                                YouTube.likeVideo(song.id, song.likedYtm)
                             }
                         }.awaitAll()
                     }

@@ -191,7 +191,7 @@ class YtmSync
                                     .map { it.song }
                                     .filterNot { it.isLocal }
                                     .filterNot { it.id in remoteIds }
-                                    .map { it.copy(liked = false, likedYtm = false, likedDate = if (it.likedSpotify) it.likedDate else null) }
+                                    .map { it.copy(liked = it.likedSpotify, likedYtm = false, likedDate = if (it.likedSpotify) it.likedDate else null) }
                                     .toList()
                             if (staleLikedSongs.isNotEmpty()) {
                                 state.database.withTransaction {
