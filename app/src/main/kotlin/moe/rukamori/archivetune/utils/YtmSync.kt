@@ -204,7 +204,7 @@ class YtmSync
                         val newSongIds = newRemoteSongs.map { it.id }
                         val dbSongsById =
                             if (newSongIds.isNotEmpty()) {
-                                state.database.getSongsByIds(newSongIds).associateBy { it.id }
+                                newSongIds.chunked(500).flatMap { state.database.getSongsByIds(it) }.associateBy { it.id }
                             } else {
                                 emptyMap()
                             }

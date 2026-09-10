@@ -246,7 +246,7 @@ class SpotifySyncOps
                                 if (song.id in resolvedYoutubeIds) return@filter false
                                 val match = matchByYtId[song.id] ?: return@filter false
                                 match.spotifyId !in resolvedSpotifyIds
-                            }.map { it.song.copy(likedSpotify = false, likedDate = if (it.song.likedYtm) it.song.likedDate else null) }
+                            }.map { it.song.copy(liked = it.song.likedYtm, likedSpotify = false, likedDate = if (it.song.likedYtm) it.song.likedDate else null) }
                     } else {
                         emptyList()
                     }
@@ -267,10 +267,10 @@ class SpotifySyncOps
                         val dbSong = state.database.getSongByIdBlocking(resolved.metadata.id)
 
                         if (dbSong == null) {
-                            state.database.insert(resolved.metadata) { it.copy(likedSpotify = true, likedDate = timestamp) }
+                            state.database.insert(resolved.metadata) { it.copy(liked = true, likedSpotify = true, likedDate = timestamp) }
                         } else {
                             val finalTimestamp = dbSong.song.likedDate ?: timestamp
-                            state.database.update(dbSong.song.copy(likedSpotify = true, likedDate = finalTimestamp))
+                            state.database.update(dbSong.song.copy(liked = true, likedSpotify = true, likedDate = finalTimestamp))
                         }
 
                         state.database.insert(
