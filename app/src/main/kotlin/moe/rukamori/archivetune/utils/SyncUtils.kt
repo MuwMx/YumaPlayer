@@ -64,31 +64,20 @@ import javax.inject.Singleton
 class SyncUtils
     @Inject
     constructor(
-        private val database: MusicDatabase,
-        private val spotifyRepository: SpotifyLibraryRepository,
-        @ApplicationContext private val context: Context,
+        private val state: SyncState,
     ) {
-        private val syncScope = CoroutineScope(Dispatchers.IO)
-        private val syncEnabled = MutableStateFlow(true)
-        private val syncGeneration = AtomicLong(0L)
+        private val database get() = state.database
+        private val spotifyRepository get() = state.spotifyRepository
+        private val context get() = state.context
+        private val syncScope get() = state.syncScope
+        private val syncGeneration get() = state.syncGeneration
+        private val syncMutex get() = state.syncMutex
+        private val playlistSyncMutex get() = state.playlistSyncMutex
+        private val dbWriteSemaphore get() = state.dbWriteSemaphore
 
-        private val syncMutex = Mutex()
-        private val playlistSyncMutex = Mutex()
-        private val dbWriteSemaphore = Semaphore(2)
-
-        init {
-            syncScope.launch {
-                context.dataStore.data
-                    .map { it[YtmSyncKey] ?: true }
-                    .distinctUntilChanged()
-                    .collect { enabled ->
-                        syncEnabled.value = enabled
-                        if (!enabled) {
-                            syncGeneration.incrementAndGet()
-                        }
-                    }
-            }
-        }
+        private suspend fun isLoggedIn(): Boolean = state.isLoggedIn()
+        private suspend fun isYtmSyncEnabled(): Boolean = state.isYtmSyncEnabled()
+        private fun isSyncStillEnabled(gen: Long): Boolean = state.isSyncStillEnabled(gen)
 
         suspend fun performFullSync(authoritative: Boolean = false) =
             withContext(Dispatchers.IO) {
@@ -202,28 +191,6 @@ class SyncUtils
                 .map { copies ->
                     copies.reduce(::preferredPlaylistCopy)
                 }
-
-        private suspend fun isLoggedIn(): Boolean {
-            val cookie =
-                context.dataStore.data
-                    .map { it[InnerTubeCookieKey] }
-                    .first()
-            return hasYouTubeLoginCookie(cookie)
-        }
-
-        private suspend fun isYtmSyncEnabled(): Boolean {
-            val enabled =
-                context.dataStore.data
-                    .map { it[YtmSyncKey] ?: true }
-                    .first()
-            syncEnabled.value = enabled
-            if (!enabled) {
-                syncGeneration.incrementAndGet()
-            }
-            return enabled
-        }
-
-        private fun isSyncStillEnabled(gen: Long): Boolean = syncEnabled.value && syncGeneration.get() == gen
 
         fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
             if (s.isLocal) return
@@ -1097,8 +1064,3 @@ class SyncUtils
             private const val SPOTIFY_SYNC_COOLDOWN_MS = 30 * 60 * 1000L
         }
     }
-
-internal fun likedSongTimestamp(
-    baseTimestamp: LocalDateTime,
-    index: Int,
-): LocalDateTime = baseTimestamp.minusSeconds(index.toLong())
