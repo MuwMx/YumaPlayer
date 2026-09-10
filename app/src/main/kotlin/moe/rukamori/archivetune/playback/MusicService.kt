@@ -169,6 +169,7 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.LastFMSessionKey
 import moe.rukamori.archivetune.constants.LastFMUseNowPlaying
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
 import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
@@ -211,6 +212,9 @@ import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.directorySizeBytes
 import moe.rukamori.archivetune.extensions.findNextMediaItemById
 import moe.rukamori.archivetune.extensions.mediaItems
+import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
+import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
+import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.extensions.toContinuationQueue
@@ -2485,6 +2489,11 @@ class MusicService :
     fun toggleLike() {
         val mediaMetadata = currentMediaMetadata.value ?: player.currentMetadata ?: return
         Timber.tag("MediaNotification").d("toggleLike() called for mediaId=${mediaMetadata.id}, title=${mediaMetadata.title}")
+        val isSpotify = !mediaMetadata.spotifyTrackId.isNullOrBlank() ||
+            currentQueue is SpotifyLikedSongsQueue ||
+            currentQueue is SpotifyPlaylistQueue ||
+            currentQueue is SpotifyTracksQueue
+        val source = if (isSpotify) LikeSource.SPOTIFY else LikeSource.YTM
         ioScope.launch {
             try {
                 val song =
@@ -2499,7 +2508,7 @@ class MusicService :
                                         getSongById(mediaMetadata.id)
                                     }
                                     ?: return@withTransaction null
-                            currentSongEntity.song.toggleLike().also(::update)
+                            currentSongEntity.song.toggleLike(source).also(::update)
                         }
                     } ?: return@launch
 

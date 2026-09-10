@@ -50,6 +50,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.Song
@@ -171,7 +172,7 @@ fun AddToPlaylistDialogOnline(
                                                     if (addToLiked) {
                                                         val entity = media.toSongEntity()
                                                         database.query {
-                                                            update(entity.toggleLike())
+                                                            update(entity.toggleLike(LikeSource.YTM))
                                                         }
                                                     }
                                                     success = true

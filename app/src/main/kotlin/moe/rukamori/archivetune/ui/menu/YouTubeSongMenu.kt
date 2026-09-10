@@ -76,6 +76,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
@@ -283,10 +284,10 @@ fun YouTubeSongMenu(
                             librarySong.let { librarySong ->
                                 val updatedSong: SongEntity
                                 if (librarySong == null) {
-                                    insert(song.toMediaMetadata(), SongEntity::toggleLike)
-                                    updatedSong = song.toMediaMetadata().toSongEntity().let(SongEntity::toggleLike)
+                                    insert(song.toMediaMetadata()) { it.toggleLike(LikeSource.YTM) }
+                                    updatedSong = song.toMediaMetadata().toSongEntity().let { it.toggleLike(LikeSource.YTM) }
                                 } else {
-                                    updatedSong = librarySong.song.toggleLike()
+                                    updatedSong = librarySong.song.toggleLike(LikeSource.YTM)
                                     update(updatedSong)
                                 }
                                 syncUtils.likeSong(updatedSong)

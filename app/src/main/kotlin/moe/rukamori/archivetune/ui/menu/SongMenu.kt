@@ -82,6 +82,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlaybackSourceKey
@@ -368,6 +369,16 @@ fun SongMenu(
         }
     }
 
+    val isSpotifyOrigin =
+        remember(song.song.id, playlistBrowseId, song.song.likedSpotify, song.song.likedYtm, song.song.liked) {
+            song.song.id.startsWith("spotify:") ||
+                playlistBrowseId?.startsWith("spotify:") == true ||
+                (!song.song.isLocal && song.song.id.length == 22 && song.song.id.all { it.isLetterOrDigit() }) ||
+                (song.song.likedSpotify && !song.song.likedYtm && !song.song.liked)
+        }
+    val likeSource = if (isSpotifyOrigin) LikeSource.SPOTIFY else LikeSource.YTM
+    val isLiked = if (isSpotifyOrigin) song.song.likedSpotify else (song.song.likedYtm || song.song.liked)
+
     Surface(
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -380,16 +391,16 @@ fun SongMenu(
             trailingContent = {
                 IconButton(
                     onClick = {
-                        val s = song.song.toggleLike()
+                        val s = song.song.toggleLike(likeSource)
                         database.query {
                             update(s)
                         }
-                        syncUtils.likeSong(s)
+                        syncUtils.likeSong(s, if (isSpotifyOrigin) s.id else null)
                     },
                 ) {
                     Icon(
-                        painter = painterResource(if (song.song.liked) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (song.song.liked) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                        tint = if (isLiked) MaterialTheme.colorScheme.error else LocalContentColor.current,
                         contentDescription = null,
                     )
                 }
