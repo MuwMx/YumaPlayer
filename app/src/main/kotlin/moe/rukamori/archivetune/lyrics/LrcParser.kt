@@ -6,7 +6,9 @@
 
 package moe.rukamori.archivetune.lyrics
 
+import android.os.SystemClock
 import android.text.format.DateUtils
+import android.util.Log
 import moe.rukamori.archivetune.betterlyrics.TTMLParser
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 
@@ -26,6 +28,7 @@ object LrcParser {
     private const val INSTRUMENTAL_OUTRO_VOCAL_TAIL_MS = 2500L
 
     fun isTtml(lyrics: String): Boolean {
+        Log.d("SPLIT_STRESS", "LRC_DETECT isTtml len=${lyrics.length} thread=${Thread.currentThread().name}")
         val trimmed = normalizeLyricsText(lyrics)
         if (!trimmed.startsWith("<")) return false
 
@@ -33,21 +36,28 @@ object LrcParser {
             trimmed.contains("http://www.w3.org/ns/ttml", ignoreCase = true)
     }
 
-    fun isLineSyncedLrc(lyrics: String): Boolean =
-        lyrics.lineSequence().any { line ->
+    fun isLineSyncedLrc(lyrics: String): Boolean {
+        Log.d("SPLIT_STRESS", "isLineSyncedLrc lines=${lyrics.lines().size} thread=${Thread.currentThread().name}")
+        return lyrics.lineSequence().any { line ->
             val trimmedLine = line.trim()
             LINE_REGEX.matches(trimmedLine) || YRC_LINE_REGEX.matches(trimmedLine)
         }
+    }
 
     fun parseTtml(
         lyrics: String,
         durationSeconds: Int? = null,
     ): List<LyricsEntry> {
+        val t0 = SystemClock.elapsedRealtime()
+        Log.d("SPLIT_STRESS", "parseTtml entry len=${lyrics.length} dur=$durationSeconds thread=${Thread.currentThread().name}")
         val parsedLines = TTMLParser.parseTTML(normalizeLyricsText(lyrics))
-        if (parsedLines.isEmpty()) return emptyList()
+        if (parsedLines.isEmpty()) {
+            Log.d("SPLIT_STRESS", "parseTtml exit lines=0 dt=${SystemClock.elapsedRealtime() - t0}ms")
+            return emptyList()
+        }
         val scale = 1.0
 
-        return parsedLines
+        val result = parsedLines
             .map { line ->
                 val words =
                     line.words
@@ -72,9 +82,13 @@ object LrcParser {
                     providerTranslationText = line.providerTranslationText,
                 )
             }.sorted()
+        Log.d("SPLIT_STRESS", "parseTtml exit lines=${result.size} dt=${SystemClock.elapsedRealtime() - t0}ms")
+        return result
     }
 
     fun parseLyrics(lyrics: String): List<LyricsEntry> {
+        val t0 = SystemClock.elapsedRealtime()
+        Log.d("SPLIT_STRESS", "parseLyrics entry len=${lyrics.length} thread=${Thread.currentThread().name}")
         val lines = lyrics.lines()
         val result = mutableListOf<LyricsEntry>()
 
@@ -84,7 +98,9 @@ object LrcParser {
                 result.addAll(entries)
             }
         }
-        return mergeLineSyncedTranslations(result).sorted()
+        val merged = mergeLineSyncedTranslations(result).sorted()
+        Log.d("SPLIT_STRESS", "parseLyrics exit lines=${merged.size} dt=${SystemClock.elapsedRealtime() - t0}ms")
+        return merged
     }
 
     fun normalizeLyricsText(lyrics: String): String {
@@ -168,6 +184,7 @@ object LrcParser {
         entries: List<LyricsEntry>,
         songDurationMs: Long = 0L,
     ): List<LyricsEntry> {
+        Log.d("SPLIT_STRESS", "insertInstrumentalBreaks entry entries=${entries.size} songDurationMs=$songDurationMs thread=${Thread.currentThread().name}")
         if (entries.isEmpty()) return entries
         val result = mutableListOf<LyricsEntry>()
         insertIntroInstrumentalIfNeeded(entries, result)
@@ -184,6 +201,7 @@ object LrcParser {
         val introGapMs = firstTimedVocalEntry.time - INSTRUMENTAL_INTRO_START_MS
         if (introGapMs < INSTRUMENTAL_GAP_THRESHOLD_MS) return
 
+        Log.d("SPLIT_STRESS", "insertInstrumentalBreaks intro start=$INSTRUMENTAL_INTRO_START_MS dur=$introGapMs")
         result.add(
             LyricsEntry(
                 time = INSTRUMENTAL_INTRO_START_MS,
@@ -205,6 +223,7 @@ object LrcParser {
         val outroDurationMs = songDurationMs - outroStartMs
         if (outroDurationMs < INSTRUMENTAL_GAP_THRESHOLD_MS) return
 
+        Log.d("SPLIT_STRESS", "insertInstrumentalBreaks outro start=$outroStartMs dur=$outroDurationMs")
         result.add(
             LyricsEntry(
                 time = outroStartMs,

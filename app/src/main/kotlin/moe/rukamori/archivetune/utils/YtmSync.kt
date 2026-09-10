@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -44,10 +45,14 @@ class YtmSync
             withContext(Dispatchers.IO) {
                 if (authoritative) {
                     state.syncGeneration.incrementAndGet()
+                    Log.d("SPLIT_STRESS", "LOCK syncMutex acquire (auth) thread=${Thread.currentThread().name}")
                     state.syncMutex.lock()
                 } else if (!state.syncMutex.tryLock()) {
+                    Log.d("SPLIT_STRESS", "LOCK syncMutex tryLock FAILED thread=${Thread.currentThread().name}")
                     Timber.d("Sync already in progress, skipping")
                     return@withContext
+                } else {
+                    Log.d("SPLIT_STRESS", "LOCK syncMutex tryLock SUCCESS thread=${Thread.currentThread().name}")
                 }
 
                 try {
@@ -77,6 +82,7 @@ class YtmSync
                 } catch (e: Exception) {
                     Timber.e(e, "Error during full sync")
                 } finally {
+                    Log.d("SPLIT_STRESS", "LOCK syncMutex release thread=${Thread.currentThread().name}")
                     state.syncMutex.unlock()
                 }
             }
@@ -198,6 +204,7 @@ class YtmSync
                             val timestamp = likedSongTimestamp(baseTimestamp, index)
                             launch {
                                 if (!state.isSyncStillEnabled(gen)) return@launch
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore acquire (syncLikedSongs) thread=${Thread.currentThread().name}")
                                 state.dbWriteSemaphore.withPermit {
                                     if (!state.isSyncStillEnabled(gen)) return@withPermit
                                     val dbSong = state.database.song(song.id).firstOrNull()
@@ -210,6 +217,7 @@ class YtmSync
                                         }
                                     }
                                 }
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore release (syncLikedSongs) thread=${Thread.currentThread().name}")
                             }
                         }
                     }.onFailure { e ->
@@ -258,6 +266,7 @@ class YtmSync
                         remoteSongs.forEach { song ->
                             launch {
                                 if (!state.isSyncStillEnabled(gen)) return@launch
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore acquire (syncLibrarySongs) thread=${Thread.currentThread().name}")
                                 state.dbWriteSemaphore.withPermit {
                                     if (!state.isSyncStillEnabled(gen)) return@withPermit
                                     val dbSong = state.database.song(song.id).firstOrNull()
@@ -270,6 +279,7 @@ class YtmSync
                                         }
                                     }
                                 }
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore release (syncLibrarySongs) thread=${Thread.currentThread().name}")
                             }
                         }
                     }.onFailure { e ->
@@ -318,6 +328,7 @@ class YtmSync
                         remoteAlbums.forEach { album ->
                             launch {
                                 if (!state.isSyncStillEnabled(gen)) return@launch
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore acquire (syncLikedAlbums) thread=${Thread.currentThread().name}")
                                 state.dbWriteSemaphore.withPermit {
                                     if (!state.isSyncStillEnabled(gen)) return@withPermit
                                     val dbAlbum = state.database.album(album.id).firstOrNull()
@@ -341,6 +352,7 @@ class YtmSync
                                             Timber.w("syncLikedAlbums: Failed to fetch album ${album.id}", e)
                                         }
                                 }
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore release (syncLikedAlbums) thread=${Thread.currentThread().name}")
                             }
                         }
                     }.onFailure { e ->
@@ -390,6 +402,7 @@ class YtmSync
                         remoteArtists.forEachIndexed { index, artist ->
                             launch {
                                 if (!state.isSyncStillEnabled(gen)) return@launch
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore acquire (syncArtistsSubscriptions) thread=${Thread.currentThread().name}")
                                 state.dbWriteSemaphore.withPermit {
                                     if (!state.isSyncStillEnabled(gen)) return@withPermit
                                     val dbArtist = state.database.artist(artist.id).firstOrNull()
@@ -430,6 +443,7 @@ class YtmSync
                                         }
                                     }
                                 }
+                                Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore release (syncArtistsSubscriptions) thread=${Thread.currentThread().name}")
                             }
                         }
                     }.onFailure { e ->
@@ -439,10 +453,12 @@ class YtmSync
 
         suspend fun syncSavedPlaylists(authoritative: Boolean = false) =
             state.playlistSyncMutex.withLock {
-                if (!state.isLoggedIn()) {
-                    Timber.w("Skipping syncSavedPlaylists - user not logged in")
-                    return@withLock
-                }
+                Log.d("SPLIT_STRESS", "LOCK playlistMutex acquire (syncSavedPlaylists) thread=${Thread.currentThread().name}")
+                try {
+                    if (!state.isLoggedIn()) {
+                        Timber.w("Skipping syncSavedPlaylists - user not logged in")
+                        return@withLock
+                    }
                 if (!state.isYtmSyncEnabled()) {
                     Timber.w("Skipping syncSavedPlaylists - sync disabled")
                     return@withLock
@@ -567,9 +583,12 @@ class YtmSync
                                 Timber.e(e, "Failed to sync playlist ${playlist.title}")
                             }
                         }
-                    }.onFailure { e ->
-                        Timber.e(e, "syncSavedPlaylists: Failed to fetch playlists from YouTube")
-                    }
+                        }.onFailure { e ->
+                            Timber.e(e, "syncSavedPlaylists: Failed to fetch playlists from YouTube")
+                        }
+                } finally {
+                    Log.d("SPLIT_STRESS", "LOCK playlistMutex release (syncSavedPlaylists) thread=${Thread.currentThread().name}")
+                }
             }
 
         suspend fun syncAutoSyncPlaylists() =
@@ -605,6 +624,7 @@ class YtmSync
                     launch {
                         if (!state.isSyncStillEnabled(gen)) return@launch
                         try {
+                            Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore acquire (syncAutoSyncPlaylists) thread=${Thread.currentThread().name}")
                             state.dbWriteSemaphore.withPermit {
                                 if (!state.isSyncStillEnabled(gen)) return@withPermit
                                 val browseId =
@@ -614,6 +634,7 @@ class YtmSync
                                     }
                                 syncPlaylist(browseId, playlist.playlist.id)
                             }
+                            Log.d("SPLIT_STRESS", "SEMA dbWriteSemaphore release (syncAutoSyncPlaylists) thread=${Thread.currentThread().name}")
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to sync playlist ${playlist.playlist.name}")
                         }
@@ -627,12 +648,17 @@ class YtmSync
             propagateFailures: Boolean = false,
             onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
         ) = state.playlistSyncMutex.withLock {
-            syncPlaylist(
-                browseId = browseId,
-                playlistId = playlistId,
-                propagateFailures = propagateFailures,
-                onProgress = onProgress,
-            )
+            Log.d("SPLIT_STRESS", "LOCK playlistMutex acquire (syncPlaylistNow) playlistId=$playlistId thread=${Thread.currentThread().name}")
+            try {
+                syncPlaylist(
+                    browseId = browseId,
+                    playlistId = playlistId,
+                    propagateFailures = propagateFailures,
+                    onProgress = onProgress,
+                )
+            } finally {
+                Log.d("SPLIT_STRESS", "LOCK playlistMutex release (syncPlaylistNow) playlistId=$playlistId thread=${Thread.currentThread().name}")
+            }
         }
 
         private suspend fun syncPlaylist(
@@ -729,6 +755,7 @@ class YtmSync
                     }
                 }
                 Timber.d("syncPlaylist: Successfully synced playlist")
+                Log.d("SPLIT_STRESS", "YTM_DONE syncPlaylist songs=${songs.size} playlistId=$playlistId browseId=$cleanBrowseId")
             } catch (e: Exception) {
                 Timber.e(e, "syncPlaylist: Error during database transaction")
                 if (propagateFailures) {

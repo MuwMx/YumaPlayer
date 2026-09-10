@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.util.Log
 import moe.rukamori.archivetune.db.entities.SongEntity
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,11 +23,20 @@ class SyncUtils
 
         suspend fun cleanupDuplicatePlaylists() = ytmSync.cleanupDuplicatePlaylists()
 
-        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) = syncLikes.likeSong(s, explicitSpotifyId)
+        fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
+            Log.d("SPLIT_STRESS", "FACADE likeSong id=${s.id} thread=${Thread.currentThread().name}")
+            syncLikes.likeSong(s, explicitSpotifyId)
+        }
 
-        fun likeSongs(songs: List<SongEntity>) = syncLikes.likeSongs(songs)
+        fun likeSongs(songs: List<SongEntity>) {
+            Log.d("SPLIT_STRESS", "FACADE likeSongs n=${songs.size} thread=${Thread.currentThread().name}")
+            syncLikes.likeSongs(songs)
+        }
 
-        suspend fun syncLikedSongs(authoritative: Boolean = false) = ytmSync.syncLikedSongs(authoritative)
+        suspend fun syncLikedSongs(authoritative: Boolean = false) {
+            Log.d("SPLIT_STRESS", "FACADE->YTM syncLikedSongs auth=$authoritative thread=${Thread.currentThread().name}")
+            ytmSync.syncLikedSongs(authoritative)
+        }
 
         suspend fun syncLibrarySongs(authoritative: Boolean = false) = ytmSync.syncLibrarySongs(authoritative)
 
@@ -55,7 +65,10 @@ class SyncUtils
         suspend fun syncSpotifyLikedSongs(
             authoritative: Boolean = false,
             onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
-        ) = spotifySyncOps.syncSpotifyLikedSongs(authoritative, onProgress)
+        ) {
+            Log.d("SPLIT_STRESS", "FACADE->SPOT syncSpotifyLikedSongs auth=$authoritative thread=${Thread.currentThread().name}")
+            spotifySyncOps.syncSpotifyLikedSongs(authoritative, onProgress)
+        }
 
         fun trySpotifyAutoSync(authoritative: Boolean = false) = spotifySyncOps.trySpotifyAutoSync(authoritative)
     }

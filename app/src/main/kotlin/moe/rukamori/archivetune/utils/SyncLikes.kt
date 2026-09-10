@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -27,6 +28,7 @@ class SyncLikes
         private val state: SyncState,
     ) {
         fun likeSong(s: SongEntity, explicitSpotifyId: String? = null) {
+            Log.d("SPLIT_STRESS", "LIKES_IMPL likeSong id=${s.id} liked=${s.liked} isLocal=${s.isLocal} thread=${Thread.currentThread().name}")
             if (s.isLocal) return
             state.syncScope.launch {
                 val isSpotifyLikesSyncEnabled =
@@ -50,6 +52,7 @@ class SyncLikes
         }
 
         fun likeSongs(songs: List<SongEntity>) {
+            Log.d("SPLIT_STRESS", "LIKES_IMPL likeSongs total=${songs.size} thread=${Thread.currentThread().name}")
             val nonLocal = songs.filterNot { it.isLocal }.distinctBy { it.id }
             if (nonLocal.isEmpty()) return
             state.syncScope.launch {

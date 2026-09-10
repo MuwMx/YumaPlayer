@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -40,6 +41,8 @@ class SpotifySyncOps
     ) {
         suspend fun syncSpotifyPlaylists(authoritative: Boolean = false) =
             state.playlistSyncMutex.withLock {
+                Log.d("SPLIT_STRESS", "LOCK playlistMutex acquire (syncSpotifyPlaylists) thread=${Thread.currentThread().name}")
+                var remotePlaylistsCount = 0
                 try {
                     val session = state.spotifyRepository.restoreSession()
                     if (!session.isAuthenticated) {
@@ -48,6 +51,7 @@ class SpotifySyncOps
                     }
 
                     val remotePlaylists = state.spotifyRepository.refreshPlaylists()
+                    remotePlaylistsCount = remotePlaylists.size
                     val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
                     val now = LocalDateTime.now()
 
@@ -150,8 +154,11 @@ class SpotifySyncOps
                             Timber.e(e, "Failed to sync Spotify playlist ${playlist.name}")
                         }
                     }
+                    Log.d("SPLIT_STRESS", "SPOT_DONE playlists remoteCount=$remotePlaylistsCount")
                 } catch (e: Exception) {
                     Timber.e(e, "Error during syncSpotifyPlaylists")
+                } finally {
+                    Log.d("SPLIT_STRESS", "LOCK playlistMutex release (syncSpotifyPlaylists) thread=${Thread.currentThread().name}")
                 }
             }
 
@@ -159,6 +166,7 @@ class SpotifySyncOps
             authoritative: Boolean = false,
             onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
         ) = state.playlistSyncMutex.withLock {
+            Log.d("SPLIT_STRESS", "LOCK playlistMutex acquire (syncSpotifyLikedSongs) thread=${Thread.currentThread().name}")
             try {
                 val session = state.spotifyRepository.restoreSession()
                 if (!session.isAuthenticated) {
@@ -247,8 +255,11 @@ class SpotifySyncOps
                         }
                     }
                 }
+                Log.d("SPLIT_STRESS", "SPOT_DONE liked total=${tracks.size} resolved=${resolvedTracks.size}")
             } catch (e: Exception) {
                 Timber.e(e, "Error during syncSpotifyLikedSongs")
+            } finally {
+                Log.d("SPLIT_STRESS", "LOCK playlistMutex release (syncSpotifyLikedSongs) thread=${Thread.currentThread().name}")
             }
         }
 
