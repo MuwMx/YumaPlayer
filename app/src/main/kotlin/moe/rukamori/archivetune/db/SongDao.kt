@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -789,7 +788,6 @@ interface SongDao {
         songId: String,
         inLibrary: LocalDateTime?,
     ) {
-        Log.d("DB_STRESS", "SongDao.inLibrary songId=$songId inLibrary=$inLibrary th=${Thread.currentThread().name}")
         inLibraryInternal(songId, inLibrary)
     }
 
@@ -831,7 +829,6 @@ interface SongDao {
     fun updateInternal(song: SongEntity)
 
     fun update(song: SongEntity) {
-        Log.d("DB_STRESS", "SongDao.update id=${song.id} liked=${song.liked} inLib=${song.inLibrary != null} th=${Thread.currentThread().name}")
         updateInternal(song)
     }
 
@@ -839,7 +836,6 @@ interface SongDao {
     fun upsertInternal(song: SongEntity)
 
     fun upsert(song: SongEntity) {
-        Log.d("DB_STRESS", "SongDao.upsert id=${song.id} liked=${song.liked} inLib=${song.inLibrary != null} th=${Thread.currentThread().name}")
         upsertInternal(song)
     }
 

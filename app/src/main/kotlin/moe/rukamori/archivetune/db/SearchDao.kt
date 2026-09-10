@@ -6,13 +6,11 @@
 
 package moe.rukamori.archivetune.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.RoomWarnings
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -30,15 +28,7 @@ interface SearchDao {
     fun searchSongs(
         query: String,
         previewSize: Int = Int.MAX_VALUE,
-    ): Flow<List<Song>> {
-        val t0 = System.currentTimeMillis()
-        Log.d("DB_STRESS", "SearchDao.searchSongs ENTER query='$query' previewSize=$previewSize th=${Thread.currentThread().name}")
-        return searchSongsInternal(query, previewSize).map { list ->
-            val dt = System.currentTimeMillis() - t0
-            Log.d("DB_STRESS", "SearchDao.searchSongs EMIT query='$query' count=${list.size} dt=${dt}ms th=${Thread.currentThread().name}")
-            list
-        }
-    }
+    ): Flow<List<Song>> = searchSongsInternal(query, previewSize)
 
     @Query("SELECT COUNT(1) FROM song WHERE title LIKE '%' || :query || '%' AND inLibrary IS NOT NULL")
     suspend fun searchSongsCount(query: String): Int

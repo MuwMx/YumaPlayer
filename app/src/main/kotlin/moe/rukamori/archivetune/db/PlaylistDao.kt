@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -169,7 +168,6 @@ interface PlaylistDao {
         playlist: Playlist,
         songIds: List<String>,
     ) {
-        Log.d("DB_STRESS", "PlaylistDao.addSongToPlaylist playlistId=${playlist.id} count=${songIds.size} th=${Thread.currentThread().name}")
         addSongEntriesToPlaylist(
             playlist = playlist,
             songEntries = songIds.map { songId -> songId to null },
@@ -181,8 +179,6 @@ interface PlaylistDao {
         playlist: Playlist,
         songEntries: List<Pair<String, String?>>,
     ) {
-        val t0 = System.currentTimeMillis()
-        Log.d("DB_STRESS", "PlaylistDao.addSongEntriesToPlaylist ENTER playlistId=${playlist.id} count=${songEntries.size} th=${Thread.currentThread().name}")
         var position = playlist.songCount
         songEntries.forEach { (songId, setVideoId) ->
             insert(
@@ -197,8 +193,6 @@ interface PlaylistDao {
         if (songEntries.isNotEmpty()) {
             update(playlist.playlist.copy(lastUpdateTime = LocalDateTime.now()))
         }
-        val dt = System.currentTimeMillis() - t0
-        Log.d("DB_STRESS", "PlaylistDao.addSongEntriesToPlaylist EXIT playlistId=${playlist.id} dt=${dt}ms th=${Thread.currentThread().name}")
     }
 
     @Transaction
@@ -225,11 +219,7 @@ interface PlaylistDao {
         fromPosition: Int,
         toPosition: Int,
     ) {
-        val t0 = System.currentTimeMillis()
-        Log.d("DB_STRESS", "PlaylistDao.move ENTER playlistId=$playlistId from=$fromPosition to=$toPosition th=${Thread.currentThread().name}")
         moveInternal(playlistId, fromPosition, toPosition)
-        val dt = System.currentTimeMillis() - t0
-        Log.d("DB_STRESS", "PlaylistDao.move EXIT playlistId=$playlistId dt=${dt}ms th=${Thread.currentThread().name}")
     }
 
     @Transaction

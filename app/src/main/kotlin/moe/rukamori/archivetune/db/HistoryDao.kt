@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -164,18 +163,14 @@ interface HistoryDao {
      * Increment by one the play count with today's year and month.
      */
     suspend fun incrementPlayCount(songId: String) {
-        val t0 = System.currentTimeMillis()
         val time = LocalDateTime.now().atOffset(ZoneOffset.UTC)
         val oldCount = getPlayCountByMonth(songId, time.year, time.monthValue).first()
-        Log.d("DB_STRESS", "HistoryDao.incrementPlayCount READ songId=$songId year=${time.year} month=${time.monthValue} oldCount=$oldCount th=${Thread.currentThread().name}")
 
         // add new
         if (oldCount <= 0) {
             insert(PlayCountEntity(songId, time.year, time.monthValue, 0))
         }
         incrementPlayCount(songId, time.year, time.monthValue)
-        val dt = System.currentTimeMillis() - t0
-        Log.d("DB_STRESS", "HistoryDao.incrementPlayCount WRITE DONE songId=$songId newCount=${oldCount + 1} dt=${dt}ms th=${Thread.currentThread().name}")
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -206,7 +201,6 @@ interface HistoryDao {
     fun insertInternal(libraryTopMix: LibraryTopMixEntity)
 
     fun insert(libraryTopMix: LibraryTopMixEntity) {
-        Log.d("DB_STRESS", "HistoryDao.insert TopMix id=${libraryTopMix.id} title=${libraryTopMix.title} th=${Thread.currentThread().name}")
         insertInternal(libraryTopMix)
     }
 
@@ -214,7 +208,6 @@ interface HistoryDao {
     fun insertInternal(libraryTopMixSongMap: LibraryTopMixSongMap)
 
     fun insert(libraryTopMixSongMap: LibraryTopMixSongMap) {
-        Log.d("DB_STRESS", "HistoryDao.insert TopMixSongMap mixId=${libraryTopMixSongMap.mixId} songId=${libraryTopMixSongMap.songId} pos=${libraryTopMixSongMap.position} th=${Thread.currentThread().name}")
         insertInternal(libraryTopMixSongMap)
     }
 
@@ -222,7 +215,6 @@ interface HistoryDao {
     fun deleteLibraryTopMixesInternal()
 
     fun deleteLibraryTopMixes() {
-        Log.d("DB_STRESS", "HistoryDao.deleteLibraryTopMixes th=${Thread.currentThread().name}")
         deleteLibraryTopMixesInternal()
     }
 }

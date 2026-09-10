@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.db
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -108,15 +107,11 @@ interface TagDao {
         playlistId: String,
         tagId: String,
     ) {
-        val t0 = System.currentTimeMillis()
         val isTagged = isPlaylistTagged(playlistId, tagId).first()
-        Log.d("DB_STRESS", "TagDao.togglePlaylistTag READ playlistId=$playlistId tagId=$tagId isTagged=$isTagged th=${Thread.currentThread().name}")
         if (isTagged > 0) {
             removePlaylistTag(playlistId, tagId)
-            Log.d("DB_STRESS", "TagDao.togglePlaylistTag WRITE remove playlistId=$playlistId tagId=$tagId dt=${System.currentTimeMillis() - t0}ms th=${Thread.currentThread().name}")
         } else {
             addTagToPlaylist(playlistId, tagId)
-            Log.d("DB_STRESS", "TagDao.togglePlaylistTag WRITE add playlistId=$playlistId tagId=$tagId dt=${System.currentTimeMillis() - t0}ms th=${Thread.currentThread().name}")
         }
     }
 }

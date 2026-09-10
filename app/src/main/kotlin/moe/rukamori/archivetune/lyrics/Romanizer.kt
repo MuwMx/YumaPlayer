@@ -7,7 +7,6 @@
 package moe.rukamori.archivetune.lyrics
 
 import android.icu.text.Transliterator
-import android.util.Log
 import android.util.LruCache
 import com.atilika.kuromoji.ipadic.Tokenizer
 import kotlinx.coroutines.Dispatchers
@@ -416,10 +415,8 @@ object Romanizer {
      */
     suspend fun romanizeJapanese(text: String): String =
         withContext(Dispatchers.Default) {
-            Log.d("SPLIT_STRESS", "KUROMOJI romanizeJapanese entry len=${text.length} thread=${Thread.currentThread().name}")
             // Use the lazily initialized tokenizer
             val tokens = kuromojiTokenizer.tokenize(text)
-            Log.d("SPLIT_STRESS", "KUROMOJI tokensCount=${tokens.size} textHash=${text.hashCode()}")
 
             val romanizedTokens =
                 tokens.mapIndexed { index, token ->
@@ -710,10 +707,8 @@ object Romanizer {
             romanizationCache.get(key)
         }
         if (cached != null) {
-            Log.d("SPLIT_STRESS", "romanizeLyricsLine cache HIT keyHash=${key.hashCode()} resLen=${cached.length}")
             return cached
         }
-        Log.d("SPLIT_STRESS", "romanizeLyricsLine cache MISS keyHash=${key.hashCode()}")
 
         val romanized =
             when {
@@ -727,7 +722,6 @@ object Romanizer {
 
         val result = normalizeRomanizedText(text, romanized)
         if (result != null) {
-            Log.d("SPLIT_STRESS", "romanizeLyricsLine cache PUT keyHash=${key.hashCode()} resLen=${result.length}")
             synchronized(romanizationCache) {
                 romanizationCache.put(key, result)
             }
@@ -747,10 +741,8 @@ object Romanizer {
             romanizationCache.get(key)
         }
         if (cached != null) {
-            Log.d("SPLIT_STRESS", "romanizeLyricsWordWithLineContext cache HIT keyHash=${key.hashCode()} resLen=${cached.length}")
             return cached
         }
-        Log.d("SPLIT_STRESS", "romanizeLyricsWordWithLineContext cache MISS keyHash=${key.hashCode()}")
 
         val romanized =
             when {
@@ -763,7 +755,6 @@ object Romanizer {
             }
         val result = normalizeRomanizedText(word, romanized)
         if (result != null) {
-            Log.d("SPLIT_STRESS", "romanizeLyricsWordWithLineContext cache PUT keyHash=${key.hashCode()} resLen=${result.length}")
             synchronized(romanizationCache) {
                 romanizationCache.put(key, result)
             }
