@@ -154,7 +154,6 @@ fun UpdateScreen(
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = appBarScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
-    val nightlyInstallUrl = remember { Updater.getLatestDownloadUrl() }
 
     val (enableUpdateNotification, onEnableUpdateNotificationChange) =
         rememberPreference(
@@ -221,7 +220,10 @@ fun UpdateScreen(
     }
 
     val installUpdate: (String) -> Unit = { url ->
-        if (!useInAppUpdateInstaller) {
+        if (url.isBlank()) {
+            updateSheetError = "Update download URL unavailable"
+            showUpdateErrorDialog = true
+        } else if (!useInAppUpdateInstaller) {
             openUpdateUrl(url)
         } else if (updateDownloadJob?.isActive != true) {
             updateDownloadProgress = null
@@ -247,6 +249,74 @@ fun UpdateScreen(
         }
     }
 
+    val updateSheetContent: @Composable ColumnScope.() -> Unit = {
+        Text(
+            text = stringResource(R.string.new_update_available),
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(top = 16.dp),
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ) {
+            Text(
+                text = updateSheetVersion ?: "",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+        ) {
+            val notes = updateSheetNotes
+            if (notes != null && notes.isNotBlank()) {
+                MarkdownText(
+                    markdown = notes,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(end = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.release_notes_unavailable),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        val downloadUrl =
+            when (updateChannel) {
+                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
+                else -> Updater.getLatestDownloadUrl()
+            }
+
+        Button(
+            onClick = { installUpdate(downloadUrl) },
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            Text(text = stringResource(R.string.update_text))
+        }
+
+        Spacer(Modifier.height(12.dp))
+    }
+
     val handleCheckForUpdate: () -> Unit = {
         run {
             if (isCheckingForUpdate || !BuildConfig.UPDATER_AVAILABLE) return@run
@@ -254,6 +324,7 @@ fun UpdateScreen(
                 isCheckingForUpdate = true
                 updateSheetLoading = true
                 updateSheetVersion = null
+                updateSheetNotes = null
                 updateSheetError = null
                 try {
                     val versionResult =
@@ -263,10 +334,18 @@ fun UpdateScreen(
                         }
                     versionResult.onSuccess { version ->
                         updateSheetVersion = version
+                        latestVersion = version
                         val available = Updater.isUpdateAvailable(version, BuildConfig.VERSION_NAME)
                         if (available) {
+                            val notesResult =
+                                when (updateChannel) {
+                                    UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryReleaseNotes()
+                                    else -> Updater.getLatestReleaseNotes()
+                                }
+                            updateSheetNotes = notesResult.getOrNull()
                             updateSheetLoading = false
                             updateSheetIsSameVersion = false
+                            updateSheetState.show(updateSheetContent)
                         } else {
                             updateSheetLoading = false
                             showUpdateUpToDateDialog = true
@@ -610,7 +689,7 @@ fun UpdateScreen(
                 AnimatedVisibility(visible = isNightlyChannel) {
                     NightlyInstallPanel(
                         latestCommit = latestCommit,
-                        onInstallNightly = { installUpdate(nightlyInstallUrl) },
+                        onInstallNightly = { installUpdate(Updater.getLatestDownloadUrl()) },
                     )
                 }
             }
