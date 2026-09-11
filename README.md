@@ -274,6 +274,10 @@ YumaPlayer is free, open source, and has no ads or subscriptions. If you enjoy u
   <a href="https://ko-fi.com/muwmix">
     <img src="assets/buymeacoffee.png" height="45" alt="Support on Ko-fi" />
   </a>
+  &nbsp;&nbsp;
+  <a href="https://patreon.com/MuwMix">
+    <img src="https://img.shields.io/badge/Patreon-Support_on_Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" height="45" alt="Support on Patreon" />
+  </a>
   <br /><br />
   <p>
     <b>Solana (SOL, USDT, USDC):</b><br />

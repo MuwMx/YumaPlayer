@@ -275,6 +275,10 @@ YumaPlayer распространяется бесплатно, не содер�
   <a href="https://ko-fi.com/muwmix">
     <img src="assets/buymeacoffee.png" height="45" alt="Support on Ko-fi" />
   </a>
+  &nbsp;&nbsp;
+  <a href="https://patreon.com/MuwMix">
+    <img src="https://img.shields.io/badge/Patreon-Поддержать_на_Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" height="45" alt="Support on Patreon" />
+  </a>
   <br /><br />
   <p>
     <b>Solana (SOL, USDT, USDC):</b><br />
