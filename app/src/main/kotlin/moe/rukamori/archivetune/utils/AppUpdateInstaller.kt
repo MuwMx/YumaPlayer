@@ -8,6 +8,9 @@ package moe.rukamori.archivetune.utils
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -198,10 +201,34 @@ object AppUpdateInstaller {
         return apkFile
     }
 
+    fun canRequestPackageInstalls(context: Context): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.packageManager.canRequestPackageInstalls()
+        } else {
+            true
+        }
+
+    fun openInstallPermissionSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            runCatching {
+                val intent =
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                        .setData(Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            }
+        }
+    }
+
     private fun installApk(
         context: Context,
         apkFile: File,
     ) {
+        if (!canRequestPackageInstalls(context)) {
+            openInstallPermissionSettings(context)
+            throw SecurityException("Please allow app installation from this source in Settings")
+        }
+
         val uri =
             FileProvider.getUriForFile(
                 context,
