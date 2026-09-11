@@ -21,11 +21,12 @@
   </p>
 
   <p align="center">
-    <a href="#-галерея-интерфейса-showcase"><b>Скриншоты</b></a> •
-    <a href="#-основные-возможности"><b>Возможности</b></a> •
-    <a href="#-архитектура-и-документация"><b>Архитектура</b></a> •
-    <a href="#-установка-и-загрузка"><b>Скачать</b></a> •
-    <a href="#-поддержать-проект-support"><b>Донат</b></a>
+  <a href="#-галерея-интерфейса-showcase"><b>Скриншоты</b></a> •
+  <a href="#-основные-возможности"><b>Возможности</b></a> •
+  <a href="#-архитектура-и-документация"><b>Архитектура</b></a> •
+  <a href="#-установка-и-загрузка"><b>Скачать</b></a> •
+  <a href="#-участие-в-разработке-contributing"><b>Внести вклад</b></a> •
+  <a href="#-поддержать-проект-support"><b>Донат</b></a>
   </p>
 
   <div>
@@ -140,13 +141,27 @@
 
 ## 🌍 Локализация (Globalization)
 
-YumaPlayer переведен на множество языков силами сообщества (Thanks Archivetune!).
+YumaPlayer переведен на множество языков благодаря помощи сообщества. Процесс перевода непрерывно синхронизируется с репозиторием через платформу [Hosted Weblate](https://hosted.weblate.org/).
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Translations-In_Progress-6366f1?style=for-the-badge&logo=weblate&labelColor=1e1e2e" alt="Translation Status" />
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://hosted.weblate.org/widgets/yumaplayer/-/svg-badge.svg" alt="Статус перевода" />
+  </a>
+  <br /><br />
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://hosted.weblate.org/widgets/yumaplayer/-/multi-auto.svg" alt="Детальный прогресс локализации" />
+  </a>
 </div>
 
-> Если вы хотите помочь с переводом приложения на ваш родной язык или улучшить текущие строки — присоединяйтесь к обсуждению в нашем [Telegram-канале](https://t.me/yumaplayer).
+<br />
+
+<div align="center">
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://img.shields.io/badge/Помочь_с_переводом-Weblate-00875A?style=for-the-badge&logo=weblate&logoColor=white" alt="Перевести на Weblate" />
+  </a>
+</div>
+
+> **Хотите помочь перевести Yuma?** Знания Git и программирования не нужны. Просто откройте [панель перевода на Weblate](https://hosted.weblate.org/engage/yumaplayer/), выберите язык и вносите правки прямо через браузер.
 
 ---
 
@@ -270,6 +285,15 @@ YumaPlayer распространяется бесплатно, не содер�
     <code>muwmix.coffee@gmail.com</code>
   </p>
 </div>
+
+---
+
+## 💡 Участие в разработке
+
+Мы рады любому вкладу сообщества — от исправления багов до предложений новых функций:
+
+* Ознакомьтесь с **[Правилами участия](CONTRIBUTING.md)** перед отправкой кода или созданием Pull Request.
+* Хотите перевести плеер? Переходите сразу на **[Hosted Weblate](https://hosted.weblate.org/engage/yumaplayer/)** — знание Git не требуется.
 
 ---
 

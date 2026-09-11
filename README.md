@@ -20,11 +20,12 @@
   </p>
 
   <p align="center">
-    <a href="#-showcase"><b>Showcase</b></a> •
-    <a href="#-key-features"><b>Features</b></a> •
-    <a href="#️-architecture--documentation"><b>Architecture</b></a> •
-    <a href="#-download--installation"><b>Download</b></a> •
-    <a href="#-support-the-project"><b>Support</b></a>
+  <a href="#-showcase"><b>Showcase</b></a> •
+  <a href="#-key-features"><b>Features</b></a> •
+  <a href="#️-architecture--documentation"><b>Architecture</b></a> •
+  <a href="#-download--installation"><b>Download</b></a> •
+  <a href="#-contributing"><b>Contributing</b></a> •
+  <a href="#-support-the-project"><b>Support</b></a>
   </p>
 
   <div>
@@ -139,13 +140,27 @@ No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-p
 
 ## 🌍 Globalization & Localization
 
-YumaPlayer is localized into multiple languages thanks to community contributions (Thanks Archivetune!).
+YumaPlayer is localized into multiple languages thanks to our amazing community translators. The localization pipeline is continuously synchronized with the codebase via [Hosted Weblate](https://hosted.weblate.org/).
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Translations-Community_Driven-6366f1?style=for-the-badge&logo=weblate&labelColor=1e1e2e" alt="Translation Status" />
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://hosted.weblate.org/widgets/yumaplayer/-/svg-badge.svg" alt="Translation Status" />
+  </a>
+  <br /><br />
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://hosted.weblate.org/widgets/yumaplayer/-/multi-auto.svg" alt="Detailed Translation Progress" />
+  </a>
 </div>
 
-> If you would like to contribute translations or improve existing language strings, join the discussion in our [Telegram Community](https://t.me/yumaplayer).
+<br />
+
+<div align="center">
+  <a href="https://hosted.weblate.org/engage/yumaplayer/">
+    <img src="https://img.shields.io/badge/Help_Translate-Weblate-00875A?style=for-the-badge&logo=weblate&logoColor=white" alt="Contribute via Weblate" />
+  </a>
+</div>
+
+> **Want to help translate Yuma?** No coding or Git knowledge required. Just open our [Weblate translation dashboard](https://hosted.weblate.org/engage/yumaplayer/), choose your language, and start contributing directly through your browser.
 
 ---
 
@@ -269,6 +284,15 @@ YumaPlayer is free, open source, and has no ads or subscriptions. If you enjoy u
     <code>muwmix.coffee@gmail.com</code>
   </p>
 </div>
+
+---
+
+## 💡 Contributing
+
+Contributions make open-source projects thrive! Whether you are fixing bugs, proposing new features, or improving docs:
+
+* Read our **[Contribution Guidelines](CONTRIBUTING.md)** before submitting code or PRs.
+* Want to translate? Head over to our **[Hosted Weblate](https://hosted.weblate.org/engage/yumaplayer/)** — no coding required.
 
 ---
 
