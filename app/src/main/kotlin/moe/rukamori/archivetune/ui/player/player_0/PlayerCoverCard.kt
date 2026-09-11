@@ -42,7 +42,12 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
+import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.abs
 
 @Composable
@@ -53,8 +58,12 @@ fun PlayerCoverCard(
     isAlbumCoverGlowEnabled: Boolean = false,
     vibrantColor: Color = Color.Transparent,
     gestureEnabled: Boolean = true,
+    mediaId: String? = null,
+    songTitle: String? = null,
+    artistName: String? = null,
+    isPlaying: Boolean = false,
     onNext: () -> Unit = {},
-    onPrevious: () -> Unit = {}
+    onPrevious: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val shadowColor = MaterialTheme.colorScheme.scrim
@@ -64,6 +73,9 @@ fun PlayerCoverCard(
     val haptics = LocalYumaHaptics.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+
+    val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
+    var canvasArtwork by remember { mutableStateOf<CanvasArtwork?>(null) }
     
     val offsetX = remember { Animatable(0f) }
     var accumulatedDragX by remember { mutableStateOf(0f) }
@@ -75,6 +87,22 @@ fun PlayerCoverCard(
     var activeVibrantColor by remember { mutableStateOf(Color.Transparent) }
     
     val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
+
+    LaunchedEffect(cleanUrl, isCanvasEnabled, mediaId) {
+        if (!isCanvasEnabled || mediaId.isNullOrBlank()) {
+            canvasArtwork = null
+            return@LaunchedEffect
+        }
+        canvasArtwork =
+            resolveCanvasArtworkForPlayback(
+                mediaId = mediaId,
+                songTitleRaw = songTitle ?: "",
+                artistNameRaw = artistName ?: "",
+                storefront = "us",
+                requireVertical = false,
+                allowNetwork = true,
+            )
+    }
 
     val request = remember(cleanUrl) {
         ImageRequest.Builder(context)
@@ -222,5 +250,17 @@ fun PlayerCoverCard(
                 )
             }
         }
+        if (isCanvasEnabled && canvasArtwork != null) {
+            CanvasArtworkPlayer(
+                primaryUrl = canvasArtwork?.preferredAnimationUrl,
+                fallbackUrl = canvasArtwork?.fallbackUrl,
+                isPlaying = isPlaying,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
+
+private val CanvasArtwork.fallbackUrl: String?
+    get() = videoUrl.takeIf { it != preferredAnimationUrl }
+

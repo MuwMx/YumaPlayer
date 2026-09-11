@@ -171,6 +171,8 @@ internal fun CanvasArtworkPlayer(
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                     exoPlayer.setCanvasPlayback(shouldPlay)
+                } else if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                    exoPlayer.setCanvasPlayback(false)
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)

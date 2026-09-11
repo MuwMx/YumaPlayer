@@ -153,6 +153,10 @@ fun FullPlayer(
                         isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
                         vibrantColor = Color(state.vibrantColor),
                         gestureEnabled = !state.isImmersiveEnabled && !state.isLyricsVisible && lyricsFractionProvider() < 0.05f && queueFractionProvider() < 0.05f,
+                        mediaId = state.trackUrl,
+                        songTitle = state.title,
+                        artistName = state.artist,
+                        isPlaying = state.isPlaying,
                         onNext = { onAction(PlayerAction.Next) },
                         onPrevious = { onAction(PlayerAction.Previous) }
                     )

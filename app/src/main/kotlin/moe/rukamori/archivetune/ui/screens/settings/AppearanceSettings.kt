@@ -66,6 +66,7 @@ import androidx.navigation.compose.rememberNavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
+import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
@@ -129,6 +130,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             DisableAnimationsKey,
             defaultValue = defaultDisableAnimations,
+        )
+    val (archiveTuneCanvas, onArchiveTuneCanvasChange) =
+        rememberPreference(
+            ArchiveTuneCanvasKey,
+            defaultValue = false,
         )
     val (homeBackgroundStyle, onHomeBackgroundStyleChange) =
         rememberEnumPreference(
@@ -325,6 +331,16 @@ fun AppearanceSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
                         checked = disableAnimations,
                         onCheckedChange = onDisableAnimationsChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.archivetune_canvas)) },
+                        description = stringResource(R.string.archivetune_canvas_desc),
+                        icon = { Icon(painterResource(R.drawable.motion_photos_on), null, modifier = Modifier.size(24.dp)) },
+                        checked = archiveTuneCanvas,
+                        onCheckedChange = onArchiveTuneCanvasChange,
                     )
                 }
 
