@@ -55,7 +55,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
             return@withContext null
         }
 
-        CanvasArtworkPlaybackCache.cacheArtworkInBackground(mediaId, fetched)
         CanvasArtworkPlaybackCache.put(mediaId, fetched)
     }
 }

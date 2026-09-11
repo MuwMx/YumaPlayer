@@ -217,7 +217,7 @@ internal class CanvasVideoDownloader(
             runCatching { target.delete() }
         }
 
-        val partial = directory.resolve("$fileName.part")
+        val partial = File(directory, "$fileName.${java.util.UUID.randomUUID()}.part")
         return try {
             downloadToFile(url = url, target = partial)
             if (partial.length() <= 0L) throw IOException("Downloaded empty canvas video")
