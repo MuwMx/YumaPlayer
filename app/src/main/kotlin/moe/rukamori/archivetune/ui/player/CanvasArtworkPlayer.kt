@@ -30,16 +30,25 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.StreamClientUtils
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.util.Locale
@@ -48,6 +57,13 @@ private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
 private const val CanvasPlaybackStallTimeoutMs = 5_000L
 private const val CanvasMaxVideoWidth = 1_920
 private const val CanvasMaxVideoHeight = 1_920
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface CanvasArtworkPlayerEntryPoint {
+    @PlayerCache
+    fun playerCache(): Cache
+}
 
 @Composable
 internal fun CanvasArtworkPlayer(
@@ -59,6 +75,17 @@ internal fun CanvasArtworkPlayer(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val playerConnection = LocalPlayerConnection.current
+    val playerCache =
+        remember(context, playerConnection) {
+            playerConnection?.service?.playerCache
+                ?: runCatching {
+                    EntryPointAccessors.fromApplication(
+                        context.applicationContext,
+                        CanvasArtworkPlayerEntryPoint::class.java,
+                    ).playerCache()
+                }.getOrNull()
+        }
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
     val fallback = fallbackUrl?.takeIf { it.isNotBlank() }
     val initial = primary ?: fallback ?: return
@@ -78,8 +105,21 @@ internal fun CanvasArtworkPlayer(
         remember {
             OkHttpClient
                 .Builder()
+                .dns(YouTube.dns)
                 .proxy(YouTube.streamOkHttpProxy)
-                .addInterceptor { chain ->
+                .apply {
+                    val username = YouTube.proxyUsername
+                    val password = YouTube.proxyPassword
+                    if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+                        proxyAuthenticator { _, response ->
+                            val credential = Credentials.basic(username, password)
+                            response.request
+                                .newBuilder()
+                                .header("Proxy-Authorization", credential)
+                                .build()
+                        }
+                    }
+                }.addInterceptor { chain ->
                     val request = chain.request()
                     val host = request.url.host
                     val isYouTubeMediaHost =
@@ -109,11 +149,22 @@ internal fun CanvasArtworkPlayer(
                 }.build()
         }
     val mediaSourceFactory =
-        remember(okHttpClient) {
+        remember(context, okHttpClient, playerCache) {
+            val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+            val upstreamFactory =
+                if (playerCache != null) {
+                    CacheDataSource
+                        .Factory()
+                        .setCache(playerCache)
+                        .setUpstreamDataSourceFactory(httpDataSourceFactory)
+                        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                } else {
+                    httpDataSourceFactory
+                }
             DefaultMediaSourceFactory(
                 DefaultDataSource.Factory(
                     context,
-                    OkHttpDataSource.Factory(okHttpClient),
+                    upstreamFactory,
                 ),
             )
         }
