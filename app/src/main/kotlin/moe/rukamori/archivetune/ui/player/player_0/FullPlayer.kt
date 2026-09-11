@@ -40,12 +40,6 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -185,26 +179,6 @@ fun FullPlayer(
                         .widthIn(max = 420.dp)
                         .offset { IntOffset(x = 0, y = controlsOffsetY.roundToPx()) }
                 ) {
-                    if (state.isImmersiveEnabled) {
-                        val currentLine = state.lyricsList.getOrNull(state.currentLineIndex)?.text
-                        if (!currentLine.isNullOrBlank()) {
-                            Text(
-                                text = currentLine,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = Color.White.copy(alpha = 0.92f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp)
-                                    .graphicsLayer {
-                                        alpha = if (isOverlayVisible) 0f else 1f
-                                    }
-                            )
-                        }
-                    }
-
                     PlayerMetadata(
                         title = state.title,
                         artist = state.artist,
