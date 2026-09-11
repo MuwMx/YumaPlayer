@@ -61,6 +61,7 @@ import moe.rukamori.archivetune.cast.CastScreenState
 import moe.rukamori.archivetune.cast.CastUiState
 import moe.rukamori.archivetune.cast.CastViewModel
 import moe.rukamori.archivetune.ui.component.NewAction
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
 @Composable
 fun rememberCastPlayerMenuAction(): NewAction? {
@@ -103,7 +104,8 @@ fun rememberCastPlayerMenuAction(): NewAction? {
             Icon(
                 painter = painterResource(androidx.media3.cast.R.drawable.media_route_button_disconnected),
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                tint = Color.White.copy(alpha = SettingsDimensions.YumaRowIconAlpha),
+                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
             )
         },
         text = text,

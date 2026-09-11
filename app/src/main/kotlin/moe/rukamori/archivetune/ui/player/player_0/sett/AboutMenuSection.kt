@@ -327,13 +327,18 @@ fun CompactMenuRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (leadingContent != null) {
-                leadingContent()
+                Box(
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    contentAlignment = Alignment.Center
+                ) {
+                    leadingContent()
+                }
             } else if (iconResId != null) {
                 Icon(
                     painter = painterResource(id = iconResId),
                     contentDescription = title,
                     tint = if (isActive) activeIconTint else Color.White.copy(alpha = SettingsDimensions.YumaRowIconAlpha),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize)
                 )
             }
 
