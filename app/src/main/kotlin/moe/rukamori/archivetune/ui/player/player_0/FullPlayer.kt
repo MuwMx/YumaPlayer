@@ -40,7 +40,12 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -75,6 +80,12 @@ fun FullPlayer(
     LaunchedEffect(state.isLyricsVisible) { prevLyricsVisible = state.isLyricsVisible }
 
     val isOverlayVisible = state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+
+    val canPlayCanvas = state.isPlaying &&
+        !state.isLyricsVisible &&
+        !state.isQueueVisible &&
+        lyricsFractionProvider() < 0.05f &&
+        queueFractionProvider() < 0.05f
 
     val immersiveCoverAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled) {
@@ -156,10 +167,28 @@ fun FullPlayer(
                         mediaId = state.trackUrl,
                         songTitle = state.title,
                         artistName = state.artist,
-                        isPlaying = state.isPlaying,
+                        isPlaying = canPlayCanvas,
                         onNext = { onAction(PlayerAction.Next) },
                         onPrevious = { onAction(PlayerAction.Previous) }
                     )
+
+                    if (state.isImmersiveEnabled) {
+                        val currentLine = state.lyricsList.getOrNull(state.currentLineIndex)?.text
+                        if (!currentLine.isNullOrBlank()) {
+                            Text(
+                                text = currentLine,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White.copy(alpha = 0.92f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 8.dp, start = 20.dp, end = 20.dp)
+                                    .graphicsLayer { alpha = immersiveCoverAlpha }
+                            )
+                        }
+                    }
                 }
             },
             controls = {
