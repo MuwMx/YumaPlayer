@@ -129,7 +129,6 @@ class App :
         )
         ArchiveTuneCanvas.initialize(BuildConfig.CANVAS_BEARER_TOKEN)
         PaxsenixLyrics.setUserAgent("ArchiveTune", BuildConfig.VERSION_NAME)
-        PaxsenixLyrics.setAmpToken(BuildConfig.PAXSENIX_AMP_TOKEN)
 
         val locale = Locale.getDefault()
         val languageTag = locale.toLanguageTag().replace("-Hant", "")
@@ -170,6 +169,7 @@ class App :
                     YouTube.locale = YouTube.locale.copy(hl = lang)
                 }
 
+                PaxsenixLyrics.setApiKey(prefs[PaxsenixApiKeyKey].orEmpty())
                 LastFmServiceConfig.fromPreferences(prefs).apply(prefs[LastFMSessionKey])
 
                 ProxyUtils.applyYouTubeProxy(

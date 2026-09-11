@@ -1,9 +1,9 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
+ * ArchiveTune (2026)
+ * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
-
 package moe.rukamori.archivetune.betterlyrics
 
 import io.ktor.client.HttpClient
@@ -17,13 +17,27 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import moe.rukamori.archivetune.betterlyrics.models.TTMLResponse
 
 object BetterLyrics {
     private const val API_BASE_URL = "https://lyrics-api.boidu.dev/"
     private const val TTML_LYRICS_PATH = "getLyrics"
     private const val KUGOU_LYRICS_PATH = "kugou/getLyrics"
+    private const val PORTATO_LYRICS_PATH = "qq/getLyrics"
+    private const val MAX_RESPONSE_UNWRAP_DEPTH = 2
+    private val ttmlRootRegex = Regex("""<(?:[A-Za-z_][\w.-]*:)?tt(?:\s|>)""", RegexOption.IGNORE_CASE)
+
+    private data class DecodedLyrics(
+        val content: String,
+        val score: Double?,
+    )
     private val jsonFormat by lazy {
         Json {
             isLenient = true
@@ -60,14 +74,13 @@ object BetterLyrics {
         title: String,
         album: String?,
         durationSeconds: Int,
+        endpoints: List<String>,
     ): String? {
         val cleanTitle = title.trim()
         val cleanArtist = artist.trim()
         val cleanAlbum = album?.trim().orEmpty()
 
         if (cleanTitle.isBlank() || cleanArtist.isBlank()) return null
-
-        val endpoints = listOf(TTML_LYRICS_PATH, KUGOU_LYRICS_PATH)
 
         for (endpoint in endpoints) {
             fetchLyricsFromEndpoint(
@@ -110,27 +123,83 @@ object BetterLyrics {
                 return null
             }
 
-            val lyrics =
+            val decoded =
                 try {
                     decodeLyrics(responseText)
                 } catch (e: Exception) {
                     logger?.invoke("$endpoint parse error: ${e.message}")
-                    ""
+                    null
                 }
 
-            logger?.invoke("$endpoint lyrics length: ${lyrics.length}")
-            lyrics.takeIf { it.isNotBlank() }
+            decoded?.score?.let { score ->
+                logger?.invoke("$endpoint match score: $score")
+            }
+            logger?.invoke("$endpoint lyrics length: ${decoded?.content?.length ?: 0}")
+            decoded?.content?.takeIf { it.isNotBlank() }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logger?.invoke("$endpoint error fetching lyrics: ${e.stackTraceToString()}")
             null
         }
     }
 
-    private fun decodeLyrics(responseText: String): String {
-        val trimmed = responseText.trim()
-        if (trimmed.startsWith("<")) return trimmed
-        return jsonFormat.decodeFromString<TTMLResponse>(responseText).ttml
+    private fun decodeLyrics(responseText: String): DecodedLyrics? {
+        val raw = responseText.removePrefix("\uFEFF")
+        if (isTtmlPayload(raw)) return DecodedLyrics(content = raw, score = null)
+
+        val root = jsonFormat.parseToJsonElement(responseText)
+        val response =
+            runCatching {
+                jsonFormat.decodeFromJsonElement(TTMLResponse.serializer(), root)
+            }.getOrNull()
+        if (response != null && isTtmlPayload(response.ttml)) {
+            return DecodedLyrics(content = response.ttml, score = response.score)
+        }
+
+        val nested = decodeLyricsElement(root, depth = 0) ?: return null
+        return nested.copy(score = response?.score ?: nested.score)
     }
+
+    private fun decodeLyricsElement(
+        element: JsonElement,
+        depth: Int,
+    ): DecodedLyrics? {
+        if (depth > MAX_RESPONSE_UNWRAP_DEPTH) return null
+
+        return when (element) {
+            is JsonObject -> {
+                val score = (element["score"] as? JsonPrimitive)?.doubleOrNull
+                val payload =
+                    element["ttml"]
+                        ?: element["lyrics"]
+                        ?: element["data"]
+                        ?: element["result"]
+                        ?: element["response"]
+                        ?: return null
+                val decoded = decodeLyricsElement(payload, depth + 1) ?: return null
+                decoded.copy(score = score ?: decoded.score)
+            }
+
+            is JsonPrimitive -> {
+                val content = element.contentOrNull ?: return null
+                when {
+                    isTtmlPayload(content) -> DecodedLyrics(content = content, score = null)
+                    depth < MAX_RESPONSE_UNWRAP_DEPTH -> {
+                        val nested = runCatching { jsonFormat.parseToJsonElement(content) }.getOrNull() ?: return null
+                        decodeLyricsElement(nested, depth + 1)
+                    }
+
+                    else -> null
+                }
+            }
+
+            else -> null
+        }
+    }
+
+    private fun isTtmlPayload(value: String): Boolean =
+        ttmlRootRegex.containsMatchIn(value.take(MAX_TTML_ROOT_SCAN_LENGTH))
 
     private fun buildRequestLog(
         endpoint: String,
@@ -163,18 +232,34 @@ object BetterLyrics {
         artist: String,
         album: String? = null,
         durationSeconds: Int = -1,
-    ) = runCatching {
-        require(title.isNotBlank() && artist.isNotBlank()) { "Song title and artist are required" }
-        val ttml =
+    ): Result<String> =
+        runSuspendCatching {
+            require(title.isNotBlank() && artist.isNotBlank()) { "Song title and artist are required" }
             fetchLyrics(
                 artist = artist,
                 title = title,
                 album = album,
                 durationSeconds = durationSeconds,
-            )
-                ?: throw IllegalStateException("Lyrics unavailable")
-        ttml
-    }
+                endpoints = listOf(TTML_LYRICS_PATH, KUGOU_LYRICS_PATH),
+            ) ?: throw IllegalStateException("Lyrics unavailable")
+        }
+
+    suspend fun getPortatoLyrics(
+        title: String,
+        artist: String,
+        album: String? = null,
+        durationSeconds: Int = -1,
+    ): Result<String> =
+        runSuspendCatching {
+            require(title.isNotBlank() && artist.isNotBlank()) { "Song title and artist are required" }
+            fetchLyrics(
+                artist = artist,
+                title = title,
+                album = album,
+                durationSeconds = durationSeconds,
+                endpoints = listOf(PORTATO_LYRICS_PATH),
+            ) ?: throw IllegalStateException("Portato lyrics unavailable")
+        }
 
     suspend fun getAllLyrics(
         title: String,
@@ -194,4 +279,30 @@ object BetterLyrics {
             callback(ttml)
         }
     }
+
+    suspend fun getAllPortatoLyrics(
+        title: String,
+        artist: String,
+        album: String? = null,
+        durationSeconds: Int = -1,
+        callback: (String) -> Unit,
+    ) {
+        getPortatoLyrics(
+            title = title,
+            artist = artist,
+            album = album,
+            durationSeconds = durationSeconds,
+        ).onSuccess(callback)
+    }
+
+    private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> =
+        try {
+            Result.success(block())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+    private const val MAX_TTML_ROOT_SCAN_LENGTH = 4096
 }

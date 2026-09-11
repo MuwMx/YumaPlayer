@@ -18,6 +18,8 @@ data class TTMLResponse(
     val ttml: String = "",
     @SerialName("provider")
     val provider: String? = null,
+    @SerialName("score")
+    val score: Double? = null,
 )
 
 @Serializable

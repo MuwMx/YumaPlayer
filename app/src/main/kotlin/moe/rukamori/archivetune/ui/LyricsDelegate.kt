@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.lyrics.LrcParser
 import moe.rukamori.archivetune.lyrics.LyricsEntry
@@ -113,13 +114,13 @@ class LyricsDelegate(
         audioPlayer: Player?,
         playbackProgressMs: Long,
     ) {
-        if (cached == null || cached.lyrics == LyricsEntity.LYRICS_NOT_FOUND || cached.lyrics.isBlank()) {
+        if (cached == null || cached.lyrics == LYRICS_NOT_FOUND || cached.lyrics.isBlank()) {
             updateUiState { current ->
                 current.copy(
                     lyricsList = emptyList(),
                     isSynced = false,
                     isLoadingLyrics = false,
-                    lyricsError = if (cached?.lyrics == LyricsEntity.LYRICS_NOT_FOUND) "lyrics_not_found" else null,
+                    lyricsError = if (cached?.lyrics == LYRICS_NOT_FOUND) "lyrics_not_found" else null,
                     currentLineIndex = -1,
                 )
             }

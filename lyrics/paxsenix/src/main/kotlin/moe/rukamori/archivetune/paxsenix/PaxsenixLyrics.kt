@@ -1,9 +1,9 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
+ * ArchiveTune (2026)
+ * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
-
 package moe.rukamori.archivetune.paxsenix
 
 import io.ktor.client.HttpClient
@@ -12,20 +12,34 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.*
-import moe.rukamori.archivetune.paxsenix.models.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
+import moe.rukamori.archivetune.paxsenix.models.AppleMusicLyricsResponse
+import moe.rukamori.archivetune.paxsenix.models.PaxsenixStats
 import java.util.Locale
 import kotlin.math.abs
 
 object PaxsenixLyrics {
-    private const val BASE_URL = "https://lyrics.paxsenix.org/"
+    private const val BASE_URL = "https://api.paxsenix.org/"
+    private const val STATS_URL = "https://lyrics.paxsenix.org/api/stats"
+
+    @Volatile
+    private var apiKey: String = ""
 
     var userAgent: String = "ArchiveTune"
         private set
@@ -37,13 +51,8 @@ object PaxsenixLyrics {
         userAgent = "$appName/$versionName"
     }
 
-    // Apple Music AMP API (direct catalog search)
-    private const val AMP_BASE_URL = "https://amp-api.music.apple.com"
-
-    private var ampToken: String = ""
-
-    fun setAmpToken(token: String) {
-        ampToken = token
+    fun setApiKey(apiKey: String) {
+        this.apiKey = apiKey.trim()
     }
 
     private val json =
@@ -60,9 +69,9 @@ object PaxsenixLyrics {
             }
 
             install(HttpTimeout) {
-                requestTimeoutMillis = 15000
-                connectTimeoutMillis = 10000
-                socketTimeoutMillis = 15000
+                requestTimeoutMillis = 15_000
+                connectTimeoutMillis = 10_000
+                socketTimeoutMillis = 15_000
             }
 
             defaultRequest {
@@ -76,35 +85,76 @@ object PaxsenixLyrics {
         }
     }
 
-    private fun resolveDurationMs(duration: Int): Long =
-        when {
-            duration <= 0 -> 0L
+    private suspend fun apiGet(
+        path: String,
+        request: HttpRequestBuilder.() -> Unit = {},
+    ): HttpResponse {
+        val currentApiKey = apiKey
+        check(currentApiKey.isNotEmpty()) { "Paxsenix API key is not configured" }
 
-            duration > 360000 -> duration.toLong()
+        return client.get(path) {
+            header(HttpHeaders.Authorization, "Bearer $currentApiKey")
+            request()
+        }
+    }
 
-            // 1h+ is likely ms (360k ms = 6 min)
-            else -> duration * 1000L // Likely seconds
+    private suspend fun apiBody(
+        path: String,
+        request: HttpRequestBuilder.() -> Unit = {},
+    ): String {
+        val response = apiGet(path, request)
+        val body = response.body<String>()
+        check(response.status.value in 200..299) {
+            "Paxsenix request failed with HTTP ${response.status.value}"
+        }
+        return body
+    }
+
+    private suspend fun <T> resultOf(block: suspend () -> T): Result<T> =
+        try {
+            Result.success(block())
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Result.failure(error)
         }
 
+    private fun resolveDurationMs(durationSeconds: Int): Long =
+        durationSeconds.coerceAtLeast(0) * 1_000L
+
     private val lyricsContentKeys =
-        listOf("lyrics", "lrc", "content", "text", "plainLyrics", "syncedLyrics", "line", "lyric")
+        listOf(
+            "lyrics",
+            "lrc",
+            "content",
+            "lines",
+            "text",
+            "plainLyrics",
+            "syncedLyrics",
+            "line",
+            "lyric",
+        )
 
     private fun cleanJsonLyrics(raw: String): String? {
         val trimmed = raw.trim()
         if (trimmed.isEmpty()) return null
 
-        val payload =
-            runCatching { json.parseToJsonElement(trimmed) }.getOrNull()
-                ?: return trimmed
+        val payload = runCatching { json.parseToJsonElement(trimmed) }.getOrNull() ?: return trimmed
         return extractLyrics(payload)
+    }
+
+    private fun parseLyrics(raw: String): String? {
+        val timedLyrics = runCatching { json.decodeFromString<AppleMusicLyricsResponse>(raw) }.getOrNull()
+        return timedLyrics
+            ?.takeIf { it.content.isNotEmpty() }
+            ?.let(::convertAppleMusicToLrc)
+            ?.takeIf(String::isNotBlank)
+            ?: cleanJsonLyrics(raw)
     }
 
     private fun extractLyrics(element: JsonElement): String? =
         when (element) {
-            JsonNull -> {
-                null
-            }
-
+            JsonNull -> null
             is JsonPrimitive -> {
                 if (!element.isString) {
                     null
@@ -123,13 +173,12 @@ object PaxsenixLyrics {
                 }
             }
 
-            is JsonArray -> {
+            is JsonArray ->
                 element
                     .mapNotNull(::extractLyrics)
                     .joinToString("\n")
                     .trim()
-                    .takeIf { it.isNotEmpty() }
-            }
+                    .takeIf(String::isNotEmpty)
 
             is JsonObject -> {
                 if (element.isErrorPayload()) {
@@ -147,17 +196,14 @@ object PaxsenixLyrics {
                         }
                         ?: element["words"]?.let { words ->
                             when (words) {
-                                is JsonArray -> {
+                                is JsonArray ->
                                     words
                                         .mapNotNull(::extractLyrics)
                                         .joinToString(" ")
                                         .trim()
-                                        .takeIf { it.isNotEmpty() }
-                                }
+                                        .takeIf(String::isNotEmpty)
 
-                                else -> {
-                                    extractLyrics(words)
-                                }
+                                else -> extractLyrics(words)
                             }
                         }
                 }
@@ -166,6 +212,7 @@ object PaxsenixLyrics {
 
     private fun JsonObject.isErrorPayload(): Boolean {
         if ((this["isError"] as? JsonPrimitive)?.booleanOrNull == true) return true
+        if ((this["ok"] as? JsonPrimitive)?.booleanOrNull == false) return true
 
         return when (val error = this["error"]) {
             null, JsonNull -> false
@@ -175,111 +222,121 @@ object PaxsenixLyrics {
         }
     }
 
-    private val ampUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
-
-    /**
-     * Searches Apple Music catalog via the AMP API to find a song's catalog ID.
-     */
-    private suspend fun searchAppleMusicId(
+    private suspend fun searchTrackId(
+        path: String,
         title: String,
         artist: String,
         durationMs: Long,
     ): String? {
-        if (ampToken.isBlank()) {
-            return null
+        val raw =
+            apiBody(path) {
+                parameter("q", "$title $artist")
+            }
+        val payload = json.parseToJsonElement(raw)
+        val candidates = buildList { payload.collectTrackCandidates(this) }
+        return candidates
+            .map { candidate -> candidate to candidate.score(title, artist, durationMs) }
+            .maxByOrNull { (_, score) -> score }
+            ?.takeIf { (_, score) -> score >= MINIMUM_MATCH_SCORE }
+            ?.first
+            ?.id
+    }
+
+    private fun JsonElement.collectTrackCandidates(destination: MutableList<TrackCandidate>) {
+        when (this) {
+            is JsonArray -> forEach { it.collectTrackCandidates(destination) }
+            is JsonObject -> {
+                toTrackCandidate()?.let(destination::add)
+                values.forEach { it.collectTrackCandidates(destination) }
+            }
+
+            else -> Unit
         }
-        val query = "$title $artist"
-        System.err.println("PaxsenixLyrics: Searching Apple Music catalog for: $query")
+    }
 
-        val country = Locale.getDefault().country
-        val storefront = if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
+    private fun JsonObject.toTrackCandidate(): TrackCandidate? {
+        val attributes = this["attributes"] as? JsonObject
+        val details = attributes ?: this
+        val id = firstString(TRACK_ID_KEYS) ?: details.firstString(TRACK_ID_KEYS) ?: return null
+        val title = details.firstString(TRACK_TITLE_KEYS) ?: return null
+        val artist = details.firstString(TRACK_ARTIST_KEYS) ?: details.artistNames()
+        val duration = details.firstLong(TRACK_DURATION_KEYS).toDurationMs()
+        return TrackCandidate(id = id, title = title, artist = artist.orEmpty(), durationMs = duration)
+    }
 
-        return runCatching {
-            val response =
-                client.get("$AMP_BASE_URL/v1/catalog/$storefront/search") {
-                    header("Authorization", "Bearer $ampToken")
-                    header("Origin", "https://music.apple.com")
-                    header("Referer", "https://music.apple.com/")
-                    header(HttpHeaders.UserAgent, ampUserAgent)
-                    parameter("term", query)
-                    parameter("types", "songs")
-                    parameter("limit", "10")
+    private fun JsonObject.firstString(keys: List<String>): String? =
+        keys
+            .asSequence()
+            .mapNotNull { key -> (this[key] as? JsonPrimitive)?.contentOrNull }
+            .map(String::trim)
+            .firstOrNull(String::isNotEmpty)
+
+    private fun JsonObject.firstLong(keys: List<String>): Long? =
+        keys
+            .asSequence()
+            .mapNotNull { key -> (this[key] as? JsonPrimitive)?.longOrNull }
+            .firstOrNull()
+
+    private fun JsonObject.artistNames(): String? {
+        val artists = this["artists"] ?: this["artist"] ?: return null
+        return when (artists) {
+            is JsonPrimitive -> artists.contentOrNull
+            is JsonObject -> artists.firstString(listOf("name", "artistName", "title"))
+            is JsonArray ->
+                artists
+                    .mapNotNull { artist ->
+                        when (artist) {
+                            is JsonPrimitive -> artist.contentOrNull
+                            is JsonObject -> artist.firstString(listOf("name", "artistName", "title"))
+                            else -> null
+                        }
+                    }.joinToString(", ")
+                    .takeIf(String::isNotEmpty)
+
+            else -> null
+        }
+    }
+
+    private fun Long?.toDurationMs(): Long =
+        when {
+            this == null || this <= 0L -> 0L
+            this < 10_000L -> this * 1_000L
+            else -> this
+        }
+
+    private fun TrackCandidate.score(
+        requestedTitle: String,
+        requestedArtist: String,
+        requestedDurationMs: Long,
+    ): Int {
+        var score = 0
+        score += textMatchScore(title, requestedTitle, exactScore = 20, partialScore = 10)
+        score += textMatchScore(artist, requestedArtist, exactScore = 15, partialScore = 5)
+        if (requestedDurationMs > 0L && durationMs > 0L) {
+            val difference = abs(durationMs - requestedDurationMs)
+            score +=
+                when {
+                    difference < 3_000L -> 10
+                    difference < 10_000L -> 5
+                    else -> 0
                 }
+        }
+        return score
+    }
 
-            if (response.status != HttpStatusCode.OK) {
-                System.err.println("PaxsenixLyrics: AMP search failed with status: ${response.status}")
-                return@runCatching null
-            }
-
-            val root = response.body<JsonObject>()
-            val songs =
-                root["results"]
-                    ?.jsonObject
-                    ?.get("songs")
-                    ?.jsonObject
-                    ?.get("data")
-                    ?.jsonArray
-                    ?: return@runCatching null
-
-            if (songs.isEmpty()) {
-                System.err.println("PaxsenixLyrics: AMP search returned no results")
-                return@runCatching null
-            }
-
-            data class ScoredSong(
-                val id: String,
-                val score: Int,
-                val name: String,
-                val artistName: String,
-                val duration: Long,
-            )
-
-            val scored =
-                songs
-                    .mapNotNull { item ->
-                        val obj = item.jsonObject ?: return@mapNotNull null
-                        val attrs = obj["attributes"]?.jsonObject ?: return@mapNotNull null
-                        val songId = obj["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-                        val name = attrs["name"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val artistName = attrs["artistName"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val dur = attrs["durationInMillis"]?.jsonPrimitive?.longOrNull ?: 0L
-
-                        var score = 0
-                        if (name.equals(title, ignoreCase = true)) {
-                            score += 20
-                        } else if (name.contains(title, ignoreCase = true) || title.contains(name, ignoreCase = true)) {
-                            score += 10
-                        }
-                        if (artistName.equals(artist, ignoreCase = true)) {
-                            score += 15
-                        } else if (artistName.contains(artist, ignoreCase = true) || artist.contains(artistName, ignoreCase = true)) {
-                            score += 5
-                        }
-                        if (durationMs > 0 && dur > 0) {
-                            val diff = abs(dur - durationMs)
-                            if (diff < 3000) {
-                                score += 10
-                            } else if (diff < 10000) {
-                                score += 5
-                            }
-                        }
-
-                        ScoredSong(songId, score, name, artistName, dur)
-                    }.sortedByDescending { it.score }
-
-            val best = scored.firstOrNull() ?: return@runCatching null
-            System.err.println("PaxsenixLyrics: Best AMP match: ${best.name} by ${best.artistName} (ID: ${best.id}, Score: ${best.score})")
-
-            if (best.score < 12) {
-                System.err.println("PaxsenixLyrics: Rejecting match — score $best.score < 12")
-                return@runCatching null
-            }
-
-            best.id
-        }.onFailure { e ->
-            if (e is CancellationException) throw e
-            System.err.println("PaxsenixLyrics: AMP search error: ${e.message}")
-        }.getOrNull()
+    private fun textMatchScore(
+        candidate: String,
+        requested: String,
+        exactScore: Int,
+        partialScore: Int,
+    ): Int {
+        if (candidate.isBlank() || requested.isBlank()) return 0
+        return when {
+            candidate.equals(requested, ignoreCase = true) -> exactScore
+            candidate.contains(requested, ignoreCase = true) ||
+                requested.contains(candidate, ignoreCase = true) -> partialScore
+            else -> 0
+        }
     }
 
     suspend fun getAppleMusicLyrics(
@@ -287,128 +344,20 @@ object PaxsenixLyrics {
         artist: String,
         durationSeconds: Int,
     ): Result<String> =
-        runCatching {
-            if (ampToken.isBlank()) {
-                throw IllegalStateException("Apple Music lyrics unavailable: AMP token is blank")
-            }
-            val durationMs = resolveDurationMs(durationSeconds)
+        resultOf {
             val songId =
-                searchAppleMusicId(title, artist, durationMs)
-                    ?: throw IllegalStateException("Apple Music lyrics unavailable")
-
-            val lyricsResponse =
-                client.get("apple-music/lyrics") {
-                    parameter("id", songId)
-                    parameter("ttml", "true")
-                }
-
-            System.err.println("PaxsenixLyrics: Apple Music lyrics (TTML) status: ${lyricsResponse.status}")
-            if (lyricsResponse.status == HttpStatusCode.OK) {
-                try {
-                    val rawBody = lyricsResponse.body<String>().trim()
-
-                    if (rawBody.startsWith("<tt") || rawBody.startsWith("<?xml")) {
-                        System.err.println("PaxsenixLyrics: SUCCESS from Apple Music (Direct TTML)")
-                        return@runCatching rawBody
-                    }
-
-                    val data = Json.decodeFromString<JsonObject>(rawBody)
-                    val content = data["content"]?.jsonPrimitive?.content
-                    if (content != null && (content.contains("<tt") || content.contains("<?xml"))) {
-                        System.err.println("PaxsenixLyrics: SUCCESS from Apple Music (JSON-wrapped TTML, Length: ${content.length})")
-                        return@runCatching content
-                    } else {
-                        System.err.println("PaxsenixLyrics: Apple Music TTML content was null or invalid. Type: ${data["type"]}")
-                    }
-                } catch (e: Exception) {
-                    System.err.println("PaxsenixLyrics: Error parsing Apple Music TTML: ${e.message}")
-                }
-            }
-
-            val jsonResponse =
-                client.get("apple-music/lyrics") {
+                searchTrackId(
+                    path = "apple-music/search",
+                    title = title,
+                    artist = artist,
+                    durationMs = resolveDurationMs(durationSeconds),
+                ) ?: throw IllegalStateException("Apple Music lyrics unavailable")
+            val raw =
+                apiBody("lyrics/applemusic") {
                     parameter("id", songId)
                 }
-            System.err.println("PaxsenixLyrics: Apple Music lyrics (JSON) status: ${jsonResponse.status}")
-            if (jsonResponse.status == HttpStatusCode.OK) {
-                val lyricsData = jsonResponse.body<AppleMusicLyricsResponse>()
-                if (lyricsData.content.isNotEmpty()) {
-                    System.err.println("PaxsenixLyrics: SUCCESS from Apple Music (LRC Fallback)")
-                    return@runCatching convertAppleMusicToLrc(lyricsData)
-                }
-            }
-
-            throw IllegalStateException("Apple Music lyrics unavailable")
-        }
-
-    suspend fun getNeteaseLyrics(
-        title: String,
-        artist: String,
-        durationSeconds: Int,
-    ): Result<String> =
-        runCatching {
-            val durationMs = resolveDurationMs(durationSeconds)
-            val query = "$title $artist"
-            val neteaseSearch =
-                client.get("netease/search") {
-                    parameter("q", query)
-                }
-
-            if (neteaseSearch.status == HttpStatusCode.OK) {
-                val searchResponse = neteaseSearch.body<NeteaseSearchResponse>()
-                val songs = searchResponse.result?.songs ?: emptyList()
-
-                val bestMatch =
-                    if (durationMs > 0) {
-                        songs.minByOrNull { abs(it.duration.toLong() - durationMs) }
-                    } else {
-                        songs.firstOrNull()
-                    }
-
-                if (bestMatch != null) {
-                    val diff = abs(bestMatch.duration.toLong() - durationMs)
-                    System.err.println(
-                        "PaxsenixLyrics: Best NetEase match: ${bestMatch.name} (ID: ${bestMatch.id}, Duration: ${bestMatch.duration}, Diff: $diff)",
-                    )
-                    if (durationMs <= 0 || (diff < 10000)) {
-                        val lyricsResponse =
-                            client.get("netease/lyrics") {
-                                parameter("id", bestMatch.id)
-                                parameter("word", "true")
-                            }
-
-                        System.err.println("PaxsenixLyrics: NetEase lyrics status: ${lyricsResponse.status}")
-                        if (lyricsResponse.status == HttpStatusCode.OK) {
-                            val lyricsData = lyricsResponse.body<JsonObject>()
-
-                            // Try to get word-by-word (klyric) first
-                            val klyric =
-                                lyricsData["klyric"]
-                                    ?.jsonObject
-                                    ?.get("lyric")
-                                    ?.jsonPrimitive
-                                    ?.content
-                            if (!klyric.isNullOrBlank()) {
-                                System.err.println("PaxsenixLyrics: SUCCESS from NetEase (Karaoke)")
-                                return@runCatching klyric
-                            }
-
-                            // Fallback to normal lyric (lrc)
-                            val lrc =
-                                lyricsData["lrc"]
-                                    ?.jsonObject
-                                    ?.get("lyric")
-                                    ?.jsonPrimitive
-                                    ?.content
-                            if (!lrc.isNullOrBlank()) {
-                                System.err.println("PaxsenixLyrics: SUCCESS from NetEase (LRC)")
-                                return@runCatching lrc
-                            }
-                        }
-                    }
-                }
-            }
-            throw IllegalStateException("NetEase lyrics unavailable")
+            parseLyrics(raw)
+                ?: throw IllegalStateException("Apple Music lyrics unavailable")
         }
 
     suspend fun getSpotifyLyrics(
@@ -416,95 +365,19 @@ object PaxsenixLyrics {
         artist: String,
         durationSeconds: Int,
     ): Result<String> =
-        runCatching {
-            val durationMs = resolveDurationMs(durationSeconds)
-            val query = "$title $artist"
-            val spotifySearch =
-                client.get("spotify/search") {
-                    parameter("q", query)
-                }
-            if (spotifySearch.status == HttpStatusCode.OK) {
-                val items = spotifySearch.body<List<PaxsenixSearchItem>>()
-                val bestMatch =
-                    if (durationMs > 0) {
-                        items.minByOrNull { abs(it.durationMs - durationMs) }
-                    } else {
-                        items.firstOrNull()
-                    }
-
-                if (bestMatch != null) {
-                    val diff = abs(bestMatch.durationMs - durationMs)
-                    System.err.println(
-                        "PaxsenixLyrics: Best Spotify match: ${bestMatch.name ?: bestMatch.title} (ID: ${bestMatch.realId}, Duration: ${bestMatch.durationMs}, Diff: $diff)",
-                    )
-                    if (durationMs <= 0 || (diff < 10000)) {
-                        val lyricsResponse =
-                            client.get("spotify/lyrics") {
-                                parameter("id", bestMatch.realId)
-                            }
-                        System.err.println("PaxsenixLyrics: Spotify lyrics status: ${lyricsResponse.status}")
-                        if (lyricsResponse.status == HttpStatusCode.OK) {
-                            val data = cleanJsonLyrics(lyricsResponse.body<String>())
-                            if (data != null) {
-                                System.err.println("PaxsenixLyrics: SUCCESS from Spotify")
-                                return@runCatching data
-                            }
-                        }
-                    }
-                }
-            }
-            throw IllegalStateException("Spotify lyrics unavailable")
-        }
-
-    suspend fun getYouTubeLyrics(
-        title: String,
-        artist: String,
-        durationSeconds: Int,
-    ): Result<String> =
-        runCatching {
-            val durationMs = resolveDurationMs(durationSeconds)
-            val query = "$title $artist"
-            System.err.println("PaxsenixLyrics: Requesting YouTube lyrics for: $query (Duration: $durationSeconds)")
-
-            val searchResponse =
-                client.get("youtube/search") {
-                    parameter("q", query)
-                }
-            if (searchResponse.status != HttpStatusCode.OK) {
-                System.err.println("PaxsenixLyrics: YouTube search failed with status: ${searchResponse.status}")
-                throw IllegalStateException("YouTube lyrics unavailable")
-            }
-
-            val items = searchResponse.body<List<PaxsenixSearchItem>>()
-            val bestMatch =
-                if (durationMs > 0) {
-                    items.minByOrNull { abs(it.durationMs - durationMs) }
-                } else {
-                    items.firstOrNull()
-                }
-
-            if (bestMatch != null) {
-                val diff = abs(bestMatch.durationMs - durationMs)
-                System.err.println(
-                    "PaxsenixLyrics: Best YouTube match: ${bestMatch.name ?: bestMatch.title} (ID: ${bestMatch.realId}, Duration: ${bestMatch.durationMs}, Diff: $diff)",
-                )
-                if (durationMs <= 0 || (diff < 10000)) {
-                    val lyricsResponse =
-                        client.get("youtube/lyrics") {
-                            parameter("id", bestMatch.realId)
-                        }
-                    System.err.println("PaxsenixLyrics: YouTube lyrics status: ${lyricsResponse.status}")
-                    if (lyricsResponse.status == HttpStatusCode.OK) {
-                        val data = cleanJsonLyrics(lyricsResponse.body<String>())
-                        if (data != null) {
-                            System.err.println("PaxsenixLyrics: SUCCESS from YouTube")
-                            return@runCatching data
-                        }
-                        System.err.println("PaxsenixLyrics: YouTube returned error: ${data.orEmpty().take(200)}")
-                    }
-                }
-            }
-            throw IllegalStateException("YouTube lyrics unavailable")
+        resultOf {
+            val trackId =
+                searchTrackId(
+                    path = "spotify/search",
+                    title = title,
+                    artist = artist,
+                    durationMs = resolveDurationMs(durationSeconds),
+                ) ?: throw IllegalStateException("Spotify lyrics unavailable")
+            parseLyrics(
+                apiBody("lyrics/spotify") {
+                    parameter("id", trackId)
+                },
+            ) ?: throw IllegalStateException("Spotify lyrics unavailable")
         }
 
     suspend fun getMusixmatchLyrics(
@@ -512,46 +385,14 @@ object PaxsenixLyrics {
         artist: String,
         durationSeconds: Int,
     ): Result<String> =
-        runCatching {
-            val query = "$title $artist"
-            System.err.println("PaxsenixLyrics: Requesting Musixmatch lyrics for: $query (Duration: $durationSeconds)")
-
-            // Try word-by-word first
-            val mxmWord =
-                client.get("musixmatch/lyrics") {
-                    parameter("q", query)
+        resultOf {
+            parseLyrics(
+                apiBody("lyrics/musixmatch") {
                     parameter("t", title)
                     parameter("a", artist)
                     parameter("d", durationSeconds.toString())
-                    parameter("type", "word")
-                }
-            if (mxmWord.status == HttpStatusCode.OK) {
-                val data = cleanJsonLyrics(mxmWord.body<String>())
-                if (data != null) {
-                    System.err.println("PaxsenixLyrics: SUCCESS from Musixmatch (Word)")
-                    return@runCatching data
-                }
-                System.err.println("PaxsenixLyrics: Musixmatch (Word) returned server error: ${data.orEmpty().take(200)}")
-            }
-
-            // Fallback to default
-            val mxmLyrics =
-                client.get("musixmatch/lyrics") {
-                    parameter("q", query)
-                    parameter("t", title)
-                    parameter("a", artist)
-                    parameter("d", durationSeconds.toString())
-                }
-            System.err.println("PaxsenixLyrics: Musixmatch lyrics status: ${mxmLyrics.status}")
-            if (mxmLyrics.status == HttpStatusCode.OK) {
-                val data = cleanJsonLyrics(mxmLyrics.body<String>())
-                if (data != null) {
-                    System.err.println("PaxsenixLyrics: SUCCESS from Musixmatch")
-                    return@runCatching data
-                }
-                System.err.println("PaxsenixLyrics: Musixmatch returned server error: ${data.orEmpty().take(200)}")
-            }
-            throw IllegalStateException("Musixmatch lyrics unavailable")
+                },
+            ) ?: throw IllegalStateException("Musixmatch lyrics unavailable")
         }
 
     suspend fun getLyrics(
@@ -559,38 +400,19 @@ object PaxsenixLyrics {
         artist: String,
         durationSeconds: Int,
     ): Result<String> =
-        runCatching {
-            System.err.println("PaxsenixLyrics: --- Starting search for [$title] by [$artist] ---")
-
-            getAppleMusicLyrics(title, artist, durationSeconds).getOrNull()?.let {
-                System.err.println("PaxsenixLyrics: Search FINISHED (Apple Music)")
-                return@runCatching it
-            }
-
-            getNeteaseLyrics(title, artist, durationSeconds).getOrNull()?.let {
-                System.err.println("PaxsenixLyrics: Search FINISHED (NetEase)")
-                return@runCatching it
-            }
-
-            getSpotifyLyrics(title, artist, durationSeconds).getOrNull()?.let {
-                System.err.println("PaxsenixLyrics: Search FINISHED (Spotify)")
-                return@runCatching it
-            }
-
-            getMusixmatchLyrics(title, artist, durationSeconds).getOrNull()?.let {
-                System.err.println("PaxsenixLyrics: Search FINISHED (Musixmatch)")
-                return@runCatching it
-            }
-
-            System.err.println("PaxsenixLyrics: Search FAILED - No providers found lyrics")
-            throw IllegalStateException("Lyrics unavailable from Paxsenix for $title")
+        resultOf {
+            parseLyrics(
+                apiBody("lyrics/lrcget") {
+                    parameter("q", "$title $artist")
+                },
+            ) ?: throw IllegalStateException("Lyrics unavailable from Paxsenix for $title")
         }
 
     private fun convertAppleMusicToLrc(response: AppleMusicLyricsResponse): String =
         response.content.joinToString("\n") { line ->
-            val minutes = line.timestamp / 1000 / 60
-            val seconds = (line.timestamp / 1000) % 60
-            val hundredths = (line.timestamp % 1000) / 10
+            val minutes = line.timestamp / 1_000 / 60
+            val seconds = (line.timestamp / 1_000) % 60
+            val hundredths = (line.timestamp % 1_000) / 10
             val time = String.format(Locale.US, "[%02d:%02d.%02d]", minutes, seconds, hundredths)
             val text = line.text.joinToString(" ") { it.text.trim() }
             "$time$text"
@@ -606,7 +428,24 @@ object PaxsenixLyrics {
     }
 
     suspend fun getStats(): Result<PaxsenixStats> =
-        runCatching {
-            client.get("api/stats").body<PaxsenixStats>()
+        resultOf {
+            val response = client.get(STATS_URL)
+            check(response.status.value in 200..299) {
+                "Paxsenix stats request failed with HTTP ${response.status.value}"
+            }
+            response.body<PaxsenixStats>()
         }
+
+    private data class TrackCandidate(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val durationMs: Long,
+    )
+
+    private const val MINIMUM_MATCH_SCORE = 10
+    private val TRACK_ID_KEYS = listOf("id", "trackId", "track_id", "realId")
+    private val TRACK_TITLE_KEYS = listOf("name", "title", "trackName", "track_name")
+    private val TRACK_ARTIST_KEYS = listOf("artistName", "artist_name")
+    private val TRACK_DURATION_KEYS = listOf("durationInMillis", "durationMs", "duration_ms", "duration")
 }
