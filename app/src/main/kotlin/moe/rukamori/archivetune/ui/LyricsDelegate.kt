@@ -113,9 +113,15 @@ class LyricsDelegate(
         cached: LyricsEntity?,
         audioPlayer: Player?,
         playbackProgressMs: Long,
+        expectedMediaId: String = uiState.value.trackUrl,
+        generation: Long = lyricsFetchGeneration.get(),
     ) {
+        if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != expectedMediaId) return
+        if (cached != null && cached.id.isNotEmpty() && cached.id != expectedMediaId) return
+
         if (cached == null || cached.lyrics == LYRICS_NOT_FOUND || cached.lyrics.isBlank()) {
             updateUiState { current ->
+                if (generation != lyricsFetchGeneration.get() || current.trackUrl != expectedMediaId) return@updateUiState current
                 current.copy(
                     lyricsList = emptyList(),
                     isSynced = false,
@@ -132,9 +138,12 @@ class LyricsDelegate(
             withContext(Dispatchers.Default) {
                 parseLyrics(cached.lyrics, durationMs)
             }
+        if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != expectedMediaId) return
+
         val isSynced = parsedLines.any { line -> line.time > 0 }
-        startRomanizationJob(parsedLines)
+        startRomanizationJob(parsedLines, generation)
         updateUiState { current ->
+            if (generation != lyricsFetchGeneration.get() || current.trackUrl != expectedMediaId) return@updateUiState current
             val targetIndex = if (isSynced) {
                 findCurrentLineIndex(parsedLines, playbackProgressMs, current.lyricsSyncOffset)
             } else {
@@ -340,11 +349,17 @@ class LyricsDelegate(
                 val db = playerConnectionProvider()?.database
                 val cached = if (force) null else db?.getLyricsById(trackUrl)
 
+                if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
+
                 if (cached != null) {
                     if (cached.lyrics == LyricsEntity.LYRICS_NOT_FOUND) {
                         withContext(Dispatchers.Main) {
+                            if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@withContext
                             updateUiState {
                                 it.copy(
+                                    lyricsList = emptyList(),
+                                    isSynced = false,
+                                    currentLineIndex = -1,
                                     isLoadingLyrics = false,
                                     lyricsError = "lyrics_not_found",
                                 )
@@ -369,7 +384,7 @@ class LyricsDelegate(
                 } ?: ""
 
                 ensureActive()
-                if (generation != lyricsFetchGeneration.get()) return@launch
+                if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
 
                 if (rawLyrics.isNotBlank() && rawLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
                     playerConnectionProvider()?.database?.query {
@@ -379,6 +394,7 @@ class LyricsDelegate(
                             source = LyricsEntity.Source.REMOTE.value
                         )
                     }
+                    if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
                     success = true
                 } else {
                     playerConnectionProvider()?.database?.query {
@@ -388,19 +404,25 @@ class LyricsDelegate(
                             source = LyricsEntity.Source.REMOTE.value
                         )
                     }
-                    if (generation != lyricsFetchGeneration.get()) return@launch
+                    if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
                     withContext(Dispatchers.Main) {
+                        if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@withContext
                         updateUiState {
                             it.copy(
-                                lyricsError = "lyrics_not_found"
+                                lyricsList = emptyList(),
+                                isSynced = false,
+                                currentLineIndex = -1,
+                                isLoadingLyrics = false,
+                                lyricsError = "lyrics_not_found",
                             )
                         }
                     }
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                if (generation != lyricsFetchGeneration.get()) return@launch
+                if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
                 withContext(Dispatchers.Main) {
+                    if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@withContext
                     updateUiState {
                         it.copy(
                             lyricsError = "lyrics_error_loading"
@@ -408,10 +430,10 @@ class LyricsDelegate(
                     }
                 }
             } finally {
-                if (generation == lyricsFetchGeneration.get()) {
+                if (generation == lyricsFetchGeneration.get() && uiState.value.trackUrl == trackUrl) {
                     withContext(NonCancellable) {
                         withContext(Dispatchers.Main) {
-                            if (generation == lyricsFetchGeneration.get() && !success) {
+                            if (generation == lyricsFetchGeneration.get() && uiState.value.trackUrl == trackUrl && !success) {
                                 updateUiState { it.copy(isLoadingLyrics = false) }
                             }
                         }

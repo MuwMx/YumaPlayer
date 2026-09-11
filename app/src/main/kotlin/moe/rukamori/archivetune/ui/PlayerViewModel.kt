@@ -163,7 +163,13 @@ class PlayerViewModel @Inject constructor(
                 .filterNotNull()
                 .flatMapLatest { connection -> connection.currentLyrics }
                 .collect { cached ->
-                    lyricsDelegate.onCurrentLyricsUpdated(cached, audioPlayer, _playbackProgress.value)
+                    lyricsDelegate.onCurrentLyricsUpdated(
+                        cached = cached,
+                        audioPlayer = audioPlayer,
+                        playbackProgressMs = _playbackProgress.value,
+                        expectedMediaId = _uiState.value.trackUrl,
+                        generation = lyricsDelegate.currentGeneration,
+                    )
                 }
         }
 
@@ -187,6 +193,10 @@ class PlayerViewModel @Inject constructor(
                 .flatMapLatest { connection -> connection.mediaMetadata }
                 .collect { metadata ->
                     if (metadata == null) {
+                        val oldId = _uiState.value.trackUrl
+                        if (oldId.isNotEmpty()) {
+                            lyricsDelegate.resetLyrics()
+                        }
                         _uiState.update { it.copy(trackUrl = "", title = "", artist = "", album = null, coverUrl = "", isPlaying = false) }
                         return@collect
                     }
@@ -204,7 +214,7 @@ class PlayerViewModel @Inject constructor(
 
                     val oldId = _uiState.value.trackUrl
                     val newId = metadata.id
-                    if (oldId != newId && oldId.isNotEmpty()) {
+                    if (oldId != newId) {
                         lyricsDelegate.resetLyrics()
                     }
 

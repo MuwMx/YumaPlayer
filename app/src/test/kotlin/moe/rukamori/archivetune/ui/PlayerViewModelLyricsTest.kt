@@ -38,6 +38,7 @@ class PlayerViewModelLyricsTest {
     private lateinit var database: MusicDatabase
     private lateinit var connectionHolder: PlayerConnectionHolder
     private val currentLyricsFlow = MutableStateFlow<LyricsEntity?>(null)
+    private val mediaMetadataFlow = MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
 
     @Before
     fun setup() {
@@ -55,7 +56,7 @@ class PlayerViewModelLyricsTest {
         val playerConnection = mockk<PlayerConnection>(relaxed = true)
         every { playerConnection.database } returns database
         every { playerConnection.currentLyrics } returns currentLyricsFlow
-        every { playerConnection.mediaMetadata } returns MutableStateFlow(null)
+        every { playerConnection.mediaMetadata } returns mediaMetadataFlow
         
         connectionHolder = PlayerConnectionHolder()
         connectionHolder.connection.value = playerConnection
@@ -103,6 +104,12 @@ class PlayerViewModelLyricsTest {
         )
         
         setUiState(PlayerUiState(trackUrl = trackUrl, title = title, artist = artist, durationMs = 0L))
+        mediaMetadataFlow.value = moe.rukamori.archivetune.models.MediaMetadata(
+            id = trackUrl,
+            title = title,
+            artists = listOf(moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = artist)),
+            duration = 0,
+        )
         
         coEvery { database.getLyricsById(trackUrl) } returns entity
         currentLyricsFlow.value = entity
@@ -137,6 +144,12 @@ class PlayerViewModelLyricsTest {
         )
         
         setUiState(PlayerUiState(trackUrl = trackUrl, title = title, artist = artist, durationMs = 0L))
+        mediaMetadataFlow.value = moe.rukamori.archivetune.models.MediaMetadata(
+            id = trackUrl,
+            title = title,
+            artists = listOf(moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = artist)),
+            duration = 0,
+        )
         
         coEvery { database.getLyricsById(trackUrl) } returns null
         coEvery { lyricsHelper.getLyrics(any()) } returns remoteLyrics
