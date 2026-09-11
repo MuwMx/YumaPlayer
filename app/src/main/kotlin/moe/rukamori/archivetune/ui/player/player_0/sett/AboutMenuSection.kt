@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.menu.rememberCastPlayerMenuAction
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
@@ -137,7 +138,10 @@ fun SettingsMenuContent(
             }
         }
 
-        val rowCount = 8
+        val castAction = rememberCastPlayerMenuAction()
+        val hasCast = castAction != null
+        val totalRowCount = 8 + (if (hasCast) 1 else 0)
+        var currentRow = 0
 
         CompactMenuRow(
             title = "Interface & Visuals",
@@ -145,8 +149,8 @@ fun SettingsMenuContent(
             iconResId = R.drawable.ic_palette,
             onClick = onNavigateToCustomization,
             showArrow = true,
-            index = 0,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -156,8 +160,8 @@ fun SettingsMenuContent(
             subtitle = "Radio from current track",
             iconResId = R.drawable.radio,
             onClick = { onAction(PlayerAction.StartRadio) },
-            index = 1,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -168,11 +172,25 @@ fun SettingsMenuContent(
             iconResId = R.drawable.playlist_add,
             onClick = onOpenAddToPlaylist,
             showArrow = true,
-            index = 2,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+
+        if (castAction != null) {
+            CompactMenuRow(
+                title = castAction.text,
+                subtitle = "Stream to Chromecast",
+                leadingContent = castAction.icon,
+                onClick = castAction.onClick,
+                showArrow = true,
+                index = currentRow++,
+                count = totalRowCount,
+            )
+
+            Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+        }
 
         CompactMenuRow(
             title = "Download",
@@ -180,8 +198,8 @@ fun SettingsMenuContent(
             iconResId = R.drawable.download,
             onClick = onNavigateToDownload,
             showArrow = true,
-            index = 3,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -192,8 +210,8 @@ fun SettingsMenuContent(
             iconResId = R.drawable.ic_about,
             onClick = onNavigateToDetails,
             showArrow = true,
-            index = 4,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -204,8 +222,8 @@ fun SettingsMenuContent(
             iconResId = R.drawable.equalizer,
             onClick = onOpenEqualizer,
             showArrow = true,
-            index = 5,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -216,8 +234,8 @@ fun SettingsMenuContent(
             iconResId = R.drawable.speed,
             onClick = onOpenPlaybackSpeed,
             showArrow = true,
-            index = 6,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -232,8 +250,8 @@ fun SettingsMenuContent(
                 val updated = toggleSpeedDialPin(speedDialPins, songPin)
                 onSpeedDialSongIdsChange(serializeSpeedDialPins(updated))
             },
-            index = 7,
-            count = rowCount,
+            index = currentRow++,
+            count = totalRowCount,
         )
     }
 }
