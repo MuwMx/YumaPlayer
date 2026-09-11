@@ -327,7 +327,7 @@ fun StorageSettings(
                 modifier =
                     Modifier
                         .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom))
-                        .padding(16.dp),
+                        .padding(SettingsDimensions.ScreenHorizontalPadding),
             )
         },
     ) { innerPadding ->
@@ -338,12 +338,7 @@ fun StorageSettings(
                 .padding(top = topPadding)
                 .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                 .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 12.dp,
-                    top = 12.dp,
-                    end = 12.dp,
-                    bottom = SettingsDimensions.ScreenBottomPadding,
-                ),
+                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
             StorageFolderSection(
                 state = screenState,
@@ -801,13 +796,13 @@ private fun StorageLocationPickerSheet(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
+                .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding)
+                .padding(bottom = SettingsDimensions.BottomSheetBottomPadding)
                 .navigationBarsPadding(),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = RoundedCornerShape(SettingsDimensions.BottomSheetCornerRadius),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             border = BorderStroke(
-                width = 1.dp,
+                width = SettingsDimensions.GlassBorderThickness,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
             ),
             tonalElevation = 6.dp,
@@ -818,13 +813,19 @@ private fun StorageLocationPickerSheet(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 16.dp, bottom = 24.dp),
+                        .padding(horizontal = SettingsDimensions.BottomSheetContentPaddingH)
+                        .padding(
+                            top = SettingsDimensions.BottomSheetContentPaddingTop,
+                            bottom = SettingsDimensions.BottomSheetContentPaddingBottom,
+                        ),
             ) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .size(width = 40.dp, height = 4.dp)
+                        .size(
+                            width = SettingsDimensions.BottomSheetDragHandleWidth,
+                            height = SettingsDimensions.BottomSheetDragHandleHeight,
+                        )
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)),
                 )
@@ -895,7 +896,10 @@ private fun StorageLocationOptionRow(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            modifier = Modifier.padding(
+                horizontal = SettingsDimensions.BottomSheetOptionPaddingH,
+                vertical = SettingsDimensions.BottomSheetOptionPaddingV,
+            ),
         ) {
             Icon(
                 painter = painterResource(R.drawable.storage),
