@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -75,7 +76,8 @@ fun PlayerCoverCard(
     val density = LocalDensity.current
 
     val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
-    var canvasArtwork by remember { mutableStateOf<CanvasArtwork?>(null) }
+    var canvasArtwork by remember(mediaId) { mutableStateOf<CanvasArtwork?>(null) }
+    var canvasFetchInFlight by remember(mediaId) { mutableStateOf(false) }
     
     val offsetX = remember { Animatable(0f) }
     var accumulatedDragX by remember { mutableStateOf(0f) }
@@ -88,20 +90,34 @@ fun PlayerCoverCard(
     
     val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
 
-    LaunchedEffect(cleanUrl, isCanvasEnabled, mediaId) {
+    LaunchedEffect(isCanvasEnabled, mediaId, songTitle, artistName) {
+        canvasArtwork = null
         if (!isCanvasEnabled || mediaId.isNullOrBlank()) {
-            canvasArtwork = null
+            canvasFetchInFlight = false
             return@LaunchedEffect
         }
-        canvasArtwork =
-            resolveCanvasArtworkForPlayback(
-                mediaId = mediaId,
-                songTitleRaw = songTitle ?: "",
-                artistNameRaw = artistName ?: "",
-                storefront = "us",
-                requireVertical = false,
-                allowNetwork = true,
-            )
+
+        CanvasArtworkPlaybackCache.get(mediaId)?.let { cached ->
+            canvasArtwork = cached
+            canvasFetchInFlight = false
+            return@LaunchedEffect
+        }
+
+        if (canvasFetchInFlight) return@LaunchedEffect
+        canvasFetchInFlight = true
+        try {
+            canvasArtwork =
+                resolveCanvasArtworkForPlayback(
+                    mediaId = mediaId,
+                    songTitleRaw = songTitle ?: "",
+                    artistNameRaw = artistName ?: "",
+                    storefront = "us",
+                    requireVertical = false,
+                    allowNetwork = true,
+                )
+        } finally {
+            canvasFetchInFlight = false
+        }
     }
 
     val request = remember(cleanUrl) {

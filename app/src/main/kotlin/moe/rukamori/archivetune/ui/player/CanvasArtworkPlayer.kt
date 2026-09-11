@@ -66,6 +66,14 @@ internal fun CanvasArtworkPlayer(
     var isVideoReady by remember(initial) { mutableStateOf(false) }
     val shouldPlay by rememberUpdatedState(isPlaying)
 
+    LaunchedEffect(primary, fallback) {
+        val target = primary ?: fallback
+        if (target != null && target != currentUrl) {
+            currentUrl = target
+            isVideoReady = false
+        }
+    }
+
     val okHttpClient =
         remember {
             OkHttpClient
