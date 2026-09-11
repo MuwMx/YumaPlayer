@@ -7,15 +7,11 @@
 package moe.rukamori.archivetune.betterlyrics
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -24,7 +20,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import moe.rukamori.archivetune.betterlyrics.models.TTMLResponse
-import okhttp3.OkHttpClient
 
 internal object BetterLyricsClient {
     private const val API_BASE_URL = "https://lyrics-api.boidu.dev/"
@@ -57,35 +52,8 @@ internal object BetterLyricsClient {
         }
     }
 
-    private val defaultOkHttpClient: OkHttpClient by lazy {
-        OkHttpClient()
-    }
-
-    private val defaultClient: HttpClient by lazy {
-        createDefaultClient()
-    }
-
-    private fun createDefaultClient(): HttpClient =
-        HttpClient(OkHttp) {
-            engine {
-                preconfigured = defaultOkHttpClient
-            }
-
-            install(ContentNegotiation) {
-                json(jsonFormat)
-            }
-
-            install(HttpTimeout) {
-                requestTimeoutMillis = 20000
-                connectTimeoutMillis = 15000
-                socketTimeoutMillis = 20000
-            }
-
-            expectSuccess = false
-        }
-
-    private val client: HttpClient
-        get() = customClient ?: defaultClient
+    val client: HttpClient
+        get() = customClient ?: error("HttpClient is not initialized. Inject via setClient() before use.")
 
     var logger: ((String) -> Unit)? = null
 

@@ -27,18 +27,28 @@ object CanvasArtworkPlaybackCache {
         preferCachedOnly: Boolean = false,
     ): CanvasArtwork? = index.get(mediaId, preferCachedOnly)
 
+    fun cacheArtworkInBackground(
+        mediaId: String,
+        artwork: CanvasArtwork,
+    ) {
+        if (index.isCacheDisabled() || mediaId.isBlank()) return
+        val directory = index.cacheDirectory ?: return
+        directory.mkdirs()
+        downloader.downloadArtworkInBackground(
+            directory = directory,
+            mediaId = mediaId,
+            artwork = artwork,
+        )
+    }
+
     suspend fun put(
         mediaId: String,
         artwork: CanvasArtwork,
     ): CanvasArtwork =
         withContext(Dispatchers.IO) {
             if (index.isCacheDisabled() || mediaId.isBlank()) return@withContext artwork
-            val directory = index.cacheDirectory ?: return@withContext artwork
-            directory.mkdirs()
-
             val current = index.getCurrentPlayable(mediaId)
-            downloader.downloadArtworkInBackground(
-                directory = directory,
+            cacheArtworkInBackground(
                 mediaId = mediaId,
                 artwork = artwork,
             )

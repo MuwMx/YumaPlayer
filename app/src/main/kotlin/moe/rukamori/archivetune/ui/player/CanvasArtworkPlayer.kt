@@ -47,11 +47,13 @@ import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
 private const val CanvasPlaybackStallTimeoutMs = 5_000L
@@ -103,8 +105,8 @@ internal fun CanvasArtworkPlayer(
 
     val okHttpClient =
         remember {
-            OkHttpClient
-                .Builder()
+            SharedLyricsEngine.okHttpClient
+                .newBuilder()
                 .dns(YouTube.dns)
                 .proxy(YouTube.streamOkHttpProxy)
                 .apply {
@@ -119,7 +121,9 @@ internal fun CanvasArtworkPlayer(
                                 .build()
                         }
                     }
-                }.addInterceptor { chain ->
+                }.connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .addInterceptor { chain ->
                     val request = chain.request()
                     val host = request.url.host
                     val isYouTubeMediaHost =

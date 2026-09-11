@@ -7,18 +7,13 @@ package moe.rukamori.archivetune.paxsenix
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpHeaders
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
 
 internal object PaxsenixApi {
     const val BASE_URL = "https://api.paxsenix.org/"
@@ -56,35 +51,8 @@ internal object PaxsenixApi {
             explicitNulls = false
         }
 
-    private val defaultOkHttpClient: OkHttpClient by lazy {
-        OkHttpClient()
-    }
-
-    private val defaultClient: HttpClient by lazy {
-        createDefaultClient()
-    }
-
-    private fun createDefaultClient(): HttpClient =
-        HttpClient(OkHttp) {
-            engine {
-                preconfigured = defaultOkHttpClient
-            }
-
-            install(ContentNegotiation) {
-                json(json)
-            }
-
-            install(HttpTimeout) {
-                requestTimeoutMillis = 20_000
-                connectTimeoutMillis = 15_000
-                socketTimeoutMillis = 20_000
-            }
-
-            expectSuccess = false
-        }
-
     val client: HttpClient
-        get() = customClient ?: defaultClient
+        get() = customClient ?: error("HttpClient is not initialized. Inject via setClient() before use.")
 
     fun resolveUrl(path: String): String =
         if (path.startsWith("http://") || path.startsWith("https://")) path else "$BASE_URL${path.removePrefix("/")}"

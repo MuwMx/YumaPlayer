@@ -17,6 +17,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.Credentials
 import okhttp3.HttpUrl
@@ -56,8 +57,8 @@ internal class CanvasVideoDownloader(
         get() = client
 
     private fun canvasClient(proxy: Proxy = YouTube.streamOkHttpProxy): OkHttpClient =
-        OkHttpClient
-            .Builder()
+        SharedLyricsEngine.okHttpClient
+            .newBuilder()
             .dns(YouTube.dns)
             .proxy(proxy)
             .apply {
@@ -128,6 +129,14 @@ internal class CanvasVideoDownloader(
                     }
                 }
         }
+    }
+
+    fun cacheArtworkInBackground(
+        directory: File,
+        mediaId: String,
+        artwork: CanvasArtwork,
+    ) {
+        downloadArtworkInBackground(directory, mediaId, artwork)
     }
 
     private suspend fun cacheArtworkVideos(
