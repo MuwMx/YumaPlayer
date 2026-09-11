@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import moe.rukamori.archivetune.constants.LyricsProviderOrderKey
+import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
@@ -53,6 +54,15 @@ class LyricsHelper
                 PaxsenixYouTubeLyricsProvider,
                 YouTubeSubtitleLyricsProvider,
                 YouTubeLyricsProvider,
+            )
+
+        private val paxsenixProviders =
+            setOf(
+                PaxsenixAppleMusicLyricsProvider,
+                PaxsenixNeteaseLyricsProvider,
+                PaxsenixSpotifyLyricsProvider,
+                PaxsenixMusixmatchLyricsProvider,
+                PaxsenixYouTubeLyricsProvider,
             )
 
         private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
@@ -213,7 +223,9 @@ class LyricsHelper
             }
 
         internal suspend fun orderedProviders(): List<LyricsProvider> {
-            val orderStr = context.dataStore.data.first()[LyricsProviderOrderKey]
+            val prefs = context.dataStore.data.first()
+            val orderStr = prefs[LyricsProviderOrderKey]
+            val paxsenixApiKey = prefs[PaxsenixApiKeyKey]
             val orderedEnums = deserializeLyricsProviderOrder(orderStr)
             val providerMap: Map<PreferredLyricsProvider, LyricsProvider> =
                 mapOf(
@@ -231,7 +243,12 @@ class LyricsHelper
                 )
             val userOrdered = orderedEnums.mapNotNull { providerMap[it] }
             val rest = baseProviders.filterNot { it in userOrdered }
-            return userOrdered + rest
+            val combined = userOrdered + rest
+            return if (paxsenixApiKey.isNullOrBlank()) {
+                combined.filterNot { it in paxsenixProviders }
+            } else {
+                combined.filterNot { it in paxsenixProviders } + combined.filter { it in paxsenixProviders }
+            }
         }
 
         private fun isMeaningfulLyrics(lyrics: String): Boolean = LrcParser.hasMeaningfulLyricsContent(lyrics)

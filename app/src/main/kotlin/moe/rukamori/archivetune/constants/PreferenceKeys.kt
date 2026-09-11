@@ -167,6 +167,7 @@ val EnablePaxsenixNeteaseLyricsKey = booleanPreferencesKey("enablePaxsenixNeteas
 val EnablePaxsenixSpotifyLyricsKey = booleanPreferencesKey("enablePaxsenixSpotifyLyrics")
 val EnablePaxsenixMusixmatchLyricsKey = booleanPreferencesKey("enablePaxsenixMusixmatchLyrics")
 val EnablePaxsenixYouTubeLyricsKey = booleanPreferencesKey("enablePaxsenixYouTubeLyrics")
+val PaxsenixApiKeyKey = stringPreferencesKey("paxsenixApiKey")
 val EnableUnisonLyricsKey = booleanPreferencesKey("enableUnisonLyrics")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoKey = booleanPreferencesKey("hideVideo")

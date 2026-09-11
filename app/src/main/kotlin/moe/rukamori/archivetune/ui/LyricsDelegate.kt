@@ -113,35 +113,36 @@ class LyricsDelegate(
         audioPlayer: Player?,
         playbackProgressMs: Long,
     ) {
-        if (cached != null) {
-            val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
-            val parsedLines = parseLyrics(cached.lyrics, durationMs)
-            val isSynced = parsedLines.any { line -> line.time > 0 }
-            startRomanizationJob(parsedLines)
-            updateUiState { current ->
-                val targetIndex = if (isSynced) {
-                    findCurrentLineIndex(parsedLines, playbackProgressMs, current.lyricsSyncOffset)
-                } else {
-                    -1
-                }
-                current.copy(
-                    lyricsList = parsedLines,
-                    isSynced = isSynced,
-                    isLoadingLyrics = false,
-                    lyricsError = if (parsedLines.isEmpty()) "lyrics_not_found" else null,
-                    currentLineIndex = targetIndex,
-                )
-            }
-        } else {
+        if (cached == null || cached.lyrics == LyricsEntity.LYRICS_NOT_FOUND || cached.lyrics.isBlank()) {
             updateUiState { current ->
                 current.copy(
                     lyricsList = emptyList(),
                     isSynced = false,
                     isLoadingLyrics = false,
-                    lyricsError = null,
+                    lyricsError = if (cached?.lyrics == LyricsEntity.LYRICS_NOT_FOUND) "lyrics_not_found" else null,
                     currentLineIndex = -1,
                 )
             }
+            return
+        }
+
+        val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
+        val parsedLines = parseLyrics(cached.lyrics, durationMs)
+        val isSynced = parsedLines.any { line -> line.time > 0 }
+        startRomanizationJob(parsedLines)
+        updateUiState { current ->
+            val targetIndex = if (isSynced) {
+                findCurrentLineIndex(parsedLines, playbackProgressMs, current.lyricsSyncOffset)
+            } else {
+                -1
+            }
+            current.copy(
+                lyricsList = parsedLines,
+                isSynced = isSynced,
+                isLoadingLyrics = false,
+                lyricsError = if (parsedLines.isEmpty()) "lyrics_not_found" else null,
+                currentLineIndex = targetIndex,
+            )
         }
     }
 
@@ -318,6 +319,10 @@ class LyricsDelegate(
         val artist = currentState.artist
 
         if (trackUrl.isEmpty() || title.isEmpty()) return
+
+        if (force) {
+            lyricsHelper.clearCache()
+        }
 
         val generation = lyricsFetchGeneration.incrementAndGet()
         lyricsJob?.cancel()
