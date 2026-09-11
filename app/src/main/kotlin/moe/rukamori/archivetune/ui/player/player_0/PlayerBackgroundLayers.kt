@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -88,22 +90,29 @@ fun PlayerBackgroundLayers(
     )
 
     val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
-    var canvasArtwork by remember { mutableStateOf<CanvasArtwork?>(null) }
+    var canvasArtwork by remember(state.trackUrl) { mutableStateOf<CanvasArtwork?>(null) }
 
-    LaunchedEffect(state.trackUrl, state.title, state.artist, isCanvasEnabled) {
+    LaunchedEffect(isCanvasEnabled, state.trackUrl, state.title, state.artist) {
+        canvasArtwork = null
         if (!isCanvasEnabled || state.trackUrl.isBlank()) {
-            canvasArtwork = null
             return@LaunchedEffect
         }
-        canvasArtwork =
-            resolveCanvasArtworkForPlayback(
-                mediaId = state.trackUrl,
-                songTitleRaw = state.title,
-                artistNameRaw = state.artist,
-                storefront = "us",
-                requireVertical = false,
-                allowNetwork = true,
-            )
+        CanvasArtworkPlaybackCache.get(state.trackUrl)?.let {
+            canvasArtwork = it
+            return@LaunchedEffect
+        }
+        val requestedTrackUrl = state.trackUrl
+        val resolved = resolveCanvasArtworkForPlayback(
+            mediaId = requestedTrackUrl,
+            songTitleRaw = state.title,
+            artistNameRaw = state.artist,
+            storefront = "us",
+            requireVertical = false,
+            allowNetwork = true,
+        )
+        if (state.trackUrl == requestedTrackUrl) {
+            canvasArtwork = resolved
+        }
     }
 
     val canPlayImmersiveCanvas = state.isPlaying &&
@@ -312,40 +321,42 @@ fun PlayerBackgroundLayers(
         }
 
         if (state.isImmersiveEnabled && isCanvasEnabled && canvasArtwork != null) {
-            CanvasArtworkPlayer(
-                primaryUrl = canvasArtwork?.preferredAnimationUrl,
-                fallbackUrl = canvasArtwork?.fallbackUrl,
-                isPlaying = canPlayImmersiveCanvas,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        alpha = immersiveTransitionAlpha
-                        compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
-                            CompositingStrategy.Offscreen
-                        } else {
-                            CompositingStrategy.Auto
+            key(state.trackUrl) {
+                CanvasArtworkPlayer(
+                    primaryUrl = canvasArtwork?.preferredAnimationUrl,
+                    fallbackUrl = canvasArtwork?.fallbackUrl,
+                    isPlaying = canPlayImmersiveCanvas,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.75f)
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer {
+                            alpha = immersiveTransitionAlpha
+                            compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
+                                CompositingStrategy.Offscreen
+                            } else {
+                                CompositingStrategy.Auto
+                            }
                         }
-                    }
-                    .drawWithCache {
-                        val maskBrush = Brush.verticalGradient(
-                            0.0f to Color.Black,
-                            0.80f to Color.Black,
-                            1.0f to Color.Transparent,
-                            startY = 0f,
-                            endY = size.height
-                        )
-                        onDrawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = maskBrush,
-                                blendMode = BlendMode.DstIn
+                        .drawWithCache {
+                            val maskBrush = Brush.verticalGradient(
+                                0.0f to Color.Black,
+                                0.80f to Color.Black,
+                                1.0f to Color.Transparent,
+                                startY = 0f,
+                                endY = size.height
                             )
-                        }
-                    },
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            )
+                            onDrawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = maskBrush,
+                                    blendMode = BlendMode.DstIn
+                                )
+                            }
+                        },
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                )
+            }
         }
     }
 
