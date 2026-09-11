@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
+import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
+import moe.rukamori.archivetune.aicontentfilter.ObserveAiContentFilterUseCase
 import moe.rukamori.archivetune.auth.SwitchSavedYouTubeAccountUseCase
 import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
@@ -177,6 +180,9 @@ class HomeViewModel
         private val syncUtils: SyncUtils,
         private val switchSavedYouTubeAccount: SwitchSavedYouTubeAccountUseCase,
         observeHomePresentationPreferences: ObserveHomePresentationPreferencesUseCase,
+        observeAiContentFilter: ObserveAiContentFilterUseCase,
+        private val loadAiContentFilterPolicy: LoadAiContentFilterPolicyUseCase,
+        private val filterAiContent: FilterAiContentUseCase,
     ) : ViewModel() {
         private val isRefreshing = MutableStateFlow(false)
         private val isLoading = MutableStateFlow(false)
@@ -213,6 +219,10 @@ class HomeViewModel
         val accountChannelsState: StateFlow<AccountChannelsState> = _accountChannelsState.asStateFlow()
 
         private val presentationPreferences = observeHomePresentationPreferences()
+        private val aiContentFilterSettings =
+            observeAiContentFilter()
+                .map { (settings, _) -> settings }
+                .distinctUntilChanged()
 
         private val localContent =
             combine(
@@ -496,6 +506,7 @@ class HomeViewModel
                     }
 
                     launch {
+                        val aiContentFilterPolicy = loadAiContentFilterPolicy()
                         YouTube
                             .home()
                             .onSuccess { page ->
@@ -506,10 +517,13 @@ class HomeViewModel
                                             page.sections.map { section ->
                                                 section.copy(
                                                     items =
-                                                        section.items
-                                                            .filterExplicit(hideExplicit)
-                                                            .filterVideo(hideVideo)
-                                                            .filterBlockedArtists(blockedArtistIds),
+                                                        filterAiContent(
+                                                            section.items
+                                                                .filterExplicit(hideExplicit)
+                                                                .filterVideo(hideVideo)
+                                                                .filterBlockedArtists(blockedArtistIds),
+                                                            aiContentFilterPolicy,
+                                                        ),
                                                 )
                                             },
                                     )
@@ -548,6 +562,7 @@ class HomeViewModel
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
             val blockedArtistIds = database.getBlockedArtistIds().toSet()
+            val aiContentFilterPolicy = loadAiContentFilterPolicy()
             val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
             var topArtists = database
@@ -581,11 +596,13 @@ class HomeViewModel
                     SimilarRecommendation(
                         title = it,
                         items =
-                            items
-                                .filterExplicit(hideExplicit)
-                                .filterVideo(hideVideo)
-                                .filterBlockedArtists(blockedArtistIds)
-                                .shuffled()
+                            filterAiContent(
+                                items
+                                    .filterExplicit(hideExplicit)
+                                    .filterVideo(hideVideo)
+                                    .filterBlockedArtists(blockedArtistIds),
+                                aiContentFilterPolicy,
+                            ).shuffled()
                                 .ifEmpty { return@mapNotNull null },
                     )
                 }
@@ -612,15 +629,17 @@ class HomeViewModel
                     SimilarRecommendation(
                         title = song,
                         items =
-                            (
-                                page.songs.shuffled().take(8) +
-                                    page.albums.shuffled().take(4) +
-                                    page.artists.shuffled().take(4) +
-                                    page.playlists.shuffled().take(4)
-                            ).filterExplicit(hideExplicit)
-                                .filterVideo(hideVideo)
-                                .filterBlockedArtists(blockedArtistIds)
-                                .shuffled()
+                            filterAiContent(
+                                (
+                                    page.songs.shuffled().take(8) +
+                                        page.albums.shuffled().take(4) +
+                                        page.artists.shuffled().take(4) +
+                                        page.playlists.shuffled().take(4)
+                                ).filterExplicit(hideExplicit)
+                                    .filterVideo(hideVideo)
+                                    .filterBlockedArtists(blockedArtistIds),
+                                aiContentFilterPolicy,
+                            ).shuffled()
                                 .ifEmpty { return@mapNotNull null },
                     )
                 }
@@ -729,6 +748,7 @@ class HomeViewModel
                 isLoadingMore.value = true
                 try {
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val aiContentFilterPolicy = loadAiContentFilterPolicy()
                     val nextSections = YouTube.home(continuation).getOrNull() ?: return@launch
                     homePage.value =
                         nextSections.copy(
@@ -737,10 +757,13 @@ class HomeViewModel
                                 (homePage.value?.sections.orEmpty() + nextSections.sections).map { section ->
                                     section.copy(
                                         items =
-                                            section.items
-                                                .filterExplicit(hideExplicit)
-                                                .filterVideo(hideVideo)
-                                                .filterBlockedArtists(blockedArtistIds),
+                                            filterAiContent(
+                                                section.items
+                                                    .filterExplicit(hideExplicit)
+                                                    .filterVideo(hideVideo)
+                                                    .filterBlockedArtists(blockedArtistIds),
+                                                aiContentFilterPolicy,
+                                            ),
                                     )
                                 },
                         )
@@ -770,6 +793,7 @@ class HomeViewModel
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val aiContentFilterPolicy = loadAiContentFilterPolicy()
                     YouTube.home(params = chip.endpoint?.params)
                         .onSuccess { nextSections ->
                             homePage.value =
@@ -779,10 +803,13 @@ class HomeViewModel
                                         nextSections.sections.map { section ->
                                             section.copy(
                                                 items =
-                                                    section.items
-                                                        .filterExplicit(hideExplicit)
-                                                        .filterVideo(hideVideo)
-                                                        .filterBlockedArtists(blockedArtistIds),
+                                                    filterAiContent(
+                                                        section.items
+                                                            .filterExplicit(hideExplicit)
+                                                            .filterVideo(hideVideo)
+                                                            .filterBlockedArtists(blockedArtistIds),
+                                                        aiContentFilterPolicy,
+                                                    ),
                                             )
                                         },
                                 )
@@ -888,6 +915,15 @@ class HomeViewModel
 
             viewModelScope.launch(Dispatchers.IO) {
                 load()
+            }
+
+            viewModelScope.launch(Dispatchers.IO) {
+                aiContentFilterSettings
+                    .drop(1)
+                    .collectLatest {
+                        isLoading.filter { loading -> !loading }.first()
+                        load()
+                    }
             }
 
             viewModelScope.launch(Dispatchers.IO) {

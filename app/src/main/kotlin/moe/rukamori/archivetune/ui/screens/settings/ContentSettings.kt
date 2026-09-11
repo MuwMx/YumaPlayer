@@ -70,6 +70,10 @@ fun ContentSettings(navController: NavController) {
         )
     val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
     val (hideVideo, onHideVideoChange) = rememberPreference(key = HideVideoKey, defaultValue = false)
+    val (aiContentFilterEnabled, onAiContentFilterEnabledChange) =
+        rememberPreference(key = AiContentFilterEnabledKey, defaultValue = false)
+    val (aiContentFilterIncludeModerate, onAiContentFilterIncludeModerateChange) =
+        rememberPreference(key = AiContentFilterIncludeModerateKey, defaultValue = false)
     val (lengthTop, onLengthTopChange) = rememberPreference(key = TopSize, defaultValue = "50")
     val (quickPicks, onQuickPicksChange) = rememberEnumPreference(key = QuickPicksKey, defaultValue = QuickPicks.QUICK_PICKS)
 
@@ -168,6 +172,27 @@ fun ContentSettings(navController: NavController) {
                     icon = { Icon(painterResource(R.drawable.slow_motion_video), null) },
                     checked = hideVideo,
                     onCheckedChange = onHideVideoChange,
+                )
+            }
+
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.ai_content_filter_hide)) },
+                    description = stringResource(R.string.ai_content_filter_hide_summary),
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    checked = aiContentFilterEnabled,
+                    onCheckedChange = onAiContentFilterEnabledChange,
+                )
+            }
+
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.ai_content_filter_moderate)) },
+                    description = stringResource(R.string.ai_content_filter_moderate_summary),
+                    icon = { Icon(painterResource(R.drawable.filter_alt), null) },
+                    checked = aiContentFilterIncludeModerate,
+                    onCheckedChange = onAiContentFilterIncludeModerateChange,
+                    isEnabled = aiContentFilterEnabled,
                 )
             }
         }

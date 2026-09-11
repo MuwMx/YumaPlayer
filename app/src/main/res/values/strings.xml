@@ -661,6 +661,17 @@
     <string name="romanization">Romanization</string>
     <string name="hide_explicit">Hide explicit content</string>
     <string name="hide_video">Hide music videos</string>
+    <string name="ai_content_filter">AI content filter</string>
+    <string name="ai_content_filter_hide">Hide AI-generated content</string>
+    <string name="ai_content_filter_hide_summary">Filter songs, videos, albums, artists, and playlists from high-confidence AI channels in Home and Search</string>
+    <string name="ai_content_filter_moderate">Include moderate-confidence channels</string>
+    <string name="ai_content_filter_moderate_summary">Also hide channels that are likely, but not confirmed, to use AI-generated content</string>
+    <string name="ai_content_filter_update">Update channel lists</string>
+    <string name="ai_content_filter_list_counts">High confidence: %1$d · Moderate confidence: %2$d</string>
+    <string name="ai_content_filter_source">About AiSList</string>
+    <string name="ai_content_filter_source_summary">Community-maintained channel data from AiSlopList.com</string>
+    <string name="ai_content_filter_updated">AI channel lists updated</string>
+    <string name="ai_content_filter_update_failed">Couldn’t update AI channel lists. The previous lists will remain active.</string>
     <string name="backup_restore">Backup and restore</string>
     <string name="action_backup">Backup</string>
     <string name="action_restore">Restore</string>

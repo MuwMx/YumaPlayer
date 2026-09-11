@@ -409,6 +409,17 @@
     <string name="enable_kugou">Включить провайдера текста песен KuGou</string>
     <string name="hide_explicit">Скрывать нецензурный контент</string>
     <string name="hide_video">Скрывать музыкальные клипы</string>
+    <string name="ai_content_filter">Фильтр ИИ-контента</string>
+    <string name="ai_content_filter_hide">Скрывать ИИ-контент</string>
+    <string name="ai_content_filter_hide_summary">Скрывать треки, видео, альбомы, исполнителей и плейлисты подтвержденных ИИ-каналов на главной и в поиске</string>
+    <string name="ai_content_filter_moderate">Включать каналы с умеренной вероятностью</string>
+    <string name="ai_content_filter_moderate_summary">Также скрывать каналы, которые с высокой вероятностью используют ИИ-контент</string>
+    <string name="ai_content_filter_update">Обновить списки каналов</string>
+    <string name="ai_content_filter_list_counts">Подтвержденные: %1$d · Умеренные: %2$d</string>
+    <string name="ai_content_filter_source">О проекте AiSList</string>
+    <string name="ai_content_filter_source_summary">Данные каналов, поддерживаемые сообществом AiSlopList.com</string>
+    <string name="ai_content_filter_updated">Списки ИИ-каналов обновлены</string>
+    <string name="ai_content_filter_update_failed">Не удалось обновить списки ИИ-каналов. Предыдущие списки останутся активными.</string>
     <string name="backup_restore">Резервное копирование и восстановление</string>
     <string name="action_backup">Создать резервную копию</string>
     <string name="action_restore">Восстановить</string>
