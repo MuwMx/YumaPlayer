@@ -213,9 +213,20 @@ fun UpdateScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val openUpdateUrl: (String) -> Unit = { url ->
-        try {
-            uriHandler.openUri(url)
-        } catch (_: Exception) {
+        if (url.isBlank()) {
+            updateSheetError = context.getString(R.string.error_unknown)
+            showUpdateErrorDialog = true
+        } else {
+            try {
+                uriHandler.openUri(url)
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: context.getString(R.string.error_unknown)
+                updateSheetError = errorMessage
+                showUpdateErrorDialog = true
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(errorMessage)
+                }
+            }
         }
     }
 
@@ -306,12 +317,25 @@ fun UpdateScreen(
                 else -> Updater.getLatestDownloadUrl()
             }
 
+        val updateButtonText =
+            if (useInAppUpdateInstaller) {
+                stringResource(R.string.update_text)
+            } else {
+                stringResource(R.string.download)
+            }
+
         Button(
-            onClick = { installUpdate(downloadUrl) },
+            onClick = {
+                if (!useInAppUpdateInstaller) {
+                    openUpdateUrl(downloadUrl)
+                } else {
+                    installUpdate(downloadUrl)
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             shapes = ButtonDefaults.shapes(),
         ) {
-            Text(text = stringResource(R.string.update_text))
+            Text(text = updateButtonText)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -717,6 +741,12 @@ fun UpdateScreen(
             state = updateSheetState,
             modifier = Modifier.align(Alignment.BottomCenter),
             contentWindowInsets = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom),
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current),
         )
     }
 

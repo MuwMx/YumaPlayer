@@ -36,9 +36,11 @@ import moe.rukamori.archivetune.constants.LastUpdateCheckKey
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.defaultUpdateChannel
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 object UpdateNotificationManager {
+    private const val TAG = "UpdateNotificationManager"
     private const val CHANNEL_ID = "update_notification_channel"
     private const val NOTIFICATION_ID = 9999
     private const val WORK_NAME = "update_check_work"
@@ -147,7 +149,7 @@ object UpdateNotificationManager {
                     }
                 }
             } catch (e: Exception) {
-                // Silently fail
+                Timber.tag(TAG).w(e, "Update check / notification failed")
             }
         }
     }
@@ -168,7 +170,7 @@ object UpdateNotificationManager {
                 dataStore.edit { it[LastNotifiedVersionKey] = latestVersion }
             }
         } catch (e: Exception) {
-            // Silently fail
+            Timber.tag(TAG).w(e, "Update check / notification failed")
         }
     }
 
