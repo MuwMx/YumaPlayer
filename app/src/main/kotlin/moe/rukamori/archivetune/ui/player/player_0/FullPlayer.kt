@@ -81,7 +81,9 @@ fun FullPlayer(
 
     val isOverlayVisible = state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
 
+    val isSheetExpanded = slideOffset() > 0.95f
     val canPlayCanvas = state.isPlaying &&
+        isSheetExpanded &&
         !state.isLyricsVisible &&
         !state.isQueueVisible &&
         lyricsFractionProvider() < 0.05f &&
@@ -171,24 +173,6 @@ fun FullPlayer(
                         onNext = { onAction(PlayerAction.Next) },
                         onPrevious = { onAction(PlayerAction.Previous) }
                     )
-
-                    if (state.isImmersiveEnabled) {
-                        val currentLine = state.lyricsList.getOrNull(state.currentLineIndex)?.text
-                        if (!currentLine.isNullOrBlank()) {
-                            Text(
-                                text = currentLine,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = Color.White.copy(alpha = 0.92f),
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 8.dp, start = 20.dp, end = 20.dp)
-                                    .graphicsLayer { alpha = immersiveCoverAlpha }
-                            )
-                        }
-                    }
                 }
             },
             controls = {
@@ -200,6 +184,26 @@ fun FullPlayer(
                         .widthIn(max = 420.dp)
                         .offset { IntOffset(x = 0, y = controlsOffsetY.roundToPx()) }
                 ) {
+                    if (state.isImmersiveEnabled) {
+                        val currentLine = state.lyricsList.getOrNull(state.currentLineIndex)?.text
+                        if (!currentLine.isNullOrBlank()) {
+                            Text(
+                                text = currentLine,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White.copy(alpha = 0.92f),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                                    .graphicsLayer {
+                                        alpha = if (isOverlayVisible) 0f else 1f
+                                    }
+                            )
+                        }
+                    }
+
                     PlayerMetadata(
                         title = state.title,
                         artist = state.artist,

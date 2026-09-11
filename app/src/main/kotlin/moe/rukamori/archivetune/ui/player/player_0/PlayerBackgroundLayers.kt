@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.util.lerp
+import androidx.media3.ui.AspectRatioFrameLayout
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
@@ -44,10 +45,15 @@ import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.ExtractedColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.FastBlurTransformation
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 fun PlayerBackgroundLayers(
@@ -81,6 +87,31 @@ fun PlayerBackgroundLayers(
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "ImmersiveThemeTransition"
     )
+
+    val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
+    var canvasArtwork by remember { mutableStateOf<CanvasArtwork?>(null) }
+
+    LaunchedEffect(state.trackUrl, state.title, state.artist, isCanvasEnabled) {
+        if (!isCanvasEnabled || state.trackUrl.isBlank()) {
+            canvasArtwork = null
+            return@LaunchedEffect
+        }
+        canvasArtwork =
+            resolveCanvasArtworkForPlayback(
+                mediaId = state.trackUrl,
+                songTitleRaw = state.title,
+                artistNameRaw = state.artist,
+                storefront = "us",
+                requireVertical = false,
+                allowNetwork = true,
+            )
+    }
+
+    val canPlayImmersiveCanvas = state.isPlaying &&
+        state.isImmersiveEnabled &&
+        immersiveTransitionAlpha > 0.05f &&
+        lyricsFractionProvider() < 0.05f &&
+        queueFractionProvider() < 0.05f
 
     val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
 
@@ -280,6 +311,43 @@ fun PlayerBackgroundLayers(
                 )
             }
         }
+
+        if (state.isImmersiveEnabled && isCanvasEnabled && canvasArtwork != null) {
+            CanvasArtworkPlayer(
+                primaryUrl = canvasArtwork?.preferredAnimationUrl,
+                fallbackUrl = canvasArtwork?.fallbackUrl,
+                isPlaying = canPlayImmersiveCanvas,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.72f)
+                    .align(Alignment.TopCenter)
+                    .graphicsLayer {
+                        alpha = immersiveTransitionAlpha
+                        compositingStrategy = if (immersiveTransitionAlpha > 0f) {
+                            CompositingStrategy.Offscreen
+                        } else {
+                            CompositingStrategy.Auto
+                        }
+                    }
+                    .drawWithCache {
+                        val maskBrush = Brush.verticalGradient(
+                            0.0f to Color.Black,
+                            0.50f to Color.Black,
+                            1.0f to Color.Transparent,
+                            startY = 0f,
+                            endY = size.height
+                        )
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = maskBrush,
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                    },
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            )
+        }
     }
 
     Box(
@@ -305,3 +373,6 @@ fun PlayerBackgroundLayers(
             }
     )
 }
+
+private val CanvasArtwork.fallbackUrl: String?
+    get() = videoUrl.takeIf { it != preferredAnimationUrl }
