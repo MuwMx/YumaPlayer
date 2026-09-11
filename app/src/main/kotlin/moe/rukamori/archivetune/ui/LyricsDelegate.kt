@@ -108,6 +108,43 @@ class LyricsDelegate(
         }
     }
 
+    fun onCurrentLyricsUpdated(
+        cached: LyricsEntity?,
+        audioPlayer: Player?,
+        playbackProgressMs: Long,
+    ) {
+        if (cached != null) {
+            val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
+            val parsedLines = parseLyrics(cached.lyrics, durationMs)
+            val isSynced = parsedLines.any { line -> line.time > 0 }
+            startRomanizationJob(parsedLines)
+            updateUiState { current ->
+                val targetIndex = if (isSynced) {
+                    findCurrentLineIndex(parsedLines, playbackProgressMs, current.lyricsSyncOffset)
+                } else {
+                    -1
+                }
+                current.copy(
+                    lyricsList = parsedLines,
+                    isSynced = isSynced,
+                    isLoadingLyrics = false,
+                    lyricsError = if (parsedLines.isEmpty()) "lyrics_not_found" else null,
+                    currentLineIndex = targetIndex,
+                )
+            }
+        } else {
+            updateUiState { current ->
+                current.copy(
+                    lyricsList = emptyList(),
+                    isSynced = false,
+                    isLoadingLyrics = false,
+                    lyricsError = null,
+                    currentLineIndex = -1,
+                )
+            }
+        }
+    }
+
     fun prepareLyricsEditText() {
         val trackId = uiState.value.trackUrl
         if (trackId.isEmpty()) return
@@ -294,7 +331,17 @@ class LyricsDelegate(
                 val db = playerConnectionProvider()?.database
                 val cached = if (force) null else db?.getLyricsById(trackUrl)
 
-                if (cached != null && cached.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                if (cached != null) {
+                    if (cached.lyrics == LyricsEntity.LYRICS_NOT_FOUND) {
+                        withContext(Dispatchers.Main) {
+                            updateUiState {
+                                it.copy(
+                                    isLoadingLyrics = false,
+                                    lyricsError = "lyrics_not_found",
+                                )
+                            }
+                        }
+                    }
                     success = true
                     return@launch
                 }
@@ -315,7 +362,7 @@ class LyricsDelegate(
                 ensureActive()
                 if (generation != lyricsFetchGeneration.get()) return@launch
 
-                if (rawLyrics.isNotBlank()) {
+                if (rawLyrics.isNotBlank() && rawLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
                     playerConnectionProvider()?.database?.query {
                         replaceLyrics(
                             id = trackUrl,
@@ -325,6 +372,13 @@ class LyricsDelegate(
                     }
                     success = true
                 } else {
+                    playerConnectionProvider()?.database?.query {
+                        replaceLyrics(
+                            id = trackUrl,
+                            lyrics = LyricsEntity.LYRICS_NOT_FOUND,
+                            source = LyricsEntity.Source.REMOTE.value
+                        )
+                    }
                     if (generation != lyricsFetchGeneration.get()) return@launch
                     withContext(Dispatchers.Main) {
                         updateUiState {

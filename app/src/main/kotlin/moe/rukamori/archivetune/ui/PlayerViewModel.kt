@@ -163,32 +163,7 @@ class PlayerViewModel @Inject constructor(
                 .filterNotNull()
                 .flatMapLatest { connection -> connection.currentLyrics }
                 .collect { cached ->
-                    if (cached != null) {
-                        val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
-                        val parsedLines = parseLyrics(cached.lyrics, durationMs)
-                        val isSynced = parsedLines.any { line -> line.time > 0 }
-                        startRomanizationJob(parsedLines)
-                        _uiState.update {
-                            val targetIndex = if (isSynced) findCurrentLineIndex(parsedLines, _playbackProgress.value, it.lyricsSyncOffset) else -1
-                            it.copy(
-                                lyricsList = parsedLines,
-                                isSynced = isSynced,
-                                isLoadingLyrics = false,
-                                lyricsError = if (parsedLines.isEmpty()) "lyrics_not_found" else null,
-                                currentLineIndex = targetIndex
-                            )
-                        }
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                lyricsList = emptyList(),
-                                isSynced = false,
-                                isLoadingLyrics = false,
-                                lyricsError = null,
-                                currentLineIndex = -1
-                            )
-                        }
-                    }
+                    lyricsDelegate.onCurrentLyricsUpdated(cached, audioPlayer, _playbackProgress.value)
                 }
         }
 

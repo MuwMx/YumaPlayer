@@ -49,6 +49,7 @@ import moe.rukamori.archivetune.lyrics.LyricsResult
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed interface LyricsSearchScreenState {
@@ -174,15 +175,19 @@ class LyricsMenuViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 isRefetching.value = true
                 try {
+                    lyricsHelper.clearCache()
                     val lyrics = lyricsHelper.getLyrics(mediaMetadata)
                     database.query {
                         replaceLyrics(
                             id = mediaMetadata.id,
-                            lyrics = lyrics,
+                            lyrics = lyrics.ifBlank { LyricsEntity.LYRICS_NOT_FOUND },
                             source = LyricsEntity.Source.REMOTE.value,
                         )
                     }
-                } catch (_: Exception) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "refetchLyrics failed")
                 } finally {
                     isRefetching.value = false
                 }
