@@ -109,7 +109,7 @@ class LyricsDelegate(
         }
     }
 
-    fun onCurrentLyricsUpdated(
+    suspend fun onCurrentLyricsUpdated(
         cached: LyricsEntity?,
         audioPlayer: Player?,
         playbackProgressMs: Long,
@@ -128,7 +128,10 @@ class LyricsDelegate(
         }
 
         val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
-        val parsedLines = parseLyrics(cached.lyrics, durationMs)
+        val parsedLines =
+            withContext(Dispatchers.Default) {
+                parseLyrics(cached.lyrics, durationMs)
+            }
         val isSynced = parsedLines.any { line -> line.time > 0 }
         startRomanizationJob(parsedLines)
         updateUiState { current ->

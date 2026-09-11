@@ -12,19 +12,14 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.request.prepareGet
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.contentLength
-import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.BuildConfig
-import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -45,17 +40,12 @@ object AppUpdateInstaller {
     }
 
     private val client by lazy {
-        HttpClient(OkHttp) {
-            engine {
-                config {
-                    connectTimeout(30, TimeUnit.SECONDS)
-                    readTimeout(60, TimeUnit.SECONDS)
-                    connectionPool(ConnectionPool(2, 30, TimeUnit.SECONDS))
-                    retryOnConnectionFailure(true)
-                    followRedirects(true)
-                }
-            }
-        }
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .followRedirects(true)
+            .build()
     }
 
     suspend fun downloadAndInstall(
@@ -98,31 +88,38 @@ object AppUpdateInstaller {
 
         val downloadedFile = File(updateDir, DownloadFileName)
 
-        client.prepareGet(url).execute { response ->
-            val responseCode = response.status.value
+        val request =
+            Request.Builder()
+                .url(url)
+                .build()
+
+        client.newCall(request).execute().use { response ->
+            val responseCode = response.code
             if (responseCode !in 200..299) {
                 throw IOException("Update download failed: HTTP $responseCode")
             }
 
-            val totalBytes = response.contentLength() ?: -1L
-            val channel = response.bodyAsChannel()
+            val body = response.body ?: throw IOException("Update download failed: empty body")
+            val totalBytes = body.contentLength()
             downloadedFile.outputStream().use { output ->
-                val buffer = ByteArray(STREAM_BUFFER_SIZE)
-                var downloadedBytes = 0L
-                var lastUpdateMs = 0L
-                while (!channel.isClosedForRead) {
-                    currentCoroutineContext().ensureActive()
-                    val read = channel.readAvailable(buffer)
-                    if (read == -1) break
-                    output.write(buffer, 0, read)
-                    downloadedBytes += read.toLong()
-                    val now = System.currentTimeMillis()
-                    if (now - lastUpdateMs >= PROGRESS_UPDATE_INTERVAL_MS) {
-                        emitProgress(downloadedBytes, totalBytes, onProgress)
-                        lastUpdateMs = now
+                body.byteStream().use { input ->
+                    val buffer = ByteArray(STREAM_BUFFER_SIZE)
+                    var downloadedBytes = 0L
+                    var lastUpdateMs = 0L
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloadedBytes += read.toLong()
+                        val now = System.currentTimeMillis()
+                        if (now - lastUpdateMs >= PROGRESS_UPDATE_INTERVAL_MS) {
+                            emitProgress(downloadedBytes, totalBytes, onProgress)
+                            lastUpdateMs = now
+                        }
                     }
+                    emitProgress(downloadedBytes, totalBytes, onProgress)
                 }
-                emitProgress(downloadedBytes, totalBytes, onProgress)
             }
         }
 

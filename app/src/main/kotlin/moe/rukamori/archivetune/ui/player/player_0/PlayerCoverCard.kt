@@ -77,7 +77,6 @@ fun PlayerCoverCard(
 
     val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
     var canvasArtwork by remember(mediaId) { mutableStateOf<CanvasArtwork?>(null) }
-    var canvasFetchInFlight by remember(mediaId) { mutableStateOf(false) }
     
     val offsetX = remember { Animatable(0f) }
     var accumulatedDragX by remember { mutableStateOf(0f) }
@@ -93,31 +92,23 @@ fun PlayerCoverCard(
     LaunchedEffect(isCanvasEnabled, mediaId, songTitle, artistName) {
         canvasArtwork = null
         if (!isCanvasEnabled || mediaId.isNullOrBlank()) {
-            canvasFetchInFlight = false
             return@LaunchedEffect
         }
 
         CanvasArtworkPlaybackCache.get(mediaId)?.let { cached ->
             canvasArtwork = cached
-            canvasFetchInFlight = false
             return@LaunchedEffect
         }
 
-        if (canvasFetchInFlight) return@LaunchedEffect
-        canvasFetchInFlight = true
-        try {
-            canvasArtwork =
-                resolveCanvasArtworkForPlayback(
-                    mediaId = mediaId,
-                    songTitleRaw = songTitle ?: "",
-                    artistNameRaw = artistName ?: "",
-                    storefront = "us",
-                    requireVertical = false,
-                    allowNetwork = true,
-                )
-        } finally {
-            canvasFetchInFlight = false
-        }
+        canvasArtwork =
+            resolveCanvasArtworkForPlayback(
+                mediaId = mediaId,
+                songTitleRaw = songTitle ?: "",
+                artistNameRaw = artistName ?: "",
+                storefront = "us",
+                requireVertical = false,
+                allowNetwork = true,
+            )
     }
 
     val request = remember(cleanUrl) {

@@ -11,7 +11,6 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -55,6 +54,15 @@ object PaxsenixLyrics {
         this.apiKey = apiKey.trim()
     }
 
+    @Volatile
+    private var customClient: HttpClient? = null
+
+    fun setClient(client: HttpClient) {
+        synchronized(this) {
+            customClient = client
+        }
+    }
+
     private val json =
         Json {
             isLenient = true
@@ -62,28 +70,28 @@ object PaxsenixLyrics {
             explicitNulls = false
         }
 
-    private val client by lazy {
+    private fun createDefaultClient(): HttpClient =
         HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(json)
             }
 
             install(HttpTimeout) {
-                requestTimeoutMillis = 15_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 15_000
-            }
-
-            defaultRequest {
-                url(BASE_URL)
-                header(HttpHeaders.UserAgent, userAgent)
-                header(HttpHeaders.Accept, "application/json, text/plain, */*")
-                header(HttpHeaders.AcceptLanguage, "en-US,en;q=0.9")
+                requestTimeoutMillis = 20_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 20_000
             }
 
             expectSuccess = false
         }
-    }
+
+    private val client: HttpClient
+        get() = customClient ?: synchronized(this) {
+            customClient ?: createDefaultClient().also { customClient = it }
+        }
+
+    private fun resolveUrl(path: String): String =
+        if (path.startsWith("http://") || path.startsWith("https://")) path else "$BASE_URL${path.removePrefix("/")}"
 
     private suspend fun apiGet(
         path: String,
@@ -92,7 +100,10 @@ object PaxsenixLyrics {
         val currentApiKey = apiKey
         check(currentApiKey.isNotEmpty()) { "Paxsenix API key is not configured" }
 
-        return client.get(path) {
+        return client.get(resolveUrl(path)) {
+            header(HttpHeaders.UserAgent, userAgent)
+            header(HttpHeaders.Accept, "application/json, text/plain, */*")
+            header(HttpHeaders.AcceptLanguage, "en-US,en;q=0.9")
             header(HttpHeaders.Authorization, "Bearer $currentApiKey")
             request()
         }
@@ -429,7 +440,10 @@ object PaxsenixLyrics {
 
     suspend fun getStats(): Result<PaxsenixStats> =
         resultOf {
-            val response = client.get(STATS_URL)
+            val response = client.get(STATS_URL) {
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Accept, "application/json, text/plain, */*")
+            }
             check(response.status.value in 200..299) {
                 "Paxsenix stats request failed with HTTP ${response.status.value}"
             }

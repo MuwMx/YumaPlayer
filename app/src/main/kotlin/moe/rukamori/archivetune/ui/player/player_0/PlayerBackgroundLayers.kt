@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
@@ -280,11 +279,11 @@ fun PlayerBackgroundLayers(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.72f) 
+                        .aspectRatio(0.75f)
                         .align(Alignment.TopCenter)
                         .graphicsLayer {
                             alpha = immersiveTransitionAlpha
-                            compositingStrategy = if (immersiveTransitionAlpha > 0f) {
+                            compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
                                 CompositingStrategy.Offscreen
                             } else {
                                 CompositingStrategy.Auto
@@ -293,7 +292,7 @@ fun PlayerBackgroundLayers(
                         .drawWithCache {
                             val maskBrush = Brush.verticalGradient(
                                 0.0f to Color.Black,
-                                0.50f to Color.Black,
+                                0.80f to Color.Black,
                                 1.0f to Color.Transparent,
                                 startY = 0f,
                                 endY = size.height
@@ -319,11 +318,11 @@ fun PlayerBackgroundLayers(
                 isPlaying = canPlayImmersiveCanvas,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.72f)
+                    .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
                     .graphicsLayer {
                         alpha = immersiveTransitionAlpha
-                        compositingStrategy = if (immersiveTransitionAlpha > 0f) {
+                        compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
                             CompositingStrategy.Offscreen
                         } else {
                             CompositingStrategy.Auto
@@ -332,7 +331,7 @@ fun PlayerBackgroundLayers(
                     .drawWithCache {
                         val maskBrush = Brush.verticalGradient(
                             0.0f to Color.Black,
-                            0.50f to Color.Black,
+                            0.80f to Color.Black,
                             1.0f to Color.Transparent,
                             startY = 0f,
                             endY = size.height

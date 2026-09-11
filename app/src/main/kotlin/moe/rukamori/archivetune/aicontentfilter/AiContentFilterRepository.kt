@@ -36,7 +36,6 @@ import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -46,6 +45,7 @@ class AiContentFilterRepository
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val httpClient: OkHttpClient,
     ) {
         private val cacheDirectory = File(context.filesDir, CACHE_DIRECTORY_NAME)
         private val blocklistFile = AtomicFile(File(cacheDirectory, BLOCKLIST_FILE_NAME))
@@ -61,14 +61,6 @@ class AiContentFilterRepository
             )
 
         @Volatile private var cachedLists: AiChannelLists? = null
-
-        private val httpClient =
-            OkHttpClient
-                .Builder()
-                .connectTimeout(NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .readTimeout(NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .callTimeout(NETWORK_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .build()
 
         fun observeSettings(): Flow<AiContentFilterSettings> =
             context.dataStore.data
@@ -311,8 +303,6 @@ class AiContentFilterRepository
             private const val USER_AGENT = "YumaPlayer-AiContentFilter"
             private const val MAX_RESPONSE_BYTES = 5 * 1024 * 1024
             private const val BUFFER_SIZE_BYTES = 8 * 1024
-            private const val NETWORK_TIMEOUT_SECONDS = 30L
-            private const val NETWORK_CALL_TIMEOUT_SECONDS = 65L
             private const val REFRESH_INTERVAL_MILLIS = 4 * 60 * 60 * 1000L
         }
     }

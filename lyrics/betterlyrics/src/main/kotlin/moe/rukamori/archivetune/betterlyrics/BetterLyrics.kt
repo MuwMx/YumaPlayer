@@ -10,7 +10,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
@@ -46,7 +45,16 @@ object BetterLyrics {
         }
     }
 
-    private val client by lazy {
+    @Volatile
+    private var customClient: HttpClient? = null
+
+    fun setClient(client: HttpClient) {
+        synchronized(this) {
+            customClient = client
+        }
+    }
+
+    private fun createDefaultClient(): HttpClient =
         HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(jsonFormat)
@@ -58,14 +66,13 @@ object BetterLyrics {
                 socketTimeoutMillis = 20000
             }
 
-            defaultRequest {
-                url("https://lyrics-api.boidu.dev/")
-            }
-
-            // Don't throw on non-2xx responses, handle them gracefully
             expectSuccess = false
         }
-    }
+
+    private val client: HttpClient
+        get() = customClient ?: synchronized(this) {
+            customClient ?: createDefaultClient().also { customClient = it }
+        }
 
     var logger: ((String) -> Unit)? = null
 
@@ -97,6 +104,9 @@ object BetterLyrics {
         return null
     }
 
+    private fun resolveUrl(endpoint: String): String =
+        if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) endpoint else "$API_BASE_URL${endpoint.removePrefix("/")}"
+
     private suspend fun fetchLyricsFromEndpoint(
         endpoint: String,
         title: String,
@@ -108,7 +118,7 @@ object BetterLyrics {
 
         return try {
             val response: HttpResponse =
-                client.get(endpoint) {
+                client.get(resolveUrl(endpoint)) {
                     parameter("s", title)
                     parameter("a", artist)
                     if (album.isNotBlank()) parameter("al", album)

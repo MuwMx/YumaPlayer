@@ -29,6 +29,13 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import moe.rukamori.archivetune.betterlyrics.BetterLyrics
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
@@ -44,11 +51,17 @@ import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.utils.GlobalLog
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
+import okhttp3.Credentials
+import okhttp3.OkHttpClient
+import java.net.Proxy
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,6 +72,10 @@ class LyricsHelper
         @ApplicationContext private val context: Context,
         private val networkConnectivity: NetworkConnectivityObserver,
     ) {
+        init {
+            SharedLyricsEngine.update()
+        }
+
         private val baseProviders =
             listOf(
                 BetterLyricsProvider,
@@ -471,3 +488,81 @@ data class LyricsResult(
     val providerName: String,
     val lyrics: String,
 )
+
+object SharedLyricsEngine {
+    private val lock = Any()
+
+    @Volatile
+    var okHttpClient: OkHttpClient = createOkHttpClient()
+        private set
+
+    @Volatile
+    var httpClient: HttpClient = createHttpClient(okHttpClient)
+        private set
+
+    init {
+        PaxsenixLyrics.setClient(httpClient)
+        BetterLyrics.setClient(httpClient)
+    }
+
+    fun createOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .dns(YouTube.dns)
+            .proxy(YouTube.streamOkHttpProxy)
+            .apply {
+                val username = YouTube.proxyUsername
+                val password = YouTube.proxyPassword
+                if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
+                    proxyAuthenticator { _, response ->
+                        val credential = Credentials.basic(username, password)
+                        response.request
+                            .newBuilder()
+                            .header("Proxy-Authorization", credential)
+                            .build()
+                    }
+                }
+            }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .build()
+
+    fun createHttpClient(okHttp: OkHttpClient = createOkHttpClient()): HttpClient =
+        HttpClient(OkHttp) {
+            engine {
+                preconfigured = okHttp
+            }
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        isLenient = true
+                        ignoreUnknownKeys = true
+                        explicitNulls = false
+                        coerceInputValues = true
+                    }
+                )
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 20_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 20_000
+            }
+            expectSuccess = false
+        }
+
+    fun update() {
+        synchronized(lock) {
+            val oldClient = httpClient
+            val newOkHttp = createOkHttpClient()
+            val newClient = createHttpClient(newOkHttp)
+
+            okHttpClient = newOkHttp
+            httpClient = newClient
+
+            PaxsenixLyrics.setClient(newClient)
+            BetterLyrics.setClient(newClient)
+
+            runCatching { oldClient.close() }
+        }
+    }
+}

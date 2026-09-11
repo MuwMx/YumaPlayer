@@ -83,6 +83,7 @@ fun FullPlayer(
 
     val isSheetExpanded = slideOffset() > 0.95f
     val canPlayCanvas = state.isPlaying &&
+        !state.isImmersiveEnabled &&
         isSheetExpanded &&
         !state.isLyricsVisible &&
         !state.isQueueVisible &&
