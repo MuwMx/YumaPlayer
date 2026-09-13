@@ -4,4 +4,27 @@
     <string name="album_backdrop_desc">പ്ലെയറിൽ ആർട്ട്വർക്ക് മങ്ങിയ പശ്ചാത്തലമായി കാണിക്കുക</string>
     <string name="backdrop_blur_amount">പശ്ചാത്തല മങ്ങലിന്റെ അളവ്</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <string name="playback_source">ഉറവിടം</string>
+    <string name="source_yt_music">യൂട്യൂബ് മ്യൂസിക്</string>
+    <string name="source_flac">FLAC</string>
+    <string name="flac_quality_cd">സിഡി (16-bit/44.1 kHz)</string>
+    <string name="flac_quality_hi_res">ഹൈ-റെസ് (24-bit/96 kHz)</string>
+    <string name="flac_quality_max">മാക്സ് (24-bit/192 kHz)</string>
+    <string name="flac_streaming_quality">FLAC ഗുണമേന്മ (സ്ട്രീമിംഗ്)</string>
+    <string name="flac_download_quality">FLAC ഗുണമേന്മ (ഡൗൺലോഡ്)</string>
+    <string name="folder_persist_failed">ഫോൾഡർ അനുമതി സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല</string>
+    <string name="home">ഹോം</string>
+    <string name="songs">പാട്ടുകൾ</string>
+    <string name="artists">കലാകാരന്മാർ</string>
+    <string name="albums">ആൽബങ്ങൾ</string>
+    <string name="playlists">പ്ലേലിസ്റ്റുകൾ</string>
+    <plurals name="n_selected">
+        <item quantity="one">%d എണ്ണം തിരഞ്ഞെടുത്തു</item>
+        <item quantity="other">%d എണ്ണങ്ങൾ തിരഞ്ഞെടുത്തു</item>
+    </plurals>
+    <string name="history">ഹിസ്റ്ററി</string>
+    <string name="stats">കണക്കുകൾ</string>
+    <string name="mood_and_genres">മൂഡും സംഗീത ശൈലികളും</string>
+    <string name="account">അക്കൗണ്ട്</string>
+    <string name="quick_picks">പെട്ടെന്നുള്ള തിരഞ്ഞെടുപ്പുകൾ</string>
 </resources>
