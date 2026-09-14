@@ -119,7 +119,7 @@ class SpotifySyncOps
                                             async {
                                                 resolveSemaphore.withPermit {
                                                     if (!state.isSyncStillEnabled(gen)) return@withPermit null
-                                                    val metadata = SpotifyPlaybackResolver.resolveToMetadata(track)
+                                                    val metadata = SpotifyPlaybackResolver.resolveToMetadata(track, state.database)
                                                     if (metadata != null && state.isSyncStillEnabled(gen)) {
                                                         track to metadata
                                                     } else {
@@ -214,7 +214,7 @@ class SpotifySyncOps
                                 async {
                                     resolveSemaphore.withPermit {
                                         if (!state.isSyncStillEnabled(gen)) return@withPermit null
-                                        val metadata = SpotifyPlaybackResolver.resolveToMetadata(track)
+                                        val metadata = SpotifyPlaybackResolver.resolveToMetadata(track, state.database)
                                         val result =
                                             if (metadata != null && state.isSyncStillEnabled(gen)) {
                                                 Resolved(track, metadata)

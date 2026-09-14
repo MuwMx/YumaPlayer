@@ -20,8 +20,14 @@ interface SpotifyDao {
     @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
     fun spotifyMatch(spotifyId: String): Flow<SpotifyMatchEntity?>
 
+    @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
+    fun getSpotifyMatch(spotifyId: String): SpotifyMatchEntity?
+
     @Query("SELECT * FROM spotify_match WHERE youtubeId = :youtubeId")
     fun spotifyMatchByYouTubeId(youtubeId: String): Flow<SpotifyMatchEntity?>
+
+    @Query("SELECT * FROM spotify_match WHERE youtubeId = :youtubeId")
+    fun getSpotifyMatchByYouTubeId(youtubeId: String): SpotifyMatchEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(spotifyMatch: SpotifyMatchEntity)
@@ -29,6 +35,15 @@ interface SpotifyDao {
     @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifyId = :spotifyId")
     fun playlistBySpotifyId(spotifyId: String): Flow<Playlist?>
+
+    @Query("SELECT * FROM spotify_match WHERE spotifyId IN (:spotifyIds)")
+    fun rawGetSpotifyMatches(spotifyIds: List<String>): List<SpotifyMatchEntity>
+
+    fun getSpotifyMatches(spotifyIds: List<String>): List<SpotifyMatchEntity> {
+        return spotifyIds.chunked(500).flatMap { chunk ->
+            rawGetSpotifyMatches(chunk)
+        }
+    }
 
     @Query("SELECT * FROM spotify_match WHERE youtubeId IN (:youtubeIds)")
     fun rawGetSpotifyMatchesByYouTubeIds(youtubeIds: List<String>): List<SpotifyMatchEntity>

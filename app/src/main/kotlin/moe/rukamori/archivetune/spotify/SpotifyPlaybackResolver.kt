@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -29,14 +31,76 @@ object SpotifyPlaybackResolver {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MediaMetadata>?): Boolean = size > CACHE_MAX_SIZE
         }
 
-    suspend fun resolveToMediaItem(track: SpotifyTrack): MediaItem? = resolveToMetadata(track)?.toMediaItem()
+    @Volatile
+    private var databaseRef: MusicDatabase? = null
 
-    suspend fun resolveToMetadata(track: SpotifyTrack): MediaMetadata? =
+    suspend fun resolveToMediaItem(
+        track: SpotifyTrack,
+        database: MusicDatabase? = null,
+    ): MediaItem? = resolveToMetadata(track, database)?.toMediaItem()
+
+    suspend fun resolveToMetadata(
+        track: SpotifyTrack,
+        database: MusicDatabase? = null,
+    ): MediaMetadata? =
         withContext(Dispatchers.IO) {
+            val db = database ?: databaseRef
+            if (database != null && databaseRef == null) {
+                databaseRef = database
+            }
+
+            val rawSpotifyId = track.id.removePrefix("spotify:track:").removePrefix("spotify:")
+
             mutex.withLock {
-                cache[track.id]?.let { cached ->
+                (cache[rawSpotifyId] ?: cache[track.id])?.let { cached ->
                     Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${cached.id}")
                     return@withContext cached
+                }
+            }
+
+            if (db != null) {
+                val match =
+                    if (rawSpotifyId.isNotBlank()) {
+                        db.getSpotifyMatch(rawSpotifyId) ?: db.getSpotifyMatch(track.id)
+                    } else {
+                        db.getSpotifyMatch(track.id)
+                    }
+                if (match != null) {
+                    val dbSong = db.getSongByIdBlocking(match.youtubeId)
+                    val metadata =
+                        if (dbSong != null) {
+                            dbSong.toMediaMetadata().copy(
+                                thumbnailUrl = SpotifyMapper.getTrackThumbnail(track) ?: dbSong.song.thumbnailUrl,
+                                duration = if (track.durationMs > 0) track.durationMs / 1000 else dbSong.song.duration,
+                                album =
+                                    track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
+                                        ?: dbSong.album?.let { MediaMetadata.Album(id = it.id, title = it.title) },
+                                explicit = track.explicit || dbSong.song.explicit,
+                                spotifyTrackId = track.id.takeIf(String::isNotBlank),
+                                isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() } ?: match.isrc ?: dbSong.song.isrc,
+                            )
+                        } else {
+                            MediaMetadata(
+                                id = match.youtubeId,
+                                title = track.name,
+                                artists = track.artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
+                                duration = if (track.durationMs > 0) track.durationMs / 1000 else -1,
+                                thumbnailUrl = SpotifyMapper.getTrackThumbnail(track),
+                                album = track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) },
+                                explicit = track.explicit,
+                                spotifyTrackId = track.id.takeIf(String::isNotBlank),
+                                isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() } ?: match.isrc,
+                            )
+                        }
+
+                    mutex.withLock {
+                        cache[track.id] = metadata
+                        if (rawSpotifyId.isNotBlank()) {
+                            cache[rawSpotifyId] = metadata
+                        }
+                    }
+                    Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${metadata.id}")
+                    return@withContext metadata
                 }
             }
 
@@ -110,7 +174,26 @@ object SpotifyPlaybackResolver {
 
             mutex.withLock {
                 cache[track.id] = metadata
+                if (rawSpotifyId.isNotBlank()) {
+                    cache[rawSpotifyId] = metadata
+                }
             }
+
+            val matchKey = if (rawSpotifyId.isNotBlank()) rawSpotifyId else track.id
+            val existingMatch = db?.getSpotifyMatch(matchKey)
+            if (existingMatch == null || !existingMatch.isManualOverride) {
+                db?.insert(
+                    SpotifyMatchEntity(
+                        spotifyId = matchKey,
+                        youtubeId = metadata.id,
+                        title = track.name,
+                        artist = track.artists.joinToString(" ") { it.name },
+                        matchScore = score,
+                        isrc = metadata.isrc,
+                    ),
+                )
+            }
+
             Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${metadata.id}")
             metadata
         }
