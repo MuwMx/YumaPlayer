@@ -33,24 +33,14 @@ object SpotifyPlaybackResolver {
 
     suspend fun resolveToMetadata(track: SpotifyTrack): MediaMetadata? =
         withContext(Dispatchers.IO) {
-            val artistNames = track.artists.joinToString(", ") { it.name }
-            Timber.tag("SpotifyPipeline").d(
-                "Resolving track: id=${track.id}, title='${track.name}', artist='$artistNames'"
-            )
-
             mutex.withLock {
                 cache[track.id]?.let { cached ->
-                    Timber.tag("SpotifyPipeline").d(
-                        "Cache HIT for track id=${track.id}, videoId=${cached.id}"
-                    )
+                    Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${cached.id}")
                     return@withContext cached
                 }
             }
-            Timber.tag("SpotifyPipeline").d("Cache MISS for track id=${track.id}")
 
             val query = SpotifyMapper.buildSearchQuery(track)
-            Timber.tag("SpotifyPipeline").d("Searching YouTube for query: '$query'")
-
             val searchResult =
                 YouTube
                     .search(
@@ -58,7 +48,7 @@ object SpotifyPlaybackResolver {
                         filter = YouTube.SearchFilter.FILTER_SONG,
                     ).getOrNull()
             if (searchResult == null) {
-                Timber.tag("SpotifyPipeline").w("YouTube search returned null for query: '$query'")
+                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
                 return@withContext null
             }
 
@@ -67,7 +57,7 @@ object SpotifyPlaybackResolver {
                     .filterIsInstance<SongItem>()
                     .distinctBy { it.id }
             if (candidates.isEmpty()) {
-                Timber.tag("SpotifyPipeline").w("No song candidates found for query: '$query'")
+                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
                 return@withContext null
             }
 
@@ -95,20 +85,13 @@ object SpotifyPlaybackResolver {
                 }
             val bestCandidatePair = scoredCandidates.maxByOrNull { it.second }
             if (bestCandidatePair == null) {
-                Timber.tag("SpotifyPipeline").w("No scored candidate for track id=${track.id}")
+                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
                 return@withContext null
             }
 
             val (best, score) = bestCandidatePair
-            val bestArtistNames = best.artists.joinToString(", ") { it.name }
-            Timber.tag("SpotifyPipeline").d(
-                "Best candidate: id=${best.id}, title='${best.title}', artist='$bestArtistNames', score=$score (min threshold=$MIN_MATCH_THRESHOLD)"
-            )
-
             if (score < MIN_MATCH_THRESHOLD) {
-                Timber.tag("SpotifyPipeline").w(
-                    "Candidate score $score below threshold $MIN_MATCH_THRESHOLD for track id=${track.id}"
-                )
+                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
                 return@withContext null
             }
 
@@ -128,7 +111,7 @@ object SpotifyPlaybackResolver {
             mutex.withLock {
                 cache[track.id] = metadata
             }
-            Timber.tag("SpotifyPipeline").d("Resolved track id=${track.id} to videoId=${metadata.id}")
+            Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${metadata.id}")
             metadata
         }
 }

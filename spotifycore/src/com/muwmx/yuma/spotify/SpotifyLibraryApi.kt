@@ -171,7 +171,7 @@ object SpotifyLibraryApi {
             val total = tracksData.int("totalCount") ?: 0
             SpotifyGraphqlClient.log(
                 "D",
-                "likedSongs GQL: received ${savedTracks.size} tracks (offset: $offset, limit: $limit, total: $total)"
+                "likedSongs GQL: received ${savedTracks.size} tracks, total: $total"
             )
 
             SpotifyPaging(

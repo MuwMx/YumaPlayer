@@ -161,9 +161,8 @@ open class SpotifyTracksQueue(
             val batch = allTracks.subList(currentOffset, end)
             resolveOffset = end
 
-            val trackNames = batch.joinToString(", ") { "${it.name} (${it.id})" }
             Timber.tag("SpotifyPipeline").d(
-                "Starting batch resolve: offset=$currentOffset, size=${batch.size}, tracks=[$trackNames]"
+                "Starting batch resolve: offset=$currentOffset, size=${batch.size}"
             )
 
             val resolvedBatch =

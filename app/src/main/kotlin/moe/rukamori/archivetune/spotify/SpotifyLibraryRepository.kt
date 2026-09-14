@@ -75,7 +75,7 @@ class SpotifyLibraryRepository
                 }
             val filtered = page.items.mapNotNull { it.track.takeUnless(SpotifyTrack::isLocal) }
             Timber.tag("SpotifyPipeline").d(
-                "likedSongsPage: offset=$offset, limit=$limit, received=${filtered.size}, total=${page.total}"
+                "likedSongsPage: received ${filtered.size} tracks, total=${page.total}"
             )
             return moe.rukamori.archivetune.spotify.models.SpotifyPaging(
                 items = filtered,
