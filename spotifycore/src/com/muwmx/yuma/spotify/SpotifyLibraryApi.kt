@@ -163,9 +163,11 @@ object SpotifyLibraryApi {
             val savedTracks =
                 tracksData.arr("items")?.mapNotNull { elem ->
                     val trackWrapper = elem.jsonObject.obj("track") ?: return@mapNotNull null
-                    val trackData = trackWrapper.obj("data") ?: trackWrapper
+                    val trackData = trackWrapper.obj("data") ?: return@mapNotNull null
                     val wrapperUri = trackWrapper.str("_uri") ?: trackWrapper.str("uri")
-                    SpotifySavedTrack(track = SpotifyParsers.parseGqlTrack(trackData, uriOverride = wrapperUri))
+                    val track = SpotifyParsers.parseGqlTrack(trackData, uriOverride = wrapperUri)
+                    if (track.id.isBlank() || track.name.isBlank()) return@mapNotNull null
+                    SpotifySavedTrack(track = track)
                 } ?: emptyList()
 
             val total = tracksData.int("totalCount") ?: 0

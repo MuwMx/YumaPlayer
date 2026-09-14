@@ -127,6 +127,42 @@ object SpotifyMapper {
         }
 
     /**
+     * Returns a medium-resolution thumbnail URL from a Spotify track's album art for lists,
+     * avoiding full hi-res and micro thumbnails.
+     */
+    fun getTrackThumbnailMedium(track: SpotifyTrack): String? {
+        val images = track.album?.images?.takeIf { it.isNotEmpty() } ?: return getTrackThumbnail(track)
+        val sorted =
+            if (images.any { (it.width ?: 0) > 0 }) {
+                images.sortedByDescending { it.width ?: 0 }
+            } else {
+                images
+            }
+
+        return when {
+            sorted.size >= 3 -> {
+                val middle = sorted.subList(1, sorted.size - 1)
+                val chosen =
+                    middle.minByOrNull {
+                        val w = it.width ?: 300
+                        kotlin.math.abs(w - 300)
+                    } ?: middle.first()
+                chosen.url
+            }
+            sorted.size == 2 -> {
+                val second = sorted[1]
+                val secondWidth = second.width ?: 0
+                if (secondWidth in 1..120) {
+                    sorted[0].url
+                } else {
+                    second.url
+                }
+            }
+            else -> sorted.firstOrNull()?.url ?: getTrackThumbnail(track)
+        }
+    }
+
+    /**
      * Pre-computes normalized title/artist and their bigrams for a Spotify track.
      * Call once before scoring against multiple candidates to avoid redundant work.
      */
