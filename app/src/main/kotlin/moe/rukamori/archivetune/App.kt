@@ -149,6 +149,14 @@ class App :
             apiKey = BuildConfig.LASTFM_API_KEY,
             secret = BuildConfig.LASTFM_SECRET,
         )
+        moe.rukamori.archivetune.spotify.Spotify.logger = { level, message ->
+            when (level) {
+                "D" -> Timber.tag("SpotifyPipeline").d(message)
+                "W" -> Timber.tag("SpotifyPipeline").w(message)
+                "E" -> Timber.tag("SpotifyPipeline").e(message)
+                else -> Timber.tag("SpotifyPipeline").i(message)
+            }
+        }
     }
 
     private fun initializeDeferredAsync() {

@@ -118,8 +118,8 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
+import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
@@ -735,70 +735,87 @@ fun AutoPlaylistScreen(
 
                                 ToggleButton(
                                     checked = false,
-                                    onCheckedChange = {
-                                        val isSpotify = viewModel.isSpotifySource.value
-                                        if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                            val tracks = viewModel.spotifyTracks.value
-                                            if (tracks.isNotEmpty()) {
-                                                playerConnection.playQueue(
-                                                    SpotifyLikedSongsQueue(
-                                                        title = playlist,
-                                                        initialTracks = tracks,
-                                                    ),
-                                                )
-                                            }
-                                        } else {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = playlist,
-                                                    items = songs.map { it.toMediaItem() },
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.play),
-                                        contentDescription = stringResource(R.string.play),
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
+                                     onCheckedChange = {
+                                         val isSpotify = viewModel.isSpotifySource.value
+                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
+                                             val tracks = viewModel.spotifyTracks.value
+                                             if (tracks.isNotEmpty()) {
+                                                 val preloadTrack = tracks.firstOrNull()
+                                                 coroutineScope.launch(Dispatchers.IO) {
+                                                     val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                                     withContext(Dispatchers.Main) {
+                                                         playerConnection.playQueue(
+                                                             SpotifyTracksQueue(
+                                                                 title = playlist,
+                                                                 allTracks = tracks,
+                                                                 startIndex = 0,
+                                                                 preloadItem = preloadItem,
+                                                             ),
+                                                         )
+                                                     }
+                                                 }
+                                             }
+                                         } else {
+                                             playerConnection.playQueue(
+                                                 ListQueue(
+                                                     title = playlist,
+                                                     items = songs.map { it.toMediaItem() },
+                                                 ),
+                                             )
+                                         }
+                                     },
+                                     modifier =
+                                         Modifier
+                                             .weight(1f)
+                                             .height(48.dp),
+                                     shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                                     colors =
+                                         ToggleButtonDefaults.toggleButtonColors(
+                                             containerColor = MaterialTheme.colorScheme.primary,
+                                             contentColor = MaterialTheme.colorScheme.onPrimary,
+                                             checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                             checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                         ),
+                                 ) {
+                                     Icon(
+                                         painter = painterResource(R.drawable.play),
+                                         contentDescription = stringResource(R.string.play),
+                                         modifier = Modifier.size(24.dp),
+                                     )
+                                 }
 
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = {
-                                        val isSpotify = viewModel.isSpotifySource.value
-                                        if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                            val tracks = viewModel.spotifyTracks.value
-                                            if (tracks.isNotEmpty()) {
-                                                playerConnection.playQueue(
-                                                    SpotifyLikedSongsQueue(
-                                                        title = playlist,
-                                                        initialTracks = tracks.shuffled(),
-                                                    ),
-                                                )
-                                            }
-                                        } else {
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = playlist,
-                                                    items = songs.shuffled().map { it.toMediaItem() },
-                                                ),
-                                            )
-                                        }
-                                    },
+                                 ToggleButton(
+                                     checked = false,
+                                     onCheckedChange = {
+                                         val isSpotify = viewModel.isSpotifySource.value
+                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
+                                             val tracks = viewModel.spotifyTracks.value
+                                             if (tracks.isNotEmpty()) {
+                                                 val shuffledTracks = tracks.shuffled()
+                                                 val preloadTrack = shuffledTracks.firstOrNull()
+                                                 coroutineScope.launch(Dispatchers.IO) {
+                                                     val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                                     withContext(Dispatchers.Main) {
+                                                         playerConnection.playQueue(
+                                                             SpotifyTracksQueue(
+                                                                 title = playlist,
+                                                                 allTracks = shuffledTracks,
+                                                                 startIndex = 0,
+                                                                 preloadItem = preloadItem,
+                                                             ),
+                                                         )
+                                                     }
+                                                 }
+                                             }
+                                         } else {
+                                             playerConnection.playQueue(
+                                                 ListQueue(
+                                                     title = playlist,
+                                                     items = songs.shuffled().map { it.toMediaItem() },
+                                                 ),
+                                             )
+                                         }
+                                     },
                                     modifier =
                                         Modifier
                                             .weight(1f)
@@ -1031,14 +1048,14 @@ fun AutoPlaylistScreen(
                                                         coroutineScope.launch(Dispatchers.IO) {
                                                             val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(currentTrack)
                                                             withContext(Dispatchers.Main) {
-                                                                playerConnection.playQueue(
-                                                                    SpotifyLikedSongsQueue(
-                                                                        title = playlist,
-                                                                        initialTracks = tracks,
-                                                                        startIndex = trackIndex,
-                                                                        preloadItem = preloadItem,
-                                                                    ),
-                                                                )
+                                                                 playerConnection.playQueue(
+                                                                     SpotifyTracksQueue(
+                                                                         title = playlist,
+                                                                         allTracks = tracks,
+                                                                         startIndex = trackIndex,
+                                                                         preloadItem = preloadItem,
+                                                                     ),
+                                                                 )
                                                             }
                                                         }
                                                     } else {

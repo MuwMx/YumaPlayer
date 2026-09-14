@@ -15,13 +15,26 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import timber.log.Timber
 
-class SpotifyTracksQueue(
+open class SpotifyTracksQueue(
     private val title: String? = null,
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
     override val preloadItem: MediaMetadata? = null,
 ) : Queue {
+    constructor(
+        allTracks: List<SpotifyTrack>,
+        startIndex: Int = 0,
+        preloadItem: MediaMetadata? = null,
+        title: String? = null,
+    ) : this(
+        title = title,
+        initialTracks = allTracks,
+        startIndex = startIndex,
+        preloadItem = preloadItem,
+    )
+
     private val allTracks = initialTracks.toList()
     private var resolveOffset = 0
     private var isInitialized = false
@@ -63,17 +76,28 @@ class SpotifyTracksQueue(
             if (resolveOffset >= allTracks.size) return@withContext emptyList()
 
             val end = (resolveOffset + RESOLVE_BATCH_SIZE).coerceAtMost(allTracks.size)
-            val batch = allTracks.subList(resolveOffset, end)
+            val currentOffset = resolveOffset
+            val batch = allTracks.subList(currentOffset, end)
             resolveOffset = end
-            resolveTracks(batch)
+            resolveTrackEntries(batch, baseOffset = currentOffset).map { it.second }
         }
 
-    private suspend fun resolveTracks(tracks: List<SpotifyTrack>): List<MediaItem> = resolveTrackEntries(tracks).map { it.second }
+    private suspend fun resolveTracks(
+        tracks: List<SpotifyTrack>,
+        baseOffset: Int = 0,
+    ): List<MediaItem> = resolveTrackEntries(tracks, baseOffset = baseOffset).map { it.second }
 
-    private suspend fun resolveTrackEntries(tracks: List<SpotifyTrack>): List<Pair<Int, MediaItem>> =
+    private suspend fun resolveTrackEntries(
+        tracks: List<SpotifyTrack>,
+        baseOffset: Int = 0,
+    ): List<Pair<Int, MediaItem>> =
         buildList {
             tracks.chunked(RESOLVE_BATCH_SIZE).forEachIndexed { chunkIndex, chunk ->
-                val chunkOffset = chunkIndex * RESOLVE_BATCH_SIZE
+                val chunkOffset = baseOffset + chunkIndex * RESOLVE_BATCH_SIZE
+                val trackNames = chunk.joinToString(", ") { "${it.name} (${it.id})" }
+                Timber.tag("SpotifyPipeline").d(
+                    "Starting batch resolve: offset=$chunkOffset, size=${chunk.size}, tracks=[$trackNames]"
+                )
                 val resolvedChunk =
                     coroutineScope {
                         chunk
@@ -86,6 +110,9 @@ class SpotifyTracksQueue(
                             }.awaitAll()
                             .filterNotNull()
                     }
+                Timber.tag("SpotifyPipeline").d(
+                    "Batch resolve finished: offset=$chunkOffset, resolved=${resolvedChunk.size}/${chunk.size}"
+                )
                 addAll(resolvedChunk)
             }
         }

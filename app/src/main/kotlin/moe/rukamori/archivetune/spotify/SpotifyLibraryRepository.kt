@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.clearWebAuthSession
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -73,6 +74,9 @@ class SpotifyLibraryRepository
                     Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
                 }
             val filtered = page.items.mapNotNull { it.track.takeUnless(SpotifyTrack::isLocal) }
+            Timber.tag("SpotifyPipeline").d(
+                "likedSongsPage: offset=$offset, limit=$limit, received=${filtered.size}, total=${page.total}"
+            )
             return moe.rukamori.archivetune.spotify.models.SpotifyPaging(
                 items = filtered,
                 total = page.total,

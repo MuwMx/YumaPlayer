@@ -92,7 +92,7 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
+import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
@@ -227,9 +227,9 @@ fun SpotifyLikedSongsScreen(
             try {
                 val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
                 playerConnection?.playQueue(
-                    SpotifyLikedSongsQueue(
+                    SpotifyTracksQueue(
                         title = context.getString(R.string.spotify_liked_songs),
-                        initialTracks = queueTracks,
+                        allTracks = queueTracks,
                         startIndex = boundedStartIndex,
                         preloadItem = preloadItem,
                     ),

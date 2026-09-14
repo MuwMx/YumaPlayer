@@ -6,48 +6,29 @@
 
 package moe.rukamori.archivetune.spotify
 
-import androidx.media3.common.MediaItem
-import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
-class SpotifyLikedSongsQueue(
-    private val title: String? = null,
-    private val initialTracks: List<SpotifyTrack> = emptyList(),
-    private val startIndex: Int = 0,
-    override val preloadItem: MediaMetadata? = null,
-) : Queue {
-    override suspend fun getInitialStatus(): Queue.Status {
-        if (initialTracks.isEmpty()) {
-            return Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
-        }
-        val targetIndex = startIndex.coerceIn(initialTracks.indices)
-        val stubItems = initialTracks.map { it.toStubMediaItem() }
-        return Queue.Status(
-            title = title,
-            items = stubItems,
-            mediaItemIndex = targetIndex,
-        )
-    }
-
-    override fun hasNextPage(): Boolean = false
-
-    override suspend fun nextPage(): List<MediaItem> = emptyList()
-
-    private fun SpotifyTrack.toStubMediaItem(): MediaItem {
-        val metadata =
-            MediaMetadata(
-                id = id,
-                title = name,
-                artists = artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
-                duration = if (durationMs > 0) durationMs / 1000 else -1,
-                thumbnailUrl = SpotifyMapper.getTrackThumbnail(this),
-                album = album?.let { MediaMetadata.Album(id = it.id, title = it.name) },
-                explicit = explicit,
-                spotifyTrackId = id.takeIf(String::isNotBlank),
-                isrc = externalIds?.isrc?.takeIf { it.isNotBlank() },
-            )
-        return metadata.toMediaItem()
-    }
+open class SpotifyLikedSongsQueue(
+    title: String? = null,
+    initialTracks: List<SpotifyTrack> = emptyList(),
+    startIndex: Int = 0,
+    preloadItem: MediaMetadata? = null,
+) : SpotifyTracksQueue(
+    title = title,
+    initialTracks = initialTracks,
+    startIndex = startIndex,
+    preloadItem = preloadItem,
+) {
+    constructor(
+        allTracks: List<SpotifyTrack>,
+        startIndex: Int = 0,
+        preloadItem: MediaMetadata? = null,
+        title: String? = null,
+    ) : this(
+        title = title,
+        initialTracks = allTracks,
+        startIndex = startIndex,
+        preloadItem = preloadItem,
+    )
 }

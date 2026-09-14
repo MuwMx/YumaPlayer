@@ -166,9 +166,15 @@ object SpotifyLibraryApi {
                     SpotifySavedTrack(track = SpotifyParsers.parseGqlTrack(trackData, uriOverride = wrapperUri))
                 } ?: emptyList()
 
+            val total = tracksData.int("totalCount") ?: 0
+            SpotifyGraphqlClient.log(
+                "D",
+                "likedSongs GQL: received ${savedTracks.size} tracks (offset: $offset, limit: $limit, total: $total)"
+            )
+
             SpotifyPaging(
                 items = savedTracks,
-                total = tracksData.int("totalCount") ?: 0,
+                total = total,
                 limit = limit,
                 offset = offset,
             )

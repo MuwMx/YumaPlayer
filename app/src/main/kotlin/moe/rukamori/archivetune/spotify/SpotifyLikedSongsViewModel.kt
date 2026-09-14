@@ -49,8 +49,14 @@ class SpotifyLikedSongsViewModel
             viewModelScope.launch {
                 repository.likedSongs.collect { tracks ->
                     _tracks.value = tracks
-                    _total.value = tracks.size
                     if (tracks.isNotEmpty()) _isLoading.value = false
+                }
+            }
+            viewModelScope.launch {
+                repository.likedSongsTotal.collect { total ->
+                    if (total > 0) {
+                        _total.value = total
+                    }
                 }
             }
             loadLikedSongs()
@@ -62,6 +68,7 @@ class SpotifyLikedSongsViewModel
                 _error.value = null
                 try {
                     repository.restoreCachedLikedSongs()
+                    repository.refreshLikedSongsTotal()
                     if (repository.likedSongs.value.isEmpty()) {
                         repository.refreshLikedSongs()
                     } else {
@@ -81,6 +88,7 @@ class SpotifyLikedSongsViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 _isRefreshing.value = true
                 try {
+                    repository.refreshLikedSongsTotal()
                     repository.refreshLikedSongs()
                 } catch (e: CancellationException) {
                     throw e
