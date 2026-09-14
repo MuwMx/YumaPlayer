@@ -31,4 +31,13 @@ open class SpotifyLikedSongsQueue(
         startIndex = startIndex,
         preloadItem = preloadItem,
     )
+
+    override suspend fun fetchPage(offset: Int, limit: Int): PageResult {
+        val result = Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
+        return PageResult(
+            tracks = result.items.map { it.track }.filter { !it.isLocal },
+            total = result.total,
+            rawCount = result.items.size,
+        )
+    }
 }
