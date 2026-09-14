@@ -3,7 +3,9 @@ package moe.rukamori.archivetune.spotify
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +62,11 @@ class SpotifyHomeViewModel @Inject constructor(
     private val _screenState = MutableStateFlow<SpotifyHomeScreenState>(SpotifyHomeScreenState.Loading)
     val screenState: StateFlow<SpotifyHomeScreenState> = _screenState.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private var loadJob: Job? = null
+
     private val _navigationEvents = MutableSharedFlow<SpotifyHomeNavigationEvent>(extraBufferCapacity = 1)
     val navigationEvents: SharedFlow<SpotifyHomeNavigationEvent> = _navigationEvents.asSharedFlow()
 
@@ -100,12 +107,12 @@ class SpotifyHomeViewModel @Inject constructor(
     }
 
     private fun load(force: Boolean = false) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val currentState = _screenState.value
-            if (!force && currentState is SpotifyHomeScreenState.Success &&
-                (currentState.sections.isNotEmpty() || currentState.recentItems.isNotEmpty() || currentState.frequentArtists.isNotEmpty())
-            ) {
-                return@launch
+        if (!force && loadJob?.isActive == true) return
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch(Dispatchers.IO) {
+            val currentJob = coroutineContext[Job]
+            if (force) {
+                _isRefreshing.value = true
             }
 
             val cachedData = profileCache.restoreFromDataStore()
@@ -130,9 +137,6 @@ class SpotifyHomeViewModel @Inject constructor(
                             frequentArtists = cachedData.frequentArtists,
                         )
                     }
-                }
-                if (!force) {
-                    return@launch
                 }
             } else if (_screenState.value !is SpotifyHomeScreenState.Success) {
                 _screenState.update { SpotifyHomeScreenState.Loading }
@@ -260,11 +264,17 @@ class SpotifyHomeViewModel @Inject constructor(
                     }
                 }
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (e is Spotify.SpotifyException && e.statusCode == 401) {
                     _screenState.update { SpotifyHomeScreenState.Error(R.string.spotify_not_connected, notAuthenticated = true) }
                 } else if (_screenState.value !is SpotifyHomeScreenState.Success) {
                     _screenState.update { SpotifyHomeScreenState.Error(R.string.error_unknown) }
+                }
+            } finally {
+                if (loadJob === currentJob) {
+                    _isRefreshing.value = false
                 }
             }
         }
