@@ -7,7 +7,6 @@
 package moe.rukamori.archivetune.viewmodels
 
 import android.content.Context
-import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,7 +29,6 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
-import moe.rukamori.archivetune.constants.LikedSongsSourceKey
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -42,12 +40,6 @@ import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException
-import moe.rukamori.archivetune.spotify.SpotifyLibraryRepository
-import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.db.entities.SongEntity
-import moe.rukamori.archivetune.db.entities.ArtistEntity
-import moe.rukamori.archivetune.db.entities.AlbumEntity
-import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import java.text.Collator
 import java.util.Locale
 import javax.inject.Inject
@@ -62,26 +54,11 @@ class AutoPlaylistViewModel
         downloadUtil: DownloadUtil,
         savedStateHandle: SavedStateHandle,
         private val syncUtils: SyncUtils,
-        private val spotifyLibraryRepository: SpotifyLibraryRepository,
     ) : ViewModel() {
         val playlist = savedStateHandle.get<String>("playlist")!!
 
         private val _isRefreshing = MutableStateFlow(false)
         val isRefreshing = _isRefreshing.asStateFlow()
-
-        init {
-            viewModelScope.launch {
-                spotifyLibraryRepository.restoreCachedLikedSongs()
-            }
-        }
-
-        val isSpotifySource = context.dataStore.data.map { it[LikedSongsSourceKey] ?: false }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-        val spotifyTracks = spotifyLibraryRepository.likedSongs.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-        fun setSpotifySource(isSpotify: Boolean) {
-            viewModelScope.launch(Dispatchers.IO) {
-                context.dataStore.edit { it[LikedSongsSourceKey] = isSpotify }
-            }
-        }
 
         private fun AutoPlaylistSongSortType.toSongSortType(): SongSortType =
             when (this) {
@@ -93,81 +70,23 @@ class AutoPlaylistViewModel
 
         @OptIn(ExperimentalCoroutinesApi::class)
         val likedSongs =
-            kotlinx.coroutines.flow.combine(
-                context.dataStore.data
-                    .map {
-                        Triple(
-                            it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (
-                                it[AutoPlaylistSongSortDescendingKey]
-                                    ?: true
-                            ),
-                            it[HideExplicitKey] ?: false,
-                            it[HideVideoKey] ?: false,
-                        )
-                    }.distinctUntilChanged(),
-                isSpotifySource
-            ) { (sortDesc, hideExplicit, hideVideo), isSpotify ->
-                Triple(sortDesc, hideExplicit, hideVideo) to isSpotify
-            }
-                .flatMapLatest { (prefs, isSpotify) ->
-                    val (sortDesc, hideExplicit, hideVideo) = prefs
+            context.dataStore.data
+                .map {
+                    Triple(
+                        it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (
+                            it[AutoPlaylistSongSortDescendingKey]
+                                ?: true
+                        ),
+                        it[HideExplicitKey] ?: false,
+                        it[HideVideoKey] ?: false,
+                    )
+                }.distinctUntilChanged()
+                .flatMapLatest { (sortDesc, hideExplicit, hideVideo) ->
                     val (sortType, descending) = sortDesc
                     val songSortType = sortType.toSongSortType()
                     when (playlist) {
                         "liked" -> {
-                            if (isSpotify) {
-                                spotifyLibraryRepository.likedSongs.map { tracks ->
-                                    val songs = tracks.map { track ->
-                                        Song(
-                                            song = SongEntity(
-                                                id = track.id,
-                                                title = track.name,
-                                                duration = track.durationMs / 1000,
-                                                thumbnailUrl = track.album?.images?.firstOrNull()?.url,
-                                                albumId = track.album?.id,
-                                                albumName = track.album?.name,
-                                                isrc = track.externalIds?.isrc,
-                                                explicit = track.explicit,
-                                                liked = true,
-                                                likedDate = null,
-                                                inLibrary = null,
-                                            ),
-                                            artists = track.artists.map {
-                                                ArtistEntity(
-                                                    id = it.id ?: ArtistEntity.generateArtistId(),
-                                                    name = it.name,
-                                                    thumbnailUrl = null,
-                                                )
-                                            },
-                                            album = track.album?.let {
-                                                AlbumEntity(
-                                                    id = it.id,
-                                                    title = it.name,
-                                                    songCount = 0,
-                                                    duration = 0,
-                                                )
-                                            }
-                                        )
-                                    }
-                                    when (songSortType) {
-                                        SongSortType.CREATE_DATE, SongSortType.PLAY_TIME -> {
-                                            if (descending) songs else songs.asReversed()
-                                        }
-                                        SongSortType.NAME -> {
-                                            val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
-                                            val sorted = songs.sortedWith(compareBy(collator) { it.song.title })
-                                            if (descending) sorted.asReversed() else sorted
-                                        }
-                                        SongSortType.ARTIST -> {
-                                            val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
-                                            val sorted = songs.sortedWith(compareBy(collator) { song -> song.artists.joinToString(", ") { artist -> artist.name } })
-                                            if (descending) sorted.asReversed() else sorted
-                                        }
-                                    }.filterExplicit(hideExplicit)
-                                }
-                            } else {
-                                database.likedSongs(songSortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
-                            }
+                            database.likedSongs(songSortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
                         }
 
                         "downloaded" -> {
@@ -220,11 +139,7 @@ class AutoPlaylistViewModel
                 try {
                     when (playlist) {
                         "liked" -> {
-                            if (isSpotifySource.value) {
-                                spotifyLibraryRepository.refreshLikedSongs()
-                            } else {
-                                syncUtils.syncLikedSongs()
-                            }
+                            syncUtils.syncLikedSongs()
                         }
                         else -> Unit
                     }

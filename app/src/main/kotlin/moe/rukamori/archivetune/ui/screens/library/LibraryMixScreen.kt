@@ -72,13 +72,18 @@ import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.EnableSpotifyKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.LikeSource
-import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
+import moe.rukamori.archivetune.constants.SpotifySpDcKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.spotify.Spotify
+import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
+import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.spotify.SpotifyLibraryViewModel
 import moe.rukamori.archivetune.spotify.SpotifyMapper
+import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
@@ -103,6 +108,7 @@ fun LibraryMixScreen(
     onTabSelected: (LibraryFilter) -> Unit,
     viewModel: LibraryMixViewModel = hiltViewModel(),
     spotifyLibraryViewModel: SpotifyLibraryViewModel = hiltViewModel(),
+    spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -119,7 +125,10 @@ fun LibraryMixScreen(
     val mostPlayedAlbumUiState by viewModel.mostPlayedAlbumUiState.collectAsStateWithLifecycle()
     val topMixesUiState by viewModel.topMixesUiState.collectAsStateWithLifecycle()
     val spotifyPlaylists by spotifyLibraryViewModel.playlists.collectAsStateWithLifecycle()
-    val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, true)
+    val spotifyAccountState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
+    val (enableSpotify) = rememberPreference(EnableSpotifyKey, true)
+    val spDc by rememberPreference(SpotifySpDcKey, defaultValue = "")
+    val isSpotifyActive = enableSpotify && (spotifyAccountState.isAuthenticated || spDc.isNotBlank())
 
     val filteredPlaylistIds by database
         .playlistIdsByTags(
@@ -136,8 +145,8 @@ fun LibraryMixScreen(
             }
         }
     val visibleSpotifyPlaylists =
-        remember(showSpotifyPlaylists, spotifyPlaylists) {
-            if (showSpotifyPlaylists) {
+        remember(isSpotifyActive, spotifyPlaylists) {
+            if (isSpotifyActive) {
                 spotifyPlaylists
             } else {
                 emptyList()
@@ -356,7 +365,7 @@ fun LibraryMixScreen(
             }
 
             // Playlists Row
-            if (visiblePlaylists.isNotEmpty() || visibleSpotifyPlaylists.isNotEmpty()) {
+            if (visiblePlaylists.isNotEmpty() || visibleSpotifyPlaylists.isNotEmpty() || isSpotifyActive) {
                 item(key = "your_playlists") {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -482,84 +491,86 @@ fun LibraryMixScreen(
                                 }
                             }
 
-                            item(key = "spotify_liked_songs_card") {
-                                val likedSongsTotal by spotifyLibraryViewModel.likedSongsTotal.collectAsStateWithLifecycle()
+                            if (isSpotifyActive) {
+                                item(key = "spotify_liked_songs_card", contentType = "spotify_liked_card") {
+                                    val likedSongsTotal by spotifyLibraryViewModel.likedSongsTotal.collectAsStateWithLifecycle()
 
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .width(130.dp)
-                                            .yumaClickable(
-                                                pressedScale = SettingsAnimations.PressScale,
-                                                onClick = { navController.navigate("spotify_liked_songs") },
-                                            )
-                                            .yumaGlassCard(
-                                                shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                                                position = YumaSegmentPosition.Single,
-                                            )
-                                            .padding(SettingsDimensions.SectionSpacing),
-                                ) {
-                                    Box(
+                                    Column(
                                         modifier =
                                             Modifier
-                                                .size(106.dp)
-                                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
-                                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.16f)),
-                                        contentAlignment = Alignment.Center,
+                                                .width(130.dp)
+                                                .yumaClickable(
+                                                    pressedScale = SettingsAnimations.PressScale,
+                                                    onClick = { navController.navigate("spotify_liked_songs") },
+                                                )
+                                                .yumaGlassCard(
+                                                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                                                    position = YumaSegmentPosition.Single,
+                                                )
+                                                .padding(SettingsDimensions.SectionSpacing),
                                     ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.favorite),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(44.dp),
-                                        )
                                         Box(
                                             modifier =
                                                 Modifier
-                                                    .align(Alignment.BottomEnd)
-                                                    .padding(6.dp)
-                                                    .size(28.dp)
-                                                    .clip(CircleShape)
-                                                    .background(MaterialTheme.colorScheme.primary)
-                                                    .clickable {
-                                                        playerConnection.let { conn ->
-                                                            coroutineScope.launch {
-                                                                val preloadTrack = moe.rukamori.archivetune.spotify.Spotify.likedSongs(limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
-                                                                val preloadItem = preloadTrack?.let { moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver.resolveToMetadata(it) }
-                                                                conn.playQueue(
-                                                                    moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue(
-                                                                        title = context.getString(R.string.spotify_liked_songs),
-                                                                        preloadItem = preloadItem,
-                                                                    ),
-                                                                )
-                                                            }
-                                                        }
-                                                    },
+                                                    .size(106.dp)
+                                                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                                                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.16f)),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Icon(
-                                                painter = painterResource(id = R.drawable.play),
-                                                contentDescription = stringResource(R.string.play),
-                                                tint = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.size(14.dp),
+                                                painter = painterResource(id = R.drawable.favorite),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(44.dp),
                                             )
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(6.dp)
+                                                        .size(28.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary)
+                                                        .clickable {
+                                                            playerConnection.let { conn ->
+                                                                coroutineScope.launch {
+                                                                    val preloadTrack = Spotify.likedSongs(limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
+                                                                    val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
+                                                                    conn.playQueue(
+                                                                        SpotifyLikedSongsQueue(
+                                                                            title = context.getString(R.string.spotify_liked_songs),
+                                                                            preloadItem = preloadItem,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                            }
+                                                        },
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.play),
+                                                    contentDescription = stringResource(R.string.play),
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(14.dp),
+                                                )
+                                            }
                                         }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = stringResource(R.string.spotify_liked_songs),
+                                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                        Text(
+                                            text = "$likedSongsTotal ${stringResource(R.string.tracks_label)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.spotify_liked_songs),
-                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                    Text(
-                                        text = "$likedSongsTotal ${stringResource(R.string.tracks_label)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                                    )
                                 }
                             }
 

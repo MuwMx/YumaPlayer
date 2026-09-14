@@ -9,9 +9,6 @@
 package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,7 +16,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -104,7 +100,6 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -118,8 +113,6 @@ import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
@@ -130,11 +123,7 @@ import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
-import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
-import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
@@ -147,7 +136,6 @@ import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.AutoPlaylistViewModel
-import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -155,10 +143,8 @@ fun AutoPlaylistScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
     viewModel: AutoPlaylistViewModel = hiltViewModel(),
-    spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val menuState = LocalMenuState.current
     val haptics = rememberYumaHaptics()
     val focusManager = LocalFocusManager.current
@@ -169,10 +155,7 @@ fun AutoPlaylistScreen(
         if (viewModel.playlist == "liked") stringResource(R.string.liked) else stringResource(R.string.offline)
 
     val songs by viewModel.likedSongs.collectAsStateWithLifecycle()
-    val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
-    val isSpotifySource by viewModel.isSpotifySource.collectAsStateWithLifecycle()
 
-    var showSpotifyLogin by remember { mutableStateOf(false) }
     var isSearching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
@@ -314,17 +297,6 @@ fun AutoPlaylistScreen(
                 ) {
                     Text(text = stringResource(android.R.string.ok))
                 }
-            },
-        )
-    }
-
-    if (showSpotifyLogin) {
-        SpotifyLoginSheet(
-            onDismiss = { showSpotifyLogin = false },
-            onCookiesCaptured = { spDc, spKey ->
-                spotifyAccountViewModel.connectWithCookies(spDc = spDc, spKey = spKey)
-                showSpotifyLogin = false
-                viewModel.setSpotifySource(true)
             },
         )
     }
@@ -735,87 +707,44 @@ fun AutoPlaylistScreen(
 
                                 ToggleButton(
                                     checked = false,
-                                     onCheckedChange = {
-                                         val isSpotify = viewModel.isSpotifySource.value
-                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                             val tracks = viewModel.spotifyTracks.value
-                                             if (tracks.isNotEmpty()) {
-                                                 val preloadTrack = tracks.firstOrNull()
-                                                 coroutineScope.launch(Dispatchers.IO) {
-                                                     val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
-                                                     withContext(Dispatchers.Main) {
-                                                         playerConnection.playQueue(
-                                                             SpotifyTracksQueue(
-                                                                 title = playlist,
-                                                                 allTracks = tracks,
-                                                                 startIndex = 0,
-                                                                 preloadItem = preloadItem,
-                                                             ),
-                                                         )
-                                                     }
-                                                 }
-                                             }
-                                         } else {
-                                             playerConnection.playQueue(
-                                                 ListQueue(
-                                                     title = playlist,
-                                                     items = songs.map { it.toMediaItem() },
-                                                 ),
-                                             )
-                                         }
-                                     },
-                                     modifier =
-                                         Modifier
-                                             .weight(1f)
-                                             .height(48.dp),
-                                     shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                     colors =
-                                         ToggleButtonDefaults.toggleButtonColors(
-                                             containerColor = MaterialTheme.colorScheme.primary,
-                                             contentColor = MaterialTheme.colorScheme.onPrimary,
-                                             checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                             checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                         ),
-                                 ) {
-                                     Icon(
-                                         painter = painterResource(R.drawable.play),
-                                         contentDescription = stringResource(R.string.play),
-                                         modifier = Modifier.size(24.dp),
-                                     )
-                                 }
+                                    onCheckedChange = {
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                title = playlist,
+                                                items = songs.map { it.toMediaItem() },
+                                            ),
+                                        )
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .weight(1f)
+                                            .height(48.dp),
+                                    shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                                    colors =
+                                        ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                        ),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.play),
+                                        contentDescription = stringResource(R.string.play),
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
 
-                                 ToggleButton(
-                                     checked = false,
-                                     onCheckedChange = {
-                                         val isSpotify = viewModel.isSpotifySource.value
-                                         if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                             val tracks = viewModel.spotifyTracks.value
-                                             if (tracks.isNotEmpty()) {
-                                                 val shuffledTracks = tracks.shuffled()
-                                                 val preloadTrack = shuffledTracks.firstOrNull()
-                                                 coroutineScope.launch(Dispatchers.IO) {
-                                                     val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
-                                                     withContext(Dispatchers.Main) {
-                                                         playerConnection.playQueue(
-                                                             SpotifyTracksQueue(
-                                                                 title = playlist,
-                                                                 allTracks = shuffledTracks,
-                                                                 startIndex = 0,
-                                                                 preloadItem = preloadItem,
-                                                             ),
-                                                         )
-                                                     }
-                                                 }
-                                             }
-                                         } else {
-                                             playerConnection.playQueue(
-                                                 ListQueue(
-                                                     title = playlist,
-                                                     items = songs.shuffled().map { it.toMediaItem() },
-                                                 ),
-                                             )
-                                         }
-                                     },
+                                ToggleButton(
+                                    checked = false,
+                                    onCheckedChange = {
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                title = playlist,
+                                                items = songs.shuffled().map { it.toMediaItem() },
+                                            ),
+                                        )
+                                    },
                                     modifier =
                                         Modifier
                                             .weight(1f)
@@ -864,94 +793,6 @@ fun AutoPlaylistScreen(
                             Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
-
-            if (playlistId == "liked") {
-                item(
-                    key = "sourceHeader",
-                    contentType = CONTENT_TYPE_HEADER,
-                ) {
-                    val indicatorOffset by animateFloatAsState(
-                            targetValue = if (isSpotifySource) 1f else 0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "SourceIndicatorOffset"
-                        )
-
-                        val colors = LocalYumaColors.current
-                        val barShape = RoundedCornerShape(16.dp)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp)
-                                .clip(barShape)
-                                .background(colors.glassBackground)
-                                .border(1.dp, colors.glassBorder, barShape),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            BoxWithConstraints(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(4.dp)
-                            ) {
-                                    val tabWidth = maxWidth / 2
-
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .size(width = tabWidth, height = 36.dp)
-                                            .offset(x = tabWidth * indicatorOffset)
-                                    ) {}
-
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(36.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .yumaClickable { viewModel.setSpotifySource(false) },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.home_provider_youtube_music),
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (!isSpotifySource) {
-                                                    MaterialTheme.colorScheme.onPrimary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                }
-                                            )
-                                        }
-
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(36.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .yumaClickable {
-                                                    viewModel.setSpotifySource(true)
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.home_provider_spotify),
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (isSpotifySource) {
-                                                    MaterialTheme.colorScheme.onPrimary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                        }
-                    }
-                }
             }
 
             if (songs.isEmpty()) {
@@ -959,17 +800,10 @@ fun AutoPlaylistScreen(
                     key = "empty",
                     contentType = CONTENT_TYPE_EMPTY,
                 ) {
-                    if (playlistId == "liked" && isSpotifySource && !spotifyState.isAuthenticated) {
-                        SpotifyLoginFallback(
-                            onLoginClick = { showSpotifyLogin = true },
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    } else {
-                        EmptyPlaceholder(
-                            icon = R.drawable.music_note,
-                            text = stringResource(R.string.playlist_is_empty),
-                        )
-                    }
+                    EmptyPlaceholder(
+                        icon = R.drawable.music_note,
+                        text = stringResource(R.string.playlist_is_empty),
+                    )
                 }
             } else {
                 // Sort Header
@@ -1039,43 +873,13 @@ fun AutoPlaylistScreen(
                                                 playerConnection.player.togglePlayPause()
                                             } else {
                                                 val visibleSongs = filteredSongs.map { it.item }
-                                                val isSpotify = viewModel.isSpotifySource.value
-                                                if (isSpotify && playlistType == PlaylistType.LIKE) {
-                                                    val tracks = viewModel.spotifyTracks.value
-                                                    val currentTrack = tracks.find { it.id == songWrapper.item.song.id }
-                                                    if (currentTrack != null && tracks.isNotEmpty()) {
-                                                        val trackIndex = tracks.indexOf(currentTrack).coerceAtLeast(0)
-                                                        coroutineScope.launch(Dispatchers.IO) {
-                                                            val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(currentTrack)
-                                                            withContext(Dispatchers.Main) {
-                                                                 playerConnection.playQueue(
-                                                                     SpotifyTracksQueue(
-                                                                         title = playlist,
-                                                                         allTracks = tracks,
-                                                                         startIndex = trackIndex,
-                                                                         preloadItem = preloadItem,
-                                                                     ),
-                                                                 )
-                                                            }
-                                                        }
-                                                    } else {
-                                                        playerConnection.playQueue(
-                                                            ListQueue(
-                                                                title = playlist,
-                                                                items = visibleSongs.map { it.toMediaItem() },
-                                                                startIndex = index,
-                                                            ),
-                                                        )
-                                                    }
-                                                } else {
-                                                    playerConnection.playQueue(
-                                                        ListQueue(
-                                                            title = playlist,
-                                                            items = visibleSongs.map { it.toMediaItem() },
-                                                            startIndex = index,
-                                                        ),
-                                                    )
-                                                }
+                                                playerConnection.playQueue(
+                                                    ListQueue(
+                                                        title = playlist,
+                                                        items = visibleSongs.map { it.toMediaItem() },
+                                                        startIndex = index,
+                                                    ),
+                                                )
                                             }
                                         } else {
                                             songWrapper.isSelected = !songWrapper.isSelected

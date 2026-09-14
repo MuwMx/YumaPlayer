@@ -394,7 +394,6 @@ val LastAlbumSyncKey = longPreferencesKey("last_album_sync")
 val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
 val LastSpotifySyncKey = longPreferencesKey("lastSpotifySync")
-val LikedSongsSourceKey = booleanPreferencesKey("likedSongsSource")
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
 val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
@@ -747,6 +746,7 @@ val SpotifyAccessTokenExpiresAtKey = longPreferencesKey("spotify_access_token_ex
 val SpotifyAccountNameKey = stringPreferencesKey("spotify_account_name")
 val SpotifyAccountAvatarUrlKey = stringPreferencesKey("spotify_account_avatar_url")
 val ShowSpotifyPlaylistsKey = booleanPreferencesKey("show_spotify_playlists")
+val EnableSpotifyKey = ShowSpotifyPlaylistsKey
 val UseSpotifyHomeKey = booleanPreferencesKey("use_spotify_home")
 val SpotifyLibraryPlaylistsCacheKey = stringPreferencesKey("spotify_library_playlists_cache")
 val SpotifyLikedSongsCacheKey = stringPreferencesKey("spotify_liked_songs_cache")
