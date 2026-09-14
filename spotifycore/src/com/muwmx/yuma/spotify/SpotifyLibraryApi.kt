@@ -158,10 +158,12 @@ object SpotifyLibraryApi {
                     ?.obj("tracks")
                     ?: throw SpotifyException(500, "Invalid fetchLibraryTracks response")
 
+            val pagingInfo = tracksData.obj("pagingInfo")
+
             val savedTracks =
                 tracksData.arr("items")?.mapNotNull { elem ->
                     val trackWrapper = elem.jsonObject.obj("track") ?: return@mapNotNull null
-                    val trackData = trackWrapper.obj("data") ?: return@mapNotNull null
+                    val trackData = trackWrapper.obj("data") ?: trackWrapper
                     val wrapperUri = trackWrapper.str("_uri") ?: trackWrapper.str("uri")
                     SpotifySavedTrack(track = SpotifyParsers.parseGqlTrack(trackData, uriOverride = wrapperUri))
                 } ?: emptyList()
@@ -175,8 +177,8 @@ object SpotifyLibraryApi {
             SpotifyPaging(
                 items = savedTracks,
                 total = total,
-                limit = limit,
-                offset = offset,
+                limit = pagingInfo?.int("limit") ?: limit,
+                offset = pagingInfo?.int("offset") ?: offset,
             )
         }
 
