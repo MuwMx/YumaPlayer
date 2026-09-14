@@ -240,8 +240,6 @@ class SpotifyLibraryRepository
                 _errorMessage.value = null
                 try {
                     ensureAuthenticated()
-                    refreshProfile()
-                    refreshLikedSongsTotal()
                     val loaded = fetchAllPlaylists()
                     _playlists.value = loaded
                     context.dataStore.edit { prefs ->

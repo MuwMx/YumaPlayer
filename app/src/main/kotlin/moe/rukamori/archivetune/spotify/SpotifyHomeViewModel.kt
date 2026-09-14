@@ -69,7 +69,7 @@ class SpotifyHomeViewModel @Inject constructor(
 
     fun onAction(action: SpotifyHomeAction) {
         when (action) {
-            SpotifyHomeAction.Refresh -> load()
+            SpotifyHomeAction.Refresh -> load(force = true)
             is SpotifyHomeAction.AlbumClick -> resolveAlbum(action.album)
             is SpotifyHomeAction.ArtistClick -> resolveArtist(action.artist)
         }
@@ -99,28 +99,42 @@ class SpotifyHomeViewModel @Inject constructor(
         }
     }
 
-    private fun load() {
+    private fun load(force: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
+            val currentState = _screenState.value
+            if (!force && currentState is SpotifyHomeScreenState.Success &&
+                (currentState.sections.isNotEmpty() || currentState.recentItems.isNotEmpty() || currentState.frequentArtists.isNotEmpty())
+            ) {
+                return@launch
+            }
+
             val cachedData = profileCache.restoreFromDataStore()
-            if (cachedData.recentItems.isNotEmpty() || cachedData.topTracks.isNotEmpty() || cachedData.frequentArtists.isNotEmpty()) {
-                val cachedSections = mutableListOf<SpotifyHomeSection>()
-                if (cachedData.topTracks.isNotEmpty()) {
-                    cachedSections.add(
-                        SpotifyHomeSection(
-                            title = "spotify_top_tracks",
-                            type = SectionType.TRACKS,
-                            tracks = cachedData.topTracks
+            val hasCachedData = cachedData.recentItems.isNotEmpty() || cachedData.topTracks.isNotEmpty() || cachedData.frequentArtists.isNotEmpty()
+
+            if (hasCachedData) {
+                if (_screenState.value !is SpotifyHomeScreenState.Success) {
+                    val cachedSections = mutableListOf<SpotifyHomeSection>()
+                    if (cachedData.topTracks.isNotEmpty()) {
+                        cachedSections.add(
+                            SpotifyHomeSection(
+                                title = "spotify_top_tracks",
+                                type = SectionType.TRACKS,
+                                tracks = cachedData.topTracks
+                            )
                         )
-                    )
+                    }
+                    _screenState.update {
+                        SpotifyHomeScreenState.Success(
+                            sections = cachedSections,
+                            recentItems = cachedData.recentItems,
+                            frequentArtists = cachedData.frequentArtists,
+                        )
+                    }
                 }
-                _screenState.update {
-                    SpotifyHomeScreenState.Success(
-                        sections = cachedSections,
-                        recentItems = cachedData.recentItems,
-                        frequentArtists = cachedData.frequentArtists,
-                    )
+                if (!force) {
+                    return@launch
                 }
-            } else {
+            } else if (_screenState.value !is SpotifyHomeScreenState.Success) {
                 _screenState.update { SpotifyHomeScreenState.Loading }
             }
 
