@@ -36,9 +36,7 @@ data class SelectionTopBarUiState(
     val showTopBarTitle: Boolean,
     val title: String,
     val hasSongs: Boolean,
-) {
-    val playlist: String get() = title
-}
+)
 
 @Immutable
 data class SelectionTopBarCallbacks(
