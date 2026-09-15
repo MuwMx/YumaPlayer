@@ -12,6 +12,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -52,7 +53,6 @@ open class SpotifyTracksQueue(
     private var apiFetchOffset = 0
     private var apiTotal = 0
     private var apiHasMore = true
-    private var isInitialized = false
 
     override suspend fun getInitialStatus(): Queue.Status =
         withContext(Dispatchers.IO) {
@@ -99,32 +99,32 @@ open class SpotifyTracksQueue(
                 val windowEnd = (targetIndex + FAST_START_AFTER + 1).coerceAtMost(allTracks.size)
                 val windowTracks = allTracks.subList(windowStart, windowEnd)
 
-                val resolvedEntries =
+                val preloaded = preloadItem
+                val resolvedItems =
                     coroutineScope {
                         windowTracks
                             .mapIndexed { index, track ->
                                 async {
-                                    SpotifyPlaybackResolver
-                                        .resolveToMediaItem(track)
-                                        ?.let { mediaItem -> (windowStart + index) to mediaItem }
+                                    if (windowStart + index == targetIndex && preloaded != null) {
+                                        preloaded.toMediaItem()
+                                    } else {
+                                        SpotifyPlaybackResolver.resolveToMediaItem(track)
+                                    }
                                 }
                             }.awaitAll()
                             .filterNotNull()
                     }
 
-                if (resolvedEntries.isEmpty()) {
+                if (resolvedItems.isEmpty()) {
                     Timber.tag("SpotifyPipeline").w("Could not resolve any track in initial window")
                     return@withContext Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
                 }
 
                 resolveOffset = windowEnd
 
-                val resolvedItems = resolvedEntries.map { it.second }
                 val mediaItemIndex =
-                    resolvedEntries
-                        .indexOfFirst { it.first >= targetIndex }
-                        .takeIf { it >= 0 }
-                        ?: resolvedItems.lastIndex
+                    (targetIndex - windowStart)
+                        .coerceIn(0, (resolvedItems.size - 1).coerceAtLeast(0))
 
                 Timber.tag("SpotifyPipeline").d(
                     "Fast-start resolved ${resolvedItems.size} tracks " +
@@ -139,12 +139,97 @@ open class SpotifyTracksQueue(
             } catch (e: Exception) {
                 Timber.tag("SpotifyPipeline").e(e, "Failed initial fetch")
                 Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
-            } finally {
-                isInitialized = true
             }
         }
 
-    override fun hasNextPage(): Boolean = isInitialized && (resolveOffset < allTracks.size || apiHasMore)
+    open suspend fun getFullStatus(): Queue.Status? =
+        withContext(Dispatchers.IO) {
+            try {
+                allTracks.clear()
+                val provided = providedTracks
+                if (provided != null) {
+                    allTracks.addAll(provided)
+                    apiTotal = provided.size
+                    apiFetchOffset = apiTotal
+                    apiHasMore = false
+                } else {
+                    apiFetchOffset = 0
+                    apiHasMore = true
+                    val page = fetchPage(offset = 0, limit = SPOTIFY_PAGE_SIZE)
+                    apiTotal = page.total
+                    allTracks.addAll(page.tracks)
+                    apiFetchOffset = page.rawCount
+                    apiHasMore = apiFetchOffset < apiTotal
+                }
+                while (apiHasMore) {
+                    fetchNextApiPage()
+                }
+                if (allTracks.isEmpty()) return@withContext null
+                val targetIndex =
+                    if (provided != null && startIndex in initialTracks.indices) {
+                        val targetTrack = initialTracks[startIndex]
+                        val idx = allTracks.indexOfFirst { it.id == targetTrack.id }
+                        if (idx >= 0) idx else startIndex.coerceIn(0, allTracks.size - 1)
+                    } else {
+                        startIndex.coerceIn(0, allTracks.size - 1)
+                    }
+                val resolved = ArrayList<MediaItem?>(allTracks.size)
+                for (chunk in allTracks.chunked(RESOLVE_BATCH_SIZE)) {
+                    resolved +=
+                        coroutineScope {
+                            chunk
+                                .map { track ->
+                                    async {
+                                        SpotifyPlaybackResolver.resolveToMediaItem(track)
+                                    }
+                                }.awaitAll()
+                        }
+                }
+                val preloaded = preloadItem
+                val resolvedItems = mutableListOf<MediaItem>()
+                var mediaItemIndex = 0
+                for (i in allTracks.indices) {
+                    if (i == targetIndex) mediaItemIndex = resolvedItems.size
+                    val item =
+                        if (i == targetIndex && preloaded != null) {
+                            preloaded.toMediaItem()
+                        } else {
+                            resolved[i]
+                        }
+                    item?.let { resolvedItems.add(it) }
+                }
+                if (resolvedItems.isEmpty()) return@withContext null
+                mediaItemIndex = mediaItemIndex.coerceIn(0, resolvedItems.size - 1)
+                resolveOffset = allTracks.size
+                apiHasMore = false
+                Timber.tag("SpotifyPipeline").d(
+                    "getFullStatus resolved ${resolvedItems.size} tracks (startIndex=$targetIndex)"
+                )
+                Queue.Status(title = title, items = resolvedItems, mediaItemIndex = mediaItemIndex)
+            } catch (e: Exception) {
+                Timber.tag("SpotifyPipeline").e(e, "getFullStatus failed")
+                null
+            }
+        }
+
+    open suspend fun shuffleRemainingTracks() =
+        withContext(Dispatchers.IO) {
+            while (apiHasMore) {
+                fetchNextApiPage()
+            }
+            if (resolveOffset < allTracks.size) {
+                val remaining = allTracks.subList(resolveOffset, allTracks.size)
+                val shuffled = remaining.shuffled()
+                for (i in shuffled.indices) {
+                    remaining[i] = shuffled[i]
+                }
+                Timber.tag("SpotifyPipeline").d(
+                    "Shuffled ${remaining.size} remaining tracks (resolveOffset=$resolveOffset, total=${allTracks.size})"
+                )
+            }
+        }
+
+    override fun hasNextPage(): Boolean = resolveOffset < allTracks.size || apiHasMore
 
     override suspend fun nextPage(): List<MediaItem> =
         withContext(Dispatchers.IO) {
