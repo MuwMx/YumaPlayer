@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -75,8 +77,12 @@ open class SpotifyTracksQueue(
                     apiHasMore = apiFetchOffset < apiTotal
                 }
 
-                while (startIndex >= allTracks.size && apiHasMore) {
-                    fetchNextApiPage()
+                if (providedTracks == null && allTracks.size <= startIndex) {
+                    while (apiHasMore && allTracks.size <= startIndex) {
+                        val prevSize = allTracks.size
+                        fetchNextApiPage()
+                        if (allTracks.size <= prevSize) break
+                    }
                 }
 
                 if (allTracks.isEmpty()) {
@@ -94,43 +100,38 @@ open class SpotifyTracksQueue(
                     }
 
                 val preloaded = preloadItem
-                val resolved = ArrayList<MediaItem?>(allTracks.size)
-                var currentTrackIndex = 0
-                for (chunk in allTracks.chunked(RESOLVE_BATCH_SIZE)) {
-                    val startIndexInChunk = currentTrackIndex
-                    val chunkResolved =
-                        coroutineScope {
-                            chunk
-                                .mapIndexed { indexInChunk, track ->
-                                    val globalIndex = startIndexInChunk + indexInChunk
-                                    async {
-                                        if (globalIndex == targetIndex && preloaded != null) {
-                                            preloaded.toMediaItem()
-                                        } else {
-                                            SpotifyPlaybackResolver.resolveToMediaItem(track)
-                                        }
+                val semaphore = Semaphore(RESOLVE_BATCH_SIZE)
+                val resolved =
+                    coroutineScope {
+                        allTracks.mapIndexed { index, track ->
+                            async {
+                                if (index == targetIndex && preloaded != null) {
+                                    preloaded.toMediaItem()
+                                } else {
+                                    semaphore.withPermit {
+                                        SpotifyPlaybackResolver.resolveToMediaItem(track)
                                     }
-                                }.awaitAll()
-                        }
-                    resolved.addAll(chunkResolved)
-                    currentTrackIndex += chunk.size
-                }
-
-                val resolvedItems = mutableListOf<MediaItem>()
-                var mediaItemIndex = 0
-                for (i in allTracks.indices) {
-                    if (i == targetIndex) {
-                        mediaItemIndex = resolvedItems.size
+                                }
+                            }
+                        }.awaitAll()
                     }
-                    resolved[i]?.let { resolvedItems.add(it) }
-                }
 
+                val resolvedItems = resolved.filterNotNull()
                 if (resolvedItems.isEmpty()) {
                     Timber.tag("SpotifyPipeline").w("Could not resolve any track for initial status")
                     return@withContext Queue.Status(title = title, items = emptyList(), mediaItemIndex = 0)
                 }
 
-                mediaItemIndex = mediaItemIndex.coerceIn(0, (resolvedItems.size - 1).coerceAtLeast(0))
+                val targetResolved = resolved.getOrNull(targetIndex) != null
+                if (!targetResolved) {
+                    Timber.tag("SpotifyPipeline").w("Target track at index $targetIndex resolved to null")
+                }
+
+                val mediaItemIndex =
+                    resolved
+                        .take(targetIndex)
+                        .count { it != null }
+                        .coerceIn(0, resolvedItems.size - 1)
 
                 Timber.tag("SpotifyPipeline").d(
                     "Initial status resolved ${resolvedItems.size} tracks (targetIndex=$targetIndex, mediaItemIndex=$mediaItemIndex, total=$apiTotal)"
@@ -161,20 +162,19 @@ open class SpotifyTracksQueue(
             }
 
             val newTracks = allTracks.subList(previousCount, allTracks.size)
-            val resolvedBatch = ArrayList<MediaItem>(newTracks.size)
-            for (chunk in newTracks.chunked(RESOLVE_BATCH_SIZE)) {
-                val chunkResolved =
-                    coroutineScope {
-                        chunk
-                            .map { track ->
-                                async {
+            val semaphore = Semaphore(RESOLVE_BATCH_SIZE)
+            val resolvedBatch =
+                coroutineScope {
+                    newTracks
+                        .map { track ->
+                            async {
+                                semaphore.withPermit {
                                     SpotifyPlaybackResolver.resolveToMediaItem(track)
                                 }
-                            }.awaitAll()
-                            .filterNotNull()
-                    }
-                resolvedBatch.addAll(chunkResolved)
-            }
+                            }
+                        }.awaitAll()
+                        .filterNotNull()
+                }
 
             Timber.tag("SpotifyPipeline").d(
                 "nextPage resolved ${resolvedBatch.size}/${newTracks.size} tracks"
