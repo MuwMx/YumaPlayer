@@ -287,7 +287,7 @@ fun SpotifyLikedSongsScreen(
                     }
                 }
 
-                likedTrackList(
+                spotifyLikedTrackList(
                     isLoading = isLoading,
                     tracksIsEmpty = tracks.isEmpty(),
                     error = error,

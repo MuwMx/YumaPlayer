@@ -33,7 +33,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-fun LazyListScope.likedTrackList(
+fun LazyListScope.spotifyLikedTrackList(
     isLoading: Boolean,
     tracksIsEmpty: Boolean,
     error: String?,
