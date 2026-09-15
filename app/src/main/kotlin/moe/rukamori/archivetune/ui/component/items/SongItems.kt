@@ -13,18 +13,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.media3.exoplayer.offline.Download
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailCornerRadius
@@ -58,21 +57,23 @@ fun SongListItem(
     showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
     showSongIconPlaceholder: Boolean = false,
+    isDownloaded: Boolean = false,
+    downloadState: Int? = if (isDownloaded) Download.STATE_COMPLETED else null,
+    downloadProgress: Float = -1f,
+    isFavorite: Boolean = song.song.liked,
+    inLibrary: Boolean = song.song.inLibrary != null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && song.song.liked) {
+        if (showLikedIcon && isFavorite) {
             ItemFavoriteBadge()
         }
         if (song.song.explicit) {
             ItemExplicitBadge()
         }
-        if (showInLibraryIcon && song.song.inLibrary != null) {
+        if (showInLibraryIcon && inLibrary) {
             ItemLibraryBadge()
         }
-        if (showDownloadIcon) {
-            val download by LocalDownloadUtil.current
-                .getDownload(song.id)
-                .collectAsState(initial = null)
-            ItemDownloadBadge(download?.state, percent = download?.percentDownloaded ?: -1f)
+        if (showDownloadIcon && (downloadState != null || isDownloaded)) {
+            ItemDownloadBadge(downloadState ?: Download.STATE_COMPLETED, percent = downloadProgress)
         }
     },
     isSelected: Boolean = false,
@@ -133,16 +134,20 @@ fun SongGridItem(
     showLikedIcon: Boolean = true,
     showInLibraryIcon: Boolean = false,
     showDownloadIcon: Boolean = true,
+    isDownloaded: Boolean = false,
+    downloadState: Int? = if (isDownloaded) Download.STATE_COMPLETED else null,
+    downloadProgress: Float = -1f,
+    isFavorite: Boolean = song.song.liked,
+    inLibrary: Boolean = song.song.inLibrary != null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && song.song.liked) {
+        if (showLikedIcon && isFavorite) {
             ItemFavoriteBadge()
         }
-        if (showInLibraryIcon && song.song.inLibrary != null) {
+        if (showInLibraryIcon && inLibrary) {
             ItemLibraryBadge()
         }
-        if (showDownloadIcon) {
-            val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
-            ItemDownloadBadge(download?.state, percent = download?.percentDownloaded ?: -1f)
+        if (showDownloadIcon && (downloadState != null || isDownloaded)) {
+            ItemDownloadBadge(downloadState ?: Download.STATE_COMPLETED, percent = downloadProgress)
         }
     },
     isActive: Boolean = false,
@@ -235,25 +240,22 @@ fun YouTubeListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     isSwipeable: Boolean = true,
+    isFavorite: Boolean = false,
+    inLibrary: Boolean = false,
+    isDownloaded: Boolean = false,
+    downloadState: Int? = if (isDownloaded) Download.STATE_COMPLETED else null,
+    downloadProgress: Float = -1f,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
-        val database = LocalDatabase.current
-        val song by database.song(item.id).collectAsState(initial = null)
-        val album by database.album(item.id).collectAsState(initial = null)
-
-        if ((item is SongItem && song?.song?.liked == true) ||
-            (item is AlbumItem && album?.album?.bookmarkedAt != null)
-        ) {
+        if (isFavorite) {
             ItemFavoriteBadge()
         }
         if (item.explicit) ItemExplicitBadge()
-        if (item is SongItem && song?.song?.inLibrary != null) {
+        if (item is SongItem && inLibrary) {
             ItemLibraryBadge()
         }
-        if (item is SongItem) {
-            val downloads by LocalDownloadUtil.current.downloads.collectAsState()
-            val download = downloads[item.id]
-            ItemDownloadBadge(download?.state, percent = download?.percentDownloaded ?: -1f)
+        if (item is SongItem && (downloadState != null || isDownloaded)) {
+            ItemDownloadBadge(downloadState ?: Download.STATE_COMPLETED, percent = downloadProgress)
         }
     },
 ) {
@@ -319,22 +321,19 @@ fun YouTubeGridItem(
     item: YTItem,
     modifier: Modifier = Modifier,
     coroutineScope: CoroutineScope? = null,
+    isFavorite: Boolean = false,
+    inLibrary: Boolean = false,
+    isDownloaded: Boolean = false,
+    downloadState: Int? = if (isDownloaded) Download.STATE_COMPLETED else null,
+    downloadProgress: Float = -1f,
     badges: @Composable RowScope.() -> Unit = {
-        val database = LocalDatabase.current
-        val song by database.song(item.id).collectAsState(initial = null)
-        val album by database.album(item.id).collectAsState(initial = null)
-
-        if (item is SongItem && song?.song?.liked == true ||
-            item is AlbumItem && album?.album?.bookmarkedAt != null
-        ) {
+        if (isFavorite) {
             ItemFavoriteBadge()
         }
         if (item.explicit) ItemExplicitBadge()
-        if (item is SongItem && song?.song?.inLibrary != null) ItemLibraryBadge()
-        if (item is SongItem) {
-            val downloads by LocalDownloadUtil.current.downloads.collectAsState()
-            val download = downloads[item.id]
-            ItemDownloadBadge(download?.state, percent = download?.percentDownloaded ?: -1f)
+        if (item is SongItem && inLibrary) ItemLibraryBadge()
+        if (item is SongItem && (downloadState != null || isDownloaded)) {
+            ItemDownloadBadge(downloadState ?: Download.STATE_COMPLETED, percent = downloadProgress)
         }
     },
     thumbnailRatio: Float = if (item is SongItem) 16f / 9 else 1f,

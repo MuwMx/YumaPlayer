@@ -63,6 +63,8 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
+import moe.rukamori.archivetune.extensions.toMediaItem
+import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
@@ -253,6 +255,27 @@ fun AutoPlaylistScreen(
                     val song = wrapper.item
                     song.song.title.contains(searchQuery, true) ||
                         song.artists.any { it.name.contains(searchQuery, true) }
+                }
+            }
+        }
+
+    val mediaItems =
+        remember(filteredSongs) {
+            filteredSongs.map { it.item.toMediaItem() }
+        }
+
+    val onSongClick =
+        remember(mediaItems, filteredSongs, playlist, playerConnection) {
+            { songId: String ->
+                val index = filteredSongs.indexOfFirst { it.item.id == songId }
+                if (index != -1) {
+                    playerConnection.playQueue(
+                        ListQueue(
+                            title = playlist,
+                            items = mediaItems,
+                            startIndex = index,
+                        ),
+                    )
                 }
             }
         }
@@ -522,6 +545,8 @@ fun AutoPlaylistScreen(
                 navController = navController,
                 menuState = menuState,
                 haptics = haptics,
+                downloads = downloads,
+                onSongClick = onSongClick,
             )
         }
 
