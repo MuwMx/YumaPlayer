@@ -10,45 +10,21 @@ package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import moe.rukamori.archivetune.ui.component.GlassDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -61,25 +37,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -92,26 +56,16 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
-import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
-import moe.rukamori.archivetune.spotify.SpotifyMapper
-import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
-import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
+import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
+import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
-import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.component.LibraryEmptyState
-import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,281 +270,45 @@ fun SpotifyLikedSongsScreen(
             ) {
                 if (!isSearching) {
                     item(key = "header") {
-                        Column(
+                        SpotifyLikedHeaderHero(
+                            total = total,
+                            tracksCount = tracks.size,
+                            loadedDurationMs = loadedDurationMs,
+                            hasTracks = tracks.isNotEmpty(),
+                            gradientColors = gradientColors,
+                            onRefresh = viewModel::refresh,
+                            onPlay = { playPlaylist() },
+                            onShuffle = { playPlaylist(shuffled = true) },
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(top = systemBarsTopPadding + AppBarHeight),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .padding(top = 8.dp, bottom = 20.dp),
-                            ) {
-                                Surface(
-                                    modifier =
-                                        Modifier
-                                            .size(240.dp)
-                                            .shadow(
-                                                elevation = 24.dp,
-                                                shape = RoundedCornerShape(16.dp),
-                                                spotColor =
-                                                    gradientColors.getOrNull(0)?.copy(alpha = 0.5f)
-                                                        ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                            ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.errorContainer,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.favorite),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(80.dp),
-                                            tint = MaterialTheme.colorScheme.error,
-                                        )
-                                    }
-                                }
-                            }
-
-                            Text(
-                                text = stringResource(R.string.spotify_liked_songs),
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 32.dp),
-                            )
-
-                            Text(
-                                text = stringResource(R.string.spotify_account),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier =
-                                    Modifier
-                                        .padding(top = 8.dp)
-                                        .padding(horizontal = 32.dp),
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 48.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                val trackCount = if (total > 0) total else tracks.size
-                                MetadataChip(
-                                    icon = R.drawable.music_note,
-                                    text = pluralStringResource(R.plurals.n_song, trackCount, trackCount),
-                                )
-
-                                if (loadedDurationMs > 0L) {
-                                    MetadataChip(
-                                        icon = R.drawable.timer,
-                                        text = makeTimeString(loadedDurationMs),
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { viewModel.refresh() },
-                                    modifier = Modifier.size(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        ),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.sync),
-                                        contentDescription = stringResource(R.string.spotify_reload_playlist),
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { playPlaylist() },
-                                    enabled = tracks.isNotEmpty(),
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.play),
-                                        contentDescription = stringResource(R.string.play),
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { playPlaylist(shuffled = true) },
-                                    enabled = tracks.isNotEmpty(),
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.shuffle),
-                                        contentDescription = stringResource(R.string.shuffle),
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 20.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Button(
-                                    onClick = { playPlaylist(shuffled = true) },
-                                    enabled = tracks.isNotEmpty(),
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonDefaults.shapes(),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.mix),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-                        }
-                    }
-                }
-
-                if (isLoading && tracks.isEmpty()) {
-                    item(key = "loading") {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(160.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularWavyProgressIndicator()
-                        }
-                    }
-                }
-
-                error?.let { errorMessage ->
-                    item(key = "error") {
-                        Text(
-                            text = errorMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                         )
                     }
                 }
 
-                if (!isLoading && error == null && filteredTracks.isEmpty()) {
-                    item(key = "empty") {
-                        LibraryEmptyState(
-                            iconRes = R.drawable.favorite,
-                            title =
-                                stringResource(
-                                    if (query.text.isBlank()) {
-                                        R.string.spotify_no_tracks
-                                    } else {
-                                        R.string.ai_model_no_results
-                                    },
-                                ),
-                            modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 24.dp),
-                        )
-                    }
-                }
-
-                itemsIndexed(
-                    items = filteredTracks,
-                    key = { index, track -> "spotify_track_${track.id}_$index" },
-                    contentType = { _, _ -> "spotify_track" },
-                ) { index, track ->
-                    val trackIsActive =
-                        remember(track, mediaMetadata) {
-                            track.isResolvedAs(mediaMetadata)
+                likedTrackList(
+                    isLoading = isLoading,
+                    tracksIsEmpty = tracks.isEmpty(),
+                    error = error,
+                    filteredTracks = filteredTracks,
+                    isQueryBlank = query.text.isBlank(),
+                    mediaMetadata = mediaMetadata,
+                    resolvingTrackId = resolvingTrackId,
+                    isPlaying = isPlaying,
+                    onTrackClick = { track, index, trackIsActive ->
+                        if (trackIsActive) {
+                            playerConnection?.player?.togglePlayPause()
+                        } else {
+                            val startIndex =
+                                tracks
+                                    .indexOfFirst { item -> item.id == track.id }
+                                    .takeIf { itemIndex -> itemIndex >= 0 }
+                                    ?: index
+                            playPlaylist(startIndex = startIndex)
                         }
-                    val trackIsResolving = resolvingTrackId == track.id
-
-                    SpotifyTrackListItem(
-                        track = track,
-                        isActive = trackIsActive || trackIsResolving,
-                        isPlaying = isPlaying && !trackIsResolving,
-                        trailingContent = {
-                            if (trackIsResolving) {
-                                CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
-                            }
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = resolvingTrackId == null || trackIsActive) {
-                                    if (trackIsActive) {
-                                        playerConnection?.player?.togglePlayPause()
-                                    } else {
-                                        val startIndex =
-                                            tracks
-                                                .indexOfFirst { item -> item.id == track.id }
-                                                .takeIf { itemIndex -> itemIndex >= 0 }
-                                                ?: index
-                                        playPlaylist(startIndex = startIndex)
-                                    }
-                                },
-                    )
-                }
+                    },
+                )
             }
 
             DraggableScrollbar(
@@ -604,149 +322,25 @@ fun SpotifyLikedSongsScreen(
             )
         }
 
-        TopAppBar(
-            colors = GlassDefaults.topAppBarColors(),
-            title = {
-                if (isSearching) {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.search),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                        },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.titleLarge,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        colors =
-                            TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent,
-                            ),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester),
-                    )
-                } else if (showTopBarTitle) {
-                    Text(
-                        text = stringResource(R.string.spotify_liked_songs),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            },
-            navigationIcon = {
-                IconButton(
-                    onClick = {
-                        if (isSearching) {
-                            isSearching = false
-                            query = TextFieldValue()
-                        } else {
-                            navController.navigateUp()
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSearching) navController.backToMain()
-                    },
-                ) {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (isSearching) R.drawable.close else R.drawable.arrow_back,
-                            ),
-                        contentDescription = null,
-                    )
-                }
-            },
-            actions = {
-                if (!isSearching) {
-                    IconButton(
-                        onClick = { isSearching = true },
-                        onLongClick = {},
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_search),
-                            contentDescription = null,
-                        )
-                    }
-                }
-            },
+        SpotifyLikedTopBar(
+            isSearching = isSearching,
+            query = query,
+            showTopBarTitle = showTopBarTitle,
+            focusRequester = focusRequester,
             scrollBehavior = scrollBehavior,
-        )
-    }
-}
-
-private fun SpotifyTrack.isResolvedAs(mediaMetadata: MediaMetadata?): Boolean {
-    if (mediaMetadata == null) return false
-
-    mediaMetadata.spotifyTrackId?.let { spotifyTrackId ->
-        return id.isNotBlank() && spotifyTrackId == id
-    }
-
-    val titleMatches = name.equals(mediaMetadata.title, ignoreCase = true)
-    val durationMatches =
-        durationMs <= 0 ||
-            mediaMetadata.duration <= 0 ||
-            abs(durationMs.toLong() - mediaMetadata.duration * 1000L) <= 1_000L
-    val albumMatches =
-        album?.let { spotifyAlbum ->
-            val currentAlbum = mediaMetadata.album ?: return false
-            spotifyAlbum.id.isNotBlank() && spotifyAlbum.id == currentAlbum.id ||
-                spotifyAlbum.name.equals(currentAlbum.title, ignoreCase = true)
-        } ?: true
-    val artistMatches =
-        artists.isEmpty() ||
-            mediaMetadata.artists.isEmpty() ||
-            artists.any { spotifyArtist ->
-                mediaMetadata.artists.any { artist ->
-                    spotifyArtist.name.equals(artist.name, ignoreCase = true)
+            onQueryChange = { query = it },
+            onNavigationClick = {
+                if (isSearching) {
+                    isSearching = false
+                    query = TextFieldValue()
+                } else {
+                    navController.navigateUp()
                 }
-            }
-    val thumbnailMatches =
-        SpotifyMapper.getTrackThumbnail(this)?.let { thumbnail ->
-            thumbnail == mediaMetadata.thumbnailUrl
-        } ?: true
-
-    return titleMatches && durationMatches && albumMatches && artistMatches && thumbnailMatches
-}
-
-@Composable
-private fun MetadataChip(
-    icon: Int,
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    val yumaColors = LocalYumaColors.current
-    Row(
-        modifier =
-            modifier
-                .yumaGlassCard(
-                    shape = RoundedCornerShape(20.dp),
-                    backgroundColor = yumaColors.glassBackground,
-                    borderColor = yumaColors.glassBorder,
-                )
-                .clip(RoundedCornerShape(20.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
+            },
+            onNavigationLongClick = {
+                if (!isSearching) navController.backToMain()
+            },
+            onSearchClick = { isSearching = true },
         )
     }
 }
