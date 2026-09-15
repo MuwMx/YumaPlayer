@@ -34,7 +34,7 @@ fun LazyGridScope.moodAndGenresSection(
     } else {
         items(
             items = moodAndGenres,
-            key = { item -> "${item.title}:${item.endpoint.browseId}:${item.endpoint.params}" },
+            key = { item -> item.endpoint.browseId ?: item.endpoint.params.orEmpty() },
             contentType = { CONTENT_TYPE_MOOD_GENRES_ITEM },
         ) { item ->
             MoodAndGenresButton(
@@ -45,8 +45,7 @@ fun LazyGridScope.moodAndGenresSection(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(6.dp)
-                        .animateItem(),
+                        .padding(6.dp),
             )
         }
     }
