@@ -217,7 +217,6 @@ fun LibraryMixScreen(
 
             topMixesSection(
                 uiState = topMixesUiState,
-                isRefreshing = isRefreshing,
                 onRefreshTopMixes = viewModel::refreshTopMixes,
                 onConfigureAi = { navController.navigate("settings/ai_integration") },
                 onPlayMix = { mix ->

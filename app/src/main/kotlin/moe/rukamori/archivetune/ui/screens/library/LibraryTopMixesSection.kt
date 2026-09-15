@@ -1,3 +1,9 @@
+/*
+ * YumaPlayer (2026) | Modified work by MuwMix
+ * ArchiveTune (2026) | Original work by © Rukamori
+ * GPL-3.0 License | Contributors: see git history
+ */
+
 package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.compose.foundation.lazy.LazyListScope
@@ -7,7 +13,6 @@ import moe.rukamori.archivetune.viewmodels.LibraryTopMixesUiState
 
 fun LazyListScope.topMixesSection(
     uiState: LibraryTopMixesUiState,
-    isRefreshing: Boolean = false,
     onRefreshTopMixes: () -> Unit,
     onConfigureAi: () -> Unit,
     onPlayMix: (LibraryTopMixUiModel) -> Unit,

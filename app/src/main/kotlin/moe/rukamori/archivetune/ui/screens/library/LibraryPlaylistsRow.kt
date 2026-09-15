@@ -57,7 +57,7 @@ fun LazyListScope.playlistsRowSection(
     onPlaySpotifyLiked: () -> Unit,
     onOpenSpotifyPlaylist: (SpotifyPlaylist) -> Unit,
     onSeeAll: () -> Unit,
-    onOpenSpotifyLiked: () -> Unit = {},
+    onOpenSpotifyLiked: () -> Unit,
 ) {
     if (visiblePlaylists.isNotEmpty() || visibleSpotifyPlaylists.isNotEmpty() || isSpotifyActive) {
         item(key = "your_playlists") {
