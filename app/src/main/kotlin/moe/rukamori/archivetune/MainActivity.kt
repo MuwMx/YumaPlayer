@@ -799,7 +799,7 @@ class MainActivity : ComponentActivity() {
                 isReady = true
             }
             var coldSplash by remember(isReady) { mutableStateOf(splashEnabled) }
-            var splashActive by remember(isReady) { mutableStateOf(splashEnabled && !disableAnimations) }
+            val isContentReady = remember { mutableStateOf(false) }
             var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
             val contentAlpha by animateFloatAsState(
                 targetValue = if (contentVisible) 1f else 0f,
@@ -1605,7 +1605,7 @@ class MainActivity : ComponentActivity() {
                         LocalYumaHaptics provides yumaHaptics,
                         LocalHapticFeedback provides customHaptic,
                         LocalAnimationsDisabled provides disableAnimations,
-                        LocalSplashActive provides splashActive,
+                        LocalContentReady provides { isContentReady.value = true },
                         LocalHomeBackgroundStyle provides
                             HomeBackgroundSettings(
                                 style = homeBackgroundStyle,
@@ -1630,12 +1630,10 @@ class MainActivity : ComponentActivity() {
                         )
                         if (splashEnabled) {
                             SplashOverlay(
+                                isContentReady = isContentReady.value,
                                 onBurstStart = {
                                     contentVisible = true
                                     coldSplash = false
-                                },
-                                onDismiss = {
-                                    splashActive = false
                                 },
                             )
                         }

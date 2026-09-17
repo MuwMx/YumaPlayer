@@ -58,6 +58,7 @@ class SplashEngine {
     var formStrength: Float = 0f
     var globalOpacity: Float = 0f
     var isShort: Boolean = false
+    var isContentReady: Boolean = false
     var postBurstFrames: Int = 0
     var pulseWave: Float = 0f
     var particleScale: Float = 1f
@@ -195,7 +196,7 @@ class SplashEngine {
         currentPhase = newPhase
         phaseElapsedMs = 0f
         particleScale = 1f
-        particleAlpha = 1f
+        particleAlpha = if (newPhase == SplashPhase.Idle) 0f else 1f
         when (newPhase) {
             SplashPhase.Dust -> {
                 formStrength = 0f
@@ -248,7 +249,7 @@ class SplashEngine {
                     else -> SplashConfig.Timings.GATHER_BOLT_MS
                 }
                 formStrength = min(1f, phaseElapsedMs / gatherLimit)
-                if (phaseElapsedMs >= gatherLimit) {
+                if (phaseElapsedMs >= gatherLimit && (isContentReady || phaseElapsedMs >= SplashConfig.Timings.GATHER_TIMEOUT_MS)) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
                     } else {
@@ -277,7 +278,7 @@ class SplashEngine {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
-                particleScale = max(0.6f, 1f - progress * 0.4f)
+                particleScale = max(0.6f, 1f - (phaseElapsedMs / burstLimit) * 0.4f)
                 particleAlpha = (1f - progress * progress).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
@@ -303,7 +304,6 @@ class SplashEngine {
             if (currentPhase == SplashPhase.Burst || currentPhase == SplashPhase.Idle) {
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
-                particleAlpha = (1f - progress * progress).coerceIn(0f, 1f)
 
                 if (progress >= 1f) {
                     shockwave = null

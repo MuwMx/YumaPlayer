@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -29,8 +28,8 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun SplashOverlay(
     modifier: Modifier = Modifier,
+    isContentReady: Boolean = true,
     onBurstStart: () -> Unit = {},
-    onDismiss: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
     if (!splashOverlayEnabled) return
@@ -38,20 +37,17 @@ fun SplashOverlay(
     val animationsDisabled = LocalAnimationsDisabled.current
     var showSplash by remember { mutableStateOf(!animationsDisabled) }
     val currentOnBurstStart by rememberUpdatedState(onBurstStart)
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
     var isInitialized by remember { mutableStateOf(false) }
     var burstTriggered by remember { mutableStateOf(false) }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            currentOnDismiss()
-        }
-    }
 
     val density = LocalDensity.current.density
     val engine = remember { SplashEngine() }
     val renderer = remember { SplashRenderer() }
     var frameTick by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(isContentReady) {
+        engine.isContentReady = isContentReady
+    }
 
     LaunchedEffect(showSplash) {
         if (!showSplash) return@LaunchedEffect
@@ -76,7 +72,6 @@ fun SplashOverlay(
 
                 if (engine.currentPhase == SplashPhase.Idle && showSplash) {
                     showSplash = false
-                    currentOnDismiss()
                 }
             }
         }

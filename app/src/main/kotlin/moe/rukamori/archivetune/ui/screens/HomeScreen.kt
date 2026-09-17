@@ -33,7 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import moe.rukamori.archivetune.LocalSplashActive
+import moe.rukamori.archivetune.LocalContentReady
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,6 +80,13 @@ fun HomeScreen(
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+
+    val onContentReady = LocalContentReady.current
+    LaunchedEffect(screenState) {
+        if (screenState !is HomeScreenState.Loading) {
+            onContentReady()
+        }
+    }
 
     val lazyListState = rememberLazyListState()
     val forgottenFavoritesGridState = rememberLazyGridState()
@@ -214,7 +221,7 @@ private fun HomeStatePane(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp),
         ) {
-            if (showLoadingIndicator && !LocalSplashActive.current) {
+            if (showLoadingIndicator) {
                 LoadingIndicator()
             } else {
                 iconResId?.let {

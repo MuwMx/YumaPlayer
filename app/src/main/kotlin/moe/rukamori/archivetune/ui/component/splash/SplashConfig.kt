@@ -18,6 +18,7 @@ object SplashConfig {
         var GATHER_LOGO_MS: Float = 800f
         var GATHER_CROSS_MS: Float = 450f
         var GATHER_SHORT_MS: Float = 400f
+        var GATHER_TIMEOUT_MS: Float = 1400f
         var IGNITE_FULL_MS: Float = 140f
         var IGNITE_SHORT_MS: Float = 110f
         var BURST_FULL_MS: Float = 750f
