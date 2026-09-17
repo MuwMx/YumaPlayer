@@ -249,10 +249,8 @@ class SplashEngine {
                 if (phaseElapsedMs >= gatherLimit) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
-                    } else if (SplashConfig.AUTO_BURST) {
-                        setPhase(SplashPhase.Ignite)
                     } else {
-                        setPhase(SplashPhase.Success)
+                        setPhase(SplashPhase.Ignite)
                     }
                 }
             }

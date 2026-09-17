@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
@@ -38,25 +36,23 @@ fun SplashOverlay(
 
     val animationsDisabled = LocalAnimationsDisabled.current
     var showSplash by remember { mutableStateOf(!animationsDisabled) }
-    var sizeKey by remember { mutableIntStateOf(0) }
+    var isInitialized by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current.density
     val engine = remember { SplashEngine() }
     val renderer = remember { SplashRenderer() }
     var frameTick by remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(sizeKey) {
-        if (sizeKey == 0 || !showSplash) return@LaunchedEffect
-        engine.startGather(SplashSlots.SHAPE_LOGO)
-        delay(SplashConfig.Timings.GATHER_LOGO_MS.toLong())
-        engine.setPhase(SplashPhase.Ignite)
-    }
-
     LaunchedEffect(showSplash) {
         if (!showSplash) return@LaunchedEffect
-        var lastTime = withFrameNanos { it }
+        var lastTime = 0L
         while (isActive) {
             withFrameNanos { now ->
+                if (!isInitialized) return@withFrameNanos
+                if (lastTime == 0L) {
+                    lastTime = now
+                    return@withFrameNanos
+                }
                 val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
                 lastTime = now
                 engine.update(dt, now / 1_000_000)
@@ -92,7 +88,8 @@ fun SplashOverlay(
                     if (w > 0f && h > 0f && (engine.width != w || engine.height != h)) {
                         engine.density = density
                         engine.init(w, h)
-                        sizeKey++
+                        engine.startGather(SplashSlots.SHAPE_LOGO)
+                        isInitialized = true
                     }
                 },
         ) {

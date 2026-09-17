@@ -1,7 +1,7 @@
 package moe.rukamori.archivetune.ui.component.splash
 
 object SplashConfig {
-    var AUTO_BURST: Boolean = false
+    var AUTO_BURST: Boolean = true
     var SLOTS_LOGO: Int = 28
     var SLOTS_BOLT: Int = 24
     var SLOTS_CROSS: Int = 24
