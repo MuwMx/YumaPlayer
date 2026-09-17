@@ -159,7 +159,7 @@ fun <T> rememberPreference(
             context.dataStore.data
                 .map { it[key] ?: defaultValue }
                 .distinctUntilChanged()
-        }.collectAsState(defaultValue)
+        }.collectAsState(PreferenceStore.get(key) ?: defaultValue)
 
     return remember {
         object : MutableState<T> {
@@ -193,7 +193,7 @@ inline fun <reified T : Enum<T>> rememberEnumPreference(
             context.dataStore.data
                 .map { it[key].toEnum(defaultValue = defaultValue) }
                 .distinctUntilChanged()
-        }.collectAsState(defaultValue)
+        }.collectAsState(PreferenceStore.get(key).toEnum(defaultValue))
 
     return remember {
         object : MutableState<T> {
