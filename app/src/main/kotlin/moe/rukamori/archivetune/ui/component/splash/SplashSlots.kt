@@ -1,5 +1,8 @@
 package moe.rukamori.archivetune.ui.component.splash
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.hypot
 import kotlin.math.min
@@ -15,6 +18,7 @@ object SplashSlots {
     const val SHAPE_YUMA = "yuma"
 
     var customVectorPath: android.graphics.Path? = null
+    var vectorVersion: Int by mutableStateOf(0)
 
     const val LOGO_PATH = "M353.991 673.128C341.491 673.128 151.791 605.128 113.491 586.128C75.1908 567.128 10.9905 545.499 0.490656 521.6C-10.0092 497.7 151.491 425.628 151.491 425.628C169.491 416.628 288.491 360.128 292.59 357L292.575 336.628L362.735 300.078C362.735 300.078 366.491 673.128 353.991 673.128Z M296.79 0C296.79 0 577.49 52.8 595.59 57V187.128C595.59 187.128 369.09 149.499 366.191 150.699L362.843 292.226L292.575 329.588L296.79 0Z"
 

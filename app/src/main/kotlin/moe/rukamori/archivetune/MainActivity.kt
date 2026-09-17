@@ -625,7 +625,13 @@ class MainActivity : ComponentActivity() {
                 }
         }
 
-        SplashSlots.customVectorPath = SplashVectorLoader.loadPath(this, R.drawable.about_splash)
+        lifecycleScope.launch(Dispatchers.Default) {
+            val path = SplashVectorLoader.loadPath(this@MainActivity, R.drawable.about_splash)
+            withContext(Dispatchers.Main) {
+                SplashSlots.customVectorPath = path
+                SplashSlots.vectorVersion++
+            }
+        }
 
         setContent {
             var playerExpansionFraction by remember { mutableFloatStateOf(0f) }

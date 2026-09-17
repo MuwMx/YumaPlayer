@@ -31,6 +31,7 @@ const val SHOCKWAVE_STROKE_WIDTH_DP: Float = 2.0f
 
 class SplashRenderer {
     val starPath = Path()
+    private val defaultLoops = listOf(0 until SplashSlots.SLOT_COUNT)
 
     val okBins = Array(LINK_BINS) { i ->
         Color.White.copy(alpha = (i + 0.5f) / LINK_BINS.toFloat())
@@ -74,6 +75,8 @@ class SplashRenderer {
     }
     var linkStrokeWidthPx: Float = 1.5f
         private set
+    var igniteStrokeWidthPx: Float = 2.5f
+        private set
     var shockwaveStroke: Stroke = Stroke(width = 2f)
         private set
 
@@ -81,6 +84,7 @@ class SplashRenderer {
         if (cachedDensity != density) {
             cachedDensity = density
             linkStrokeWidthPx = LINK_LINE_WIDTH_DP * density
+            igniteStrokeWidthPx = 2.5f * density
             shockwaveStroke = Stroke(width = SHOCKWAVE_STROKE_WIDTH_DP * density)
         }
     }
@@ -149,7 +153,7 @@ class SplashRenderer {
         val invMaxDist = 1f / maxDist
 
         val isIgnite = engine.phase == "ignite"
-        val strokeW = if (isIgnite) 2.5.dp.toPx() else linkStrokeWidthPx
+        val strokeW = if (isIgnite) igniteStrokeWidthPx else linkStrokeWidthPx
         val bins = okBins
 
         for (j in slotLookup.indices) slotLookup[j] = null
@@ -159,7 +163,7 @@ class SplashRenderer {
             }
         }
 
-        val loops = engine.currentShapeData.loops.ifEmpty { listOf(0 until SplashSlots.SLOT_COUNT) }
+        val loops = engine.currentShapeData.loops.ifEmpty { defaultLoops }
         val slotCount = if (engine.currentShapeData.slots.isNotEmpty()) engine.currentShapeData.slots.size else SplashSlots.SLOT_COUNT
         for (range in loops) {
             val count = range.count()
