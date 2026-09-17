@@ -61,6 +61,7 @@ class SplashEngine {
     var postBurstFrames: Int = 0
     var pulseWave: Float = 0f
     var particleScale: Float = 1f
+    var particleAlpha: Float = 1f
     var currentShapeData: SplashSlots.ShapeSlots =
         SplashSlots.ShapeSlots(emptyList(), listOf(0 until SplashSlots.SLOT_COUNT), emptyList(), android.graphics.Path())
     private var slots: List<Offset> = emptyList()
@@ -194,6 +195,7 @@ class SplashEngine {
         currentPhase = newPhase
         phaseElapsedMs = 0f
         particleScale = 1f
+        particleAlpha = 1f
         when (newPhase) {
             SplashPhase.Dust -> {
                 formStrength = 0f
@@ -274,7 +276,9 @@ class SplashEngine {
             SplashPhase.Burst -> {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                particleScale = max(0.6f, 1f - (phaseElapsedMs / burstLimit) * 0.4f)
+                val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
+                particleScale = max(0.6f, 1f - progress * 0.4f)
+                particleAlpha = (1f - progress * progress).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
                     setPhase(SplashPhase.Idle)
@@ -299,6 +303,7 @@ class SplashEngine {
             if (currentPhase == SplashPhase.Burst || currentPhase == SplashPhase.Idle) {
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
+                particleAlpha = (1f - progress * progress).coerceIn(0f, 1f)
 
                 if (progress >= 1f) {
                     shockwave = null

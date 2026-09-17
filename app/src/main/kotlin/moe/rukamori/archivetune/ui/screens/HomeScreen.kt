@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import moe.rukamori.archivetune.LocalSplashActive
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -213,7 +214,7 @@ private fun HomeStatePane(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp),
         ) {
-            if (showLoadingIndicator) {
+            if (showLoadingIndicator && !LocalSplashActive.current) {
                 LoadingIndicator()
             } else {
                 iconResId?.let {

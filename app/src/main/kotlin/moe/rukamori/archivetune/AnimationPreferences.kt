@@ -9,3 +9,4 @@ package moe.rukamori.archivetune
 import androidx.compose.runtime.compositionLocalOf
 
 val LocalAnimationsDisabled = compositionLocalOf { false }
+val LocalSplashActive = compositionLocalOf { false }

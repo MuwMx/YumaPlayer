@@ -111,7 +111,7 @@ class SplashRenderer {
             shockwave = engine.shockwave,
             color = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else Color.White
         )
-        drawScreenFlash(engine.screenFlash)
+        drawScreenFlash(engine)
     }
 
     fun DrawScope.drawFormationGlow(engine: SplashEngine) {
@@ -225,7 +225,7 @@ class SplashRenderer {
             val memberAlpha = 0.95f * (0.45f + 0.55f * glow)
             val floaterAlpha = 0.4f * p.depth * p.lum * (1f - 0.55f * glow)
             val baseAlpha = if (p.isMember) memberAlpha else floaterAlpha
-            val alpha = (baseAlpha * globalOp).coerceIn(0f, 1f)
+            val alpha = (baseAlpha * globalOp * engine.particleAlpha).coerceIn(0f, 1f)
 
             if (alpha > 0.005f && p.radius > 0f) {
                 var waveBoost = 0f
@@ -348,6 +348,25 @@ class SplashRenderer {
             radius = sw.radius,
             center = Offset(sw.x, sw.y),
             style = shockwaveStroke
+        )
+    }
+
+    fun DrawScope.drawScreenFlash(engine: SplashEngine) {
+        if (engine.currentPhase != SplashPhase.Burst || engine.phaseElapsedMs > 120f) return
+        val progress = (engine.phaseElapsedMs / 120f).coerceIn(0f, 1f)
+        val alpha = 0.25f * (1f - progress)
+        if (alpha <= 0.005f) return
+        val radius = 200.dp.toPx()
+        val brush = Brush.radialGradient(
+            0.0f to Color.White.copy(alpha = alpha),
+            1.0f to Color.Transparent,
+            center = center,
+            radius = radius,
+        )
+        drawCircle(
+            brush = brush,
+            radius = radius,
+            center = center,
         )
     }
 
