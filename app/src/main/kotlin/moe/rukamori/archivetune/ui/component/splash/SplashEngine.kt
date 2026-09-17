@@ -67,20 +67,6 @@ class SplashEngine {
     var phaseElapsedMs: Float = 0f
         private set
 
-    fun setMemberCount(shape: String, count: Int) {
-        val clamped = count.coerceIn(12, MAX_MEMBERS)
-        when (shape) {
-            SplashSlots.SHAPE_CROSS -> SplashConfig.SLOTS_CROSS = clamped
-            SplashSlots.SHAPE_BOLT -> SplashConfig.SLOTS_BOLT = clamped
-            else -> SplashConfig.SLOTS_LOGO = clamped
-        }
-        rebuildSlots()
-    }
-
-    fun setMemberCount(count: Int) {
-        setMemberCount(shape, count)
-    }
-
     fun init(w: Float, h: Float) {
         init(w, h, density)
     }
@@ -309,13 +295,27 @@ class SplashEngine {
             screenFlash = max(0f, screenFlash - SplashConfig.Burst.SCREEN_FLASH_DECAY * step)
         }
 
+        // Стало: синхронизация с фазой Burst или динамическая скорость
         shockwave?.let { sw ->
-            val newR = sw.radius + SplashConfig.Burst.SHOCKWAVE_SPEED * step
-            val progress = (newR / sw.maxRadius).coerceIn(0f, 1f)
-            if (progress >= 1f) {
-                shockwave = null
+            if (currentPhase == SplashPhase.Burst) {
+                val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
+                val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
+
+                val e = progress * progress * (3f - 2f * progress)
+                sw.radius = sw.maxRadius * e
+
+                if (progress >= 1f) {
+                    shockwave = null
+                }
             } else {
-                sw.radius = newR
+                // Фоновый долет, если фаза сменилась чуть раньше
+                val speed = (sw.maxRadius / 20f) * step
+                val newR = sw.radius + speed
+                if (newR >= sw.maxRadius) {
+                    shockwave = null
+                } else {
+                    sw.radius = newR
+                }
             }
         }
 
@@ -401,21 +401,6 @@ class SplashEngine {
             val p = particles[i]
             p.vx *= 0.5f
             p.vy *= 0.5f
-        }
-        rebuildSlots()
-        setPhase(SplashPhase.Gather)
-    }
-
-    fun setShapeDirect(newShape: String) {
-        shape = newShape
-        if (newShape == SplashSlots.SHAPE_CROSS && width > 0f && height > 0f) {
-            val c = SplashSlots.center(width, height)
-            shock(c.x, c.y, SplashConfig.Burst.SHOCKWAVE_ALPHA_CROSS)
-        }
-        for (i in particles.indices) {
-            val p = particles[i]
-            p.vx *= 0.3f
-            p.vy *= 0.3f
         }
         rebuildSlots()
         setPhase(SplashPhase.Gather)
