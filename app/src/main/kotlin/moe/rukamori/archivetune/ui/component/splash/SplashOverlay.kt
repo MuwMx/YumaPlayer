@@ -1,9 +1,12 @@
 package moe.rukamori.archivetune.ui.component.splash
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,34 +71,36 @@ fun SplashOverlay(
         }
     }
 
-    if (showSplash) {
-        Box(
-            modifier = modifier
+    AnimatedVisibility(
+        visible = showSplash,
+        enter = EnterTransition.None,
+        exit = fadeOut(animationSpec = tween(durationMillis = 250)),
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(
+                enabled = showSplash,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            ),
+    ) {
+        Canvas(
+            modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {},
-                ),
+                .onSizeChanged { size ->
+                    val w = size.width.toFloat()
+                    val h = size.height.toFloat()
+                    if (w > 0f && h > 0f && (engine.width != w || engine.height != h)) {
+                        engine.density = density
+                        engine.init(w, h)
+                        engine.startGather(SplashSlots.SHAPE_LOGO)
+                        isInitialized = true
+                    }
+                },
         ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onSizeChanged { size ->
-                        val w = size.width.toFloat()
-                        val h = size.height.toFloat()
-                        if (w > 0f && h > 0f && (engine.width != w || engine.height != h)) {
-                            engine.density = density
-                            engine.init(w, h)
-                            engine.startGather(SplashSlots.SHAPE_LOGO)
-                            isInitialized = true
-                        }
-                    },
-            ) {
-                frameTick
-                with(renderer) {
-                    render(engine)
-                }
+            frameTick
+            with(renderer) {
+                render(engine)
             }
         }
     }

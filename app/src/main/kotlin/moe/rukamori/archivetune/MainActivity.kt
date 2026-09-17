@@ -29,6 +29,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -800,7 +801,7 @@ class MainActivity : ComponentActivity() {
             var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
             val contentAlpha by animateFloatAsState(
                 targetValue = if (contentVisible) 1f else 0f,
-                animationSpec = tween(durationMillis = if (disableAnimations) 0 else 400),
+                animationSpec = tween(durationMillis = if (disableAnimations) 0 else 450, easing = EaseOut),
                 label = "splashContentAlpha",
             )
             val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
@@ -1637,6 +1638,7 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .graphicsLayer {
                                         alpha = contentAlpha
+                                        translationY = (1f - contentAlpha) * 24.dp.toPx()
                                         compositingStrategy = CompositingStrategy.ModulateAlpha
                                     }
                                     .pointerInput(contentVisible) {
