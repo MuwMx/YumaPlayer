@@ -30,6 +30,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -121,6 +122,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -220,6 +223,7 @@ import moe.rukamori.archivetune.constants.RemindAfterKey
 import moe.rukamori.archivetune.constants.SYSTEM_DEFAULT
 import moe.rukamori.archivetune.constants.SearchSource
 import moe.rukamori.archivetune.constants.SearchSourceKey
+import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.constants.UseSystemFontKey
@@ -781,6 +785,14 @@ class MainActivity : ComponentActivity() {
             val disableAnimations by rememberPreference(
                 DisableAnimationsKey,
                 defaultValue = defaultDisableAnimations,
+            )
+            val splashEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
+            var coldSplash by remember { mutableStateOf(splashEnabled) }
+            var contentVisible by remember { mutableStateOf(!coldSplash || disableAnimations) }
+            val contentAlpha by animateFloatAsState(
+                targetValue = if (contentVisible) 1f else 0f,
+                animationSpec = tween(durationMillis = if (disableAnimations) 0 else 400),
+                label = "splashContentAlpha",
             )
             val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
             val homeBackgroundParallaxEnabled by rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
@@ -1594,7 +1606,21 @@ class MainActivity : ComponentActivity() {
                             isVisible = LocalGlobalVisibility.current,
                             modifier = Modifier.fillMaxSize(),
                         )
-                        Row {
+                        if (splashEnabled) {
+                            SplashOverlay(
+                                onBurstStart = {
+                                    contentVisible = true
+                                    coldSplash = false
+                                },
+                            )
+                        }
+                        Row(
+                            modifier =
+                                Modifier.graphicsLayer {
+                                    alpha = contentAlpha
+                                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                                },
+                        ) {
                             AnimatedVisibility(
                                 visible = useRail && shouldShowNavigationBar,
                                 enter = fadeIn(animationSpec = tween(durationMillis = if (disableAnimations) 0 else 150)),
@@ -2522,8 +2548,6 @@ class MainActivity : ComponentActivity() {
                                         end = 16.dp,
                                     ).zIndex(10f),
                         )
-
-                        SplashOverlay()
                     }
 
                     pendingBackupRestoreUri?.let { uri ->

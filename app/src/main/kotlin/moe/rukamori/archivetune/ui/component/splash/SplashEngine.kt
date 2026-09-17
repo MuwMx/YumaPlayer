@@ -274,7 +274,7 @@ class SplashEngine {
             SplashPhase.Burst -> {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit)
+                particleScale = max(0.6f, 1f - (phaseElapsedMs / burstLimit) * 0.4f)
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
                     setPhase(SplashPhase.Idle)

@@ -20,7 +20,7 @@ object SplashConfig {
         var GATHER_SHORT_MS: Float = 400f
         var IGNITE_FULL_MS: Float = 140f
         var IGNITE_SHORT_MS: Float = 110f
-        var BURST_FULL_MS: Float = 420f
+        var BURST_FULL_MS: Float = 750f
         var BURST_SHORT_MS: Float = 280f
         var TRANSIT_MS: Float = 320f
     }
@@ -72,6 +72,6 @@ object SplashConfig {
 
         var MAX_HALO_DP: Float = 28f
         var LINK_DISTANCE_DP: Float = 150f
-        var LOGO_TARGET_SIZE_DP: Float = 180f
+        var LOGO_TARGET_SIZE_DP: Float = 150f
     }
 }
