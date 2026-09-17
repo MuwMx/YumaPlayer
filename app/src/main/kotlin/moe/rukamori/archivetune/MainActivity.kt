@@ -262,6 +262,9 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
+import moe.rukamori.archivetune.ui.component.splash.SplashOverlay
+import moe.rukamori.archivetune.ui.component.splash.SplashSlots
+import moe.rukamori.archivetune.ui.component.splash.SplashVectorLoader
 import moe.rukamori.archivetune.ui.component.StarDialog
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
@@ -611,6 +614,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
         }
+
+        SplashSlots.customVectorPath = SplashVectorLoader.loadPath(this, R.drawable.about_splash)
 
         setContent {
             var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
@@ -2517,6 +2522,8 @@ class MainActivity : ComponentActivity() {
                                         end = 16.dp,
                                     ).zIndex(10f),
                         )
+
+                        SplashOverlay()
                     }
 
                     pendingBackupRestoreUri?.let { uri ->

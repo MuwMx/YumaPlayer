@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
+import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
@@ -130,6 +131,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             DisableAnimationsKey,
             defaultValue = defaultDisableAnimations,
+        )
+    val (splashOverlayEnabled, onSplashOverlayEnabledChange) =
+        rememberPreference(
+            SplashOverlayEnabledKey,
+            defaultValue = true,
         )
     val (archiveTuneCanvas, onArchiveTuneCanvasChange) =
         rememberPreference(
@@ -331,6 +337,16 @@ fun AppearanceSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
                         checked = disableAnimations,
                         onCheckedChange = onDisableAnimationsChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.splash_overlay_enabled)) },
+                        description = stringResource(R.string.splash_overlay_enabled_desc),
+                        icon = { Icon(painterResource(R.drawable.auto_awesome), null, modifier = Modifier.size(24.dp)) },
+                        checked = splashOverlayEnabled,
+                        onCheckedChange = onSplashOverlayEnabledChange,
                     )
                 }
 

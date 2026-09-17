@@ -458,6 +458,8 @@
     <string name="disable_blur_desc">Disable blur effects throughout the app</string>
     <string name="disable_animations">Disable animations</string>
     <string name="disable_animations_desc">Disable most app animations. Recommended for low-end devices</string>
+    <string name="splash_overlay_enabled">Splash screen animation</string>
+    <string name="splash_overlay_enabled_desc">Show animated splash screen on app launch</string>
     <string name="home_background">Home background</string>
     <string name="home_background_tonal">Tonal glow</string>
     <string name="home_background_circles">Circles</string>

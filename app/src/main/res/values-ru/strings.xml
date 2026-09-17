@@ -678,6 +678,8 @@
     <string name="no_matching_playlists">Нет подходящих плейлистов</string>
     <string name="disable_animations">Отключить анимации</string>
     <string name="disable_animations_desc">Отключить большинство анимаций в приложении. Рекомендовано для слабых устройств</string>
+    <string name="splash_overlay_enabled">Анимация заставки</string>
+    <string name="splash_overlay_enabled_desc">Показывать анимированный сплэш при запуске приложения</string>
     <string name="blur_intensity">Сила размытия</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="playback_confirmation_required">Необходимо подтверждение воспроизведения</string>
