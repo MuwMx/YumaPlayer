@@ -190,6 +190,7 @@ class SplashEngine {
     }
 
     fun setPhase(newPhase: SplashPhase) {
+        if (currentPhase == SplashPhase.Burst && newPhase == SplashPhase.Burst) return
         currentPhase = newPhase
         phaseElapsedMs = 0f
         particleScale = 1f
@@ -393,10 +394,6 @@ class SplashEngine {
 
     fun startGather(newShape: String = SplashSlots.SHAPE_LOGO) {
         shape = newShape
-        if (width > 0f && height > 0f) {
-            val c = SplashSlots.center(width, height)
-            shock(c.x, c.y, SplashConfig.Burst.SHOCKWAVE_ALPHA_BOLT)
-        }
         for (i in particles.indices) {
             val p = particles[i]
             p.vx *= 0.5f

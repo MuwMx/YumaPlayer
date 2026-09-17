@@ -50,8 +50,6 @@ fun SplashOverlay(
         engine.startGather(SplashSlots.SHAPE_LOGO)
         delay(SplashConfig.Timings.GATHER_LOGO_MS.toLong())
         engine.setPhase(SplashPhase.Ignite)
-        delay(SplashConfig.Timings.IGNITE_FULL_MS.toLong())
-        engine.triggerBurst()
     }
 
     LaunchedEffect(showSplash) {
