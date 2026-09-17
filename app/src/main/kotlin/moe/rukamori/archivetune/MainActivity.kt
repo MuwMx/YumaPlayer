@@ -128,6 +128,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -794,6 +795,12 @@ class MainActivity : ComponentActivity() {
                 animationSpec = tween(durationMillis = if (disableAnimations) 0 else 400),
                 label = "splashContentAlpha",
             )
+            LaunchedEffect(splashEnabled) {
+                if (!splashEnabled) {
+                    contentVisible = true
+                    coldSplash = false
+                }
+            }
             val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
             val homeBackgroundParallaxEnabled by rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
             val homeBackgroundParallaxStrength by rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
@@ -1616,10 +1623,20 @@ class MainActivity : ComponentActivity() {
                         }
                         Row(
                             modifier =
-                                Modifier.graphicsLayer {
-                                    alpha = contentAlpha
-                                    compositingStrategy = CompositingStrategy.ModulateAlpha
-                                },
+                                Modifier
+                                    .graphicsLayer {
+                                        alpha = contentAlpha
+                                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                                    }
+                                    .pointerInput(contentVisible) {
+                                        if (!contentVisible) {
+                                            awaitPointerEventScope {
+                                                while (true) {
+                                                    awaitPointerEvent().changes.forEach { it.consume() }
+                                                }
+                                            }
+                                        }
+                                    },
                         ) {
                             AnimatedVisibility(
                                 visible = useRail && shouldShowNavigationBar,
