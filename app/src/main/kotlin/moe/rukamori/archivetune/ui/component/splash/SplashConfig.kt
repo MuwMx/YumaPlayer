@@ -74,4 +74,10 @@ object SplashConfig {
         var LINK_DISTANCE_DP: Float = 150f
         var LOGO_TARGET_SIZE_DP: Float = 150f
     }
+
+    object Reveal {
+        var START_FRACTION: Float = 0.15f
+        var DURATION_MS: Int = 450
+        var RISE_DP: Float = 24f
+    }
 }

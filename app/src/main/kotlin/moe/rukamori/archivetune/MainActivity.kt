@@ -270,6 +270,7 @@ import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
+import moe.rukamori.archivetune.ui.component.splash.SplashConfig
 import moe.rukamori.archivetune.ui.component.splash.SplashOverlay
 import moe.rukamori.archivetune.ui.component.splash.SplashSlots
 import moe.rukamori.archivetune.ui.component.splash.SplashVectorLoader
@@ -801,7 +802,7 @@ class MainActivity : ComponentActivity() {
             var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
             val contentAlpha by animateFloatAsState(
                 targetValue = if (contentVisible) 1f else 0f,
-                animationSpec = tween(durationMillis = if (disableAnimations) 0 else 450, easing = EaseOut),
+                animationSpec = tween(durationMillis = if (disableAnimations) 0 else SplashConfig.Reveal.DURATION_MS, easing = EaseOut),
                 label = "splashContentAlpha",
             )
             val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
@@ -1638,7 +1639,7 @@ class MainActivity : ComponentActivity() {
                                 Modifier
                                     .graphicsLayer {
                                         alpha = contentAlpha
-                                        translationY = (1f - contentAlpha) * 24.dp.toPx()
+                                        translationY = (1f - contentAlpha) * SplashConfig.Reveal.RISE_DP.dp.toPx()
                                         compositingStrategy = CompositingStrategy.ModulateAlpha
                                     }
                                     .pointerInput(contentVisible) {
