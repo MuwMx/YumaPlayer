@@ -59,7 +59,8 @@ fun SplashOverlay(
                 engine.update(dt, now / 1_000_000)
                 frameTick = now
 
-                if (engine.currentPhase == SplashPhase.Burst && !burstTriggered) {
+                val burstLimit = if (engine.isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
+                if (engine.currentPhase == SplashPhase.Burst && !burstTriggered && engine.phaseElapsedMs >= burstLimit * 0.55f) {
                     burstTriggered = true
                     currentOnBurstStart()
                 }

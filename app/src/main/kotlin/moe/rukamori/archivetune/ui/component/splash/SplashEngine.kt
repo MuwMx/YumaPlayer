@@ -296,16 +296,12 @@ class SplashEngine {
 
         // Стало: синхронизация с фазой Burst или динамическая скорость
         shockwave?.let { sw ->
-            if (currentPhase == SplashPhase.Burst) {
+            if (currentPhase == SplashPhase.Burst || currentPhase == SplashPhase.Idle) {
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
 
                 val e = progress * progress * (3f - 2f * progress)
-                sw.radius = sw.maxRadius * e
-
-                if (progress >= 1f) {
-                    shockwave = null
-                }
+                sw.radius = if (currentPhase == SplashPhase.Idle || progress >= 1f) sw.maxRadius else sw.maxRadius * e
             } else {
                 // Фоновый долет, если фаза сменилась чуть раньше
                 val speed = (sw.maxRadius / 20f) * step
