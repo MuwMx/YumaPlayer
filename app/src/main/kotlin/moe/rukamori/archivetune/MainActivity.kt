@@ -114,6 +114,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -371,6 +372,7 @@ class MainActivity : ComponentActivity() {
     private var isMusicServiceBound = false
     private var immersiveStatusBarsHidden = false
     private var isOnboardingCompleted by mutableStateOf<Boolean?>(null)
+    private var isReady by mutableStateOf(false)
     private val playerViewModel: PlayerViewModel by viewModels()
     private val onboardingViewModel: OnboardingViewModel by viewModels()
     private val serviceConnection =
@@ -561,7 +563,7 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         splashScreen.setKeepOnScreenCondition {
-            isOnboardingCompleted == null
+            isOnboardingCompleted == null || !isReady
         }
         lifecycleScope.launch {
             dataStore.data
@@ -788,19 +790,18 @@ class MainActivity : ComponentActivity() {
                 defaultValue = defaultDisableAnimations,
             )
             val splashEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
-            var coldSplash by remember { mutableStateOf(splashEnabled) }
-            var contentVisible by remember { mutableStateOf(!coldSplash || disableAnimations) }
+            LaunchedEffect(Unit) {
+                dataStore.data.first()
+                snapshotFlow { splashEnabled }.first()
+                isReady = true
+            }
+            var coldSplash by remember(isReady) { mutableStateOf(splashEnabled) }
+            var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
             val contentAlpha by animateFloatAsState(
                 targetValue = if (contentVisible) 1f else 0f,
                 animationSpec = tween(durationMillis = if (disableAnimations) 0 else 400),
                 label = "splashContentAlpha",
             )
-            LaunchedEffect(splashEnabled) {
-                if (!splashEnabled) {
-                    contentVisible = true
-                    coldSplash = false
-                }
-            }
             val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
             val homeBackgroundParallaxEnabled by rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
             val homeBackgroundParallaxStrength by rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
@@ -914,7 +915,7 @@ class MainActivity : ComponentActivity() {
                 fontPreference = fontPreference,
                 customFontUri = customFontUri,
             ) {
-                if (isOnboardingCompleted == null) {
+                if (isOnboardingCompleted == null || !isReady) {
                     return@ArchiveTuneTheme
                 }
 
