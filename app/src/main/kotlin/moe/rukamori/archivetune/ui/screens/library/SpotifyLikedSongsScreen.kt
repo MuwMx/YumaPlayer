@@ -186,6 +186,8 @@ fun SpotifyLikedSongsScreen(
                         allTracks = queueTracks,
                         startIndex = boundedStartIndex,
                         preloadItem = preloadItem,
+                        totalCount = total.takeIf { it > 0 },
+                        hasCustomOrder = isSearching,
                     ),
                 )
             } finally {
