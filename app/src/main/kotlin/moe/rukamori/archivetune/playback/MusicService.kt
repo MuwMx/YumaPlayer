@@ -2130,24 +2130,6 @@ class MusicService :
                             .filterVideo(hideVideo)
                     }
                 if (!isActive) return@launch
-                if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
-                    val expandedItems = initialStatus.items.toMutableList()
-                    var pagesLoaded = 0
-                    while (queue.hasNextPage() && pagesLoaded < 200 && isActive) {
-                        pagesLoaded++
-                        val nextItems =
-                            withContext(Dispatchers.IO) {
-                                queue
-                                    .nextPage()
-                                    .filterExplicit(hideExplicit)
-                                    .filterVideo(hideVideo)
-                            }
-                        if (nextItems.isNotEmpty()) {
-                            expandedItems += nextItems
-                        }
-                    }
-                    initialStatus = initialStatus.copy(items = expandedItems)
-                }
                 if (initialStatus.title != null) {
                     queueTitle = initialStatus.title
                 }
@@ -2671,29 +2653,30 @@ class MusicService :
         }
 
         // Auto-load more from queue if available
+        val remainingTracks = player.mediaItemCount - player.currentMediaItemIndex
         if (!suppressAutoPlayback &&
             !isInitializingQueue &&
             !timelineEmpty &&
             dataStore.get(AutoLoadMoreKey, true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
-            player.mediaItemCount - player.currentMediaItemIndex <= 5 &&
-            currentQueue.hasNextPage() &&
             player.repeatMode == REPEAT_MODE_OFF
         ) {
-            scope.launch(SilentHandler) {
-                val mediaItems =
-                    currentQueue
-                        .nextPage()
-                        .filterExplicit(
-                            dataStore.get(HideExplicitKey, false),
-                        ).filterVideo(dataStore.get(HideVideoKey, false))
-                if (player.playbackState != STATE_IDLE) {
-                    player.addMediaItems(mediaItems)
-                } else {
-                    requestDiscordSync(
-                        reason = "player_idle_after_queue_extension",
-                        force = true,
-                    )
+            if (remainingTracks <= 5 && currentQueue.hasNextPage()) {
+                scope.launch(SilentHandler) {
+                    val nextBatch =
+                        currentQueue
+                            .nextPage()
+                            .filterExplicit(
+                                dataStore.get(HideExplicitKey, false),
+                            ).filterVideo(dataStore.get(HideVideoKey, false))
+                    if (player.playbackState != STATE_IDLE) {
+                        player.addMediaItems(nextBatch)
+                    } else {
+                        requestDiscordSync(
+                            reason = "player_idle_after_queue_extension",
+                            force = true,
+                        )
+                    }
                 }
             }
         }
