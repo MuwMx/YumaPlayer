@@ -7,7 +7,5 @@
 package moe.rukamori.archivetune
 
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.staticCompositionLocalOf
 
 val LocalAnimationsDisabled = compositionLocalOf { false }
-val LocalContentReady = staticCompositionLocalOf<() -> Unit> { {} }

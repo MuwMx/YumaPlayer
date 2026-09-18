@@ -18,10 +18,9 @@ object SplashConfig {
         var GATHER_LOGO_MS: Float = 800f
         var GATHER_CROSS_MS: Float = 450f
         var GATHER_SHORT_MS: Float = 400f
-        var GATHER_TIMEOUT_MS: Float = 1400f
         var IGNITE_FULL_MS: Float = 140f
         var IGNITE_SHORT_MS: Float = 110f
-        var BURST_FULL_MS: Float = 750f
+        var BURST_FULL_MS: Float = 420f
         var BURST_SHORT_MS: Float = 280f
         var TRANSIT_MS: Float = 320f
     }
@@ -47,7 +46,7 @@ object SplashConfig {
         var POST_BURST_FRAMES: Int = 130
 
         var SHOCKWAVE_SPEED: Float = 20f
-        var SHOCKWAVE_RADIUS_FACTOR: Float = 1.15f
+        var SHOCKWAVE_RADIUS_FACTOR: Float = 0.95f
         var SHOCKWAVE_ALPHA_BOLT: Float = 0.75f
         var SHOCKWAVE_ALPHA_CROSS: Float = 0.85f
         var SHOCKWAVE_ALPHA_BURST: Float = 1.0f
@@ -61,7 +60,7 @@ object SplashConfig {
         var PULSE_WAVE_SPEED: Float = 0.32f
         var STAR_STAGGER_MS: Float = 60f
         var STAR_STAGGER_SHORT_MS: Float = 34f
-        var STAR_SIZE_DP: Float = 15f
+        var STAR_SIZE_DP: Float = 24f
         var PINCH_FACTOR: Float = 0.06f
 
         var SWING_ANGLE_DEG: Float = 3.6f

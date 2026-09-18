@@ -344,7 +344,7 @@ class SplashRenderer {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return
         val progress = (sw.radius / sw.maxRadius).coerceIn(0f, 1f)
-        val effectiveAlpha = (sw.alpha * (1f - progress)).coerceIn(0f, 1f)
+        val effectiveAlpha = (sw.alpha * (1f - progress) * (1f - progress)).coerceIn(0f, 1f)
         if (effectiveAlpha <= 0.003f) return
 
         drawCircle(

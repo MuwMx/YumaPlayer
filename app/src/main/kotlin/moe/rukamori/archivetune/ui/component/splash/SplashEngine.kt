@@ -58,7 +58,6 @@ class SplashEngine {
     var formStrength: Float = 0f
     var globalOpacity: Float = 0f
     var isShort: Boolean = false
-    var isContentReady: Boolean = false
     var postBurstFrames: Int = 0
     var pulseWave: Float = 0f
     var particleScale: Float = 1f
@@ -249,7 +248,7 @@ class SplashEngine {
                     else -> SplashConfig.Timings.GATHER_BOLT_MS
                 }
                 formStrength = min(1f, phaseElapsedMs / gatherLimit)
-                if (phaseElapsedMs >= gatherLimit && (isContentReady || phaseElapsedMs >= SplashConfig.Timings.GATHER_TIMEOUT_MS)) {
+                if (phaseElapsedMs >= gatherLimit) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
                     } else {
@@ -278,7 +277,7 @@ class SplashEngine {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
-                particleScale = max(0.6f, 1f - (phaseElapsedMs / burstLimit) * 0.4f)
+                particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit)
                 particleAlpha = (1f - progress * progress).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
@@ -299,27 +298,12 @@ class SplashEngine {
             screenFlash = max(0f, screenFlash - SplashConfig.Burst.SCREEN_FLASH_DECAY * step)
         }
 
-        // Стало: синхронизация с фазой Burst или динамическая скорость
         shockwave?.let { sw ->
-            if (currentPhase == SplashPhase.Burst || currentPhase == SplashPhase.Idle) {
-                val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
-
-                if (progress >= 1f) {
-                    shockwave = null
-                } else {
-                    val e = progress * progress * (3f - 2f * progress)
-                    sw.radius = sw.maxRadius * e
-                }
+            val newR = sw.radius + SplashConfig.Burst.SHOCKWAVE_SPEED * step
+            if (newR >= sw.maxRadius) {
+                shockwave = null
             } else {
-                // Фоновый долет, если фаза сменилась чуть раньше
-                val speed = (sw.maxRadius / 20f) * step
-                val newR = sw.radius + speed
-                if (newR >= sw.maxRadius) {
-                    shockwave = null
-                } else {
-                    sw.radius = newR
-                }
+                sw.radius = newR
             }
         }
 

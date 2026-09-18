@@ -28,7 +28,6 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun SplashOverlay(
     modifier: Modifier = Modifier,
-    isContentReady: Boolean = true,
     onBurstStart: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
@@ -44,10 +43,6 @@ fun SplashOverlay(
         val engine = remember { SplashEngine() }
         val renderer = remember { SplashRenderer() }
         var frameTick by remember { mutableLongStateOf(0L) }
-
-        LaunchedEffect(isContentReady) {
-            engine.isContentReady = isContentReady
-        }
 
         LaunchedEffect(vv) {
             if (vv > 0) engine.rebuildSlots()
