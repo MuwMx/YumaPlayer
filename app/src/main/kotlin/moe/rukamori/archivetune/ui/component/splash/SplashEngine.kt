@@ -81,35 +81,21 @@ class SplashEngine {
 
         rebuildSlots()
 
-        val scatter = 20f
-        val slotList = slots
         val center = SplashSlots.center(w, h)
         val activeMembers = SplashConfig.getSlotCount(shape).coerceIn(12, MAX_MEMBERS)
-        val totalParticles = MAX_MEMBERS + FLOATER_COUNT
 
-        for (i in 0 until totalParticles) {
-            val isMember = i < activeMembers
-            val startX: Float
-            val startY: Float
-            val startVx: Float
-            val startVy: Float
-            if (isMember) {
-                val r = 60f + Random.nextFloat() * 130f
-                val angle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
-                val cosA = cos(angle)
-                val sinA = sin(angle)
-                startX = center.x + cosA * r
-                startY = center.y + sinA * r
-                val speed = 0.18f + Random.nextFloat() * 0.22f
-                startVx = cosA * speed
-                startVy = sinA * speed
-            } else {
-                val target = if (slotList.isNotEmpty()) slotList[i % slotList.size] else center
-                startX = target.x + (Random.nextFloat() - 0.5f) * scatter
-                startY = target.y + (Random.nextFloat() - 0.5f) * scatter
-                startVx = (Random.nextFloat() - 0.5f) * 0.5f
-                startVy = (Random.nextFloat() - 0.5f) * 0.5f
-            }
+        for (i in 0 until activeMembers) {
+            val r = 140f + Random.nextFloat() * 180f
+            val angle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
+            val cosA = cos(angle)
+            val sinA = sin(angle)
+            val startX = center.x + cosA * r
+            val startY = center.y + sinA * r
+
+            val speed = 0.25f + Random.nextFloat() * 0.35f
+            val startVx = cosA * speed
+            val startVy = sinA * speed
+
             val depth = Random.nextFloat()
             val seed = Random.nextFloat()
             val isRare = Random.nextFloat() < SplashParticle.wD
@@ -134,7 +120,7 @@ class SplashEngine {
                     breath = breath,
                     lum = lum,
                     ring = i % 2,
-                    isMember = isMember,
+                    isMember = true,
                     isRare = isRare
                 )
             )
@@ -269,7 +255,17 @@ class SplashEngine {
                     else -> SplashConfig.Timings.GATHER_BOLT_MS
                 }
                 formStrength = min(1f, phaseElapsedMs / gatherLimit)
-                if (phaseElapsedMs >= gatherLimit) {
+                var memberCount = 0
+                var totalDist = 0f
+                for (i in particles.indices) {
+                    val p = particles[i]
+                    if (p.isMember && p.slotIndex >= 0) {
+                        memberCount++
+                        totalDist += hypot(p.x - p.targetX, p.y - p.targetY)
+                    }
+                }
+                val converged = memberCount > 0 && (totalDist / memberCount) < 2f
+                if (converged || phaseElapsedMs >= gatherLimit) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
                     } else {
@@ -297,7 +293,8 @@ class SplashEngine {
             SplashPhase.Burst -> {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit)
+                val snap = if (phaseElapsedMs <= 40f) 0.85f else 1f
+                particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit) * snap
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
                     setPhase(SplashPhase.Idle)
@@ -318,7 +315,7 @@ class SplashEngine {
         }
 
         shockwave?.let { sw ->
-            val newR = sw.radius + SplashConfig.Burst.SHOCKWAVE_SPEED * step
+            val newR = sw.radius + sw.maxRadius / 40f * step
             if (newR >= sw.maxRadius) {
                 shockwave = null
             } else {
