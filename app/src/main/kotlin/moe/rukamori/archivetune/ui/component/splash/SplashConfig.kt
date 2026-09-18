@@ -107,7 +107,7 @@ object SplashConfig {
 
         var MAX_HALO_DP: Float = 28f
         var LINK_DISTANCE_DP: Float = 150f
-        var LOGO_TARGET_SIZE_DP: Float = 150f
+        var LOGO_TARGET_SIZE_DP: Float = 170f
     }
 
     object Look {

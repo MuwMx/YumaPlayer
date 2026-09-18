@@ -184,6 +184,15 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        create("profile") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isProfileable = true
+        }
+
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
@@ -296,7 +305,6 @@ implementation(libs.androidx.foundation.layout)
     implementation(libs.shimmer)
     implementation(libs.lottie.compose)
     implementation(libs.haze)
-    implementation(libs.haze.materials)
     implementation(libs.graphics.shapes)
 
     implementation(libs.google.material)
