@@ -2331,6 +2331,7 @@ class MusicService :
     }
 
     fun onInfiniteQueueEnabled() {
+        if (currentQueue is SpotifyTracksQueue) return
         val currentMeta = player.currentMetadata ?: return
         if (isCurrentPlaybackItemLocal(currentMeta)) return
         if (infiniteQueueLoading.value) return

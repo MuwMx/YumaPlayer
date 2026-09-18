@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,12 +92,14 @@ fun LibraryFilterChipBar(
         LibraryFilter.PLAYLISTS,
     ),
 ) {
-    val chipItems = chips.map { filter ->
-        LibraryFilterChip(
-            id = filter.name,
-            labelRes = filter.toLabelRes(),
-            iconRes = filter.toIconRes(),
-        )
+    val chipItems = remember(chips) {
+        chips.map { filter ->
+            LibraryFilterChip(
+                id = filter.name,
+                labelRes = filter.toLabelRes(),
+                iconRes = filter.toIconRes(),
+            )
+        }
     }
     LibraryFilterChipBar(
         selectedId = selected?.name,
