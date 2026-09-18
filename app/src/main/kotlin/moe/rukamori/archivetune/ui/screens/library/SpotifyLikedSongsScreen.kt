@@ -59,7 +59,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
+import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
@@ -181,7 +181,7 @@ fun SpotifyLikedSongsScreen(
             try {
                 val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
                 playerConnection?.playQueue(
-                    SpotifyTracksQueue(
+                    SpotifyLikedSongsQueue(
                         title = context.getString(R.string.spotify_liked_songs),
                         allTracks = queueTracks,
                         startIndex = boundedStartIndex,
