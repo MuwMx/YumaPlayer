@@ -479,28 +479,12 @@ private fun YouTubeGridItemWrapper(
                     onClick = {
                         when (item) {
                             is SongItem -> {
-                                val visibleSongs = visibleItems?.filterIsInstance<SongItem>()
-                                val idx = when {
-                                    visibleSongs != null && visibleSongs.any { it.id == item.id } -> visibleSongs.indexOfFirst { it.id == item.id }
-                                    clickedIndex != -1 -> clickedIndex
-                                    else -> -1
-                                }
-                                if (visibleSongs != null && visibleSongs.size > 1 && idx != -1) {
-                                    playerConnection.playQueue(
-                                        ListQueue(
-                                            title = sectionTitle,
-                                            items = visibleSongs.map { it.toMediaItem() },
-                                            startIndex = idx
-                                        )
-                                    )
-                                } else {
-                                    playerConnection.playQueue(
-                                        YouTubeQueue(
-                                            item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                            item.toMediaMetadata(),
-                                        ),
-                                    )
-                                }
+                                playerConnection.playQueue(
+                                    YouTubeQueue(
+                                        item.endpoint ?: WatchEndpoint(videoId = item.id),
+                                        item.toMediaMetadata(),
+                                    ),
+                                )
                             }
 
                             is AlbumItem -> {
