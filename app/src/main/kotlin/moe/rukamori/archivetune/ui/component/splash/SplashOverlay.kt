@@ -79,7 +79,7 @@ fun SplashOverlay(
         AnimatedVisibility(
             visible = showSplash,
             enter = EnterTransition.None,
-            exit = fadeOut(animationSpec = tween(durationMillis = 250)),
+            exit = fadeOut(animationSpec = tween(durationMillis = SplashConfig.Reveal.FADE_MS)),
             modifier = modifier
                 .fillMaxSize()
                 .clickable(

@@ -85,14 +85,14 @@ class SplashEngine {
         val activeMembers = SplashConfig.getSlotCount(shape).coerceIn(12, MAX_MEMBERS)
 
         for (i in 0 until activeMembers) {
-            val r = 140f + Random.nextFloat() * 180f
+            val r = SplashConfig.Spawn.RING_INNER + Random.nextFloat() * SplashConfig.Spawn.RING_WIDTH
             val angle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
             val cosA = cos(angle)
             val sinA = sin(angle)
             val startX = center.x + cosA * r
             val startY = center.y + sinA * r
 
-            val speed = 0.25f + Random.nextFloat() * 0.35f
+            val speed = SplashConfig.Spawn.SPEED_BASE + Random.nextFloat() * SplashConfig.Spawn.SPEED_VAR
             val startVx = cosA * speed
             val startVy = sinA * speed
 
@@ -157,8 +157,8 @@ class SplashEngine {
 
         for (i in particles.indices) {
             val p = particles[i]
-            p.vx *= 0.65f
-            p.vy *= 0.65f
+            p.vx *= SplashConfig.Physics.DAMP_ON_RESHAPE
+            p.vy *= SplashConfig.Physics.DAMP_ON_RESHAPE
         }
         bindSlots()
         setPhase(SplashPhase.Gather)
@@ -209,7 +209,7 @@ class SplashEngine {
                 globalOpacity = 0f
             }
             SplashPhase.Gather -> {
-                formStrength = if (shape == SplashSlots.SHAPE_CROSS) 0.85f else 0.15f
+                formStrength = if (shape == SplashSlots.SHAPE_CROSS) SplashConfig.Physics.FORM_CROSS else SplashConfig.Physics.FORM_GATHER
             }
             SplashPhase.Ignite -> {
                 formStrength = 1f
@@ -264,7 +264,7 @@ class SplashEngine {
                         totalDist += hypot(p.x - p.targetX, p.y - p.targetY)
                     }
                 }
-                val converged = memberCount > 0 && (totalDist / memberCount) < 2f
+                val converged = memberCount > 0 && (totalDist / memberCount) < SplashConfig.Settle.CONVERGE_DIST
                 if (converged || phaseElapsedMs >= gatherLimit) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
@@ -293,7 +293,7 @@ class SplashEngine {
             SplashPhase.Burst -> {
                 formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                val snap = if (phaseElapsedMs <= 40f) 0.85f else 1f
+                val snap = if (phaseElapsedMs <= SplashConfig.Burst.SNAP_MS) SplashConfig.Burst.SNAP_SCALE else 1f
                 particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit) * snap
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
@@ -315,7 +315,7 @@ class SplashEngine {
         }
 
         shockwave?.let { sw ->
-            val newR = sw.radius + sw.maxRadius / 40f * step
+            val newR = sw.radius + sw.maxRadius / SplashConfig.Wave.FRAMES_TO_CROSS * step
             if (newR >= sw.maxRadius) {
                 shockwave = null
             } else {
@@ -399,8 +399,8 @@ class SplashEngine {
         shape = newShape
         for (i in particles.indices) {
             val p = particles[i]
-            p.vx *= 0.5f
-            p.vy *= 0.5f
+            p.vx *= SplashConfig.Physics.DAMP_ON_REGATHER
+            p.vy *= SplashConfig.Physics.DAMP_ON_REGATHER
         }
         rebuildSlots()
         setPhase(SplashPhase.Gather)

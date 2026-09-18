@@ -7,15 +7,15 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 object SplashPhysics {
-    const val gD: Float = SplashParticle.gD
-    const val vD: Float = SplashParticle.vD
-    const val bD: Float = 0.020f // Живой, равномерный дрейф
-    const val xD: Float = SplashParticle.xD
-    const val SD: Float = SplashParticle.SD
-    const val TD: Float = 3.2f   // Одинаковая комфортная скорость свободного полета
-    const val ED: Float = 14f    // Быстрый подлет к слотам
-    const val MD: Float = 15f
-    const val MAX_STEP: Float = 1.5f
+    val gD: Float get() = SplashConfig.Physics.gD
+    val vD: Float get() = SplashConfig.Physics.vD
+    val bD: Float get() = SplashConfig.Physics.bD
+    val xD: Float get() = SplashConfig.Physics.xD
+    val SD: Float get() = SplashConfig.Physics.SD
+    val TD: Float get() = SplashConfig.Physics.TD
+    val ED: Float get() = SplashConfig.Physics.ED
+    val MD: Float get() = SplashConfig.Physics.MD
+    val MAX_STEP: Float get() = SplashConfig.Physics.MAX_STEP
 
     fun noiseField(x: Float, y: Float, seed: Float): Float {
         val phase = seed * PI.toFloat() * 2f

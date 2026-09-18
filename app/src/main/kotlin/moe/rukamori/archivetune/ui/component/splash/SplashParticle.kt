@@ -39,15 +39,15 @@ class SplashParticle(
     }
 
     companion object {
-        const val wD: Float = 0.055f
-        const val gD: Float = 0.05f
-        const val vD: Float = 0.0022f
-        const val bD: Float = 0.019f
-        const val xD: Float = 0.7f
-        const val SD: Float = 0.55f
-        const val TD: Float = 9f
-        const val ED: Float = 7f
-        const val MD: Float = 15f
+        val wD: Float get() = SplashConfig.Physics.wD
+        val gD: Float get() = SplashConfig.Physics.gD
+        val vD: Float get() = SplashConfig.Physics.vD
+        val bD: Float get() = SplashConfig.Physics.bD
+        val xD: Float get() = SplashConfig.Physics.xD
+        val SD: Float get() = SplashConfig.Physics.SD
+        val TD: Float get() = SplashConfig.Physics.TD
+        val ED: Float get() = SplashConfig.Physics.ED
+        val MD: Float get() = SplashConfig.Physics.MD
 
         fun baseRadiusFor(depth: Float, seed: Float = 0f, isRare: Boolean = false): Float {
             val m = abs(sin(seed * 311.7f + 74.7f) * 43758f) % 1f
