@@ -171,7 +171,7 @@ open class SpotifyTracksQueue(
             if (!apiHasMore) return@withContext emptyList()
 
             val previousCount = allTracks.size
-            fetchNextApiPage()
+            fetchNextApiPage(limit = SPOTIFY_PAGE_SIZE)
 
             if (allTracks.size <= previousCount) {
                 return@withContext emptyList()
@@ -199,11 +199,12 @@ open class SpotifyTracksQueue(
             resolvedBatch
         }
 
-    private suspend fun fetchNextApiPage() {
+    private suspend fun fetchNextApiPage(limit: Int = SPOTIFY_PAGE_SIZE) {
         if (!apiHasMore) return
         try {
-            val page = fetchPage(offset = apiFetchOffset, limit = SPOTIFY_PAGE_SIZE)
-            allTracks.addAll(page.tracks)
+            val page = fetchPage(offset = apiFetchOffset, limit = limit)
+            val nonLocalTracks = page.tracks.filter { !it.isLocal }
+            allTracks.addAll(nonLocalTracks)
             apiFetchOffset += page.rawCount
             apiHasMore = apiFetchOffset < apiTotal
             Timber.tag("SpotifyPipeline").d(
