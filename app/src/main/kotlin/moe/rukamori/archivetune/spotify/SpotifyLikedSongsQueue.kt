@@ -14,22 +14,30 @@ open class SpotifyLikedSongsQueue(
     initialTracks: List<SpotifyTrack> = emptyList(),
     startIndex: Int = 0,
     preloadItem: MediaMetadata? = null,
+    totalCount: Int? = null,
+    hasCustomOrder: Boolean = false,
 ) : SpotifyTracksQueue(
     title = title,
     initialTracks = initialTracks,
     startIndex = startIndex,
     preloadItem = preloadItem,
+    totalCount = totalCount,
+    hasCustomOrder = hasCustomOrder,
 ) {
     constructor(
         allTracks: List<SpotifyTrack>,
         startIndex: Int = 0,
         preloadItem: MediaMetadata? = null,
         title: String? = null,
+        totalCount: Int? = null,
+        hasCustomOrder: Boolean = false,
     ) : this(
         title = title,
         initialTracks = allTracks,
         startIndex = startIndex,
         preloadItem = preloadItem,
+        totalCount = totalCount,
+        hasCustomOrder = hasCustomOrder,
     )
 
     override suspend fun fetchPage(offset: Int, limit: Int): PageResult {

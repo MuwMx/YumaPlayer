@@ -25,17 +25,23 @@ open class SpotifyTracksQueue(
     protected val initialTracks: List<SpotifyTrack> = emptyList(),
     protected val startIndex: Int = 0,
     override val preloadItem: MediaMetadata? = null,
+    protected val totalCount: Int? = null,
+    protected val hasCustomOrder: Boolean = false,
 ) : Queue {
     constructor(
         allTracks: List<SpotifyTrack>,
         startIndex: Int = 0,
         preloadItem: MediaMetadata? = null,
         title: String? = null,
+        totalCount: Int? = null,
+        hasCustomOrder: Boolean = false,
     ) : this(
         title = title,
         initialTracks = allTracks,
         startIndex = startIndex,
         preloadItem = preloadItem,
+        totalCount = totalCount,
+        hasCustomOrder = hasCustomOrder,
     )
 
     data class PageResult(
@@ -66,15 +72,25 @@ open class SpotifyTracksQueue(
                 val provided = providedTracks
                 if (provided != null) {
                     allTracks.addAll(provided)
-                    apiTotal = provided.size
-                    apiFetchOffset = apiTotal
-                    apiHasMore = false
+                    if (hasCustomOrder) {
+                        apiTotal = provided.size
+                        apiFetchOffset = provided.size
+                        apiHasMore = false
+                    } else if (totalCount != null) {
+                        apiTotal = totalCount
+                        apiFetchOffset = initialTracks.size
+                        apiHasMore = apiFetchOffset < apiTotal
+                    } else {
+                        apiTotal = provided.size
+                        apiFetchOffset = apiTotal
+                        apiHasMore = false
+                    }
                 } else {
                     val page = fetchPage(offset = 0, limit = SPOTIFY_PAGE_SIZE)
-                    apiTotal = page.total
+                    apiTotal = totalCount ?: page.total
                     allTracks.addAll(page.tracks)
                     apiFetchOffset = page.rawCount
-                    apiHasMore = apiFetchOffset < apiTotal
+                    apiHasMore = if (hasCustomOrder) false else apiFetchOffset < apiTotal
                 }
 
                 if (providedTracks == null && allTracks.size <= startIndex) {
