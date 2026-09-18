@@ -44,6 +44,17 @@ class SplashRenderer {
     private var sprite2: ImageBitmap? = null
     private var failSprite: ImageBitmap? = null
 
+    private class CachedRadialGradient {
+        var brush: Brush? = null
+        var radius: Float = -1f
+        var color: Color = Color.Unspecified
+        var alphaBin: Int = -1
+        var center: Offset = Offset.Unspecified
+    }
+
+    private val tipGlowCaches = Array(8) { CachedRadialGradient() }
+    private val flashGlowCache = CachedRadialGradient()
+
     private var cachedGlowBrush: Brush? = null
     private var cachedGlowRadius: Float = -1f
     private var cachedGlowColor: Color = Color.Unspecified
@@ -376,17 +387,38 @@ class SplashRenderer {
             val tip = tips[d]
             val center = Offset(tip.x, tip.y)
             if (haloRadius > 0f) {
-                val haloBrush = Brush.radialGradient(
-                    0.0f to haloColor.copy(alpha = (flare * SplashConfig.Look.Halo.STAR_FLARE_ALPHA).coerceIn(0f, 1f)),
-                    1.0f to Color.Transparent,
-                    center = center,
-                    radius = haloRadius
-                )
-                drawCircle(
-                    brush = haloBrush,
-                    radius = haloRadius,
-                    center = center
-                )
+                val rawAlpha = (flare * SplashConfig.Look.Halo.STAR_FLARE_ALPHA).coerceIn(0f, 1f)
+                val alphaBin = (rawAlpha * 20f).toInt()
+                if (alphaBin > 0) {
+                    val cache = if (d in tipGlowCaches.indices) tipGlowCaches[d] else null
+                    val haloBrush = if (cache != null) {
+                        if (cache.brush == null || cache.radius != haloRadius || cache.color != haloColor || cache.alphaBin != alphaBin || cache.center != center) {
+                            cache.radius = haloRadius
+                            cache.color = haloColor
+                            cache.alphaBin = alphaBin
+                            cache.center = center
+                            cache.brush = Brush.radialGradient(
+                                0.0f to haloColor.copy(alpha = alphaBin / 20f),
+                                1.0f to Color.Transparent,
+                                center = center,
+                                radius = haloRadius
+                            )
+                        }
+                        cache.brush!!
+                    } else {
+                        Brush.radialGradient(
+                            0.0f to haloColor.copy(alpha = rawAlpha),
+                            1.0f to Color.Transparent,
+                            center = center,
+                            radius = haloRadius
+                        )
+                    }
+                    drawCircle(
+                        brush = haloBrush,
+                        radius = haloRadius,
+                        center = center
+                    )
+                }
             }
             drawFourPointStar(
                 cx = tip.x,
@@ -428,16 +460,28 @@ class SplashRenderer {
         if (alpha <= SplashConfig.Look.Cutoffs.FLASH_ALPHA) return
         val radius = SplashConfig.Look.Flash.RADIUS_DP.dp.toPx()
         val flashColor = if (isDark) Color.White else primaryColor
-        val brush = Brush.radialGradient(
-            0.0f to flashColor.copy(alpha = alpha),
-            1.0f to Color.Transparent,
-            center = center,
-            radius = radius,
-        )
-        drawCircle(
-            brush = brush,
-            radius = radius,
-            center = center,
-        )
+        val alphaBin = (alpha * 20f).toInt()
+        val c = center
+        if (alphaBin > 0) {
+            val brush = if (flashGlowCache.brush == null || flashGlowCache.radius != radius || flashGlowCache.color != flashColor || flashGlowCache.alphaBin != alphaBin || flashGlowCache.center != c) {
+                flashGlowCache.radius = radius
+                flashGlowCache.color = flashColor
+                flashGlowCache.alphaBin = alphaBin
+                flashGlowCache.center = c
+                Brush.radialGradient(
+                    0.0f to flashColor.copy(alpha = alphaBin / 20f),
+                    1.0f to Color.Transparent,
+                    center = c,
+                    radius = radius,
+                ).also { flashGlowCache.brush = it }
+            } else {
+                flashGlowCache.brush!!
+            }
+            drawCircle(
+                brush = brush,
+                radius = radius,
+                center = c,
+            )
+        }
     }
 }

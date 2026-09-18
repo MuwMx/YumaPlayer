@@ -22,9 +22,8 @@ object Fu {
 }
 
 class SplashEngine {
-    val particles = ArrayList<SplashParticle>(MAX_MEMBERS + FLOATER_COUNT)
+    val particles = ArrayList<SplashParticle>(MAX_MEMBERS)
     var shockwave: SplashShockwave? = null
-    var screenFlash: Float = 0f
 
     var currentPhase: SplashPhase = SplashPhase.Gather
     var phase: String
@@ -213,10 +212,8 @@ class SplashEngine {
             }
             SplashPhase.Ignite -> {
                 formStrength = 1f
-                screenFlash = SplashConfig.Burst.SCREEN_FLASH_IGNITE
             }
             SplashPhase.Burst -> {
-                screenFlash = SplashConfig.Burst.SCREEN_FLASH_BURST
                 val c = SplashSlots.center(width, height)
                 shock(c.x, c.y, SplashConfig.Burst.SHOCKWAVE_ALPHA_BURST)
                 explode(c, power = SplashConfig.Burst.EXPLODE_POWER)
@@ -308,10 +305,6 @@ class SplashEngine {
             }
             SplashPhase.Idle, SplashPhase.Success, SplashPhase.Error -> {
             }
-        }
-
-        if (screenFlash > 0f) {
-            screenFlash = max(0f, screenFlash - SplashConfig.Burst.SCREEN_FLASH_DECAY * step)
         }
 
         shockwave?.let { sw ->
@@ -409,6 +402,5 @@ class SplashEngine {
     companion object {
         const val MAX_MEMBERS: Int = 64
         const val MEMBER_COUNT: Int = 24
-        const val FLOATER_COUNT: Int = 28
     }
 }

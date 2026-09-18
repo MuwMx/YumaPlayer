@@ -31,12 +31,19 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun SplashOverlay(
     modifier: Modifier = Modifier,
     isDark: Boolean = true,
-    contentColor: Color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface,
-    primaryColor: Color = if (isDark) Color.White else MaterialTheme.colorScheme.primary,
+    contentColor: Color? = null,
+    primaryColor: Color? = null,
     onBurstStart: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
     if (splashOverlayEnabled) {
+        val colorScheme = MaterialTheme.colorScheme
+        val resolvedContentColor = remember(isDark, contentColor, colorScheme) {
+            contentColor ?: if (isDark) Color.White else colorScheme.onSurface
+        }
+        val resolvedPrimaryColor = remember(isDark, primaryColor, colorScheme) {
+            primaryColor ?: if (isDark) Color.White else colorScheme.primary
+        }
         val vv = SplashSlots.vectorVersion
         val animationsDisabled = LocalAnimationsDisabled.current
         var showSplash by remember { mutableStateOf(!animationsDisabled) }
@@ -113,8 +120,8 @@ fun SplashOverlay(
                     render(
                         engine = engine,
                         isDark = isDark,
-                        contentColor = contentColor,
-                        primaryColor = primaryColor,
+                        contentColor = resolvedContentColor,
+                        primaryColor = resolvedPrimaryColor,
                     )
                 }
             }
