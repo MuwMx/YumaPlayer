@@ -256,6 +256,7 @@ fun SpotifyPlaylistScreen(
                         initialTracks = queueTracks,
                         startIndex = boundedStartIndex,
                         preloadItem = preloadItem,
+                        totalCount = currentPlaylist.tracks?.total,
                     ),
                 )
             } finally {

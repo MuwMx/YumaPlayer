@@ -199,7 +199,9 @@ fun SpotifyHomeScreen(
                                                     SpotifyTracksQueue(
                                                         title = section.title,
                                                         initialTracks = section.tracks,
-                                                        startIndex = section.tracks.indexOf(track)
+                                                        startIndex = section.tracks.indexOf(track),
+                                                        totalCount = section.tracks.size,
+                                                        hasCustomOrder = true,
                                                     )
                                                 )
                                             },
