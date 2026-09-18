@@ -42,11 +42,12 @@ fun PlaylistListItem(
         if (autoPlaylist) {
             ""
         } else {
-            if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
+            val remoteSongCount = playlist.playlist.remoteSongCount
+            if (playlist.songCount == 0 && remoteSongCount != null) {
                 pluralStringResource(
                     R.plurals.n_song,
-                    playlist.playlist.remoteSongCount,
-                    playlist.playlist.remoteSongCount,
+                    remoteSongCount,
+                    remoteSongCount,
                 )
             } else {
                 pluralStringResource(
@@ -100,24 +101,25 @@ fun PlaylistGridItem(
         )
     },
     subtitle = {
-        val subtitle =
-            if (autoPlaylist) {
-                ""
-            } else {
-                if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
-                    pluralStringResource(
-                        R.plurals.n_song,
-                        playlist.playlist.remoteSongCount,
-                        playlist.playlist.remoteSongCount,
-                    )
+            val subtitle =
+                if (autoPlaylist) {
+                    ""
                 } else {
-                    pluralStringResource(
-                        R.plurals.n_song,
-                        playlist.songCount,
-                        playlist.songCount,
-                    )
+                    val remoteSongCount = playlist.playlist.remoteSongCount
+                    if (playlist.songCount == 0 && remoteSongCount != null) {
+                        pluralStringResource(
+                            R.plurals.n_song,
+                            remoteSongCount,
+                            remoteSongCount,
+                        )
+                    } else {
+                        pluralStringResource(
+                            R.plurals.n_song,
+                            playlist.songCount,
+                            playlist.songCount,
+                        )
+                    }
                 }
-            }
         MarqueeText(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
@@ -192,14 +194,15 @@ fun LocalSongsGrid(
 internal fun playlistCountText(
     playlist: Playlist,
     autoPlaylist: Boolean,
-): String =
-    if (autoPlaylist) {
+): String {
+    val remoteSongCount = playlist.playlist.remoteSongCount
+    return if (autoPlaylist) {
         ""
-    } else if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
+    } else if (playlist.songCount == 0 && remoteSongCount != null) {
         pluralStringResource(
             R.plurals.n_song,
-            playlist.playlist.remoteSongCount,
-            playlist.playlist.remoteSongCount,
+            remoteSongCount,
+            remoteSongCount,
         )
     } else {
         pluralStringResource(
@@ -208,6 +211,7 @@ internal fun playlistCountText(
             playlist.songCount,
         )
     }
+}
 
 @Composable
 internal fun playlistPlaceholderIcon(

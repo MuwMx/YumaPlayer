@@ -878,9 +878,10 @@ fun LocalPlaylistScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     // Song Count
+                                    val remoteSongCount = playlist.playlist.remoteSongCount
                                     val songCount =
-                                        if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
-                                            playlist.playlist.remoteSongCount
+                                        if (playlist.songCount == 0 && remoteSongCount != null) {
+                                            remoteSongCount
                                         } else {
                                             playlist.songCount
                                         }
@@ -1080,13 +1081,14 @@ fun LocalPlaylistScreen(
                                     ToggleButton(
                                         checked = false,
                                         onCheckedChange = {
+                                            val browseId = playlist.playlist.browseId
                                             if (editable) {
                                                 showEditDialog = true
-                                            } else if (playlist.playlist.browseId != null) {
+                                            } else if (browseId != null) {
                                                 coroutineScope.launch(Dispatchers.IO) {
                                                     val playlistPage =
                                                         YouTube
-                                                            .playlist(playlist.playlist.browseId)
+                                                            .playlist(browseId)
                                                             .completed()
                                                             .getOrNull() ?: return@launch
                                                     database.transaction {

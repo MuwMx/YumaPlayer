@@ -664,14 +664,15 @@ fun PlayerMenu(
                             )
                         }
 
-                        if (splitArtists.isNotEmpty() && mediaMetadata.album != null) {
+                        val album = mediaMetadata.album
+                        if (splitArtists.isNotEmpty() && album != null) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(start = 56.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant,
                             )
                         }
 
-                        if (mediaMetadata.album != null) {
+                        if (album != null) {
                             ListItem(
                                 headlineContent = { Text(text = stringResource(R.string.view_album)) },
                                 leadingContent = {
@@ -684,7 +685,7 @@ fun PlayerMenu(
                                     Modifier.clickable {
                                         onDismiss()
                                         playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                                        navController.navigate("album/${mediaMetadata.album.id}")
+                                        navController.navigate("album/${album.id}")
                                     },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             )

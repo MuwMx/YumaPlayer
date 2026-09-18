@@ -3839,11 +3839,12 @@ class MusicService :
 
         val artists =
             media.artists.map { artist ->
+                val artistId = artist.id
                 ArtistEntity(
-                    id = artist.id ?: "LA_unknown_${artist.name}",
+                    id = artistId ?: "LA_unknown_${artist.name}",
                     name = artist.name,
                     thumbnailUrl = if (!artist.thumbnailUrl.isNullOrBlank()) artist.thumbnailUrl else media.thumbnailUrl,
-                    isLocal = artist.id == null || artist.id.isLocalMediaId(),
+                    isLocal = artistId == null || artistId.isLocalMediaId(),
                 )
             }
 
