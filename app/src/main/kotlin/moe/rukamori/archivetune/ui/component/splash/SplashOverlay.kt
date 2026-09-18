@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.isActive
@@ -28,6 +30,9 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun SplashOverlay(
     modifier: Modifier = Modifier,
+    isDark: Boolean = true,
+    contentColor: Color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface,
+    primaryColor: Color = if (isDark) Color.White else MaterialTheme.colorScheme.primary,
     onBurstStart: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
@@ -105,7 +110,12 @@ fun SplashOverlay(
             ) {
                 frameTick
                 with(renderer) {
-                    render(engine)
+                    render(
+                        engine = engine,
+                        isDark = isDark,
+                        contentColor = contentColor,
+                        primaryColor = primaryColor,
+                    )
                 }
             }
         }

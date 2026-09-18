@@ -32,22 +32,32 @@ class SplashRenderer {
     val starPath = Path()
     private val defaultLoops = listOf(0 until SplashSlots.SLOT_COUNT)
 
-    val okBins = Array(LINK_BINS) { i ->
-        Color.White.copy(alpha = (i + 0.5f) / LINK_BINS.toFloat())
-    }
-    val failBins = Array(LINK_BINS) { i ->
-        Fu.fail.color.copy(alpha = (i + 0.5f) / LINK_BINS.toFloat())
-    }
-
     private var cachedDensity = -1f
     private val slotLookup = arrayOfNulls<SplashParticle>(128)
-    private var whiteSprite: ImageBitmap? = null
+
+    private var cachedBinsColor: Color = Color.Unspecified
+    private val linkBins = Array(LINK_BINS) { Color.Transparent }
+
+    private var cachedSprite1Color: Color = Color.Unspecified
+    private var sprite1: ImageBitmap? = null
+    private var cachedSprite2Color: Color = Color.Unspecified
+    private var sprite2: ImageBitmap? = null
     private var failSprite: ImageBitmap? = null
 
     private var cachedGlowBrush: Brush? = null
     private var cachedGlowRadius: Float = -1f
     private var cachedGlowColor: Color = Color.Unspecified
     private var cachedGlowStrength: Float = -1f
+
+    private fun getBins(contentColor: Color): Array<Color> {
+        if (cachedBinsColor != contentColor) {
+            cachedBinsColor = contentColor
+            for (i in 0 until LINK_BINS) {
+                linkBins[i] = contentColor.copy(alpha = (i + 0.5f) / LINK_BINS.toFloat())
+            }
+        }
+        return linkBins
+    }
 
     private fun glowSprite(base: Color): ImageBitmap {
         val size = 128
@@ -65,13 +75,20 @@ class SplashRenderer {
         return bmp
     }
 
-    private fun spriteFor(isCross: Boolean): ImageBitmap {
-        return if (isCross) {
-            failSprite ?: glowSprite(Fu.fail.color).also { failSprite = it }
-        } else {
-            whiteSprite ?: glowSprite(Color.White).also { whiteSprite = it }
+    private fun spriteFor(isCross: Boolean, color: Color): ImageBitmap {
+        if (isCross) {
+            return failSprite ?: glowSprite(Fu.fail.color).also { failSprite = it }
         }
+        if (cachedSprite1Color == color && sprite1 != null) return sprite1!!
+        if (cachedSprite2Color == color && sprite2 != null) return sprite2!!
+        if (sprite1 == null || cachedSprite1Color == Color.Unspecified) {
+            cachedSprite1Color = color
+            return glowSprite(color).also { sprite1 = it }
+        }
+        cachedSprite2Color = color
+        return glowSprite(color).also { sprite2 = it }
     }
+
     var linkStrokeWidthPx: Float = 1.5f
         private set
     var shockwaveStroke: Stroke = Stroke(width = 2f)
@@ -85,9 +102,14 @@ class SplashRenderer {
         }
     }
 
-    fun DrawScope.render(engine: SplashEngine) {
+    fun DrawScope.render(
+        engine: SplashEngine,
+        isDark: Boolean = true,
+        contentColor: Color = Color.White,
+        primaryColor: Color = Color.White
+    ) {
         ensureDensity(density)
-        drawFormationGlow(engine)
+        drawFormationGlow(engine, isDark, primaryColor)
 
         val timeSec = System.currentTimeMillis() / 1000f
         val isErrorCross = engine.shape == SplashSlots.SHAPE_CROSS && engine.currentPhase == SplashPhase.Error
@@ -98,10 +120,10 @@ class SplashRenderer {
         translate(top = floatY) {
             rotate(degrees = swingDeg, pivot = center) {
                 scale(scale = breathScale, pivot = center) {
-                    drawFormationLinks(engine)
-                    drawParticles(engine)
+                    drawFormationLinks(engine, contentColor)
+                    drawParticles(engine, isDark, contentColor)
                     if (engine.phase == "ignite") {
-                        drawIgnite(engine)
+                        drawIgnite(engine, isDark, contentColor, primaryColor)
                     }
                 }
             }
@@ -109,14 +131,25 @@ class SplashRenderer {
 
         drawShockwave(
             shockwave = engine.shockwave,
-            color = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else Color.White
+            color = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else contentColor,
+            isDark = isDark
         )
-        drawScreenFlash(engine)
+        drawScreenFlash(engine, isDark, primaryColor)
     }
 
-    fun DrawScope.drawFormationGlow(engine: SplashEngine) {
+    fun DrawScope.drawFormationGlow(
+        engine: SplashEngine,
+        isDark: Boolean = true,
+        primaryColor: Color = Color.White
+    ) {
         if (engine.formStrength <= SplashConfig.Look.Cutoffs.FORM_GLOW || size.height <= 0f) return
-        val baseColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else Fu.ok.color
+        val baseColor = if (engine.shape == SplashSlots.SHAPE_CROSS) {
+            Fu.fail.color
+        } else if (isDark) {
+            Fu.ok.color
+        } else {
+            primaryColor
+        }
         val r = size.height * SplashConfig.Look.Glow.HEIGHT_FACTOR
         if (r <= 0f) return
         val c = center
@@ -138,7 +171,10 @@ class SplashRenderer {
         }
     }
 
-    fun DrawScope.drawFormationLinks(engine: SplashEngine) {
+    fun DrawScope.drawFormationLinks(
+        engine: SplashEngine,
+        contentColor: Color = Color.White
+    ) {
         if (engine.formStrength <= SplashConfig.Look.Cutoffs.FORM_LINKS || (engine.phase != "gather" && engine.phase != "ignite" && engine.phase != "error" && engine.phase != "transit")) return
 
         val boxSize = SplashSlots.boxSize(engine.shape, engine.width, engine.height, density)
@@ -148,7 +184,7 @@ class SplashRenderer {
         val maxDistSq = maxDist * maxDist
         val invMaxDist = 1f / maxDist
 
-        val bins = okBins
+        val bins = getBins(contentColor)
 
         for (j in slotLookup.indices) slotLookup[j] = null
         for (p in engine.particles) {
@@ -202,16 +238,20 @@ class SplashRenderer {
         }
     }
 
-    fun DrawScope.drawParticles(engine: SplashEngine) {
+    fun DrawScope.drawParticles(
+        engine: SplashEngine,
+        isDark: Boolean = true,
+        contentColor: Color = Color.White
+    ) {
         val particles = engine.particles
         val isCross = engine.shape == SplashSlots.SHAPE_CROSS
         val isDust = engine.phase == "dust"
         val globalOp = if (isDust) engine.globalOpacity else 1f
-        val memberColor = if (isCross) Fu.fail.color else Color.White
-        val memberCore = if (isCross) Fu.fail.coreColor else Color.White
+        val memberColor = if (isCross) Fu.fail.color else contentColor
+        val memberCore = if (isCross) Fu.fail.coreColor else contentColor
         val slotCount = if (engine.currentShapeData.slots.isNotEmpty()) engine.currentShapeData.slots.size else SplashSlots.SLOT_COUNT
         val maxHalo = SplashConfig.Effects.MAX_HALO_DP.dp.toPx()
-        val sprite = spriteFor(isCross)
+        val sprite = spriteFor(isCross, contentColor)
 
         for (i in particles.indices) {
             val p = particles[i]
@@ -219,7 +259,7 @@ class SplashRenderer {
             val color = if (p.isMember) {
                 if (p.isRare) memberCore else memberColor
             } else {
-                if (isCross && glow > SplashConfig.Look.Halo.FAIL_GLOW_THRESHOLD) Fu.fail.color else Color.White
+                if (isCross && glow > SplashConfig.Look.Halo.FAIL_GLOW_THRESHOLD) Fu.fail.color else contentColor
             }
             val memberAlpha = SplashConfig.Look.Halo.MEMBER_ALPHA_BASE * (SplashConfig.Look.Halo.GLOW_MIX_BASE + SplashConfig.Look.Halo.GLOW_MIX_FACTOR * glow)
             val floaterAlpha = SplashConfig.Look.Halo.FLOATER_ALPHA_BASE * p.depth * p.lum * (1f - SplashConfig.Look.Halo.GLOW_MIX_FACTOR * glow)
@@ -279,7 +319,8 @@ class SplashRenderer {
         cy: Float,
         radius: Float,
         alpha: Float,
-        color: Color = Color.White
+        color: Color = Color.White,
+        haloColor: Color = Color.White
     ) {
         if (alpha <= SplashConfig.Look.Cutoffs.STAR_ALPHA || radius <= 0f) return
 
@@ -287,7 +328,7 @@ class SplashRenderer {
         val haloRadius = radius * SplashConfig.Look.Halo.STAR_BODY_HALO_FACTOR
         val vStarHalo = (haloRadius * 2f).roundToInt()
         val isFail = color == Fu.fail.coreColor || color == Fu.fail.color
-        val sprite = spriteFor(isFail)
+        val sprite = spriteFor(isFail, if (isFail) Fu.fail.color else haloColor)
         drawImage(
             image = sprite,
             srcOffset = IntOffset.Zero,
@@ -312,8 +353,14 @@ class SplashRenderer {
         )
     }
 
-    fun DrawScope.drawIgnite(engine: SplashEngine) {
-        val coreColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.coreColor else Color.White
+    fun DrawScope.drawIgnite(
+        engine: SplashEngine,
+        isDark: Boolean = true,
+        contentColor: Color = Color.White,
+        primaryColor: Color = Color.White
+    ) {
+        val coreColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.coreColor else contentColor
+        val haloColor = if (isDark) Color.White else primaryColor
 
         val elapsed = engine.phaseElapsedMs
         val limit = if (engine.isShort) SplashConfig.Timings.IGNITE_SHORT_MS else SplashConfig.Timings.IGNITE_FULL_MS
@@ -330,7 +377,7 @@ class SplashRenderer {
             val center = Offset(tip.x, tip.y)
             if (haloRadius > 0f) {
                 val haloBrush = Brush.radialGradient(
-                    0.0f to Color.White.copy(alpha = (flare * SplashConfig.Look.Halo.STAR_FLARE_ALPHA).coerceIn(0f, 1f)),
+                    0.0f to haloColor.copy(alpha = (flare * SplashConfig.Look.Halo.STAR_FLARE_ALPHA).coerceIn(0f, 1f)),
                     1.0f to Color.Transparent,
                     center = center,
                     radius = haloRadius
@@ -341,13 +388,21 @@ class SplashRenderer {
                     center = center
                 )
             }
-            drawFourPointStar(tip.x, tip.y, radius = starBase * flare, alpha = flare, color = coreColor)
+            drawFourPointStar(
+                cx = tip.x,
+                cy = tip.y,
+                radius = starBase * flare,
+                alpha = flare,
+                color = coreColor,
+                haloColor = haloColor
+            )
         }
     }
 
     fun DrawScope.drawShockwave(
         shockwave: SplashShockwave?,
-        color: Color = Color.White
+        color: Color = Color.White,
+        isDark: Boolean = true
     ) {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return
@@ -358,18 +413,23 @@ class SplashRenderer {
             radius = sw.radius,
             center = Offset(sw.x, sw.y),
             style = shockwaveStroke,
-            blendMode = BlendMode.Screen
+            blendMode = if (isDark) BlendMode.Screen else BlendMode.SrcOver
         )
     }
 
-    fun DrawScope.drawScreenFlash(engine: SplashEngine) {
+    fun DrawScope.drawScreenFlash(
+        engine: SplashEngine,
+        isDark: Boolean = true,
+        primaryColor: Color = Color.White
+    ) {
         if (engine.currentPhase != SplashPhase.Burst || engine.phaseElapsedMs > SplashConfig.Look.Flash.DURATION_MS) return
         val progress = (engine.phaseElapsedMs / SplashConfig.Look.Flash.DURATION_MS).coerceIn(0f, 1f)
         val alpha = SplashConfig.Look.Flash.MAX_ALPHA * (1f - progress)
         if (alpha <= SplashConfig.Look.Cutoffs.FLASH_ALPHA) return
         val radius = SplashConfig.Look.Flash.RADIUS_DP.dp.toPx()
+        val flashColor = if (isDark) Color.White else primaryColor
         val brush = Brush.radialGradient(
-            0.0f to Color.White.copy(alpha = alpha),
+            0.0f to flashColor.copy(alpha = alpha),
             1.0f to Color.Transparent,
             center = center,
             radius = radius,

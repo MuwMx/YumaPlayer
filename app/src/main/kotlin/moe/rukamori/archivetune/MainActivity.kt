@@ -1634,6 +1634,7 @@ class MainActivity : ComponentActivity() {
                         )
                         if (splashEnabled) {
                             SplashOverlay(
+                                isDark = useDarkTheme,
                                 onBurstStart = {
                                     contentVisible = true
                                     coldSplash = false
