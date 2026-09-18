@@ -2692,6 +2692,7 @@ class MusicService :
         ) {
             scope.launch(SilentHandler) {
                 if (suppressAutoPlayback || player.mediaItemCount == 0) return@launch
+                if (currentQueue is SpotifyTracksQueue) return@launch
 
                 val currentMediaMetadata = player.currentMetadata ?: return@launch
                 val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
