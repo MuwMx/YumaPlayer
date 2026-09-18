@@ -75,8 +75,6 @@ class SplashRenderer {
     }
     var linkStrokeWidthPx: Float = 1.5f
         private set
-    var igniteStrokeWidthPx: Float = 2.5f
-        private set
     var shockwaveStroke: Stroke = Stroke(width = 2f)
         private set
 
@@ -84,7 +82,6 @@ class SplashRenderer {
         if (cachedDensity != density) {
             cachedDensity = density
             linkStrokeWidthPx = LINK_LINE_WIDTH_DP * density
-            igniteStrokeWidthPx = 2.5f * density
             shockwaveStroke = Stroke(width = SHOCKWAVE_STROKE_WIDTH_DP * density)
         }
     }
@@ -152,8 +149,6 @@ class SplashRenderer {
         val maxDistSq = maxDist * maxDist
         val invMaxDist = 1f / maxDist
 
-        val isIgnite = engine.phase == "ignite"
-        val strokeW = if (isIgnite) igniteStrokeWidthPx else linkStrokeWidthPx
         val bins = okBins
 
         for (j in slotLookup.indices) slotLookup[j] = null
@@ -186,21 +181,21 @@ class SplashRenderer {
                 val conv2 = if (dist2Sq < maxDistSq) max(0f, 1f - kotlin.math.sqrt(dist2Sq) * invMaxDist) else 0f
                 val rawAlpha = engine.formStrength * min(conv1, conv2) * 0.72f
 
-                if (rawAlpha > 0.01f || isIgnite) {
+                if (rawAlpha > 0.01f) {
                     val segNorm = (idx1 + 0.5f) / slotCount.toFloat()
                     var waveDist = abs(segNorm - engine.pulseWave)
                     if (waveDist > 0.5f) waveDist = 1.0f - waveDist
                     val waveBoost = max(0f, 1f - waveDist / 0.12f).pow(2)
 
                     val bin = ((rawAlpha + waveBoost * 0.4f).coerceIn(0f, 1f) * LINK_BINS).toInt().coerceIn(0, LINK_BINS - 1)
-                    val lineCol = if (isIgnite) Color.White else bins[bin]
-                    val lineAlpha = if (isIgnite) 1.0f else min(1f, rawAlpha + waveBoost * 0.9f)
+                    val lineCol = bins[bin]
+                    val lineAlpha = min(1f, rawAlpha + waveBoost * 0.9f)
 
                     drawLine(
                         color = lineCol.copy(alpha = lineAlpha),
                         start = Offset(p1.x, p1.y),
                         end = Offset(p2.x, p2.y),
-                        strokeWidth = strokeW * (1f + (if (isIgnite) 0f else waveBoost * 1.6f))
+                        strokeWidth = linkStrokeWidthPx * (1f + waveBoost * 1.6f)
                     )
                 }
             }
@@ -240,10 +235,8 @@ class SplashRenderer {
                     waveBoost = max(0f, 1f - waveDist / 0.14f).pow(2)
                 }
 
-                val isIgnite = engine.phase == "ignite"
-                val igniteFlare = if (isIgnite && p.isMember) 1.4f else 1f
                 val center = Offset(p.x, p.y)
-                val currentRadius = p.radius * (1f + waveBoost * 0.75f) * igniteFlare
+                val currentRadius = p.radius * (1f + waveBoost * 0.75f)
 
                 val vOuter = (currentRadius * (9.0f + p.depth * 4.5f)).coerceAtMost(maxHalo)
                 drawImage(
@@ -271,7 +264,7 @@ class SplashRenderer {
                     alpha = min(1f, alpha * 1.0f)
                 )
 
-                val coreCol = if (isIgnite && p.isMember) Color.White else (if (waveBoost > 0.12f) memberCore else color)
+                val coreCol = if (waveBoost > 0.12f) memberCore else color
                 drawCircle(
                     color = coreCol.copy(alpha = min(1f, alpha * 1.0f)),
                     radius = currentRadius * 0.7f,

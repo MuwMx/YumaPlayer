@@ -69,7 +69,7 @@ fun SplashOverlay(
                         currentOnBurstStart()
                     }
 
-                    if (engine.currentPhase == SplashPhase.Idle && showSplash) {
+                    if (engine.currentPhase == SplashPhase.Idle && engine.shockwave == null && showSplash) {
                         showSplash = false
                     }
                 }

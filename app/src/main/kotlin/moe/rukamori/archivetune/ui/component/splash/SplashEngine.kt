@@ -3,6 +3,7 @@ package moe.rukamori.archivetune.ui.component.splash
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.PathParser
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -88,7 +89,27 @@ class SplashEngine {
 
         for (i in 0 until totalParticles) {
             val isMember = i < activeMembers
-            val target = if (slotList.isNotEmpty()) slotList[i % slotList.size] else center
+            val startX: Float
+            val startY: Float
+            val startVx: Float
+            val startVy: Float
+            if (isMember) {
+                val r = 60f + Random.nextFloat() * 130f
+                val angle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
+                val cosA = cos(angle)
+                val sinA = sin(angle)
+                startX = center.x + cosA * r
+                startY = center.y + sinA * r
+                val speed = 0.18f + Random.nextFloat() * 0.22f
+                startVx = cosA * speed
+                startVy = sinA * speed
+            } else {
+                val target = if (slotList.isNotEmpty()) slotList[i % slotList.size] else center
+                startX = target.x + (Random.nextFloat() - 0.5f) * scatter
+                startY = target.y + (Random.nextFloat() - 0.5f) * scatter
+                startVx = (Random.nextFloat() - 0.5f) * 0.5f
+                startVy = (Random.nextFloat() - 0.5f) * 0.5f
+            }
             val depth = Random.nextFloat()
             val seed = Random.nextFloat()
             val isRare = Random.nextFloat() < SplashParticle.wD
@@ -100,10 +121,10 @@ class SplashEngine {
 
             particles.add(
                 SplashParticle(
-                    x = target.x + (Random.nextFloat() - 0.5f) * scatter,
-                    y = target.y + (Random.nextFloat() - 0.5f) * scatter,
-                    vx = (Random.nextFloat() - 0.5f) * 0.5f,
-                    vy = (Random.nextFloat() - 0.5f) * 0.5f,
+                    x = startX,
+                    y = startY,
+                    vx = startVx,
+                    vy = startVy,
                     baseRadius = baseRadius,
                     radius = baseRadius,
                     depth = depth,
