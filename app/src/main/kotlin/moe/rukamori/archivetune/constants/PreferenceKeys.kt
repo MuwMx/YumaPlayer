@@ -42,7 +42,6 @@ val SwipeToSongKey = booleanPreferencesKey("SwipeToSong")
 val PlayerDesignStyleKey = stringPreferencesKey("playerDesignStyle")
 val HidePlayerThumbnailKey = booleanPreferencesKey("hidePlayerThumbnail")
 val ArchiveTuneCanvasKey = booleanPreferencesKey("archiveTuneCanvas")
-val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 
 val AodThumbnailShapeKey = stringPreferencesKey("aodThumbnailShape")
@@ -140,12 +139,6 @@ enum class SliderStyle {
 }
 
 const val SYSTEM_DEFAULT = "SYSTEM_DEFAULT"
-
-enum class AppFontPreference {
-    DEFAULT,
-    SYSTEM,
-    CUSTOM,
-}
 
 enum class PlaylistSuggestionSource {
     PLAYLIST_TITLE,
@@ -452,14 +445,6 @@ enum class SongSortType {
     PLAY_TIME,
 }
 
-enum class PlaylistSongSortType {
-    CUSTOM,
-    CREATE_DATE,
-    NAME,
-    ARTIST,
-    PLAY_TIME,
-}
-
 enum class AutoPlaylistSongSortType {
     CREATE_DATE,
     NAME,
@@ -488,14 +473,6 @@ enum class AlbumSortType {
     SONG_COUNT,
     LENGTH,
     PLAY_TIME,
-}
-
-enum class PlaylistSortType {
-    CREATE_DATE,
-    NAME,
-    SONG_COUNT,
-    LAST_UPDATED,
-    CUSTOM,
 }
 
 enum class MixSortType {
@@ -687,10 +664,6 @@ val LyricsLineBlurKey = booleanPreferencesKey("lyricsLineBlur")
 
 val TopSize = stringPreferencesKey("topSize")
 
-const val HISTORY_DURATION_DEFAULT = 30
-const val HISTORY_DURATION_MIN = 5
-const val HISTORY_DURATION_MAX = 60
-val HISTORY_DURATION_RANGE = HISTORY_DURATION_MIN.toFloat()..HISTORY_DURATION_MAX.toFloat()
 val HISTORY_DURATION_LEGACY_FLOAT_KEY = floatPreferencesKey("historyDuration")
 val HistoryDuration = intPreferencesKey("historyDuration")
 

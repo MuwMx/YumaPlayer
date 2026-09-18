@@ -337,6 +337,7 @@ implementation(libs.androidx.foundation.layout)
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
+    implementation(project(":designsystem"))
     implementation(project(":core"))
     implementation(project(":flaccore"))
     implementation(project(":lyrics:kugou"))

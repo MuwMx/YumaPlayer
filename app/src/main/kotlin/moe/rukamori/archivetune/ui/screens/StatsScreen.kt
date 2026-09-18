@@ -1184,5 +1184,3 @@ private fun ListeningByHourChart(
         }
     }
 }
-
-enum class OptionStats { WEEKS, MONTHS, YEARS, CONTINUOUS }

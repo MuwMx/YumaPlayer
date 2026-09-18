@@ -46,6 +46,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "YumaPlayer"
 include(":app")
+include(":designsystem")
 include(":core")
 include(":lyrics:kugou")
 include(":lyrics:lrclib")
