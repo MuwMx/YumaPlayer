@@ -326,13 +326,28 @@ class SplashRenderer {
         val limit = if (engine.isShort) SplashConfig.Timings.IGNITE_SHORT_MS else SplashConfig.Timings.IGNITE_FULL_MS
         val stagger = if (engine.isShort) SplashConfig.Effects.STAR_STAGGER_SHORT_MS else SplashConfig.Effects.STAR_STAGGER_MS
         val window = limit * 0.85f
-        val starBase = SplashConfig.Effects.STAR_SIZE_DP.dp.toPx()
+        val starBase = size.height * 0.075f
+        val haloRadius = starBase * 1.8f
         val tips = engine.currentShapeData.tips
         for (d in tips.indices) {
             val p = ((elapsed - d * stagger) / window).coerceIn(0f, 1f)
             if (p <= 0f || p >= 1f) continue
             val flare = sin(p * Math.PI.toFloat())
             val tip = tips[d]
+            val center = Offset(tip.x, tip.y)
+            if (haloRadius > 0f) {
+                val haloBrush = Brush.radialGradient(
+                    0.0f to Color.White.copy(alpha = (flare * 0.35f).coerceIn(0f, 1f)),
+                    1.0f to Color.Transparent,
+                    center = center,
+                    radius = haloRadius
+                )
+                drawCircle(
+                    brush = haloBrush,
+                    radius = haloRadius,
+                    center = center
+                )
+            }
             drawFourPointStar(tip.x, tip.y, radius = starBase * flare, alpha = flare, color = coreColor)
         }
     }
@@ -344,8 +359,7 @@ class SplashRenderer {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return
         val progress = (sw.radius / sw.maxRadius).coerceIn(0f, 1f)
-        val effectiveAlpha = (sw.alpha * (1f - progress) * (1f - progress)).coerceIn(0f, 1f)
-        if (effectiveAlpha <= 0.003f) return
+        val effectiveAlpha = (sw.alpha * (1f - progress)).coerceIn(0f, 1f)
 
         drawCircle(
             color = color.copy(alpha = effectiveAlpha),

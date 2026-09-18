@@ -46,7 +46,7 @@ object SplashConfig {
         var POST_BURST_FRAMES: Int = 130
 
         var SHOCKWAVE_SPEED: Float = 20f
-        var SHOCKWAVE_RADIUS_FACTOR: Float = 0.95f
+        var SHOCKWAVE_RADIUS_FACTOR: Float = 1.2f
         var SHOCKWAVE_ALPHA_BOLT: Float = 0.75f
         var SHOCKWAVE_ALPHA_CROSS: Float = 0.85f
         var SHOCKWAVE_ALPHA_BURST: Float = 1.0f
