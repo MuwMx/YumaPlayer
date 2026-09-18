@@ -22,6 +22,8 @@ class SpotifyPlaylistQueue(
     private val initialTracks: List<SpotifyTrack> = emptyList(),
     private val startIndex: Int = 0,
     override val preloadItem: MediaMetadata? = null,
+    private val totalCount: Int? = null,
+    private val hasCustomOrder: Boolean = false,
 ) : Queue {
     private val allTracks = mutableListOf<SpotifyTrack>()
     private var resolveOffset = 0
@@ -34,10 +36,10 @@ class SpotifyPlaylistQueue(
         withContext(Dispatchers.IO) {
             try {
                 if (initialTracks.isNotEmpty()) {
-                    allTracks += initialTracks
-                    apiTotal = initialTracks.size
-                    apiFetchOffset = apiTotal
-                    apiHasMore = false
+                    allTracks.addAll(initialTracks)
+                    apiTotal = totalCount ?: initialTracks.size
+                    apiFetchOffset = initialTracks.size
+                    apiHasMore = if (hasCustomOrder) false else apiFetchOffset < apiTotal
                 } else {
                     fetchNextApiPage()
                 }
