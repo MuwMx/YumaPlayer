@@ -754,4 +754,7 @@
     <string name="spotify_sync_likes_desc">Сохранять лайки в медиатеку Spotify</string>
     <string name="spotify_sp_dc">sp_dc</string>
     <string name="spotify_login_via_token">Войти по токену</string>
+    <string name="check_again">Проверить снова</string>
+    <string name="download_apk">Скачать APK</string>
+    <string name="all_releases_github">Все релизы на GitHub</string>
 </resources>

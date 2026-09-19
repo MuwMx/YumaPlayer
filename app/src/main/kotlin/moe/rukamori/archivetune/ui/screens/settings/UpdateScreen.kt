@@ -19,6 +19,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -661,6 +662,13 @@ fun UpdateScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
+                val downloadUrl = remember(updateChannel, latestVersion) {
+                    when (updateChannel) {
+                        UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
+                        else -> Updater.getLatestDownloadUrl()
+                    }
+                }
+                val isDownloadReady = !isCheckingForUpdate && downloadUrl.isNotBlank() && (isUpdateAvailable || latestVersion != null)
                 UpdateSummaryCard(
                     currentVersion = BuildConfig.VERSION_NAME,
                     latestVersion = latestVersion,
@@ -668,9 +676,20 @@ fun UpdateScreen(
                     isUpdateAvailable = isUpdateAvailable,
                     isCheckingForUpdate = isCheckingForUpdate,
                     imageUrl = latestImageUrl,
+                    isDownloadReady = isDownloadReady,
+                    onDownloadApk = {
+                        if (!useInAppUpdateInstaller) {
+                            openUpdateUrl(downloadUrl)
+                        } else {
+                            installUpdate(downloadUrl)
+                        }
+                    },
                     onCheckForUpdate = handleCheckForUpdate,
                     onOpenChangelog = {
                         navController.navigate("settings/changelog?channel=$updateChannel")
+                    },
+                    onOpenAllReleases = {
+                        openUpdateUrl("https://github.com/MuwMx/YumaPlayer/releases")
                     },
                 )
             }
@@ -943,8 +962,11 @@ private fun UpdateSummaryCard(
     isUpdateAvailable: Boolean,
     isCheckingForUpdate: Boolean,
     imageUrl: String?,
+    isDownloadReady: Boolean,
+    onDownloadApk: () -> Unit,
     onCheckForUpdate: () -> Unit,
     onOpenChangelog: () -> Unit,
+    onOpenAllReleases: () -> Unit,
 ) {
     val channelLabel =
         when (updateChannel) {
@@ -1081,7 +1103,14 @@ private fun UpdateSummaryCard(
                     }
                 } else {
                     InteractiveChip(
-                        label = stringResource(R.string.check_for_update),
+                        label = stringResource(R.string.download_apk),
+                        iconResId = R.drawable.download,
+                        onClick = onDownloadApk,
+                        enabled = isDownloadReady,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    InteractiveChip(
+                        label = stringResource(R.string.check_again),
                         iconResId = R.drawable.sync,
                         onClick = onCheckForUpdate,
                         modifier = Modifier.fillMaxWidth(),
@@ -1091,6 +1120,15 @@ private fun UpdateSummaryCard(
                         iconResId = R.drawable.update,
                         onClick = onOpenChangelog,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = stringResource(R.string.all_releases_github),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onOpenAllReleases)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
@@ -1136,17 +1174,23 @@ private fun InteractiveChip(
     iconResId: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val colors = LocalYumaColors.current
     val shape = RoundedCornerShape(16.dp)
+    val contentAlpha = if (enabled) 1f else 0.38f
 
     Box(
         modifier = modifier
-            .yumaClickable(pressedScale = SettingsAnimations.PressScale, onClick = onClick)
+            .yumaClickable(
+                enabled = enabled,
+                pressedScale = SettingsAnimations.PressScale,
+                onClick = onClick,
+            )
             .yumaGlassCard(
                 shape = shape,
-                backgroundColor = colors.glassBackground,
-                borderColor = colors.glassBorder,
+                backgroundColor = if (enabled) colors.glassBackground else colors.glassBackground.copy(alpha = colors.glassBackground.alpha * 0.4f),
+                borderColor = if (enabled) colors.glassBorder else colors.glassBorder.copy(alpha = colors.glassBorder.alpha * 0.4f),
                 strokeWidth = SettingsDimensions.GlassBorderThickness,
             ),
     ) {
@@ -1160,7 +1204,7 @@ private fun InteractiveChip(
             Icon(
                 painter = painterResource(iconResId),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -1168,7 +1212,7 @@ private fun InteractiveChip(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
