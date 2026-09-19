@@ -135,6 +135,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.haptics.YumaHapticsImpl
@@ -652,6 +653,7 @@ class MainActivity : ComponentActivity() {
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
             val context = LocalContext.current
+            val uriHandler = LocalUriHandler.current
 
             LaunchedEffect(playerViewModel) {
                 playerViewModel.event.collect { event ->
@@ -743,8 +745,21 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.material3.Button(
                     onClick = {
                         bottomSheetPageState.dismiss()
-                        this@MainActivity.navController.navigate("settings/update") {
-                            launchSingleTop = true
+                        if (BuildConfig.DISTRIBUTION == "gms") {
+                            this@MainActivity.navController.navigate("settings/update") {
+                                launchSingleTop = true
+                            }
+                        } else {
+                            val releaseUrl = Updater.getLatestDownloadUrl().ifBlank {
+                                "https://github.com/MuwMx/YumaPlayer/releases/latest"
+                            }
+                            try {
+                                uriHandler.openUri(releaseUrl)
+                            } catch (_: Exception) {
+                                this@MainActivity.navController.navigate("settings/update") {
+                                    launchSingleTop = true
+                                }
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
@@ -773,22 +788,6 @@ class MainActivity : ComponentActivity() {
                 }
                 moe.rukamori.archivetune.utils.UpdateNotificationManager.checkForUpdates(this@MainActivity)
             }
-            LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel) {
-                if (
-                    BuildConfig.UPDATER_AVAILABLE &&
-                    latestUpdateChannel == updateChannel &&
-                    Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
-                ) {
-                    val releaseNotesResult = Updater.getLatestReleaseNotes()
-                    releaseNotesResult.onSuccess {
-                        releaseNotesState.value = it
-                    }.onFailure {
-                        releaseNotesState.value = null
-                    }
-                    latestImageUrl = Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
-                    bottomSheetPageState.show(updateSheetContent)
-                }
-            }
 
             val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
             val customThemeColorValue by rememberPreference(CustomThemeColorKey, defaultValue = "default")
@@ -806,6 +805,29 @@ class MainActivity : ComponentActivity() {
             }
             var coldSplash by remember(isReady) { mutableStateOf(splashEnabled) }
             var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
+            var splashDone by remember(isReady) { mutableStateOf(!splashEnabled || disableAnimations) }
+            LaunchedEffect(contentVisible) {
+                if (contentVisible && (!splashEnabled || disableAnimations)) {
+                    splashDone = true
+                }
+            }
+            LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel, splashDone) {
+                if (
+                    splashDone &&
+                    BuildConfig.UPDATER_AVAILABLE &&
+                    latestUpdateChannel == updateChannel &&
+                    Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
+                ) {
+                    val releaseNotesResult = Updater.getLatestReleaseNotes()
+                    releaseNotesResult.onSuccess {
+                        releaseNotesState.value = it
+                    }.onFailure {
+                        releaseNotesState.value = null
+                    }
+                    latestImageUrl = Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
+                    bottomSheetPageState.show(updateSheetContent)
+                }
+            }
             val contentAlpha by animateFloatAsState(
                 targetValue = if (contentVisible) 1f else 0f,
                 animationSpec = tween(durationMillis = if (disableAnimations) 0 else SplashConfig.Reveal.DURATION_MS, easing = EaseOut),
@@ -1639,6 +1661,9 @@ class MainActivity : ComponentActivity() {
                                     contentVisible = true
                                     coldSplash = false
                                 },
+                                onDismiss = {
+                                    splashDone = true
+                                },
                             )
                         }
                         Row(
@@ -1947,7 +1972,7 @@ class MainActivity : ComponentActivity() {
                                                         onLongClick = {},
                                                     ) {
                                                         BadgedBox(badge = {
-                                                            if (updateState is UpdateState.SoftUpdate || updateState is UpdateState.CriticalUpdate) {
+                                                            if (splashDone && (updateState is UpdateState.SoftUpdate || updateState is UpdateState.CriticalUpdate)) {
                                                                 Badge()
                                                             }
                                                         }) {

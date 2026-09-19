@@ -34,6 +34,7 @@ fun SplashOverlay(
     contentColor: Color? = null,
     primaryColor: Color? = null,
     onBurstStart: () -> Unit = {},
+    onDismiss: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
     if (splashOverlayEnabled) {
@@ -48,6 +49,7 @@ fun SplashOverlay(
         val animationsDisabled = LocalAnimationsDisabled.current
         var showSplash by remember { mutableStateOf(!animationsDisabled) }
         val currentOnBurstStart by rememberUpdatedState(onBurstStart)
+        val currentOnDismiss by rememberUpdatedState(onDismiss)
         var isInitialized by remember { mutableStateOf(false) }
         var burstTriggered by remember { mutableStateOf(false) }
 
@@ -83,6 +85,7 @@ fun SplashOverlay(
 
                     if (engine.currentPhase == SplashPhase.Idle && engine.shockwave == null && showSplash) {
                         showSplash = false
+                        currentOnDismiss()
                     }
                 }
             }

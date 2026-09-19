@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +60,7 @@ import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.utils.Updater
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +80,7 @@ fun SettingsScreen(
 
 
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val scrollState = rememberScrollState()
 
@@ -194,7 +197,20 @@ fun SettingsScreen(
             if (hasUpdate && !isUpdateDismissed) {
                 SettingsUpdateBanner(
                     latestVersion = latestVersionName,
-                    onClick = { navController.navigate("settings/update") },
+                    onClick = {
+                        if (BuildConfig.DISTRIBUTION == "gms") {
+                            navController.navigate("settings/update")
+                        } else {
+                            val releaseUrl = Updater.getLatestDownloadUrl().ifBlank {
+                                "https://github.com/MuwMx/YumaPlayer/releases/latest"
+                            }
+                            try {
+                                uriHandler.openUri(releaseUrl)
+                            } catch (_: Exception) {
+                                navController.navigate("settings/update")
+                            }
+                        }
+                    },
                     onDismiss = { isUpdateDismissed = true },
                     modifier =
                         Modifier
