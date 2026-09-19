@@ -311,12 +311,6 @@ fun UpdateScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        val downloadUrl =
-            when (updateChannel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
-                else -> Updater.getLatestDownloadUrl()
-            }
-
         val updateButtonText =
             if (useInAppUpdateInstaller) {
                 stringResource(R.string.update_text)
@@ -326,6 +320,11 @@ fun UpdateScreen(
 
         Button(
             onClick = {
+                val downloadUrl =
+                    when (updateChannel) {
+                        UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
+                        else -> Updater.getLatestDownloadUrl()
+                    }
                 if (!useInAppUpdateInstaller) {
                     openUpdateUrl(downloadUrl)
                 } else {
@@ -351,22 +350,23 @@ fun UpdateScreen(
                 updateSheetNotes = null
                 updateSheetError = null
                 try {
-                    val versionResult =
+                    val releaseResult =
                         when (updateChannel) {
-                            UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryVersionName()
-                            else -> Updater.getLatestVersionName()
+                            UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryReleaseInfo()
+                            else -> Updater.getLatestReleaseInfo(forceRefresh = true)
                         }
-                    versionResult.onSuccess { version ->
+                    releaseResult.onSuccess { release ->
+                        val version =
+                            if (updateChannel == UpdateChannel.DAILY_NIGHTLY) {
+                                Updater.getCanaryReleaseVersionName(release)
+                            } else {
+                                Updater.getReleaseVersionName(release)
+                            }
                         updateSheetVersion = version
                         latestVersion = version
                         val available = Updater.isUpdateAvailable(version, BuildConfig.VERSION_NAME)
                         if (available) {
-                            val notesResult =
-                                when (updateChannel) {
-                                    UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryReleaseNotes()
-                                    else -> Updater.getLatestReleaseNotes()
-                                }
-                            updateSheetNotes = notesResult.getOrNull()
+                            updateSheetNotes = release.body
                             updateSheetLoading = false
                             updateSheetIsSameVersion = false
                             updateSheetState.show(updateSheetContent)
