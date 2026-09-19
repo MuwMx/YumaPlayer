@@ -972,7 +972,7 @@ class MainActivity : ComponentActivity() {
 
                     val updateViewModel: UpdateViewModel = hiltViewModel()
                     LaunchedEffect(updateChannel) {
-                        updateViewModel.checkUpdates(updateChannel)
+                        updateViewModel.forceCheck(updateChannel)
                     }
                     val updateState by updateViewModel.updateState.collectAsStateWithLifecycle()
                     // ========================================================

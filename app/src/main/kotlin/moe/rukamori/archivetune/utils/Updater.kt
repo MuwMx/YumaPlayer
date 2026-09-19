@@ -512,11 +512,11 @@ object Updater {
                     ?.let { runCatching { parseReleasesJson(it) }.getOrNull() }
 
             val shouldCheckNetwork =
-                forceRefresh || cachedJson.isNullOrBlank() || (now - lastCheckedAt) >= ReleaseCacheCheckIntervalMs
+                forceRefresh || cachedReleases.isNullOrEmpty() || (now - lastCheckedAt) >= ReleaseCacheCheckIntervalMs
 
             if (!shouldCheckNetwork) {
                 lastCheckTime = now
-                return@runCatching cachedReleases ?: emptyList()
+                return@runCatching cachedReleases
             }
 
             val networkResult =
@@ -528,55 +528,50 @@ object Updater {
                 }.getOrNull()
 
             if (networkResult == null) {
-                val fallback = cachedReleases
-                if (fallback != null) {
-                    lastCheckTime = now
-                    return@runCatching fallback
-                }
-                throw IllegalStateException("Failed to fetch releases")
+                // no-cache-on-failure: preserve previous cache without overwriting stored state
+                lastCheckTime = now
+                return@runCatching cachedReleases ?: emptyList()
             }
 
             when {
                 networkResult.status == HttpStatusCode.NotModified -> {
-                    App.instance.dataStore.edit { settings ->
-                        settings[GitHubReleasesLastCheckedAtKey] = now
-                        networkResult.etag?.let { settings[GitHubReleasesEtagKey] = it }
-                    }
                     val fallback = cachedReleases
-                    if (fallback != null) {
+                    if (!fallback.isNullOrEmpty()) {
+                        App.instance.dataStore.edit { settings ->
+                            settings[GitHubReleasesLastCheckedAtKey] = now
+                            networkResult.etag?.let { settings[GitHubReleasesEtagKey] = it }
+                        }
                         lastCheckTime = now
                         return@runCatching fallback
                     }
-                    throw IllegalStateException("Release cache is empty")
+                    return@runCatching emptyList()
                 }
 
                 networkResult.status.value in 200..299 && !networkResult.body.isNullOrBlank() -> {
                     val networkBody = networkResult.body
-                    val releases = parseReleasesJson(networkBody)
-                    val newFingerprint = getTopReleaseFingerprint(releases)
-                    val hasPayloadChanged = cachedJson != networkBody
-                    val hasTopReleaseChanged = cachedFingerprint != newFingerprint
+                    val releases = runCatching { parseReleasesJson(networkBody) }.getOrNull().orEmpty()
+                    if (releases.isNotEmpty()) {
+                        val newFingerprint = getTopReleaseFingerprint(releases)
+                        val hasPayloadChanged = cachedJson != networkBody
+                        val hasTopReleaseChanged = cachedFingerprint != newFingerprint
 
-                    App.instance.dataStore.edit { settings ->
-                        settings[GitHubReleasesLastCheckedAtKey] = now
-                        networkResult.etag?.let { settings[GitHubReleasesEtagKey] = it }
-                        if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
-                            settings[GitHubReleasesJsonKey] = networkBody
-                            settings[GitHubReleasesFingerprintKey] = newFingerprint
+                        App.instance.dataStore.edit { settings ->
+                            settings[GitHubReleasesLastCheckedAtKey] = now
+                            networkResult.etag?.let { settings[GitHubReleasesEtagKey] = it }
+                            if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
+                                settings[GitHubReleasesJsonKey] = networkBody
+                                settings[GitHubReleasesFingerprintKey] = newFingerprint
+                            }
                         }
+                        lastCheckTime = now
+                        releases
+                    } else {
+                        cachedReleases ?: emptyList()
                     }
-                    lastCheckTime = now
-                    releases
                 }
 
                 else -> {
-                    val fallback = cachedReleases
-                    if (fallback != null) {
-                        lastCheckTime = now
-                        fallback
-                    } else {
-                        throw IllegalStateException("Failed to fetch releases: HTTP ${networkResult.status.value}")
-                    }
+                    cachedReleases ?: emptyList()
                 }
             }
         }
