@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.constants.GitHubReleasesFingerprintKey
 import moe.rukamori.archivetune.constants.GitHubReleasesJsonKey
 import moe.rukamori.archivetune.constants.GitHubReleasesLastCheckedAtKey
 import org.json.JSONArray
+import org.json.JSONObject
 
 data class GitCommit(
     val sha: String,
@@ -38,6 +39,7 @@ data class ReleaseInfo(
     val htmlUrl: String,
     val prerelease: Boolean = false,
     val imageUrl: String? = null,
+    val downloadUrl: String? = null,
 )
 
 private data class ReleasesNetworkResult(
@@ -53,6 +55,7 @@ object Updater {
     var lastCheckTime = -1L
         private set
     private var latestReleaseTag: String? = null
+    private var latestReleaseDownloadUrl: String? = null
     private var latestCanaryReleaseTag: String? = null
 
     private val isUpdaterDistribution: Boolean
@@ -238,12 +241,37 @@ object Updater {
         return null
     }
 
-    private fun parseReleasesJson(json: String): List<ReleaseInfo> {
+    private fun parseReleasesJson(
+        json: String,
+        expectedArtifactName: String = releaseArtifactName(),
+    ): List<ReleaseInfo> {
         val jsonArray = JSONArray(json)
         val releases = ArrayList<ReleaseInfo>(jsonArray.length())
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
+            val assets = item.optJSONArray("assets")
+            val assetDownloadUrl =
+                assets?.let { releaseAssets ->
+                    (0 until releaseAssets.length())
+                        .asSequence()
+                        .mapNotNull(releaseAssets::optJSONObject)
+                        .firstOrNull { asset -> asset.optString("name") == expectedArtifactName }
+                        ?.optString("browser_download_url")
+                        ?.takeIf { it.isNotBlank() }
+                }
             val body = if (item.has("body") && !item.isNull("body")) item.optString("body") else null
+            val downloadUrl =
+                if (item.isNull("download_url")) {
+                    null
+                } else {
+                    item.optString("download_url").takeIf { it.isNotBlank() }
+                } ?: assetDownloadUrl
+            val imageUrl =
+                if (item.has("image_url") && !item.isNull("image_url")) {
+                    item.optString("image_url").takeIf { it.isNotBlank() }
+                } else {
+                    parseImageUrlOrNull(body)
+                }
             releases.add(
                 ReleaseInfo(
                     tagName = item.optString("tag_name", ""),
@@ -252,12 +280,31 @@ object Updater {
                     publishedAt = item.optString("published_at", ""),
                     htmlUrl = item.optString("html_url", ""),
                     prerelease = item.optBoolean("prerelease", false),
-                    imageUrl = parseImageUrlOrNull(body),
+                    imageUrl = imageUrl,
+                    downloadUrl = downloadUrl,
                 ),
             )
         }
         return releases
     }
+
+    private fun encodeReleasesJson(releases: List<ReleaseInfo>): String =
+        JSONArray().apply {
+            releases.forEach { release ->
+                put(
+                    JSONObject().apply {
+                        put("tag_name", release.tagName)
+                        put("name", release.name)
+                        put("body", release.body ?: JSONObject.NULL)
+                        put("published_at", release.publishedAt)
+                        put("html_url", release.htmlUrl)
+                        put("prerelease", release.prerelease)
+                        put("image_url", release.imageUrl ?: JSONObject.NULL)
+                        put("download_url", release.downloadUrl ?: JSONObject.NULL)
+                    },
+                )
+            }
+        }.toString()
 
     private fun getTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
         val latest = findLatestRelease(releases) ?: findLatestCanaryRelease(releases) ?: return ""
@@ -269,6 +316,7 @@ object Updater {
             latest.htmlUrl,
             latest.prerelease.toString(),
             latest.imageUrl.orEmpty(),
+            latest.downloadUrl.orEmpty(),
         ).joinToString("||")
     }
 
@@ -318,25 +366,31 @@ object Updater {
             ?: emptyList()
     }
 
-    suspend fun getLatestVersionName(): Result<String> =
-        getLatestReleaseInfo().map { latest ->
-            preferredReleaseVersionNameOrNull(latest) ?: latest.name.ifBlank { latest.tagName }
-        }
+    fun getReleaseVersionName(release: ReleaseInfo): String =
+        preferredReleaseVersionNameOrNull(release) ?: release.name.ifBlank { release.tagName }
 
-    suspend fun getLatestReleaseNotes(): Result<String?> = getLatestReleaseInfo().map { it.body }
+    fun getCanaryReleaseVersionName(release: ReleaseInfo): String =
+        preferredReleaseVersionNameOrNull(release) ?: release.tagName.ifBlank { release.name }
 
-    suspend fun getLatestReleaseInfo(): Result<ReleaseInfo> =
+    suspend fun getLatestVersionName(forceRefresh: Boolean = false): Result<String> =
+        getLatestReleaseInfo(forceRefresh = forceRefresh).map(::getReleaseVersionName)
+
+    suspend fun getLatestReleaseNotes(forceRefresh: Boolean = false): Result<String?> =
+        getLatestReleaseInfo(forceRefresh = forceRefresh).map { it.body }
+
+    suspend fun getLatestReleaseInfo(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         runCatching {
             if (!isUpdaterDistribution) {
                 throw IllegalStateException("Updater is not available for this distribution")
             }
 
-            val releases = getAllReleases().getOrThrow()
+            val releases = getAllReleases(forceRefresh = forceRefresh).getOrThrow()
             val latest =
                 findLatestRelease(releases)
                     ?: throw IllegalStateException("No releases found")
             lastCheckTime = System.currentTimeMillis()
             latestReleaseTag = latest.tagName
+            latestReleaseDownloadUrl = latest.downloadUrl
             latest
         }
 
@@ -411,6 +465,7 @@ object Updater {
             return "$StableReleaseBaseUrl/latest"
         }
 
+        latestReleaseDownloadUrl?.let { return it }
         val artifactName = releaseArtifactName()
         val tag = latestReleaseTag
         if (tag != null) {
