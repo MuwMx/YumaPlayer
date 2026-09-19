@@ -150,6 +150,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 fun UpdateScreen(
     navController: NavController,
     onUpToDate: () -> Unit = {},
+    autostart: Boolean = false,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -261,6 +262,27 @@ fun UpdateScreen(
         }
     }
 
+    val downloadUrl = remember(updateChannel, latestVersion) {
+        when (updateChannel) {
+            UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
+            else -> Updater.getLatestDownloadUrl()
+        }
+    }
+
+    val shouldAutostart = autostart || remember(navController) {
+        val args = navController.currentBackStackEntry?.arguments
+        val raw = args?.getString("autostart") ?: args?.getString("download")
+        raw == "1" || raw.equals("true", ignoreCase = true)
+    }
+
+    var hasAutostarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(shouldAutostart, downloadUrl) {
+        if (shouldAutostart && !hasAutostarted && downloadUrl.isNotBlank()) {
+            hasAutostarted = true
+            installUpdate(downloadUrl)
+        }
+    }
+
     val updateSheetContent: @Composable ColumnScope.() -> Unit = {
         Text(
             text = stringResource(R.string.new_update_available),
@@ -321,11 +343,6 @@ fun UpdateScreen(
 
         Button(
             onClick = {
-                val downloadUrl =
-                    when (updateChannel) {
-                        UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
-                        else -> Updater.getLatestDownloadUrl()
-                    }
                 if (!useInAppUpdateInstaller) {
                     openUpdateUrl(downloadUrl)
                 } else {
@@ -662,12 +679,6 @@ fun UpdateScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                val downloadUrl = remember(updateChannel, latestVersion) {
-                    when (updateChannel) {
-                        UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
-                        else -> Updater.getLatestDownloadUrl()
-                    }
-                }
                 val isDownloadReady = !isCheckingForUpdate && downloadUrl.isNotBlank() && (isUpdateAvailable || latestVersion != null)
                 UpdateSummaryCard(
                     currentVersion = BuildConfig.VERSION_NAME,
@@ -1121,14 +1132,11 @@ private fun UpdateSummaryCard(
                         onClick = onOpenChangelog,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Text(
-                        text = stringResource(R.string.all_releases_github),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onOpenAllReleases)
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    InteractiveChip(
+                        label = stringResource(R.string.all_releases_github),
+                        iconResId = R.drawable.ic_github,
+                        onClick = onOpenAllReleases,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

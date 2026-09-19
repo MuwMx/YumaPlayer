@@ -176,10 +176,12 @@ import androidx.media3.common.Timeline
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import coil3.imageLoader
@@ -746,7 +748,7 @@ class MainActivity : ComponentActivity() {
                     onClick = {
                         bottomSheetPageState.dismiss()
                         if (BuildConfig.DISTRIBUTION == "gms") {
-                            this@MainActivity.navController.navigate("settings/update") {
+                            this@MainActivity.navController.navigate("settings/update?autostart=1") {
                                 launchSingleTop = true
                             }
                         } else {
@@ -2518,13 +2520,32 @@ class MainActivity : ComponentActivity() {
                                                 ),
                                     ) {
                                         if (BuildConfig.UPDATER_AVAILABLE) {
-                                            composable("settings/update") {
+                                            composable(
+                                                route = "settings/update?autostart={autostart}&download={download}",
+                                                arguments = listOf(
+                                                    navArgument("autostart") {
+                                                        type = NavType.StringType
+                                                        nullable = true
+                                                        defaultValue = null
+                                                    },
+                                                    navArgument("download") {
+                                                        type = NavType.StringType
+                                                        nullable = true
+                                                        defaultValue = null
+                                                    },
+                                                ),
+                                            ) { backStackEntry ->
+                                                val autostart = backStackEntry.arguments?.let { args ->
+                                                    val raw = args.getString("autostart") ?: args.getString("download")
+                                                    raw == "1" || raw.equals("true", ignoreCase = true)
+                                                } ?: false
                                                 val updateViewModel: UpdateViewModel = hiltViewModel()
                                                 val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
                                                 UpdateScreen(
                                                     navController = navController,
                                                     onUpToDate = { updateViewModel.dismissUpdate() },
+                                                    autostart = autostart,
                                                 )
                                             }
                                         }
