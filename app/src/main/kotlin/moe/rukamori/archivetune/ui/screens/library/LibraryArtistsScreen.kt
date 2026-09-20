@@ -6,62 +6,31 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -84,30 +53,23 @@ import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
-import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
-import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
-import moe.rukamori.archivetune.ui.theme.yumaClickable
-import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryArtistsViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LibraryArtistsScreen(
     navController: NavController,
     onDeselect: () -> Unit,
     viewModel: LibraryArtistsViewModel = hiltViewModel(),
 ) {
+    val params = remember(onDeselect) { LibraryArtistsParams(onDeselect = onDeselect) }
     val menuState = LocalMenuState.current
     val haptics = rememberYumaHaptics()
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current
     val database = LocalDatabase.current
-    val yumaColors = LocalYumaColors.current
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -132,14 +94,80 @@ fun LibraryArtistsScreen(
 
     val topArtist = artists.firstOrNull()
 
+    val uiState =
+        LibraryArtistsUiState(
+            list = artists,
+            isRefreshing = isRefreshing,
+            sortType = sortType,
+            sortDescending = sortDescending,
+            filter = filter,
+        )
+
+    val events =
+        remember(
+            coroutineScope,
+            database,
+            playerConnection,
+            menuState,
+            navController,
+            viewModel,
+            onSortTypeChange,
+            onSortDescendingChange,
+        ) {
+            LibraryArtistsEvents(
+                onRefresh = { viewModel.sync() },
+                onSort = { type ->
+                    onSortTypeChange(type)
+                    if (type == ArtistSortType.NAME) onSortDescendingChange(false)
+                },
+                onSortDescendingChange = onSortDescendingChange,
+                onFilterToggle = {
+                    filter = if (filter == ArtistFilter.LIKED) ArtistFilter.LIBRARY else ArtistFilter.LIKED
+                },
+                onPlay = { artistWrapper ->
+                    coroutineScope.launch {
+                        val songs =
+                            database
+                                .artistSongs(
+                                    artistWrapper.id,
+                                    ArtistSongSortType.CREATE_DATE,
+                                    true,
+                                ).first()
+                                .map { it.toMediaItem() }
+                        if (songs.isNotEmpty()) {
+                            playerConnection?.playQueue(
+                                ListQueue(
+                                    title = artistWrapper.artist.name,
+                                    items = songs,
+                                ),
+                            )
+                        }
+                    }
+                },
+                onOpen = { artistWrapper ->
+                    navController.navigate("artist/${artistWrapper.artist.id}")
+                },
+                onMenu = { artistWrapper ->
+                    menuState.show {
+                        ArtistMenu(
+                            originalArtist = artistWrapper,
+                            coroutineScope = coroutineScope,
+                            onDismiss = menuState::dismiss,
+                        )
+                    }
+                },
+            )
+        }
+
     ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.sync() },
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = events.onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier =
                 Modifier
@@ -147,383 +175,31 @@ fun LibraryArtistsScreen(
                     .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
         ) {
             // Featured Spotlight Row
-            item(span = { GridItemSpan(2) }, key = "spotlight_row") {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max)
-                            .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    // Left Card: Top Artist
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1.3f)
-                                .fillMaxHeight()
-                                .yumaClickable(
-                                    pressedScale = SettingsAnimations.PressScale,
-                                    onClick = {
-                                        topArtist?.let { navController.navigate("artist/${it.artist.id}") }
-                                    },
-                                )
-                                .yumaGlassCard(
-                                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
-                                    backgroundColor = yumaColors.glassBackground,
-                                    borderColor = yumaColors.glassBorder,
-                                    position = YumaSegmentPosition.Single,
-                                )
-                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
-                                .padding(16.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxHeight(),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(SettingsDimensions.LibraryChipHeight)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.person),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.top_artist_badge),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    Text(
-                                        text = topArtist?.artist?.name ?: stringResource(R.string.no_artist_yet),
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Button(
-                                    onClick = {
-                                        topArtist?.let { artist ->
-                                            coroutineScope.launch {
-                                                val songs =
-                                                    database
-                                                        .artistSongs(
-                                                            artist.id,
-                                                            ArtistSongSortType.CREATE_DATE,
-                                                            true,
-                                                        ).first()
-                                                        .map { it.toMediaItem() }
-                                                if (songs.isNotEmpty()) {
-                                                    playerConnection?.playQueue(
-                                                        ListQueue(
-                                                            title = artist.artist.name,
-                                                            items = songs,
-                                                        ),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    shape = CircleShape,
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                    modifier = Modifier.height(32.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.play_all),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        topArtist?.let { artist ->
-                                            menuState.show {
-                                                ArtistMenu(
-                                                    originalArtist = artist,
-                                                    coroutineScope = coroutineScope,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.size(32.dp),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.more_vert),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Right Card: Total Count
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .yumaClickable(
-                                    pressedScale = SettingsAnimations.PressScale,
-                                    onClick = {
-                                        filter = if (filter == ArtistFilter.LIKED) ArtistFilter.LIBRARY else ArtistFilter.LIKED
-                                    },
-                                )
-                                .yumaGlassCard(
-                                    shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
-                                    backgroundColor = yumaColors.glassBackground,
-                                    borderColor = yumaColors.glassBorder,
-                                    position = YumaSegmentPosition.Single,
-                                )
-                                .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
-                                .padding(16.dp),
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.artists),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Icon(
-                                    painter = painterResource(id = R.drawable.arrow_forward),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            Column {
-                                Text(
-                                    text = "${artists.size}",
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = stringResource(R.string.total_label),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
+            item(span = { GridItemSpan(2) }, key = KEY_SPOTLIGHT_ROW) {
+                SpotlightSection(
+                    topArtist = topArtist,
+                    totalArtistsCount = uiState.list.size,
+                    onOpenTopArtist = { topArtist?.let { events.onOpen(it) } },
+                    onPlayTopArtist = { topArtist?.let { events.onPlay(it) } },
+                    onMenuTopArtist = { topArtist?.let { events.onMenu(it) } },
+                    onFilterToggle = events.onFilterToggle,
+                )
             }
 
             // Sub-Header Controls (Sort dropdown, genres, view list/grid, etc)
-            item(span = { GridItemSpan(2) }, key = "sub_header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    var showSortMenu by remember { mutableStateOf(false) }
-                    val currentSortLabel =
-                        when (sortType) {
-                            ArtistSortType.CREATE_DATE -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.newest_first,
-                                    )
-                                } else {
-                                    stringResource(R.string.oldest_first)
-                                }
-                            }
-
-                            ArtistSortType.NAME -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.sort_z_to_a,
-                                    )
-                                } else {
-                                    stringResource(R.string.sort_a_to_z)
-                                }
-                            }
-
-                            ArtistSortType.SONG_COUNT -> {
-                                if (sortDescending) {
-                                    stringResource(
-                                        R.string.most_tracks,
-                                    )
-                                } else {
-                                    stringResource(R.string.least_tracks)
-                                }
-                            }
-
-                            ArtistSortType.PLAY_TIME -> {
-                                stringResource(R.string.play_time)
-                            }
-                        }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .height(SettingsDimensions.LibraryChipHeight)
-                                        .yumaClickable { showSortMenu = true }
-                                        .yumaGlassCard(
-                                            shape = CircleShape,
-                                            backgroundColor = yumaColors.glassBackground,
-                                            borderColor = yumaColors.glassBorder,
-                                            strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                        )
-                                        .clip(CircleShape)
-                                        .padding(horizontal = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = currentSortLabel,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    painter = painterResource(id = R.drawable.expand_more),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false },
-                            ) {
-                                ArtistSortType.entries.forEach { type ->
-                                    val label =
-                                        when (type) {
-                                            ArtistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
-                                            ArtistSortType.NAME -> stringResource(R.string.sort_a_to_z)
-                                            ArtistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
-                                            ArtistSortType.PLAY_TIME -> stringResource(R.string.play_time)
-                                        }
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            onSortTypeChange(type)
-                                            if (type == ArtistSortType.NAME) onSortDescendingChange(false)
-                                            showSortMenu = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        // Sort direction toggle button
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(SettingsDimensions.LibraryChipHeight)
-                                    .yumaClickable { onSortDescendingChange(!sortDescending) }
-                                    .yumaGlassCard(
-                                        shape = CircleShape,
-                                        backgroundColor = yumaColors.glassBackground,
-                                        borderColor = yumaColors.glassBorder,
-                                        strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                    )
-                                    .clip(CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter =
-                                    painterResource(
-                                        id = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
-                                    ),
-                                contentDescription =
-                                    if (sortDescending) {
-                                        stringResource(
-                                            R.string.sort_descending,
-                                        )
-                                    } else {
-                                        stringResource(R.string.sort_ascending)
-                                    },
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier =
-                            Modifier
-                                .height(SettingsDimensions.LibraryChipHeight)
-                                .yumaGlassCard(
-                                    shape = CircleShape,
-                                    backgroundColor = yumaColors.glassBackground,
-                                    borderColor = yumaColors.glassBorder,
-                                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                )
-                                .clip(CircleShape)
-                                .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text =
-                                if (filter ==
-                                    ArtistFilter.LIKED
-                                ) {
-                                    stringResource(R.string.subscribed_only)
-                                } else {
-                                    stringResource(R.string.all_artists_filter)
-                                },
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+            item(span = { GridItemSpan(2) }, key = KEY_SUB_HEADER) {
+                SortFilterBar(
+                    sortType = uiState.sortType,
+                    sortDescending = uiState.sortDescending,
+                    filter = uiState.filter,
+                    onSortTypeChange = events.onSort,
+                    onSortDescendingChange = events.onSortDescendingChange,
+                )
             }
 
             // Artists Grid: 2-column capsule artist cards
-            if (artists.isEmpty()) {
-                item(span = { GridItemSpan(2) }, key = "empty_artists") {
+            if (uiState.list.isEmpty()) {
+                item(span = { GridItemSpan(2) }, key = KEY_EMPTY_ARTISTS) {
                     LibraryEmptyState(
                         iconRes = R.drawable.person,
                         titleRes = R.string.no_results_found,
@@ -533,109 +209,25 @@ fun LibraryArtistsScreen(
                 }
             } else {
                 itemsIndexed(
-                    items = artists,
+                    items = uiState.list,
                     key = { _, it -> it.id },
-                    contentType = { _, _ -> "artist_item" },
-                ) { index, artistWrapper ->
-                    val artist = artistWrapper.artist
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .yumaCombinedClickable(
-                                    pressedScale = SettingsAnimations.PressScale,
-                                    onClick = { navController.navigate("artist/${artist.id}") },
-                                    onLongClick = {
-                                        haptics.longPress()
-                                        menuState.show {
-                                            ArtistMenu(
-                                                originalArtist = artistWrapper,
-                                                coroutineScope = coroutineScope,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                )
-                                .yumaGlassCard(
-                                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                                    backgroundColor = yumaColors.glassBackground,
-                                    borderColor = yumaColors.glassBorder,
-                                    position = YumaSegmentPosition.Single,
-                                )
-                                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
-                                .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AsyncImage(
-                            model = artist.thumbnailUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .size(52.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = artist.name,
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(R.string.artist_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    val songs =
-                                        database
-                                            .artistSongs(
-                                                artistWrapper.id,
-                                                ArtistSongSortType.CREATE_DATE,
-                                                true,
-                                            ).first()
-                                            .map { it.toMediaItem() }
-                                    if (songs.isNotEmpty()) {
-                                        playerConnection?.playQueue(
-                                            ListQueue(
-                                                title = artistWrapper.artist.name,
-                                                items = songs,
-                                            ),
-                                        )
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(32.dp),
-                            colors =
-                                IconButtonDefaults.iconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                    contentColor = MaterialTheme.colorScheme.primary,
-                                ),
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.play),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
+                    contentType = { _, _ -> CONTENT_TYPE_ARTIST_ITEM },
+                ) { _, artistWrapper ->
+                    ArtistGridCard(
+                        artistWrapper = artistWrapper,
+                        onClick = { events.onOpen(artistWrapper) },
+                        onLongClick = {
+                            haptics.longPress()
+                            events.onMenu(artistWrapper)
+                        },
+                        onPlayClick = { events.onPlay(artistWrapper) },
+                    )
                 }
             }
 
             // Recently Played Artists Section
-            if (artists.size > 2) {
-                item(span = { GridItemSpan(2) }, key = "recent_artists_header") {
+            if (uiState.list.size > 2) {
+                item(span = { GridItemSpan(2) }, key = KEY_RECENT_ARTISTS_HEADER) {
                     Text(
                         text = stringResource(R.string.recently_played_artists),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -644,46 +236,11 @@ fun LibraryArtistsScreen(
                     )
                 }
 
-                item(span = { GridItemSpan(2) }, key = "recent_artists_row") {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(vertical = 4.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        items(artists.take(5)) { artistWrapper ->
-                            val artist = artistWrapper.artist
-                            Column(
-                                modifier =
-                                    Modifier
-                                        .width(72.dp)
-                                        .yumaClickable(
-                                            pressedScale = SettingsAnimations.PressScale,
-                                            onClick = {
-                                                navController.navigate("artist/${artist.id}")
-                                            },
-                                        ),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                AsyncImage(
-                                    model = artist.thumbnailUrl,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier
-                                            .size(60.dp)
-                                            .clip(CircleShape),
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = artist.name,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                    }
+                item(span = { GridItemSpan(2) }, key = KEY_RECENT_ARTISTS_ROW) {
+                    RecentArtistsRow(
+                        artists = uiState.list,
+                        onArtistClick = { events.onOpen(it) },
+                    )
                 }
             }
         }

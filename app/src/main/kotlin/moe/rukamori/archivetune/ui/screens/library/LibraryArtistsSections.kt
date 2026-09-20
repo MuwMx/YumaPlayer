@@ -1,0 +1,534 @@
+/*
+ * YumaPlayer (2026) | Modified work by MuwMix
+ * ArchiveTune (2026) | Original work by © Rukamori
+ * GPL-3.0 License | Contributors: see git history
+ */
+
+package moe.rukamori.archivetune.ui.screens.library
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.ArtistFilter
+import moe.rukamori.archivetune.constants.ArtistSortType
+import moe.rukamori.archivetune.db.entities.Artist
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+
+@Composable
+fun SpotlightSection(
+    topArtist: Artist?,
+    totalArtistsCount: Int,
+    onOpenTopArtist: () -> Unit,
+    onPlayTopArtist: () -> Unit,
+    onMenuTopArtist: () -> Unit,
+    onFilterToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val yumaColors = LocalYumaColors.current
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Max)
+                .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Left Card: Top Artist
+        Box(
+            modifier =
+                Modifier
+                    .weight(1.3f)
+                    .fillMaxHeight()
+                    .yumaClickable(
+                        pressedScale = SettingsAnimations.PressScale,
+                        onClick = onOpenTopArtist,
+                    )
+                    .yumaGlassCard(
+                        shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                        backgroundColor = yumaColors.glassBackground,
+                        borderColor = yumaColors.glassBorder,
+                        position = YumaSegmentPosition.Single,
+                    )
+                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
+                    .padding(16.dp),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(SettingsDimensions.LibraryChipHeight)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.person),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.top_artist_badge),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = topArtist?.artist?.name ?: stringResource(R.string.no_artist_yet),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = onPlayTopArtist,
+                        shape = CircleShape,
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.height(32.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.play_all),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onMenuTopArtist,
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.more_vert),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Right Card: Total Count
+        Box(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .yumaClickable(
+                        pressedScale = SettingsAnimations.PressScale,
+                        onClick = onFilterToggle,
+                    )
+                    .yumaGlassCard(
+                        shape = RoundedCornerShape(SettingsDimensions.LibrarySheetRadius),
+                        backgroundColor = yumaColors.glassBackground,
+                        borderColor = yumaColors.glassBorder,
+                        position = YumaSegmentPosition.Single,
+                    )
+                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySheetRadius))
+                    .padding(16.dp),
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.artists),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow_forward),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Column {
+                    Text(
+                        text = "$totalArtistsCount",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.total_label),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SortFilterBar(
+    sortType: ArtistSortType,
+    sortDescending: Boolean,
+    filter: ArtistFilter,
+    onSortTypeChange: (ArtistSortType) -> Unit,
+    onSortDescendingChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val yumaColors = LocalYumaColors.current
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        var showSortMenu by remember { mutableStateOf(false) }
+        val currentSortLabel =
+            when (sortType) {
+                ArtistSortType.CREATE_DATE -> {
+                    if (sortDescending) {
+                        stringResource(R.string.newest_first)
+                    } else {
+                        stringResource(R.string.oldest_first)
+                    }
+                }
+
+                ArtistSortType.NAME -> {
+                    if (sortDescending) {
+                        stringResource(R.string.sort_z_to_a)
+                    } else {
+                        stringResource(R.string.sort_a_to_z)
+                    }
+                }
+
+                ArtistSortType.SONG_COUNT -> {
+                    if (sortDescending) {
+                        stringResource(R.string.most_tracks)
+                    } else {
+                        stringResource(R.string.least_tracks)
+                    }
+                }
+
+                ArtistSortType.PLAY_TIME -> {
+                    stringResource(R.string.play_time)
+                }
+            }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                Row(
+                    modifier =
+                        Modifier
+                            .height(SettingsDimensions.LibraryChipHeight)
+                            .yumaClickable { showSortMenu = true }
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = yumaColors.glassBackground,
+                                borderColor = yumaColors.glassBorder,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            )
+                            .clip(CircleShape)
+                            .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = currentSortLabel,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        painter = painterResource(id = R.drawable.expand_more),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showSortMenu,
+                    onDismissRequest = { showSortMenu = false },
+                ) {
+                    ArtistSortType.entries.forEach { type ->
+                        val label =
+                            when (type) {
+                                ArtistSortType.CREATE_DATE -> stringResource(R.string.recently_added)
+                                ArtistSortType.NAME -> stringResource(R.string.sort_a_to_z)
+                                ArtistSortType.SONG_COUNT -> stringResource(R.string.tracks_count_label)
+                                ArtistSortType.PLAY_TIME -> stringResource(R.string.play_time)
+                            }
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                onSortTypeChange(type)
+                                if (type == ArtistSortType.NAME) onSortDescendingChange(false)
+                                showSortMenu = false
+                            },
+                        )
+                    }
+                }
+            }
+
+            // Sort direction toggle button
+            Spacer(modifier = Modifier.width(4.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .size(SettingsDimensions.LibraryChipHeight)
+                        .yumaClickable { onSortDescendingChange(!sortDescending) }
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = yumaColors.glassBackground,
+                            borderColor = yumaColors.glassBorder,
+                            strokeWidth = SettingsDimensions.GlassBorderThickness,
+                        )
+                        .clip(CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter =
+                        painterResource(
+                            id = if (sortDescending) R.drawable.arrow_downward else R.drawable.arrow_upward,
+                        ),
+                    contentDescription =
+                        if (sortDescending) {
+                            stringResource(R.string.sort_descending)
+                        } else {
+                            stringResource(R.string.sort_ascending)
+                        },
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
+        Row(
+            modifier =
+                Modifier
+                    .height(SettingsDimensions.LibraryChipHeight)
+                    .yumaGlassCard(
+                        shape = CircleShape,
+                        backgroundColor = yumaColors.glassBackground,
+                        borderColor = yumaColors.glassBorder,
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                    )
+                    .clip(CircleShape)
+                    .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text =
+                    if (filter == ArtistFilter.LIKED) {
+                        stringResource(R.string.subscribed_only)
+                    } else {
+                        stringResource(R.string.all_artists_filter)
+                    },
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ArtistGridCard(
+    artistWrapper: Artist,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onPlayClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val yumaColors = LocalYumaColors.current
+    val artist = artistWrapper.artist
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .yumaCombinedClickable(
+                    pressedScale = SettingsAnimations.PressScale,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    backgroundColor = yumaColors.glassBackground,
+                    borderColor = yumaColors.glassBorder,
+                    position = YumaSegmentPosition.Single,
+                )
+                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = artist.thumbnailUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier =
+                Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = artist.name,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.artist_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        IconButton(
+            onClick = onPlayClick,
+            modifier = Modifier.size(32.dp),
+            colors =
+                IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.play),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun RecentArtistsRow(
+    artists: List<Artist>,
+    onArtistClick: (Artist) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        items(artists.take(5)) { artistWrapper ->
+            val artist = artistWrapper.artist
+            Column(
+                modifier =
+                    Modifier
+                        .width(72.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { onArtistClick(artistWrapper) },
+                        ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AsyncImage(
+                    model = artist.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(60.dp)
+                            .clip(CircleShape),
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = artist.name,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+    }
+}
