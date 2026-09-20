@@ -20,6 +20,9 @@ object SplashSlots {
     var customVectorPath: android.graphics.Path? = null
     var vectorVersion: Int by mutableStateOf(0)
 
+    private val pos = FloatArray(2)
+    private var segLengths = FloatArray(32)
+
     const val LOGO_PATH = "M353.991 673.128C341.491 673.128 151.791 605.128 113.491 586.128C75.1908 567.128 10.9905 545.499 0.490656 521.6C-10.0092 497.7 151.491 425.628 151.491 425.628C169.491 416.628 288.491 360.128 292.59 357L292.575 336.628L362.735 300.078C362.735 300.078 366.491 673.128 353.991 673.128Z M296.79 0C296.79 0 577.49 52.8 595.59 57V187.128C595.59 187.128 369.09 149.499 366.191 150.699L362.843 292.226L292.575 329.588L296.79 0Z"
 
     data class ShapeSlots(
@@ -89,8 +92,8 @@ object SplashSlots {
         cx: Float,
         cy: Float,
         targetSize: Float
-    ): List<Offset> {
-        if (pathData.isEmpty() || count <= 0 || targetSize <= 0f) return emptyList()
+    ): List<Offset> = synchronized(this) {
+        if (pathData.isEmpty() || count <= 0 || targetSize <= 0f) return@synchronized emptyList()
         return try {
             val androidPath = androidx.core.graphics.PathParser.createPathFromPathData(pathData)
             val bounds = android.graphics.RectF()
@@ -107,7 +110,6 @@ object SplashSlots {
             val length = measure.length
             if (length <= 0f) return emptyList()
             val step = length / count
-            val pos = FloatArray(2)
             List(count) { i ->
                 measure.getPosTan(i * step, pos, null)
                 Offset(pos[0], pos[1])
@@ -139,16 +141,23 @@ object SplashSlots {
     fun contour(shape: String, cx: Float, cy: Float, size: Float): List<Offset> =
         if (shape == SHAPE_CROSS) ldCross(cx, cy, size) else pbBolt(cx, cy, size)
 
-    fun ndResample(pts: List<Offset>, count: Int = SLOT_COUNT): List<Offset> {
-        if (pts.isEmpty() || count <= 0) return emptyList()
+    fun ndResample(pts: List<Offset>, count: Int = SLOT_COUNT): List<Offset> = synchronized(this) {
+        if (pts.isEmpty() || count <= 0) return@synchronized emptyList()
         val n = pts.size
-        val segLengths = FloatArray(n) { i ->
+        var lengths = segLengths
+        if (lengths.size < n) {
+            lengths = FloatArray(n)
+            segLengths = lengths
+        }
+        var perimeter = 0f
+        for (i in 0 until n) {
             val p1 = pts[i]
             val p2 = pts[(i + 1) % n]
-            hypot(p2.x - p1.x, p2.y - p1.y)
+            val len = hypot(p2.x - p1.x, p2.y - p1.y)
+            lengths[i] = len
+            perimeter += len
         }
-        val perimeter = segLengths.sum()
-        if (perimeter <= 0f) return List(count) { pts.first() }
+        if (perimeter <= 0f) return@synchronized List(count) { pts.first() }
 
         val step = perimeter / count
         val res = ArrayList<Offset>(count)
@@ -157,11 +166,11 @@ object SplashSlots {
 
         for (i in 0 until count) {
             val targetDist = i * step
-            while (segIdx < n - 1 && targetDist >= segStartDist + segLengths[segIdx]) {
-                segStartDist += segLengths[segIdx]
+            while (segIdx < n - 1 && targetDist >= segStartDist + lengths[segIdx]) {
+                segStartDist += lengths[segIdx]
                 segIdx++
             }
-            val segLen = segLengths[segIdx]
+            val segLen = lengths[segIdx]
             val t = if (segLen > 0f) ((targetDist - segStartDist) / segLen).coerceIn(0f, 1f) else 0f
             val p1 = pts[segIdx]
             val p2 = pts[(segIdx + 1) % n]
@@ -172,10 +181,10 @@ object SplashSlots {
                 )
             )
         }
-        return res
+        res
     }
 
-    fun parseContourPath(path: android.graphics.Path, totalSlots: Int = SLOT_COUNT): ShapeSlots {
+    fun parseContourPath(path: android.graphics.Path, totalSlots: Int = SLOT_COUNT): ShapeSlots = synchronized(this) {
         val contourLengths = ArrayList<Float>()
         val measure = android.graphics.PathMeasure(path, false)
         do {
@@ -186,12 +195,12 @@ object SplashSlots {
         } while (measure.nextContour())
 
         if (contourLengths.isEmpty() || totalSlots <= 0) {
-            return ShapeSlots(emptyList(), listOf(0 until totalSlots), emptyList(), path)
+            return@synchronized ShapeSlots(emptyList(), listOf(0 until totalSlots), emptyList(), path)
         }
 
         val totalLength = contourLengths.sum()
         if (totalLength <= 0f) {
-            return ShapeSlots(emptyList(), listOf(0 until totalSlots), emptyList(), path)
+            return@synchronized ShapeSlots(emptyList(), listOf(0 until totalSlots), emptyList(), path)
         }
 
         val counts = contourLengths.map { len ->
@@ -206,7 +215,6 @@ object SplashSlots {
         val slots = ArrayList<Offset>(totalSlots)
         val loops = ArrayList<IntRange>(contourLengths.size)
         var contourIdx = 0
-        val pos = FloatArray(2)
 
         do {
             val len = samplingMeasure.length
@@ -241,7 +249,7 @@ object SplashSlots {
             (it.x - centroid.x) * (it.x - centroid.x) + (it.y - centroid.y) * (it.y - centroid.y)
         }.take(3)
 
-        return ShapeSlots(
+        ShapeSlots(
             slots = slots,
             loops = loops,
             tips = tips,

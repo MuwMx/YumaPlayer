@@ -84,15 +84,19 @@ fun extractSeedColor(bitmap: Bitmap, config: ColorExtractionConfig = ColorExtrac
 
     val workingBitmap = resizeForExtraction(bitmap, config.downscaleMaxDimension)
 
-    val seedColor = runCatching {
+    val seedColor = try {
         val pixels = IntArray(workingBitmap.width * workingBitmap.height)
         workingBitmap.getPixels(pixels, 0, workingBitmap.width, 0, 0, workingBitmap.width, workingBitmap.height)
         Color(selectSeedColorArgbFromPixels(pixels, config))
-    }.getOrElse { Color(0xFF1DB954) } // Spotify Green Fallback
+    } catch (_: Throwable) {
+        Color(0xFF1DB954)
+    } finally {
+        if (workingBitmap !== bitmap && !workingBitmap.isRecycled) {
+            workingBitmap.recycle()
+        }
+    }
 
     extractedColorCache.put(cacheKey, seedColor)
-    if (workingBitmap !== bitmap) workingBitmap.recycle()
-
     return seedColor
 }
 
