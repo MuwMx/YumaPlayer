@@ -23,15 +23,6 @@ import moe.rukamori.archivetune.viewmodels.ArtistBlockState
 internal const val ARTIST_KEY_SHIMMER = "shimmer"
 internal const val ARTIST_KEY_HEADER = "header"
 
-fun artistLocalSongKey(id: String, index: Int): Any = "local_song_${id}_$index"
-fun artistLocalAlbumKey(id: Long, index: Int): Any = "local_album_${id}_$index"
-fun artistOnlineSectionHeaderKey(title: String, firstItemId: String, browseId: String): Any =
-    "youtube_section_header_${title}_${firstItemId}_${browseId}"
-fun artistOnlineSongKey(id: String, index: Int): Any = "youtube_song_${id}_$index"
-fun artistOnlineSectionGridKey(title: String, firstItemId: String, browseId: String): Any =
-    "youtube_section_grid_${title}_${firstItemId}_${browseId}"
-fun artistOnlineGridItemKey(type: String, id: String): Any = "youtube_${type}_$id"
-
 @Immutable
 data class ArtistUiState(
     val artistPage: ArtistPage? = null,

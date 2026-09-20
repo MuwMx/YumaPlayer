@@ -149,7 +149,6 @@ fun ArtistScreen(
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showLocal by rememberSaveable { mutableStateOf(false) }
-    val density = LocalDensity.current
     val screenWidthDp = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
     val expandedHeight = screenWidthDp * HeaderType.ARTIST.heightRatio
 
