@@ -24,7 +24,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
+import moe.rukamori.archivetune.core.common.math.lerp
+import moe.rukamori.archivetune.core.common.math.lerp3
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.ui.utils.resize
 import androidx.compose.foundation.lazy.LazyListState
@@ -45,14 +46,6 @@ enum class HeaderType(
     ALBUM(heightRatio = 1.35f, showBottomGradient = true),
     PLAYLIST(heightRatio = 1.35f, showBottomGradient = true),
     SPOTIFY(heightRatio = 1.0f, showBottomGradient = false)
-}
-
-fun lerp3(start: Float, mid: Float, end: Float, fraction: Float): Float {
-    return if (fraction < 0.5f) {
-        lerp(start, mid, fraction * 2f)
-    } else {
-        lerp(mid, end, (fraction - 0.5f) * 2f)
-    }
 }
 
 @Composable
