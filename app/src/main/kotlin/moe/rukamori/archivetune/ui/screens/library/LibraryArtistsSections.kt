@@ -499,7 +499,7 @@ fun RecentArtistsRow(
         contentPadding = PaddingValues(vertical = 4.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        items(artists.take(5)) { artistWrapper ->
+        items(artists.take(5), key = { it.id }, contentType = { "recent_artist" }) { artistWrapper ->
             val artist = artistWrapper.artist
             Column(
                 modifier =
