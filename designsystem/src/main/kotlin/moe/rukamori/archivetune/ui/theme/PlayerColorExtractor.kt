@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.core.common.math.calculateColorWeight
+import moe.rukamori.archivetune.core.common.math.isNearGray
+import moe.rukamori.archivetune.core.common.math.isSimilarColor
 
 data class ExtractedColors(
     val vibrant: Int,
@@ -172,13 +175,9 @@ object PlayerColorExtractor {
 
     private fun calculateColorWeight(swatch: Palette.Swatch?): Float {
         if (swatch == null) return 0f
-        val population = swatch.population.toFloat()
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(swatch.rgb, hsv)
-        val saturation = hsv[1]
-        val brightness = hsv[2]
-        val vibrancyBonus = if (saturation > 0.3f && brightness in 0.2f..0.9f) 1.3f else 1.0f
-        return population * vibrancyBonus
+        return calculateColorWeight(hsv, swatch.population)
     }
 
     /**
@@ -193,24 +192,7 @@ object PlayerColorExtractor {
         val hsv2 = FloatArray(3)
         android.graphics.Color.colorToHSV(color1.toArgb(), hsv1)
         android.graphics.Color.colorToHSV(color2.toArgb(), hsv2)
-
-        val hueDiffRaw = kotlin.math.abs(hsv1[0] - hsv2[0])
-        val hueDiff = kotlin.math.min(hueDiffRaw, 360f - hueDiffRaw)
-        val satDiff = kotlin.math.abs(hsv1[1] - hsv2[1])
-        val valueDiff = kotlin.math.abs(hsv1[2] - hsv2[2])
-        if (hueDiff < 12f && satDiff < 0.12f && valueDiff < 0.12f) return true
-
-        val threshold = 28
-        val r1 = (color1.red * 255).toInt()
-        val g1 = (color1.green * 255).toInt()
-        val b1 = (color1.blue * 255).toInt()
-        val r2 = (color2.red * 255).toInt()
-        val g2 = (color2.green * 255).toInt()
-        val b2 = (color2.blue * 255).toInt()
-
-        return kotlin.math.abs(r1 - r2) < threshold &&
-            kotlin.math.abs(g1 - g2) < threshold &&
-            kotlin.math.abs(b1 - b2) < threshold
+        return isSimilarColor(hsv1, hsv2, color1.toArgb(), color2.toArgb())
     }
 
     private fun isSimilarToAny(
@@ -246,7 +228,7 @@ object PlayerColorExtractor {
     private fun isNearGray(color: Color): Boolean {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-        return hsv[1] < 0.15f || hsv[2] < 0.08f
+        return isNearGray(hsv)
     }
 
     /**

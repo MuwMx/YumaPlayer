@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.activity)
     implementation(libs.datastore)
+    implementation(project(":core"))
 
     compileOnly("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
