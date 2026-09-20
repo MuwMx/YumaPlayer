@@ -6,13 +6,23 @@
 package moe.rukamori.archivetune.ui.theme
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
+import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 
 @Retention(AnnotationRetention.BINARY)
@@ -56,6 +66,40 @@ fun TestThemeWrapper(
         ArchiveTuneTheme {
             Surface(color = MaterialTheme.colorScheme.background) {
                 content()
+            }
+        }
+    }
+}
+
+@ThemePreviews
+@Composable
+fun PseudoGlassPreview() {
+    TestThemeWrapper {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val positions = listOf(
+                YumaSegmentPosition.Single,
+                YumaSegmentPosition.First,
+                YumaSegmentPosition.Middle,
+                YumaSegmentPosition.Last,
+            )
+            positions.forEach { position ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .pseudoGlass(position = position),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = position.name,
+                        color = LocalYumaColors.current.textPrimary
+                    )
+                }
             }
         }
     }
