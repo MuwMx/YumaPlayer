@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -74,6 +75,7 @@ fun BottomSheetMenu(
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             dragHandle = null,
+            modifier = modifier.fillMaxHeight(),
         ) {
             Surface(
                 modifier = modifier
