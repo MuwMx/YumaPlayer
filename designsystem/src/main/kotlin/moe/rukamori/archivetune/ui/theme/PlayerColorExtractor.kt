@@ -13,8 +13,14 @@ import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.core.common.math.calculateColorWeight
+import moe.rukamori.archivetune.core.common.math.calculateGreyStops
+import moe.rukamori.archivetune.core.common.math.calculateSaturationFactor
+import moe.rukamori.archivetune.core.common.math.enhanceColorVividness
+import moe.rukamori.archivetune.core.common.math.hueShift
+import moe.rukamori.archivetune.core.common.math.isGreyscaleImage
 import moe.rukamori.archivetune.core.common.math.isNearGray
 import moe.rukamori.archivetune.core.common.math.isSimilarColor
+import moe.rukamori.archivetune.core.common.math.tuneColorForMesh
 
 data class ExtractedColors(
     val vibrant: Int,
@@ -85,7 +91,7 @@ object PlayerColorExtractor {
 
                 for (swatch in rankedSwatches) {
                     android.graphics.Color.colorToHSV(swatch.rgb, hsv)
-                    val satFactor = if (hsv[1] > 0.3f) 1.25f else 1.05f
+                    val satFactor = calculateSaturationFactor(hsv[1])
                     addIfUnique(Color(swatch.rgb), satFactor)
                     if (availableColors.size >= 6) break
                 }
@@ -99,7 +105,7 @@ object PlayerColorExtractor {
                         }.toFloat() / totalPopulation.toFloat()
 
                 val dominantColor = availableColors.firstOrNull() ?: Color(fallbackColor)
-                val isGreyscaleImage = weightedExtractedSaturation < 0.22f || isNearGray(dominantColor)
+                val isGreyscaleImage = isGreyscaleImage(weightedExtractedSaturation, isNearGray(dominantColor))
 
                 if (isGreyscaleImage) {
                     availableColors.clear()
@@ -108,12 +114,7 @@ object PlayerColorExtractor {
                             android.graphics.Color.colorToHSV(swatch.rgb, hsv)
                             hsv[2]
                         } ?: 0.10f
-                    greyStops[0] = (baseBrightness * 1.2f).coerceIn(0.06f, 0.40f)
-                    greyStops[1] = (baseBrightness * 0.9f).coerceIn(0.04f, 0.28f)
-                    greyStops[2] = (baseBrightness * 0.6f).coerceIn(0.02f, 0.16f)
-                    greyStops[3] = (baseBrightness * 1.4f).coerceIn(0.08f, 0.44f)
-                    greyStops[4] = (baseBrightness * 0.7f).coerceIn(0.03f, 0.20f)
-                    greyStops[5] = (baseBrightness * 0.5f).coerceIn(0.01f, 0.12f)
+                    calculateGreyStops(baseBrightness, greyStops)
                     hsv[0] = 0f
                     hsv[1] = 0f
                     while (availableColors.size < 6) {
@@ -171,8 +172,7 @@ object PlayerColorExtractor {
     ): Color {
         val argb = color.toArgb()
         android.graphics.Color.colorToHSV(argb, hsv)
-        hsv[1] = (hsv[1] * saturationFactor).coerceAtMost(1.0f)
-        hsv[2] = (hsv[2] * 1.02f).coerceIn(0.32f, 0.88f)
+        enhanceColorVividness(hsv, saturationFactor)
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
@@ -205,7 +205,7 @@ object PlayerColorExtractor {
         degrees: Float,
     ): Color {
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-        hsv[0] = ((hsv[0] + degrees) % 360f + 360f) % 360f
+        hueShift(hsv, degrees)
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
@@ -218,8 +218,7 @@ object PlayerColorExtractor {
         valueMax: Float,
     ): Color {
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-        hsv[1] = (kotlin.math.max(hsv[1], saturationMin) * saturationBoost).coerceIn(0f, 1f)
-        hsv[2] = (hsv[2] * 0.85f + valueTarget * 0.15f).coerceIn(valueMin, valueMax)
+        tuneColorForMesh(hsv, saturationMin, saturationBoost, valueTarget, valueMin, valueMax)
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 

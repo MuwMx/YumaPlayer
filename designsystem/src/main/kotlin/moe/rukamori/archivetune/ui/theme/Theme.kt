@@ -42,8 +42,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import moe.rukamori.archivetune.constants.AppFontPreference
-import kotlin.math.abs
-import kotlin.math.min
+import moe.rukamori.archivetune.core.common.math.calculateGradientDistanceScore
 
 val DefaultThemeColor = Color(0xFFED5564)
 val LocalArchiveTuneFontPreference = staticCompositionLocalOf { AppFontPreference.DEFAULT }
@@ -287,11 +286,7 @@ fun Bitmap.extractGradientColors(): List<Color> {
     val second = swatches.drop(1).maxByOrNull { candidate ->
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(candidate.rgb, hsv)
-        val hueDiffRaw = abs(hsv[0] - firstHsv[0])
-        val hueDiff = min(hueDiffRaw, 360f - hueDiffRaw) / 180f
-        val satDiff = abs(hsv[1] - firstHsv[1])
-        val valueDiff = abs(hsv[2] - firstHsv[2])
-        hueDiff * 0.65f + satDiff * 0.2f + valueDiff * 0.15f
+        calculateGradientDistanceScore(firstHsv, hsv)
     } ?: first
 
     return listOf(first.rgb.toComposeColor(), second.rgb.toComposeColor()).sortedByDescending { it.luminance() }
