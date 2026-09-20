@@ -50,6 +50,7 @@ class ShazamSignatureGenerator(
     private val spreadOutputs = Array(256) { DoubleArray(1025) }
     private var spreadPos = 0
     private var spreadWritten = 0
+    private val originSpread = DoubleArray(1025)
 
     private var signatureNumberSamples = 0
     private val bandToPeaks = linkedMapOf<FrequencyBand, MutableList<FrequencyPeak>>()
@@ -69,6 +70,7 @@ class ShazamSignatureGenerator(
         fftWritten = 0
         spreadPos = 0
         spreadWritten = 0
+        originSpread.fill(0.0)
         signatureNumberSamples = 0
         bandToPeaks.clear()
     }
@@ -175,7 +177,6 @@ class ShazamSignatureGenerator(
         val lastFftIndex = (fftPos - 1).floorMod(fftOutputs.size)
         val origin = fftOutputs[lastFftIndex]
 
-        val originSpread = DoubleArray(1025)
         var i = 0
         while (i <= 1021) {
             originSpread[i] = max(origin[i], max(origin[i + 1], origin[i + 2]))
@@ -221,35 +222,17 @@ class ShazamSignatureGenerator(
             val energy = fftMinus46[bin]
             if (energy >= (1.0 / 64.0) && energy >= spreadMinus49[bin - 1]) {
                 var maxNeighbor = 0.0
-                val offsets = intArrayOf(-10, -7, -4, -3, 1, 2, 5, 8)
                 var oi = 0
-                while (oi < offsets.size) {
-                    maxNeighbor = max(maxNeighbor, spreadMinus49[bin + offsets[oi]])
+                while (oi < OFFSETS.size) {
+                    maxNeighbor = max(maxNeighbor, spreadMinus49[bin + OFFSETS[oi]])
                     oi++
                 }
 
                 if (energy > maxNeighbor) {
                     var maxTimeNeighbor = maxNeighbor
-                    val timeOffsets =
-                        intArrayOf(
-                            -53,
-                            -45,
-                            165,
-                            172,
-                            179,
-                            186,
-                            193,
-                            200,
-                            214,
-                            221,
-                            228,
-                            235,
-                            242,
-                            249,
-                        )
                     var ti = 0
-                    while (ti < timeOffsets.size) {
-                        val idx = (spreadPos + timeOffsets[ti]).floorMod(spreadOutputs.size)
+                    while (ti < TIME_OFFSETS.size) {
+                        val idx = (spreadPos + TIME_OFFSETS[ti]).floorMod(spreadOutputs.size)
                         maxTimeNeighbor = max(maxTimeNeighbor, spreadOutputs[idx][bin - 1])
                         ti++
                     }
@@ -378,6 +361,27 @@ class ShazamSignatureGenerator(
             crcBuf.putInt(4, crc)
             return withHeader
         }
+    }
+
+    private companion object {
+        private val OFFSETS = intArrayOf(-10, -7, -4, -3, 1, 2, 5, 8)
+        private val TIME_OFFSETS =
+            intArrayOf(
+                -53,
+                -45,
+                165,
+                172,
+                179,
+                186,
+                193,
+                200,
+                214,
+                221,
+                228,
+                235,
+                242,
+                249,
+            )
     }
 }
 
