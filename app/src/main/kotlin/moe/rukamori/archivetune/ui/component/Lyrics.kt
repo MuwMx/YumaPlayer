@@ -143,6 +143,7 @@ import moe.rukamori.archivetune.constants.LyricsTextPositionKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
+import moe.rukamori.archivetune.core.common.math.lerp
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.lyrics.LrcParser.findCurrentLineIndex
 import moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc
@@ -269,13 +270,11 @@ private fun KaraokeWord(
                             if (timeSinceStart < attackDuration) {
                                 // Attack: 0 -> max
                                 val progress = timeSinceStart.toFloat() / attackDuration.toFloat()
-                                androidx.compose.ui.util
-                                    .lerp(0f, maxShift, progress)
+                                lerp(0f, maxShift, progress)
                             } else {
                                 // Decay: max -> 0
                                 val decayProgress = (timeSinceStart - attackDuration).toFloat() / decayDuration.toFloat()
-                                androidx.compose.ui.util
-                                    .lerp(maxShift, 0f, decayProgress)
+                                lerp(maxShift, 0f, decayProgress)
                             }
                         } else {
                             0f
