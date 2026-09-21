@@ -59,4 +59,6 @@
     <string name="audio_crossfade_dialog_title">Crossfade duration</string>
     <string name="audio_crossfade_seconds">%1$s s</string>
     <string name="spotify_playlists">Spotify Playlist</string>
+    <string name="spoiler_hidden">Hidden</string>
+    <string name="spoiler_revealed">Revealed</string>
 </resources>
