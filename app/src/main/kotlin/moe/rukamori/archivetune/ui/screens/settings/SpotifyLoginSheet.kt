@@ -34,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +59,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
 import moe.rukamori.archivetune.ui.component.SpoilerVeil
@@ -182,13 +180,7 @@ fun SpotifyLoginSheet(
             )
             var spDcInput by rememberSaveable { mutableStateOf("") }
             var spDcRevealed by rememberSaveable { mutableStateOf(false) }
-
-            LaunchedEffect(spDcRevealed) {
-                if (spDcRevealed) {
-                    delay(5000)
-                    spDcRevealed = false
-                }
-            }
+            val maskedTransformation = remember { PasswordVisualTransformation() }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -199,6 +191,7 @@ fun SpotifyLoginSheet(
                     revealed = spDcRevealed,
                     onRevealChange = { spDcRevealed = !spDcRevealed },
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
                 ) {
                     OutlinedTextField(
                         value = spDcInput,
@@ -206,7 +199,7 @@ fun SpotifyLoginSheet(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
                         singleLine = true,
-                        visualTransformation = if (!spDcRevealed) PasswordVisualTransformation() else VisualTransformation.None,
+                        visualTransformation = if (!spDcRevealed) maskedTransformation else VisualTransformation.None,
                         shape = RoundedCornerShape(12.dp),
                     )
                 }

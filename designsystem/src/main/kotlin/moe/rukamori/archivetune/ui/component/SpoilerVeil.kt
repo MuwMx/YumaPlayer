@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -85,16 +88,21 @@ fun SpoilerVeil(
         label = "spoilerReveal",
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "spoilerSparkle")
-    val sparklePhaseState = infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "sparklePhase",
-    )
+    val sparklePhaseState: State<Float>? =
+        if (!revealed && !animationsDisabled) {
+            val veilTransition = rememberInfiniteTransition(label = "spoilerSparkle")
+            veilTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 1600, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+                label = "sparklePhase",
+            )
+        } else {
+            null
+        }
 
     val particleField = remember {
         val array = FloatArray(PARTICLE_COUNT * PARTICLE_STRIDE)
@@ -138,8 +146,8 @@ fun SpoilerVeil(
     val cornerRadiusPx = remember(density) {
         with(density) { SettingsDimensions.GlassCornerRadius.toPx() }
     }
-    val cornerRadius = remember(cornerRadiusPx) {
-        CornerRadius(cornerRadiusPx, cornerRadiusPx)
+    val veilCornerSize = remember(shape) {
+        (shape as? RoundedCornerShape)?.topStart
     }
     val borderStroke = remember(density) {
         Stroke(width = with(density) { SettingsDimensions.GlassBorderThickness.toPx() })
@@ -167,6 +175,8 @@ fun SpoilerVeil(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                enabled = !revealed,
+                role = Role.Button,
                 onClick = onRevealChange,
             )
             .drawWithContent {
@@ -178,18 +188,20 @@ fun SpoilerVeil(
                 }
 
                 if (veilAlpha > 0.001f) {
+                    val veilRadiusPx = veilCornerSize?.toPx(size, this) ?: cornerRadiusPx
+                    val veilRadius = CornerRadius(veilRadiusPx, veilRadiusPx)
                     drawRoundRect(
                         color = glassBackground.copy(alpha = glassBackground.alpha * veilAlpha),
-                        cornerRadius = cornerRadius,
+                        cornerRadius = veilRadius,
                     )
                     drawRoundRect(
                         brush = borderBrush,
-                        cornerRadius = cornerRadius,
+                        cornerRadius = veilRadius,
                         style = borderStroke,
                         alpha = veilAlpha,
                     )
 
-                    val phase = if (animationsDisabled) 0f else sparklePhaseState.value
+                    val phase = sparklePhaseState?.value ?: 0f
                     val w = size.width
                     val h = size.height
                     val dispersePx = revealProgress * maxDispersePx
@@ -227,9 +239,11 @@ fun SpoilerVeil(
             },
     ) {
         Box(
-            modifier = Modifier.graphicsLayer {
-                alpha = revealProgressState.value
-            },
+            modifier = Modifier
+                .graphicsLayer {
+                    alpha = revealProgressState.value
+                }
+                .then(if (!revealed) Modifier.clearAndSetSemantics { } else Modifier),
         ) {
             content()
         }

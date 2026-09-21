@@ -355,13 +355,6 @@ fun TextFieldDialog(
     val focusRequester = remember { FocusRequester() }
     var isRevealed by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isRevealed) {
-        if (isRevealed) {
-            delay(5000)
-            isRevealed = false
-        }
-    }
-
     LaunchedEffect(Unit) {
         if (autoFocus && !isMasked) {
             delay(300)
@@ -417,8 +410,9 @@ fun TextFieldDialog(
         },
     ) {
         Column {
+            val maskedTransformation = remember { PasswordVisualTransformation() }
             val visualTransformation = if (isMasked && !isRevealed) {
-                PasswordVisualTransformation()
+                maskedTransformation
             } else {
                 VisualTransformation.None
             }
