@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.background
@@ -57,8 +60,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
+import moe.rukamori.archivetune.ui.component.SpoilerVeil
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -176,19 +181,35 @@ fun SpotifyLoginSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             var spDcInput by rememberSaveable { mutableStateOf("") }
+            var spDcRevealed by rememberSaveable { mutableStateOf(false) }
+
+            LaunchedEffect(spDcRevealed) {
+                if (spDcRevealed) {
+                    delay(5000)
+                    spDcRevealed = false
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
-                    value = spDcInput,
-                    onValueChange = { spDcInput = it },
+                SpoilerVeil(
+                    revealed = spDcRevealed,
+                    onRevealChange = { spDcRevealed = !spDcRevealed },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                )
+                ) {
+                    OutlinedTextField(
+                        value = spDcInput,
+                        onValueChange = { spDcInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
+                        singleLine = true,
+                        visualTransformation = if (!spDcRevealed) PasswordVisualTransformation() else VisualTransformation.None,
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
                 Button(
                     onClick = {
                         val token = spDcInput.trim()

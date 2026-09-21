@@ -122,6 +122,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.App.Companion.forgetAccount
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -254,6 +255,13 @@ fun AccountSettings(
 
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
+            showToken = false
+        }
+    }
+
+    LaunchedEffect(showToken) {
+        if (showToken) {
+            delay(5000)
             showToken = false
         }
     }
@@ -509,6 +517,8 @@ fun AccountSettings(
                 AccountMiscSection(
                     tokenActionTitle = tokenActionTitle,
                     tokenDescription = tokenDescription,
+                    tokenPreview = if (isLoggedIn && innerTubeCookie.isNotBlank()) previewSecureValue(innerTubeCookie) else null,
+                    showToken = showToken,
                     onNavigateHiddenPlaylists = { navController.navigate("settings/hidden_playlists") },
                     onTokenEntryClick = {
                         if (!isLoggedIn) {

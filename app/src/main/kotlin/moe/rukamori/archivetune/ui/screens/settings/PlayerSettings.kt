@@ -459,6 +459,7 @@ fun PreferenceGroupScope.FlacTokenInputs(
             icon = { Icon(painterResource(R.drawable.lock), null) },
             value = qobuzAppId,
             onValueChange = onQobuzAppIdChange,
+            isMasked = true,
         )
     }
     item {
@@ -467,6 +468,7 @@ fun PreferenceGroupScope.FlacTokenInputs(
             icon = { Icon(painterResource(R.drawable.lock), null) },
             value = qobuzAppSecret,
             onValueChange = onQobuzAppSecretChange,
+            isMasked = true,
         )
     }
     item {
@@ -475,6 +477,7 @@ fun PreferenceGroupScope.FlacTokenInputs(
             icon = { Icon(painterResource(R.drawable.lock), null) },
             value = qobuzUserAuthToken,
             onValueChange = onQobuzUserAuthTokenChange,
+            isMasked = true,
         )
     }
 }

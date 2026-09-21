@@ -70,11 +70,13 @@ import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -97,6 +99,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
@@ -765,6 +768,7 @@ fun EditTextPreference(
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
     isInputValid: (String) -> Boolean = { true },
     isEnabled: Boolean = true,
+    isMasked: Boolean = false,
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -781,15 +785,40 @@ fun EditTextPreference(
             singleLine = singleLine,
             keyboardOptions = keyboardOptions,
             isInputValid = isInputValid,
+            isMasked = isMasked,
             onDone = onValueChange,
             onDismiss = { showDialog = false },
         )
     }
 
+    var isRevealed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(isRevealed) {
+        if (isRevealed) {
+            delay(5000)
+            isRevealed = false
+        }
+    }
+
     PreferenceEntry(
         modifier = modifier,
         title = title,
-        description = value,
+        description = if (isMasked) null else value,
+        content = if (isMasked && value.isNotBlank()) {
+            {
+                Spacer(Modifier.height(SettingsDimensions.SegmentedRowSpacing))
+                SpoilerVeil(
+                    revealed = isRevealed,
+                    onRevealChange = { isRevealed = !isRevealed },
+                ) {
+                    MarqueeText(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+        } else null,
         icon = icon,
         onClick = { showDialog = true },
         isEnabled = isEnabled,

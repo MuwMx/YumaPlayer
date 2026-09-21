@@ -63,7 +63,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -347,13 +349,21 @@ fun TextFieldDialog(
     onDoneMultiple: ((List<String>) -> Unit)? = null,
     onDismiss: () -> Unit,
     extraContent: (@Composable () -> Unit)? = null,
+    isMasked: Boolean = false,
 ) {
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
-
     val focusRequester = remember { FocusRequester() }
+    var isRevealed by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(isRevealed) {
+        if (isRevealed) {
+            delay(5000)
+            isRevealed = false
+        }
+    }
 
     LaunchedEffect(Unit) {
-        if (autoFocus) {
+        if (autoFocus && !isMasked) {
             delay(300)
             focusRequester.requestFocus()
         }
@@ -407,53 +417,75 @@ fun TextFieldDialog(
         },
     ) {
         Column {
-            if (textFields != null) {
-                textFields.forEachIndexed { index, (label, value) ->
+            val visualTransformation = if (isMasked && !isRevealed) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            }
+
+            val fieldContent: @Composable () -> Unit = {
+                if (textFields != null) {
+                    textFields.forEachIndexed { index, (label, value) ->
+                        TextField(
+                            value = value,
+                            onValueChange = { onTextFieldsChange?.invoke(index, it) },
+                            placeholder = { Text(label) },
+                            singleLine = singleLine,
+                            maxLines = maxLines,
+                            colors = OutlinedTextFieldDefaults.colors(),
+                            keyboardOptions = keyboardOptions,
+                            visualTransformation = visualTransformation,
+                            keyboardActions =
+                                KeyboardActions(
+                                    onDone = {
+                                        if (onDoneMultiple != null) {
+                                            onDoneMultiple(textFields.map { it.second.text })
+                                            onDismiss()
+                                        }
+                                    },
+                                ),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
+                        )
+                    }
+                } else {
                     TextField(
-                        value = value,
-                        onValueChange = { onTextFieldsChange?.invoke(index, it) },
-                        placeholder = { Text(label) },
+                        value = legacyFieldState.value,
+                        onValueChange = { legacyFieldState.value = it },
+                        placeholder = placeholder,
                         singleLine = singleLine,
                         maxLines = maxLines,
                         colors = OutlinedTextFieldDefaults.colors(),
                         keyboardOptions = keyboardOptions,
+                        visualTransformation = visualTransformation,
                         keyboardActions =
                             KeyboardActions(
                                 onDone = {
-                                    if (onDoneMultiple != null) {
-                                        onDoneMultiple(textFields.map { it.second.text })
-                                        onDismiss()
-                                    }
+                                    onDone(legacyFieldState.value.text)
+                                    onDismiss()
                                 },
                             ),
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                                .then(if (index == 0) Modifier.focusRequester(focusRequester) else Modifier),
+                                .focusRequester(focusRequester),
                     )
                 }
+            }
+
+            if (isMasked) {
+                SpoilerVeil(
+                    revealed = isRevealed,
+                    onRevealChange = { isRevealed = !isRevealed },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    fieldContent()
+                }
             } else {
-                TextField(
-                    value = legacyFieldState.value,
-                    onValueChange = { legacyFieldState.value = it },
-                    placeholder = placeholder,
-                    singleLine = singleLine,
-                    maxLines = maxLines,
-                    colors = OutlinedTextFieldDefaults.colors(),
-                    keyboardOptions = keyboardOptions,
-                    keyboardActions =
-                        KeyboardActions(
-                            onDone = {
-                                onDone(legacyFieldState.value.text)
-                                onDismiss()
-                            },
-                        ),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
-                )
+                fieldContent()
             }
 
             extraContent?.invoke()

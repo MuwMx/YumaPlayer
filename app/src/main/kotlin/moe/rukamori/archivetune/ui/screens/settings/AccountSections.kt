@@ -109,6 +109,7 @@ import moe.rukamori.archivetune.ui.component.LocalPreferenceGroupPosition
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.PreferenceGroupPosition
+import moe.rukamori.archivetune.ui.component.SpoilerVeil
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.component.rememberPreferenceIconShape
@@ -864,6 +865,8 @@ internal fun AccountMiscSection(
     tokenDescription: String,
     onNavigateHiddenPlaylists: () -> Unit,
     onTokenEntryClick: () -> Unit,
+    tokenPreview: String? = null,
+    showToken: Boolean = false,
 ) {
     PreferenceGroup(title = stringResource(R.string.misc)) {
         item {
@@ -880,7 +883,23 @@ internal fun AccountMiscSection(
             PreferenceEntry(
                 icon = { Icon(painterResource(R.drawable.token), null) },
                 title = { Text(tokenActionTitle) },
-                description = tokenDescription,
+                description = if (tokenPreview != null) null else tokenDescription,
+                content = if (tokenPreview != null) {
+                    {
+                        Spacer(Modifier.height(SettingsDimensions.SegmentedRowSpacing))
+                        SpoilerVeil(
+                            revealed = showToken,
+                            onRevealChange = onTokenEntryClick,
+                        ) {
+                            Text(
+                                text = tokenPreview,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                } else null,
                 onClick = onTokenEntryClick,
             )
         }
@@ -1160,6 +1179,7 @@ fun TokenEditorDialog(
         isInputValid = {
             hasYouTubeLoginCookie(it)
         },
+        isMasked = true,
         extraContent = {
             InfoLabel(text = stringResource(R.string.token_adv_login_description))
         },
