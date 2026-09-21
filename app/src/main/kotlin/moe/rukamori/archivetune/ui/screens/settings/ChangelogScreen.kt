@@ -58,11 +58,16 @@ fun ChangelogScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     suspend fun loadReleases(forceRefresh: Boolean) {
-        val result = Updater.getAllReleases(forceRefresh = forceRefresh)
+        val result =
+            if (channel == UpdateChannel.DAILY_NIGHTLY) {
+                Updater.getAllCanaryReleases()
+            } else {
+                Updater.getAllReleases(forceRefresh = forceRefresh)
+            }
         result
             .onSuccess { r ->
                 releases = when (channel) {
-                    UpdateChannel.DAILY_NIGHTLY -> r.filter { it.prerelease }
+                    UpdateChannel.DAILY_NIGHTLY -> r
                     else -> r.filter { !it.prerelease }
                 }
                 error = null

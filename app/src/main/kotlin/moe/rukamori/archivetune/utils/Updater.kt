@@ -52,6 +52,7 @@ object Updater {
     private val client = HttpClient()
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
     private const val StableReleaseBaseUrl = "https://github.com/MuwMx/YumaPlayer/releases"
+    private const val CanaryReleaseBaseUrl = "https://github.com/MuwMx/YumaCanary/releases"
     var lastCheckTime = -1L
         private set
     private var latestReleaseTag: String? = null
@@ -401,14 +402,31 @@ object Updater {
 
     suspend fun getLatestCanaryReleaseNotes(): Result<String?> = getLatestCanaryReleaseInfo().map { it.body }
 
+    suspend fun getAllCanaryReleases(perPage: Int = 10): Result<List<ReleaseInfo>> =
+        runCatching {
+            if (!isUpdaterDistribution) return@runCatching emptyList()
+            val response: HttpResponse =
+                client.get("https://api.github.com/repos/MuwMx/YumaCanary/releases?per_page=$perPage") {
+                    headers {
+                        append("Accept", "application/vnd.github+json")
+                        append("User-Agent", "YumaPlayerApp")
+                    }
+                }
+            if (response.status.value in 200..299) {
+                parseReleasesJson(response.bodyAsText())
+            } else {
+                emptyList()
+            }
+        }
+
     suspend fun getLatestCanaryReleaseInfo(): Result<ReleaseInfo> =
         runCatching {
             if (!isUpdaterDistribution) {
                 throw IllegalStateException("Updater is not available for this distribution")
             }
-            val releases = getAllReleases().getOrThrow()
+            val releases = getAllCanaryReleases().getOrThrow()
             val latest =
-                findLatestCanaryRelease(releases)
+                releases.firstOrNull()
                     ?: throw IllegalStateException("No canary releases found")
             lastCheckTime = System.currentTimeMillis()
             latestCanaryReleaseTag = latest.tagName
@@ -480,15 +498,15 @@ object Updater {
         }
 
         if (!canDownloadUpdatesDirectly) {
-            return "$StableReleaseBaseUrl/latest"
+            return "$CanaryReleaseBaseUrl/latest"
         }
 
         val artifactName = releaseArtifactName()
         val tag = latestCanaryReleaseTag
         if (tag != null) {
-            return "$StableReleaseBaseUrl/download/$tag/$artifactName"
+            return "$CanaryReleaseBaseUrl/download/$tag/$artifactName"
         }
-        return "$StableReleaseBaseUrl/latest/download/$artifactName"
+        return "$CanaryReleaseBaseUrl/latest/download/$artifactName"
     }
 
     suspend fun getAllReleases(

@@ -62,13 +62,13 @@ class UpdateRepositoryImpl @Inject constructor() : UpdateRepository {
         }
 
         val result = when (channel) {
-            UpdateChannel.DAILY_NIGHTLY -> Updater.getAllReleases(forceRefresh = true)
+            UpdateChannel.DAILY_NIGHTLY -> Updater.getAllCanaryReleases()
             else -> Updater.getAllReleases(forceRefresh = true)
         }
 
         result.onSuccess { releases ->
             val latest = when (channel) {
-                UpdateChannel.DAILY_NIGHTLY -> Updater.findLatestCanaryRelease(releases)
+                UpdateChannel.DAILY_NIGHTLY -> releases.firstOrNull()
                 else -> Updater.findLatestRelease(releases)
             }
 

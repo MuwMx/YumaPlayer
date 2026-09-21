@@ -391,11 +391,10 @@ internal fun UpdateChannelPanel(
                         modifier = Modifier.weight(1f),
                     )
                     ChannelSelectChip(
-                        label = stringResource(R.string.channel_canary_soon),
+                        label = stringResource(R.string.channel_canary),
                         isSelected = isCanary,
                         onClick = onCanarySelected,
                         modifier = Modifier.weight(1f),
-                        enabled = false,
                     )
                 }
             }
