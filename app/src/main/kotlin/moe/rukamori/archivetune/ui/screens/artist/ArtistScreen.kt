@@ -168,7 +168,7 @@ fun ArtistScreen(
                     topPadding = topPadding,
                 )
             } else {
-                item(key = ARTIST_KEY_HEADER) {
+                item(key = ARTIST_KEY_HEADER, contentType = "header") {
                     ArtistHeroContent(
                         artistPage = uiState.artistPage,
                         libraryArtist = uiState.libraryArtist,

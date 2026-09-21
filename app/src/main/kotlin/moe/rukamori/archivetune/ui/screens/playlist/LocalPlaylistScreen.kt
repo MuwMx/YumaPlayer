@@ -257,7 +257,7 @@ fun LocalPlaylistScreen(
             searchState = searchState,
             playlistTitle = playlist?.playlist?.name.orEmpty(),
             browseId = playlist?.playlist?.browseId,
-            showTopBarTitle = lazyListState.firstVisibleItemIndex > 0,
+            showTopBarTitle = remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }.value,
             menuState = menuState,
             navController = navController,
         )

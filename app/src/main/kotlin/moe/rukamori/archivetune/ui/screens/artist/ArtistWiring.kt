@@ -358,7 +358,7 @@ fun LazyListScope.artistShimmerItem(
     expandedHeight: Dp,
     topPadding: Dp,
 ) {
-    item(key = ARTIST_KEY_SHIMMER) {
+    item(key = ARTIST_KEY_SHIMMER, contentType = "shimmer") {
         ShimmerHost {
             Column(
                 modifier =

@@ -211,7 +211,7 @@ fun OnlinePlaylistScreen(
         OnlinePlaylistTopBar(
             searchState = searchState,
             playlist = uiState.playlist,
-            showTopBarTitle = lazyListState.firstVisibleItemIndex > 0,
+            showTopBarTitle = remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }.value,
             menuState = menuState,
             navController = navController,
         )
