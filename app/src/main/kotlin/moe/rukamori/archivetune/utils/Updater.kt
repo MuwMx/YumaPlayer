@@ -78,8 +78,10 @@ object Updater {
                 else -> ""
             }
 
-    private fun releaseArtifactName(): String =
-        "app-$artifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-release.apk"
+    private fun releaseArtifactName(isCanary: Boolean = false): String {
+        val suffix = if (isCanary) "canary.apk" else "release.apk"
+        return "app-$artifactPrefix${BuildConfig.DEVICE}-${BuildConfig.ARCHITECTURE}-$suffix"
+    }
 
     private data class SemVer(
         val major: Int,
@@ -413,7 +415,7 @@ object Updater {
                     }
                 }
             if (response.status.value in 200..299) {
-                parseReleasesJson(response.bodyAsText())
+                parseReleasesJson(response.bodyAsText(), expectedArtifactName = releaseArtifactName(isCanary = true))
             } else {
                 emptyList()
             }
@@ -501,7 +503,7 @@ object Updater {
             return "$CanaryReleaseBaseUrl/latest"
         }
 
-        val artifactName = releaseArtifactName()
+        val artifactName = releaseArtifactName(isCanary = true)
         val tag = latestCanaryReleaseTag
         if (tag != null) {
             return "$CanaryReleaseBaseUrl/download/$tag/$artifactName"
