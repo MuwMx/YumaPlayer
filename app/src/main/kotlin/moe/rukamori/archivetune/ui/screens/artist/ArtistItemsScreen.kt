@@ -37,24 +37,12 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.CONTENT_TYPE_ALBUM
-import moe.rukamori.archivetune.constants.CONTENT_TYPE_ARTIST
-import moe.rukamori.archivetune.constants.CONTENT_TYPE_LIST
-import moe.rukamori.archivetune.constants.CONTENT_TYPE_PLAYLIST
-import moe.rukamori.archivetune.constants.CONTENT_TYPE_SONG
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
-import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.pages.ArtistItemsPageLayout
-import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
@@ -63,11 +51,6 @@ import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
-import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
-import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
-import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
-import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
-import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.viewmodels.ArtistItemsViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -129,50 +112,17 @@ fun ArtistItemsScreen(
             ) { item ->
                 YouTubeListItem(
                     item = item,
-                    isActive =
-                        when (item) {
-                            is SongItem -> mediaMetadata?.id == item.id
-                            is AlbumItem -> mediaMetadata?.album?.id == item.id
-                            else -> false
-                        },
+                    isActive = item.isActive(mediaMetadata),
                     isPlaying = isPlaying,
                     trailingContent = {
                         IconButton(
                             onClick = {
-                                menuState.show {
-                                    when (item) {
-                                        is SongItem -> {
-                                            YouTubeSongMenu(
-                                                song = item,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-
-                                        is AlbumItem -> {
-                                            YouTubeAlbumMenu(
-                                                albumItem = item,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-
-                                        is ArtistItem -> {
-                                            YouTubeArtistMenu(
-                                                artist = item,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-
-                                        is PlaylistItem -> {
-                                            YouTubePlaylistMenu(
-                                                playlist = item,
-                                                coroutineScope = coroutineScope,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    }
-                                }
+                                showYTItemMenu(
+                                    menuState = menuState,
+                                    item = item,
+                                    navController = navController,
+                                    coroutineScope = coroutineScope,
+                                )
                             },
                             onLongClick = {},
                         ) {
@@ -185,37 +135,29 @@ fun ArtistItemsScreen(
                     modifier =
                         Modifier
                             .clickable {
-                                when (item) {
-                                    is SongItem -> {
-                                        if (item.id == mediaMetadata?.id) {
-                                            playerConnection.player.togglePlayPause()
-                                        } else {
-                                            val songs =
-                                                itemsPage
-                                                    ?.items
-                                                    .orEmpty()
-                                                    .filterIsInstance<SongItem>()
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = title,
-                                                    items = songs.map { it.toMediaItem() },
-                                                    startIndex = songs.indexOfFirst { it.id == item.id }.coerceAtLeast(0),
-                                                ),
-                                            )
-                                        }
+                                if (item is SongItem) {
+                                    if (item.id == mediaMetadata?.id) {
+                                        playerConnection.player.togglePlayPause()
+                                    } else {
+                                        val songs =
+                                            itemsPage
+                                                ?.items
+                                                .orEmpty()
+                                                .filterIsInstance<SongItem>()
+                                        playerConnection.playQueue(
+                                            ListQueue(
+                                                title = title,
+                                                items = songs.map { it.toMediaItem() },
+                                                startIndex = songs.indexOfFirst { it.id == item.id }.coerceAtLeast(0),
+                                            ),
+                                        )
                                     }
-
-                                    is AlbumItem -> {
-                                        navController.navigate("album/${item.id}")
-                                    }
-
-                                    is ArtistItem -> {
-                                        navController.navigate("artist/${item.id}")
-                                    }
-
-                                    is PlaylistItem -> {
-                                        navController.navigate("online_playlist/${item.id}")
-                                    }
+                                } else {
+                                    onYTItemClick(
+                                        item = item,
+                                        navController = navController,
+                                        playerConnection = playerConnection,
+                                    )
                                 }
                             },
                 )
@@ -244,12 +186,7 @@ fun ArtistItemsScreen(
             ) { item ->
                 YouTubeGridItem(
                     item = item,
-                    isActive =
-                        when (item) {
-                            is SongItem -> mediaMetadata?.id == item.id
-                            is AlbumItem -> mediaMetadata?.album?.id == item.id
-                            else -> false
-                        },
+                    isActive = item.isActive(mediaMetadata),
                     isPlaying = isPlaying,
                     fillMaxWidth = true,
                     coroutineScope = coroutineScope,
@@ -257,65 +194,20 @@ fun ArtistItemsScreen(
                         Modifier
                             .combinedClickable(
                                 onClick = {
-                                    when (item) {
-                                        is SongItem -> {
-                                            playerConnection.playQueue(
-                                                YouTubeQueue(
-                                                    item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                                    item.toMediaMetadata(),
-                                                ),
-                                            )
-                                        }
-
-                                        is AlbumItem -> {
-                                            navController.navigate("album/${item.id}")
-                                        }
-
-                                        is ArtistItem -> {
-                                            navController.navigate("artist/${item.id}")
-                                        }
-
-                                        is PlaylistItem -> {
-                                            navController.navigate("online_playlist/${item.id}")
-                                        }
-                                    }
+                                    onYTItemClick(
+                                        item = item,
+                                        navController = navController,
+                                        playerConnection = playerConnection,
+                                    )
                                 },
                                 onLongClick = {
                                     haptics.longPress()
-                                    menuState.show {
-                                        when (item) {
-                                            is SongItem -> {
-                                                YouTubeSongMenu(
-                                                    song = item,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-
-                                            is AlbumItem -> {
-                                                YouTubeAlbumMenu(
-                                                    albumItem = item,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-
-                                            is ArtistItem -> {
-                                                YouTubeArtistMenu(
-                                                    artist = item,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-
-                                            is PlaylistItem -> {
-                                                YouTubePlaylistMenu(
-                                                    playlist = item,
-                                                    coroutineScope = coroutineScope,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        }
-                                    }
+                                    showYTItemMenu(
+                                        menuState = menuState,
+                                        item = item,
+                                        navController = navController,
+                                        coroutineScope = coroutineScope,
+                                    )
                                 },
                             ).animateItem(),
                 )
@@ -334,15 +226,7 @@ fun ArtistItemsScreen(
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
+            TopAppBarBackButton(navController = navController)
         },
         actions = {
             val songs = itemsPage?.items.orEmpty().filterIsInstance<SongItem>()
@@ -383,26 +267,3 @@ fun ArtistItemsScreen(
         },
     )
 }
-
-private val YTItem.contentKey: String
-    get() {
-        val type =
-            when (this) {
-                is SongItem -> "song"
-                is AlbumItem -> "album"
-                is ArtistItem -> "artist"
-                is PlaylistItem -> "playlist"
-                else -> "item"
-            }
-        return "${type}_$id"
-    }
-
-private val YTItem.contentType: Int
-    get() =
-        when (this) {
-            is SongItem -> CONTENT_TYPE_SONG
-            is AlbumItem -> CONTENT_TYPE_ALBUM
-            is ArtistItem -> CONTENT_TYPE_ARTIST
-            is PlaylistItem -> CONTENT_TYPE_PLAYLIST
-            else -> CONTENT_TYPE_LIST
-        }

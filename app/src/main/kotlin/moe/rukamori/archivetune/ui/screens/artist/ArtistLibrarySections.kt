@@ -38,13 +38,12 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.ui.component.AlbumGridItem
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LibraryAlbumGridItem
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
-import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -195,28 +194,14 @@ fun LazyListScope.artistLibrarySections(
                     key = { index, album -> "local_album_${album.id}_$index" },
                     contentType = { _, _ -> CONTENT_TYPE_ALBUM },
                 ) { index, album ->
-                    AlbumGridItem(
+                    LibraryAlbumGridItem(
+                        navController = navController,
+                        menuState = menuState,
+                        coroutineScope = coroutineScope,
                         album = album,
                         isActive = mediaMetadata?.album?.id == album.id,
                         isPlaying = isPlaying,
-                        coroutineScope = coroutineScope,
-                        modifier =
-                            Modifier
-                                .combinedClickable(
-                                    onClick = {
-                                        navController.navigate("album/${album.id}")
-                                    },
-                                    onLongClick = {
-                                        haptics.longPress()
-                                        menuState.show {
-                                            AlbumMenu(
-                                                originalAlbum = album,
-                                                navController = navController,
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
-                                ).animateItem(),
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }
