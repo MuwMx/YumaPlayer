@@ -222,7 +222,7 @@ object AppModule {
         return moe.rukamori.archivetune.flaccore.qbdlx.QbdlxCredentialStore(
             config = config,
             kvStore = kvStore,
-            poolProvider = moe.rukamori.archivetune.flaccore.qbdlx.QbdlxPoolProvider { kotlinx.coroutines.runBlocking { config.qbdlxTokenPool() } }
+            poolProvider = moe.rukamori.archivetune.flaccore.qbdlx.QbdlxPoolProvider { config.qbdlxTokenPool() }
         )
     }
 

@@ -97,9 +97,11 @@ class QbdlxCredentialStore(
      * decrypted BuildConfig blob (via [QbdlxPoolProvider]); tests override it.
      * Dynamic: each [pool] call reads fresh from [poolProvider] unless overridden.
      */
-    internal var poolRaw: String
-        get() = overriddenPoolRaw ?: poolProvider.rawPool()
+    internal var poolRaw: String?
+        get() = overriddenPoolRaw
         set(value) { overriddenPoolRaw = value }
+
+    internal suspend fun resolvePoolRaw(): String = overriddenPoolRaw ?: poolProvider.rawPool()
 
     /** Injectable clock (epoch ms) for the dead-token cooldown; overridable in tests. */
     internal var clock: () -> Long = { System.currentTimeMillis() }
@@ -150,7 +152,7 @@ class QbdlxCredentialStore(
      */
     private suspend fun pool(): List<PoolEntry> {
         ensureConfigLoaded()
-        return poolRaw.split(",")
+        return resolvePoolRaw().split(",")
             .mapNotNull { entry ->
                 val e = entry.trim().ifEmpty { return@mapNotNull null }
                 val parts = e.split(":")

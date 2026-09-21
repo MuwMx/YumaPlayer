@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.media3.database.DatabaseProvider
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSink
@@ -30,7 +31,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -38,18 +39,22 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
-import moe.rukamori.archivetune.utils.enumPreference
-import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import java.io.IOException
 import java.time.LocalDateTime
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -59,14 +64,13 @@ import javax.inject.Singleton
 class DownloadUtil
     @Inject
     constructor(
-        @ApplicationContext context: Context,
+        @ApplicationContext private val context: Context,
         val database: MusicDatabase,
         val databaseProvider: DatabaseProvider,
         @DownloadCache val downloadCache: Cache,
         @PlayerCache val playerCache: Cache,
     ) {
         private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
-        private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
         private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
@@ -116,6 +120,56 @@ class DownloadUtil
 
         val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
 
+        private suspend fun resolveDownloadAudioQuality(lowDataModeActive: Boolean): AudioQuality =
+            if (lowDataModeActive) {
+                AudioQuality.LOW
+            } else {
+                context.dataStore.getAsync(AudioQualityKey, AudioQuality.AUTO.name).toEnum(AudioQuality.AUTO)
+            }
+
+        private suspend fun resolveDownloadDataSpec(dataSpec: DataSpec): DataSpec {
+            val mediaId = dataSpec.key ?: error("No media id")
+            val length = if (dataSpec.length >= 0) dataSpec.length else 1
+            if (playerCache.isCached(mediaId, dataSpec.position, length)) {
+                return dataSpec
+            }
+            val lowDataModeActive = context.isLowDataModeActive()
+            val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
+            val streamCacheKey = buildSongUrlCacheKey(mediaId, requestedAudioQuality)
+            val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
+            songUrlCache[streamCacheKey]
+                ?.takeIf {
+                    it.isValidFor(
+                        authFingerprint = authFingerprint,
+                        minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
+                    )
+                }?.let {
+                    return dataSpec.withUri(it.url.toUri())
+                }
+            val playbackData =
+                withContext(Dispatchers.IO) {
+                    context.retryWithoutPlaybackLoginContext {
+                        YTPlayerUtils.playerResponseForDownload(
+                            mediaId,
+                            audioQuality = requestedAudioQuality,
+                            connectivityManager = connectivityManager,
+                            networkMetered = lowDataModeActive,
+                        )
+                    }
+                }.getOrThrow()
+            persistPlaybackMetadata(mediaId, playbackData)
+
+            val streamUrl = playbackData.streamUrl
+
+            songUrlCache[streamCacheKey] =
+                AuthScopedCacheValue(
+                    url = streamUrl,
+                    expiresAtMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L),
+                    authFingerprint = playbackData.authFingerprint,
+                )
+            return dataSpec.withUri(streamUrl.toUri())
+        }
+
         private val dataSourceFactory =
             ResolvingDataSource.Factory(
                 CacheDataSource
@@ -129,46 +183,25 @@ class DownloadUtil
                         CacheDataSink.Factory().setCache(playerCache).setBufferSize(DOWNLOAD_WRITE_BUFFER_SIZE),
                     ),
             ) { dataSpec ->
-                val mediaId = dataSpec.key ?: error("No media id")
-                val length = if (dataSpec.length >= 0) dataSpec.length else 1
-                if (playerCache.isCached(mediaId, dataSpec.position, length)) {
-                    return@Factory dataSpec
-                }
-                val lowDataModeActive = context.isLowDataModeActive()
-                val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
-                val streamCacheKey = buildSongUrlCacheKey(mediaId, requestedAudioQuality)
-                val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
-                songUrlCache[streamCacheKey]
-                    ?.takeIf {
-                        it.isValidFor(
-                            authFingerprint = authFingerprint,
-                            minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
-                        )
-                    }?.let {
-                        return@Factory dataSpec.withUri(it.url.toUri())
+                val future = CompletableFuture<DataSpec>()
+                downloadScope.launch(Dispatchers.IO) {
+                    try {
+                        future.complete(resolveDownloadDataSpec(dataSpec))
+                    } catch (e: Throwable) {
+                        future.completeExceptionally(e)
                     }
-                val playbackData =
-                    runBlocking(Dispatchers.IO) {
-                        context.retryWithoutPlaybackLoginContext {
-                            YTPlayerUtils.playerResponseForDownload(
-                                mediaId,
-                                audioQuality = requestedAudioQuality,
-                                connectivityManager = connectivityManager,
-                                networkMetered = lowDataModeActive,
-                            )
-                        }
-                    }.getOrThrow()
-                persistPlaybackMetadata(mediaId, playbackData)
-
-                val streamUrl = playbackData.streamUrl
-
-                songUrlCache[streamCacheKey] =
-                    AuthScopedCacheValue(
-                        url = streamUrl,
-                        expiresAtMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L),
-                        authFingerprint = playbackData.authFingerprint,
-                    )
-                dataSpec.withUri(streamUrl.toUri())
+                }
+                try {
+                    future.get()
+                } catch (e: ExecutionException) {
+                    val cause = e.cause ?: e
+                    if (cause is IOException) throw cause
+                    if (cause is RuntimeException) throw cause
+                    throw IOException(cause)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw IOException("Interrupted resolving download stream", e)
+                }
             }
 
         val downloadNotificationHelper =
@@ -224,9 +257,6 @@ class DownloadUtil
         }
 
         fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
-
-        private fun resolveDownloadAudioQuality(lowDataModeActive: Boolean): AudioQuality =
-            if (lowDataModeActive) AudioQuality.LOW else audioQuality
 
         private fun buildSongUrlCacheKey(
             mediaId: String,

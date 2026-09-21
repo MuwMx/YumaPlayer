@@ -9,5 +9,5 @@ package moe.rukamori.archivetune.flaccore.qbdlx
  * path is sync and adding suspend now speculates on an API that doesn't exist.
  */
 fun interface QbdlxPoolProvider {
-    fun rawPool(): String
+    suspend fun rawPool(): String
 }
