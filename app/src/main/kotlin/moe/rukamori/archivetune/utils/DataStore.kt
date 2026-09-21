@@ -7,7 +7,6 @@
 package moe.rukamori.archivetune.utils
 
 import android.content.Context
-import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -29,7 +28,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_LEGACY_FLOAT_KEY
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_MAX
@@ -100,37 +99,29 @@ object PreferenceStore {
 
 operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
     PreferenceStore.get(key)
-        ?: if (Looper.getMainLooper().thread == Thread.currentThread()) {
-            null
-        } else {
-            runBlocking(Dispatchers.IO) {
-                withTimeoutOrNull(1500) {
-                    data.first()[key]
-                }
-            }
-        }
 
 fun <T> DataStore<Preferences>.get(
     key: Preferences.Key<T>,
     defaultValue: T,
 ): T =
-    PreferenceStore.get(key)
-        ?: if (Looper.getMainLooper().thread == Thread.currentThread()) {
-            defaultValue
-        } else {
-            runBlocking(Dispatchers.IO) {
-                withTimeoutOrNull(1500) {
-                    data.first()[key]
-                } ?: defaultValue
-            }
-        }
+    PreferenceStore.get(key) ?: defaultValue
 
-suspend fun <T> DataStore<Preferences>.getAsync(key: Preferences.Key<T>): T? = data.first()[key]
+suspend fun <T> DataStore<Preferences>.getAsync(key: Preferences.Key<T>): T? =
+    withContext(Dispatchers.IO) {
+        withTimeoutOrNull(1500) {
+            data.first()[key]
+        }
+    }
 
 suspend fun <T> DataStore<Preferences>.getAsync(
     key: Preferences.Key<T>,
     defaultValue: T,
-): T = data.first()[key] ?: defaultValue
+): T =
+    withContext(Dispatchers.IO) {
+        withTimeoutOrNull(1500) {
+            data.first()[key]
+        }
+    } ?: defaultValue
 
 fun <T> preference(
     context: Context,

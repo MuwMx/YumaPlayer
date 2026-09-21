@@ -61,7 +61,7 @@ import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
 import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 import java.io.ObjectInputStream
@@ -1515,8 +1515,8 @@ class MediaLibrarySessionCallback
         }
 
         private suspend fun homeSuggestedSongs(): List<SongItem> {
-            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val hideExplicit = context.dataStore.getAsync(HideExplicitKey, false)
+            val hideVideo = context.dataStore.getAsync(HideVideoKey, false)
             return YouTube
                 .home()
                 .getOrNull()
@@ -1555,8 +1555,8 @@ class MediaLibrarySessionCallback
         }
 
         private suspend fun homeOnlinePlaylists(): List<MediaItem> {
-            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val hideExplicit = context.dataStore.getAsync(HideExplicitKey, false)
+            val hideVideo = context.dataStore.getAsync(HideVideoKey, false)
             return YouTube
                 .home()
                 .getOrNull()
