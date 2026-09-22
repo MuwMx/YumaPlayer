@@ -10,9 +10,17 @@ data class UserSettings(
     val fontPreference: AppFontPreference = AppFontPreference.DEFAULT,
 )
 
+data class PlayerColors(
+    val vibrant: Int? = null,
+    val darkMuted: Int? = null,
+    val gradient: Int? = null,
+)
+
 interface SettingsRepository {
     val userSettings: Flow<UserSettings>
     val lyricsRomanizationPrefsFlow: Flow<LyricsRomanizationPreferences>
+    val playerColorsFlow: Flow<PlayerColors>
+    suspend fun savePlayerColors(vibrant: Int, darkMuted: Int, gradient: Int)
     suspend fun updateThemeColor(colorHex: String): Result<Unit>
     suspend fun updateFontPreference(preference: AppFontPreference): Result<Unit>
     fun isBlurBackgroundEnabled(): Boolean

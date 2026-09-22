@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AppFontPreference
+import moe.rukamori.archivetune.constants.LastDarkMutedColorKey
+import moe.rukamori.archivetune.constants.LastGradientColorKey
+import moe.rukamori.archivetune.constants.LastVibrantColorKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeChineseKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeHindiKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey
@@ -37,6 +41,24 @@ class SettingsRepositoryImpl @Inject constructor(
             romanizeHindi = preferences[LyricsRomanizeHindiKey] ?: true,
             romanizeOther = preferences[LyricsRomanizeOtherLanguagesKey] ?: true
         )
+    }
+
+    override val playerColorsFlow: Flow<PlayerColors> = context.dataStore.data.map { prefs ->
+        PlayerColors(
+            vibrant = prefs[LastVibrantColorKey],
+            darkMuted = prefs[LastDarkMutedColorKey],
+            gradient = prefs[LastGradientColorKey],
+        )
+    }
+
+    override suspend fun savePlayerColors(vibrant: Int, darkMuted: Int, gradient: Int) {
+        withContext(Dispatchers.IO) {
+            context.dataStore.edit { prefs ->
+                prefs[LastVibrantColorKey] = vibrant
+                prefs[LastDarkMutedColorKey] = darkMuted
+                prefs[LastGradientColorKey] = gradient
+            }
+        }
     }
 
     private fun loadSettings(): UserSettings {

@@ -1,27 +1,23 @@
 package moe.rukamori.archivetune.ui
 
 import android.app.Application
-import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import moe.rukamori.archivetune.data.repository.SettingsRepository
-import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.deeplink.ResolveAlbumBrowseIdUseCase
+import moe.rukamori.archivetune.deeplink.ResolveQueueMediaItemUseCase
+import moe.rukamori.archivetune.deeplink.ResolveWatchPlaylistEndpointUseCase
+import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.models.ParsedIntentAction
-import moe.rukamori.archivetune.playback.joinTogether
-import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.search.AddSearchHistoryUseCase
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
-import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.ui.state.PlayerEvent
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -38,12 +34,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.utils.LikeSourceResolver
-import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLocalMediaId
-import kotlinx.coroutines.launch
 
 
 private val MascotAssets = listOf(
@@ -66,6 +60,10 @@ class PlayerViewModel @Inject constructor(
     private val connectionHolder: moe.rukamori.archivetune.playback.PlayerConnectionHolder,
     private val settingsRepository: SettingsRepository,
     private val lyricsHelper: LyricsHelper,
+    addSearchHistoryUseCase: AddSearchHistoryUseCase? = null,
+    resolveAlbumBrowseIdUseCase: ResolveAlbumBrowseIdUseCase? = null,
+    resolveQueueMediaItemUseCase: ResolveQueueMediaItemUseCase? = null,
+    resolveWatchPlaylistEndpointUseCase: ResolveWatchPlaylistEndpointUseCase? = null,
 ) : ViewModel() {
     private val playerConnection get() = connectionHolder.connection.value
     private val audioPlayer get() = playerConnection?.player
@@ -75,7 +73,6 @@ class PlayerViewModel @Inject constructor(
 
     val appearanceStateHolder = AppearanceStateHolder(
         coroutineScope = viewModelScope,
-        dataStore = application.dataStore,
         settingsRepository = settingsRepository,
         uiStateProvider = { _uiState.value },
         updateUiState = { transform -> _uiState.update(transform) },
@@ -89,6 +86,21 @@ class PlayerViewModel @Inject constructor(
         updateUiState = { transform -> _uiState.update(transform) },
     )
     val queueState: StateFlow<QueueUiState> = queueStateHolder.queueState
+
+    val deepLinkHandler = DeepLinkHandler(
+        coroutineScope = viewModelScope,
+        playerConnectionProvider = { playerConnection },
+        requestSheetCollapse = { requestSheetCollapse() },
+        sendEvent = { event -> _event.send(event) },
+        resolveAlbumBrowseIdUseCase = resolveAlbumBrowseIdUseCase,
+        resolveQueueMediaItemUseCase = resolveQueueMediaItemUseCase,
+        resolveWatchPlaylistEndpointUseCase = resolveWatchPlaylistEndpointUseCase,
+    )
+
+    val searchHistoryWriter = SearchHistoryWriter(
+        coroutineScope = viewModelScope,
+        addSearchHistoryUseCase = addSearchHistoryUseCase,
+    )
 
     private val _playbackProgress = MutableStateFlow(0L)
 
@@ -354,12 +366,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun addSearchHistory(query: String) {
-        val pauseSearchHistory = settingsRepository.isSearchHistoryPaused()
-        if (query.isNotEmpty() && !pauseSearchHistory) {
-            playerConnection?.database?.query {
-                insert(moe.rukamori.archivetune.db.entities.SearchHistory(query = query))
-            }
-        }
+        searchHistoryWriter.addSearchHistory(query)
     }
 
     fun onPlaybackProgress(currentTimeSec: Int, durationSec: Int) {
@@ -374,96 +381,8 @@ class PlayerViewModel @Inject constructor(
         progressTicker.onSeekFinished()
     }
 
-
     fun handleDeepLinkAction(action: ParsedIntentAction) {
-        when (action) {
-            is ParsedIntentAction.TogetherJoin -> {
-                viewModelScope.launch {
-                    val connection = playerConnection ?: return@launch
-                    val displayName = Build.MODEL ?: "Yuma Player"
-                    connection.service.joinTogether(action.uri.toString(), displayName)
-                }
-            }
-            is ParsedIntentAction.Login -> {
-                viewModelScope.launch {
-                    requestSheetCollapse()
-                    _event.send(PlayerEvent.Navigate(moe.rukamori.archivetune.ui.screens.buildLoginRoute(action.loginUrl)))
-                }
-            }
-            is ParsedIntentAction.YouTubePlaylist -> {
-                val playlistId = action.playlistId
-                if (playlistId.startsWith("OLAK5uy_")) {
-                    viewModelScope.launch(Dispatchers.IO) {
-                        YouTube.albumSongs(playlistId)
-                            .onSuccess { songs ->
-                                songs.firstOrNull()?.album?.id?.let { browseId ->
-                                    requestSheetCollapse()
-                                    _event.send(PlayerEvent.Navigate("album/$browseId"))
-                                }
-                            }
-                    }
-                } else {
-                    viewModelScope.launch {
-                        requestSheetCollapse()
-                        _event.send(PlayerEvent.Navigate("online_playlist/$playlistId"))
-                    }
-                }
-            }
-            is ParsedIntentAction.YouTubeAlbum -> {
-                viewModelScope.launch {
-                    requestSheetCollapse()
-                    _event.send(PlayerEvent.Navigate("album/${action.browseId}"))
-                }
-            }
-            is ParsedIntentAction.YouTubeArtist -> {
-                viewModelScope.launch {
-                    requestSheetCollapse()
-                    _event.send(PlayerEvent.Navigate("artist/${action.artistId}"))
-                }
-            }
-            is ParsedIntentAction.YouTubeVideo -> {
-                viewModelScope.launch(Dispatchers.IO) {
-                    YouTube.queue(listOf(action.videoId), action.playlistId)
-                        .onSuccess { queued ->
-                            val mediaItem = queued.firstOrNull { it.id == action.videoId }?.toMediaItem()
-                                ?: queued.firstOrNull()?.toMediaItem()
-                                ?: MediaItem.Builder()
-                                    .setMediaId(action.videoId)
-                                    .setUri(action.videoId)
-                                    .setCustomCacheKey(action.videoId)
-                                    .build()
-
-                            withContext(Dispatchers.Main) {
-                                playerConnection?.playQueue(ListQueue(items = listOf(mediaItem)))
-                            }
-                        }
-                }
-            }
-            is ParsedIntentAction.YouTubeWatchPlaylist -> {
-                viewModelScope.launch(Dispatchers.IO) {
-                    YouTube.playlist(action.playlistId)
-                        .onSuccess { playlistPage ->
-                            val endpoint = if (action.shuffle) {
-                                playlistPage.playlist.shuffleEndpoint ?: playlistPage.playlist.playEndpoint
-                            } else {
-                                playlistPage.playlist.playEndpoint ?: playlistPage.playlist.shuffleEndpoint
-                            }
-
-                            withContext(Dispatchers.Main) {
-                                endpoint?.let {
-                                    playerConnection?.playQueue(YouTubeQueue.playlist(it))
-                                } ?: run {
-                                    viewModelScope.launch {
-                                        requestSheetCollapse()
-                                        _event.send(PlayerEvent.Navigate("online_playlist/${action.playlistId}"))
-                                    }
-                                }
-                            }
-                        }
-                }
-            }
-            else -> {}
-        }
+        deepLinkHandler.handleDeepLinkAction(action)
     }
 
     fun deleteLyricsCache() {

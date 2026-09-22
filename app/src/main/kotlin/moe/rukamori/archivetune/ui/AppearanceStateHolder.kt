@@ -1,24 +1,15 @@
 package moe.rukamori.archivetune.ui
 
 import android.graphics.Color
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.constants.LastDarkMutedColorKey
-import moe.rukamori.archivetune.constants.LastGradientColorKey
-import moe.rukamori.archivetune.constants.LastVibrantColorKey
 import moe.rukamori.archivetune.data.repository.SettingsRepository
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
 class AppearanceStateHolder(
     private val coroutineScope: CoroutineScope,
-    private val dataStore: DataStore<Preferences>,
     private val settingsRepository: SettingsRepository,
     private val uiStateProvider: () -> PlayerUiState,
     private val updateUiState: ((PlayerUiState) -> PlayerUiState) -> Unit,
@@ -36,23 +27,16 @@ class AppearanceStateHolder(
         }
 
         coroutineScope.launch {
-            dataStore.data
-                .map { prefs ->
-                    Triple(
-                        prefs[LastVibrantColorKey],
-                        prefs[LastDarkMutedColorKey],
-                        prefs[LastGradientColorKey],
-                    )
-                }
+            settingsRepository.playerColorsFlow
                 .distinctUntilChanged()
                 .catch { }
-                .collect { (vibrant, darkMuted, gradient) ->
-                    if (vibrant != null || darkMuted != null || gradient != null) {
+                .collect { colors ->
+                    if (colors.vibrant != null || colors.darkMuted != null || colors.gradient != null) {
                         updateUiState { current ->
                             current.copy(
-                                vibrantColor = vibrant ?: current.vibrantColor,
-                                darkMutedColor = darkMuted ?: current.darkMutedColor,
-                                gradientColor = gradient ?: current.gradientColor,
+                                vibrantColor = colors.vibrant ?: current.vibrantColor,
+                                darkMutedColor = colors.darkMuted ?: current.darkMutedColor,
+                                gradientColor = colors.gradient ?: current.gradientColor,
                             )
                         }
                     }
@@ -104,12 +88,8 @@ class AppearanceStateHolder(
                 gradientColor = gradient,
             )
         }
-        coroutineScope.launch(Dispatchers.IO) {
-            dataStore.edit { prefs ->
-                prefs[LastVibrantColorKey] = vibrant
-                prefs[LastDarkMutedColorKey] = darkMuted
-                prefs[LastGradientColorKey] = gradient
-            }
+        coroutineScope.launch {
+            settingsRepository.savePlayerColors(vibrant, darkMuted, gradient)
         }
     }
 
