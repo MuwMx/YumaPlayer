@@ -29,16 +29,16 @@ Example:
 ## 2. Section A — Ancestral Legacy (ArchiveTune / SimpMusic / Metrolist)
 
 ### A1. Root ancestor package `moe.rukamori.archivetune`
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/` (42 subdirectories: `playback/`, `db/`, `viewmodels/`, `ui/`, `spotify/`, …), `core/src/main/kotlin/moe/rukamori/archivetune/innertube/`
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/` (42 subdirectories: `playback/`, `db/`, `viewmodels/`, `ui/`, `spotify/`, …), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/`
 - **Debt:** Historic ArchiveTune package name permeates DI, navigation (`archivetune://login`), `MusicService`, and `MainActivity`. Renaming breaks the Hilt graph, deep links, and Room migrations.
 - **Do not touch:** Hundreds of imports, `SessionToken(ComponentName(MusicService))`, external intent filters.
 - **Refactor criterion:** Standalone package-rename task with a migration script plus full regression on deep links and MediaSession.
 
-### A2. InnerTube client and monolithic `YouTube.kt` singleton
-- **Paths:** `core/src/main/kotlin/moe/rukamori/archivetune/innertube/InnerTube.kt`, `core/src/main/kotlin/moe/rukamori/archivetune/innertube/YouTube.kt` (~2677 lines), `core/src/main/kotlin/moe/rukamori/archivetune/innertube/utils/`, `core/src/main/kotlin/moe/rukamori/archivetune/innertube/pages/`, `core/src/main/kotlin/moe/rukamori/archivetune/innertube/models/`, `core/src/main/kotlin/moe/rukamori/archivetune/innertube/proxy/`
-- **Debt:** Monolithic Ktor client with mutable `authState` (`cookie`, `poToken`, `visitorData`, `dataSyncId`), `httpClient` recreation inside the `proxy` setter, and page parsers (`HomePage`, `AlbumPage`, `SearchPage`). Inherited from ViMusic / Metrolist / SimpMusic. Any YouTube format change breaks everything at once.
-- **Do not touch:** `HomeViewModel`, `MusicService`, and `PlayerViewModel` call `YouTube.*` directly; half of the methods have no interface seam.
-- **Refactor criterion:** Extract a `MusicBackend` interface for all call sites plus contract tests on JSON fixtures; only then split `YouTube.kt`.
+### A2. InnerTube client and `YouTube.kt` facade
+- **Paths:** `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/InnerTube.kt`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/YouTube.kt` (~412-line facade, was ~2677 lines), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/utils/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/pages/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/models/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/proxy/`
+- **Debt:** Ktor client with mutable `authState` (`cookie`, `poToken`, `visitorData`, `dataSyncId`) managed via `AuthSessionStore`. Domain clients (`BrowseClient`, `PlaylistClient`, `SearchClient`, `PlayerClient`) extracted under a 412-line facade implementing `MusicBackend`, but shared HTTP transport, proxy rotation, and page parsers (`HomePage`, `AlbumPage`, `SearchPage`) remain coupled. Inherited from ViMusic / Metrolist / SimpMusic. Any YouTube format change breaks everything at once.
+- **Do not touch:** `HomeViewModel` and `MusicService` call `YouTube.*` directly (while `PlayerViewModel` routes via UseCases/Repositories); direct singleton calls persist across legacy callers.
+- **Refactor criterion:** Route remaining call sites (`HomeViewModel`, `MusicService`) through domain UseCases/Repositories and add contract tests on JSON fixtures.
 
 ### A3. Low-level engines `:moriextractor`, `:morideobfuscator`, headless BotGuard WebView
 - **Paths:** `moriextractor/src/main/kotlin/moe/rukamori/archivetune/moriextractor/StreamingExtractionManager.kt`, `moriextractor/src/main/kotlin/moe/rukamori/archivetune/moriextractor/BackendExtractorResponse.kt`, `morideobfuscator/` (module), `app/src/main/kotlin/moe/rukamori/archivetune/utils/potoken/BotGuardTokenGenerator.kt`, `app/src/main/kotlin/moe/rukamori/archivetune/App.kt` (`BotGuardTokenGenerator.initialize` / `preWarm`)
@@ -83,14 +83,14 @@ Example:
 ### B3. Direct service exposure via `PlayerConnection`
 - **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/playback/PlayerConnection.kt` (306 lines: `database`, `service.player`, `service.currentMediaMetadata`, `toggleLike→service.toggleLike`, Together gates), `app/src/main/kotlin/moe/rukamori/archivetune/playback/PlayerConnectionHolder.kt` (`MutableStateFlow<PlayerConnection?>`)
 - **Debt:** UI holds a direct `MusicService` reference via `binder.service`; `MainActivity.onServiceConnected` fills and clears the holder. `PlayerConnection` mixes Room (`database.song` / `format` / `lyrics`), player state, and Together roles, violating the service→UI boundary from `MODULES.md`.
-- **Do not touch:** Replacing it with an interface without proxying every `MutableStateFlow` breaks 10+ subscribers in `PlayerViewModel` (`flatMapLatest` on `connection.*`).
+- **Do not touch:** Replacing it with an interface without proxying every `MutableStateFlow` breaks 10 subscribers across player UI state holders (`PlaybackStateHolder`, `QueueStateHolder`, `PlayerViewModel` via `flatMapLatest` on `connection.*`).
 - **Refactor criterion:** Narrow `PlayerController` interface (`mediaMetadata`, `isPlaying`, `queueWindows`) plus a fake for Compose previews and tests.
 
-### B4. `PlayerViewModel.kt` hub (812 lines)
-- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt` (`LyricsDelegate`, `ProgressTicker`, `handleAction(PlayerAction)`, `handleDeepLinkAction`, `requestSheetCollapse`)
-- **Debt:** 12+ `connectionHolder.connection.flatMapLatest` subscriptions, palette state (`vibrantColor` / `darkMuted` / `gradient` via `PreferenceStore` + DataStore), queue, shuffle / repeat, sleep timer, deep links (`YouTube.queue` / `playlist` / `albumSongs`), and lyrics / slider delegation to external callback helpers. UDF is formally observed, but the class is the coupling point of the whole player.
-- **Do not touch:** `resetLyrics()` ordering on `trackUrl` change and `manageTicker(isPlaying)` are tied to a metadata-vs-playbackState race; refactoring desynchronizes lyrics.
-- **Refactor criterion:** Split into `PlayerMetadataViewModel`, `LyricsViewModel`, and `QueueViewModel` over a shared `PlayerSession`; trigger when one new `PlayerAction` requires edits in 3+ places.
+### B4. `PlayerViewModel.kt` facade (~500 lines, was 812 lines) + holders
+- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt` (`QueueStateHolder`, `PlaybackStateHolder`, `AppearanceStateHolder`, `DeepLinkHandler`, `SearchHistoryWriter`, `LyricsDelegate`, `ProgressTicker`)
+- **Debt:** PlayerViewModel was refactored into a ~500-line facade delegating to state holders (`QueueStateHolder`, `PlaybackStateHolder`, `AppearanceStateHolder`), `DeepLinkHandler`, and `SearchHistoryWriter`. Network/DB access now routes through UseCases/Repositories (no direct `YouTube.*`, `database.query`, or `dataStore` calls in VM), and `LyricsDelegate` is decoupled from Context/DB. However, state coordination, `connectionHolder.connection` lifecycle, and ticker/slider synchronization still converge in this hub; 10 `flatMapLatest` subscriptions persist across holders (8 in `PlaybackStateHolder`, 1 in `QueueStateHolder`, 1 in `PlayerViewModel`).
+- **Do not touch:** `resetLyrics()` ordering on `trackUrl` change and `manageTicker(isPlaying)` coordination between `PlaybackStateHolder` and `LyricsDelegate` are tied to a metadata-vs-playbackState race; refactoring desynchronizes lyrics.
+- **Refactor criterion:** Split full player scope into independent feature ViewModels or complete `PlayerSession` abstraction when new `PlayerAction` requires cross-holder plumbing.
 
 ### B5. `HomeViewModel.kt` boot god-object (996 lines)
 - **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/viewmodels/HomeViewModel.kt` (`quickPicks` / `speedDial` / `forgottenFavorites` / `keepListening` / `similarRecommendations` / `accountPlaylists` / `homePage`, `delay(150)`, `delay(3000)`, `delay(100)`)
@@ -115,7 +115,7 @@ Example:
 - **Refactor criterion:** Forbid sync `get` in new code via a detekt rule, keep only `getAsync` / Flow; trigger when all `dataStore.get` calls disappear from `:app`.
 
 ### C2. Hardcoded boot and load delays
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/viewmodels/HomeViewModel.kt:457` (`delay(150)` before load), `:939` (`delay(3000)` before `cleanupDuplicatePlaylists`), `:967` (`delay(100)` before `refreshAccountIdentity`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:486` (`delay(150)` in `requestSheetCollapse`), `app/src/main/kotlin/moe/rukamori/archivetune/MainActivity.kt:757-760` (`while playerConnection==null delay(100)`; `delay(500)` before update check), `app/src/main/kotlin/moe/rukamori/archivetune/App.kt:324` (`Thread.sleep(100)` before `killProcess`)
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/viewmodels/HomeViewModel.kt:457` (`delay(150)` before load), `:939` (`delay(3000)` before `cleanupDuplicatePlaylists`), `:967` (`delay(100)` before `refreshAccountIdentity`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:299` (`delay(150)` in `requestSheetCollapse`), `app/src/main/kotlin/moe/rukamori/archivetune/MainActivity.kt:757-760` (`while playerConnection==null delay(100)`; `delay(500)` before update check), `app/src/main/kotlin/moe/rukamori/archivetune/App.kt:324` (`Thread.sleep(100)` before `killProcess`)
 - **Debt:** Delays mask races: DataStore collect not ready, service not bound, sheet not collapsed. Magic 100 / 150 / 500 / 3000ms values were tuned empirically.
 - **Do not touch:** Removing `delay(150)` in `HomeViewModel.load()` causes double loading (the `isLoading` flag lags); removing `delay(500)` in `MainActivity` shows the update sheet over the splash.
 - **Refactor criterion:** Replace with explicit readiness signals (`queueRestoreCompleted.first{}`, `isReady`, `snapshotFlow`); remove one at a time with low-RAM cold-start verification.
@@ -145,7 +145,7 @@ Example:
 - **Refactor criterion:** Only with GPU profiling (FrameTimeline) and the "Auto in motion, Offscreen at rest" invariant enforced in review.
 
 ### C7. Fixed-window 250ms progress tickers
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/ui/ProgressTicker.kt:26-42` (`while(isActive){currentPosition; delay(250)}`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/player/player_0/PlayerSeekBar.kt:70-76` (duplicate `while+delay(250)` plus `snap()` at `<=500ms`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:108` (`progressMsProvider`)
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/ui/ProgressTicker.kt:26-42` (`while(isActive){currentPosition; delay(250)}`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/player/player_0/PlayerSeekBar.kt:70-76` (duplicate `while+delay(250)` plus `snap()` at `<=500ms`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:133` (`progressMsProvider`)
 - **Debt:** Two independent pollers (`ProgressTicker` for lyrics and duration plus `PlayerSeekBar` for the slider) instead of a single `Player.listen`. `localSeekTarget` with a 1500ms window masks post-seek slider rollback.
 - **Do not touch:** Merging tickers without `isUserSeeking` handling makes the slider jump during drag; shrinking to 50ms adds wasteful recompositions.
 - **Refactor criterion:** Single `PlaybackProgressFlow` (200ms throttle, paused while `isUserSeeking`) with battery and lyric-highlight A/B validation.
@@ -155,3 +155,9 @@ Example:
 - **Debt:** URL caches have no TTL manager (only targeted `invalidatePlaybackUrlCache`); offload is incompatible with skip-silence and crossfade and is disabled silently; idle-stop timers were hand-tuned; login recovery is throttled by a `(mediaId,timestamp)` pair.
 - **Do not touch:** Enabling offload plus skipSilence produces silence or DSP crackle on some chips; shortening idle stop kills queue restoration (`PersistQueue`).
 - **Refactor criterion:** `PlaybackPolicy` compatibility table (offload / crossfade / skipSilence) plus an expiring `UrlCache`; trigger on a reproducible chip-specific bug.
+
+### C9. Player background pipeline and theme root color seed
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/ui/player/player_0/PlayerBackgroundLayers.kt`, `app/src/main/kotlin/moe/rukamori/archivetune/ui/AppearanceStateHolder.kt`, `app/src/main/kotlin/moe/rukamori/archivetune/MainActivity.kt:974` (`ArchiveTuneTheme(themeColor=themeColor)`)
+- **Debt:** Theme root no longer animates cover seed (outer tween removed to prevent double animation); player backgrounds use 128px palette extraction (`allowHardware(false)`), cancel-on-skip, cold-start-only color restore (`!hasExtractedColors` to break disk write loops), and gated CPU→GPU blur (`needsBlur` checking overlay and off-screen state).
+- **Do not touch:** Re-introducing outer seed tween causes theme animation stutter; removing cancel-on-skip or upscaling palette extraction introduces race conditions and CPU/memory spikes during rapid skipping; removing cold-start color restore guard reintroduces disk serialization loops.
+- **Refactor criterion:** Unified theme and backdrop pipeline with shared palette cache and hardware-accelerated shader passes without CPU bitmap transforms.
