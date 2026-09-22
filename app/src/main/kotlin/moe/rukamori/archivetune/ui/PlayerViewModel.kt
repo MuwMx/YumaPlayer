@@ -21,7 +21,6 @@ import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.ui.state.PlayerEvent
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
-import moe.rukamori.archivetune.ui.state.UpdateState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -99,11 +98,7 @@ class PlayerViewModel @Inject constructor(
     val queueState: StateFlow<QueueUiState> = _queueState.asStateFlow()
 
 
-    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.NoUpdate)
-    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
-
     private val _playbackProgress = MutableStateFlow(0L)
-    val playbackProgress: StateFlow<Long> = _playbackProgress.asStateFlow()
 
     val progressMsProvider: () -> Long = { audioPlayer?.currentPosition ?: _playbackProgress.value }
 
