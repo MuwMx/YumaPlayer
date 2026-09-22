@@ -6,49 +6,18 @@
 
 package moe.rukamori.archivetune.innertube
 
-import io.ktor.client.call.body
-import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import moe.rukamori.archivetune.innertube.models.AccountChannel
 import moe.rukamori.archivetune.innertube.models.AccountInfo
 import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.models.MediaInfo
-import moe.rukamori.archivetune.innertube.models.MusicResponsiveListItemRenderer
-import moe.rukamori.archivetune.innertube.models.MusicTwoRowItemRenderer
-import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SearchSuggestions
-import moe.rukamori.archivetune.innertube.models.SectionListRenderer
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
-import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
-import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB
-import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
-import moe.rukamori.archivetune.innertube.models.getContinuation
-import moe.rukamori.archivetune.innertube.models.getItems
-import moe.rukamori.archivetune.innertube.models.response.AccountMenuResponse
-import moe.rukamori.archivetune.innertube.models.response.BrowseResponse
-import moe.rukamori.archivetune.innertube.models.response.GetQueueResponse
-import moe.rukamori.archivetune.innertube.models.response.GetTranscriptResponse
-import moe.rukamori.archivetune.innertube.models.response.NextResponse
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.innertube.pages.AlbumPage
 import moe.rukamori.archivetune.innertube.pages.ArtistItemsContinuationPage
@@ -62,7 +31,6 @@ import moe.rukamori.archivetune.innertube.pages.HomePage
 import moe.rukamori.archivetune.innertube.pages.LibraryContinuationPage
 import moe.rukamori.archivetune.innertube.pages.LibraryPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
-import moe.rukamori.archivetune.innertube.pages.NextPage
 import moe.rukamori.archivetune.innertube.pages.NextResult
 import moe.rukamori.archivetune.innertube.pages.PlaylistContinuationPage
 import moe.rukamori.archivetune.innertube.pages.PlaylistPage
@@ -71,163 +39,141 @@ import moe.rukamori.archivetune.innertube.pages.SearchResult
 import moe.rukamori.archivetune.innertube.pages.SearchSummaryPage
 import moe.rukamori.archivetune.innertube.proxy.RotatingProxyClient
 import okhttp3.Dns
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.dnsoverhttps.DnsOverHttps
 import java.net.Proxy
-import kotlin.random.Random
 
 /**
  * Parse useful data with [InnerTube] sending requests.
  * Modified from [ViMusic](https://github.com/vfsfitvnm/ViMusic)
  */
 object YouTube {
-    internal val innerTube = InnerTube()
-    private val accountSwitcherClient = WEB.copy(loginSupported = true)
-    private val mutableAuthState = MutableStateFlow(PlaybackAuthState.EMPTY)
+    internal val innerTube: InnerTube
+        get() = AuthSessionStore.innerTube
 
-    val authStateFlow: StateFlow<PlaybackAuthState> = mutableAuthState.asStateFlow()
+    val authStateFlow: StateFlow<PlaybackAuthState>
+        get() = AuthSessionStore.authStateFlow
 
-    private val _historySyncEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val historySyncEvent: SharedFlow<Unit> = _historySyncEvent.asSharedFlow()
+    val historySyncEvent: SharedFlow<Unit>
+        get() = AuthSessionStore.historySyncEvent
 
     fun notifyHistorySynced() {
-        _historySyncEvent.tryEmit(Unit)
+        AuthSessionStore.notifyHistorySynced()
     }
 
     var authState: PlaybackAuthState
-        get() = mutableAuthState.value
+        get() = AuthSessionStore.authState
         set(value) {
-            val normalized = value.normalized()
-            mutableAuthState.value = normalized
-            innerTube.applyAuthState(normalized)
+            AuthSessionStore.authState = value
         }
 
     var locale: YouTubeLocale
-        get() = innerTube.locale
+        get() = AuthSessionStore.locale
         set(value) {
-            innerTube.locale = value
+            AuthSessionStore.locale = value
         }
+
     var visitorData: String?
-        get() = authState.visitorData
+        get() = AuthSessionStore.visitorData
         set(value) {
-            authState = authState.copy(visitorData = value)
+            AuthSessionStore.visitorData = value
         }
+
     var dataSyncId: String?
-        get() = authState.dataSyncId
+        get() = AuthSessionStore.dataSyncId
         set(value) {
-            authState = authState.copy(dataSyncId = value)
+            AuthSessionStore.dataSyncId = value
         }
+
     var cookie: String?
-        get() = authState.cookie
+        get() = AuthSessionStore.cookie
         set(value) {
-            authState = authState.copy(cookie = value)
+            AuthSessionStore.cookie = value
         }
+
     var poToken: String?
-        get() = authState.poToken
+        get() = AuthSessionStore.poToken
         set(value) {
-            authState = authState.copy(poToken = value)
+            AuthSessionStore.poToken = value
         }
+
     var webClientPoTokenEnabled: Boolean
-        get() = authState.webClientPoTokenEnabled
+        get() = AuthSessionStore.webClientPoTokenEnabled
         set(value) {
-            authState = authState.copy(webClientPoTokenEnabled = value)
+            AuthSessionStore.webClientPoTokenEnabled = value
         }
+
     var poTokenGvs: String?
-        get() = authState.poTokenGvs
+        get() = AuthSessionStore.poTokenGvs
         set(value) {
-            authState = authState.copy(poTokenGvs = value)
+            AuthSessionStore.poTokenGvs = value
         }
+
     var poTokenPlayer: String?
-        get() = authState.poTokenPlayer
+        get() = AuthSessionStore.poTokenPlayer
         set(value) {
-            authState = authState.copy(poTokenPlayer = value)
+            AuthSessionStore.poTokenPlayer = value
         }
+
     var proxy: Proxy?
-        get() = innerTube.proxy
+        get() = AuthSessionStore.proxy
         set(value) {
-            innerTube.proxy = value
+            AuthSessionStore.proxy = value
         }
+
     var proxyUsername: String?
-        get() = innerTube.proxyUsername
+        get() = AuthSessionStore.proxyUsername
         set(value) {
-            innerTube.proxyUsername = value
+            AuthSessionStore.proxyUsername = value
         }
+
     var proxyPassword: String?
-        get() = innerTube.proxyPassword
+        get() = AuthSessionStore.proxyPassword
         set(value) {
-            innerTube.proxyPassword = value
+            AuthSessionStore.proxyPassword = value
         }
+
     var dns: Dns
-        get() = innerTube.dns
+        get() = AuthSessionStore.dns
         set(value) {
-            innerTube.dns = value
+            AuthSessionStore.dns = value
         }
-    var streamBypassProxy: Boolean = false
+
+    var streamBypassProxy: Boolean
+        get() = AuthSessionStore.streamBypassProxy
+        set(value) {
+            AuthSessionStore.streamBypassProxy = value
+        }
+
     val streamProxy: Proxy?
-        get() = if (streamBypassProxy) null else proxy
+        get() = AuthSessionStore.streamProxy
+
     val streamOkHttpProxy: Proxy
-        get() = streamProxy ?: Proxy.NO_PROXY
+        get() = AuthSessionStore.streamOkHttpProxy
+
     var useLoginForBrowse: Boolean
-        get() = innerTube.useLoginForBrowse
+        get() = AuthSessionStore.useLoginForBrowse
         set(value) {
-            innerTube.useLoginForBrowse = value
+            AuthSessionStore.useLoginForBrowse = value
         }
 
-    val rotatingProxyClient = RotatingProxyClient()
-    private val _ipRotationActiveCount = MutableStateFlow(0)
-    val ipRotationActiveCount: StateFlow<Int> = _ipRotationActiveCount.asStateFlow()
+    val rotatingProxyClient: RotatingProxyClient
+        get() = AuthSessionStore.rotatingProxyClient
 
-    suspend fun enableIpRotation() {
-        withContext(Dispatchers.IO) {
-            rotatingProxyClient.fetchAndLoad()
-            innerTube.proxySelector = rotatingProxyClient.selector()
-            _ipRotationActiveCount.value = rotatingProxyClient.activeCount()
-        }
-    }
+    val ipRotationActiveCount: StateFlow<Int>
+        get() = AuthSessionStore.ipRotationActiveCount
 
-    suspend fun refreshIpRotation() {
-        withContext(Dispatchers.IO) {
-            if (rotatingProxyClient.activeCount() <= 1) {
-                rotatingProxyClient.fetchAndLoad()
-            } else {
-                rotatingProxyClient.rotate()
-            }
-            innerTube.proxySelector = rotatingProxyClient.selector()
-            _ipRotationActiveCount.value = rotatingProxyClient.activeCount()
-        }
-    }
+    suspend fun enableIpRotation() = AuthSessionStore.enableIpRotation()
 
-    fun disableIpRotation() {
-        innerTube.proxySelector = null
-        _ipRotationActiveCount.value = 0
-    }
+    suspend fun refreshIpRotation() = AuthSessionStore.refreshIpRotation()
 
-    fun currentPlaybackAuthState(): PlaybackAuthState = authState
+    fun disableIpRotation() = AuthSessionStore.disableIpRotation()
 
-    fun createDnsOverHttps(url: String): Dns {
-        val bootstrapClient = OkHttpClient.Builder().build()
-        return DnsOverHttps
-            .Builder()
-            .client(bootstrapClient)
-            .url(url.toHttpUrl())
-            .build()
-    }
+    fun currentPlaybackAuthState(): PlaybackAuthState = AuthSessionStore.currentPlaybackAuthState()
 
-    private fun resolvePlayerPoToken(
-        client: YouTubeClient,
-        explicitPoToken: String?,
-        authState: PlaybackAuthState,
-    ): String? =
-        PlayerClient.resolvePlayerPoToken(
-            client = client,
-            explicitPoToken = explicitPoToken,
-            authState = authState,
-        )
+    fun createDnsOverHttps(url: String): Dns = AuthSessionStore.createDnsOverHttps(url)
 
-    fun hasLoginCookie(): Boolean = authState.hasLoginCookie
+    fun hasLoginCookie(): Boolean = AuthSessionStore.hasLoginCookie()
 
-    fun hasPlaybackLoginContext(): Boolean = authState.hasPlaybackLoginContext
+    fun hasPlaybackLoginContext(): Boolean = AuthSessionStore.hasPlaybackLoginContext()
 
     internal fun resolveGvsPoToken(authState: PlaybackAuthState = currentPlaybackAuthState()): String? =
         PlayerClient.resolveGvsPoToken(authState)
@@ -447,58 +393,13 @@ object YouTube {
         PlayerClient.visitorData()
 
     suspend fun accountInfo(): Result<AccountInfo> =
-        runCatching {
-            val response = innerTube.accountMenu(WEB_REMIX).body<AccountMenuResponse>()
-            val accountInfo =
-                response.actions
-                    .firstOrNull()
-                    ?.openPopupAction
-                    ?.popup
-                    ?.multiPageMenuRenderer
-                    ?.header
-                    ?.activeAccountHeaderRenderer
-                    ?.toAccountInfo()
-            accountInfo ?: throw IllegalStateException("Failed to get account info - user may not be logged in")
-        }
+        AuthSessionStore.accountInfo()
 
     suspend fun accountChannels(): Result<List<AccountChannel>> =
-        runCatching {
-            val response =
-                Json.parseToJsonElement(
-                    innerTube.accountChannels(accountSwitcherClient).bodyAsText(),
-                )
-
-            response
-                .objectsNamed("accountItemRenderer")
-                .mapNotNull(::parseAccountChannel)
-                .sortedByDescending(AccountChannel::isSelected)
-                .distinctBy(AccountChannel::dataSyncId)
-                .toList()
-        }
+        AuthSessionStore.accountChannels()
 
     suspend fun accountDataSyncId(): Result<String> =
-        runCatching {
-            val response =
-                Json.parseToJsonElement(
-                    innerTube.accountChannels(accountSwitcherClient).bodyAsText(),
-                )
-
-            response.findMainAppWebDataSyncId()
-                ?: response
-                    .objectsNamed("accountItemRenderer")
-                    .mapNotNull { renderer ->
-                        val isDisabled = renderer.booleanValue("isDisabled") ?: false
-                        val hasChannel = renderer.booleanValue("hasChannel") ?: true
-                        if (isDisabled || !hasChannel) return@mapNotNull null
-
-                        renderer.parseAccountChannelDataSyncId()?.let { dataSyncId ->
-                            dataSyncId to (renderer.booleanValue("isSelected") ?: false)
-                        }
-                    }.sortedByDescending { (_, isSelected) -> isSelected }
-                    .firstOrNull()
-                    ?.first
-                ?: throw IllegalStateException("Failed to get YouTube DataSyncId")
-        }
+        AuthSessionStore.accountDataSyncId()
 
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
         PlayerClient.getMediaInfo(videoId)
