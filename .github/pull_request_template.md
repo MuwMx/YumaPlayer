@@ -36,12 +36,16 @@
 <!-- Be explicit so reviewers can focus on the correct runtime paths. -->
 
 - [ ] `:app`
-- [ ] `:core`
-- [ ] `:lyrics`
+- [ ] `:core` / `:core:innertube`
+- [ ] `:designsystem`
+- [ ] `:database`
+- [ ] `:lyrics:*` (kugou / lrclib / simpmusic / paxsenix / betterlyrics / unison / youlyplus)
 - [ ] `:lastfm`
 - [ ] `:canvas`
 - [ ] `:shazamkit`
 - [ ] `:spotifycore`
+- [ ] `:flaccore`
+- [ ] `:moriextractor` / `:morideobfuscator`
 - [ ] Other:
 
 ## Screenshots / Recordings

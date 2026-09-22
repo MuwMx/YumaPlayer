@@ -137,10 +137,10 @@ core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/
 
 ## Dependencies
 
-- **Ktor Client** 3.5.0 — HTTP client core, OkHttp engine, content negotiation, brotli encoding, JSON serialization
-- **OkHttp** 5.3.2 — DNS-over-HTTPS support
+- **Ktor Client** 3.5.1 — HTTP client core, OkHttp engine, content negotiation, brotli encoding, JSON serialization
+- **OkHttp** 5.4.0 — DNS-over-HTTPS support
 - **Kotlinx Serialization** — JSON deserialization
-- **NewPipe Extractor** 0.26.2 — stream URL extraction, cipher deobfuscation, Bandcamp/SoundCloud search
+- **NewPipe Extractor** 0.26.3 — stream URL extraction, cipher deobfuscation, Bandcamp/SoundCloud search
 - **re2j** 1.8 — Google RE2 regular expressions
 - **Rhino** 1.9.1 — JavaScript engine (cipher operations)
 

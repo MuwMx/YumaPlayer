@@ -12,6 +12,8 @@ All translations are managed exclusively via **Hosted Weblate**. Please do not o
 
 ## 💻 Code Contributions
 1. Fork the repo and create your branch from `main` (e.g. `feat/new-audio-effect` or `fix/lyrics-timeout`).
-2. Adhere to our architectural rules (Compose, UDF, 13-module boundaries). See [Architecture Docs](docs/architecture/ARCHITECTURE.md) and [Yuma Rules](docs/development/YUMA_RULES.md).
-3. Ensure the project builds cleanly: `./gradlew assembleRelease`.
-4. Open a Pull Request with a clear explanation of what was changed and why.
+2. Adhere to our architectural rules (Compose, UDF, 19-module boundaries — there are no `:feature:*` or `:service:*` modules). See [Architecture Docs](docs/architecture/ARCHITECTURE.md), [Modules](docs/architecture/MODULES.md), and [Yuma Rules](docs/development/YUMA_RULES.md).
+3. Follow the [Coding Standard](docs/development/CODING_STANDARD.md) (naming, mappers, Flow collection).
+4. Keep `docs/` in sync when your change affects architecture, modules, or workflows.
+5. Ensure the project builds cleanly: `./gradlew assembleRelease` (JDK 21, Android SDK 37).
+6. Open a Pull Request with a clear explanation of what was changed and why.

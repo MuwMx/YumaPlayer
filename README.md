@@ -45,7 +45,7 @@
 
 **YumaPlayer** is an independent, open-source Android music player that unites the libraries and recommendation features of two leading streaming services alongside standalone local playback in Hi-Res quality.
 
-The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, YumaPlayer implements a modular 13-module architecture, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
+The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, YumaPlayer implements a modular 19-module architecture, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
 
 No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-party trackers. All credentials live exclusively on your device, encrypted with AES-256-GCM via Google Tink, and the codebase is completely open under the GNU General Public License v3.0.
 
@@ -166,28 +166,30 @@ YumaPlayer is localized into multiple languages thanks to our amazing community 
 
 ## 🏛️ Architecture & Documentation
 
-YumaPlayer is structured into **13 independent Gradle modules** following Clean Architecture and Unidirectional Data Flow (UDF) principles:
+YumaPlayer is structured into **19 independent Gradle modules** following Clean Architecture and Unidirectional Data Flow (UDF) principles:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   :app (Composition Root)                   │
 └──────────────────────────────┬──────────────────────────────┘
                                │
-       ┌───────────────────────┼──────────────────────┐
-       ▼                       ▼                      ▼
-┌──────────────┐       ┌──────────────┐ ┌───────────────────────────┐
-│  :feature:*  │       │  :service:*  │ │  :lyrics:*  │ :spotifycore│
-│ (Compose UI) │       │  (Playback)  │ │  :canvas    │ :shazamkit  │
-└──────┬───────┘       └──────┬───────┘ └─────────────┬─────────────┘
-       │                      │                       │
-       └──────────────────────┼───────────────────────┘
-                              ▼
+       ┌───────────────────────┼───────────────────────┐
+       ▼                       ▼                       ▼
+┌──────────────┐       ┌──────────────┐       ┌────────────────┐
+│ :designsystem│       │  :database   │       │     :core      │
+│  (YDS 2.1)   │       │  (Room v36)  │       │ (Domain/Data)  │
+└──────────────┘       └──────────────┘       └───────┬────────┘
+                                                      ▼
+                                             ┌────────────────┐
+                                             │:core:innertube │
+                                             │(YouTube Music) │
+                                             └───────┬────────┘
+                                                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 :core:* (Domain, Data, Model)               │
-└──────────────────────────────┬──────────────────────────────┘
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Low-Level Media Extraction                  │
+│ :morideobfuscator │ :moriextractor (stream extraction)      │
+├─────────────────────────────────────────────────────────────┤
+│ Integrations: :lyrics:* (x7) │ :spotifycore │ :flaccore │   │
+│ :shazamkit │ :canvas │ :lastfm                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -240,7 +242,7 @@ cd YumaPlayer
 ./gradlew assembleRelease
 # Built APK will be located at: app/build/outputs/apk/release/
 ```
-*Prerequisites:* Android Studio Ladybug (2024.2.1+) or newer, JDK 21, Android SDK 35+.
+*Prerequisites:* A recent Android Studio version with AGP 9.x support, JDK 21, Android SDK 37 (compileSdk/targetSdk 37, minSdk 26).
 
 ---
 

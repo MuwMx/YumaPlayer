@@ -98,8 +98,8 @@ For questions or corrections, use the project repository and issue tracker:
 | Topic | What the code shows | Main files |
 | --- | --- | --- |
 | Permissions and backup behavior | Manifest declares background services, network, audio, and notification permissions. Backup exclusions filter out media caches. | `app/src/main/AndroidManifest.xml`, `app/src/main/res/xml/data_extraction_rules.xml`, `app/src/main/res/xml/backup_rules.xml` |
-| Local database contents | The Room schema includes songs, artists, albums, playlists, search history, lyrics, Spotify matches, format metadata, and playback history. | `app/schemas/moe.rukamori.archivetune.db.InternalDatabase/35.json` |
-| Settings and tokens stored locally | DataStore preference keys include UI preferences, Qobuz tokens, Spotify session tokens, YouTube cookies, Last.fm sessions, and Together configurations. | `core/src/main/kotlin/moe/rukamori/archivetune/constants/PreferenceKeys.kt` |
+| Local database contents | The Room schema includes songs, artists, albums, playlists, search history, lyrics, Spotify matches, format metadata, and playback history. | `database/schemas/moe.rukamori.archivetune.db.InternalDatabase/36.json` |
+| Settings and tokens stored locally | DataStore preference keys include UI preferences, Qobuz tokens, Spotify session tokens, YouTube cookies, Last.fm sessions, and Together configurations. | `app/src/main/kotlin/moe/rukamori/archivetune/constants/PreferenceKeys.kt` |
 | Streaming and FLAC handling | Media3 ExoPlayer integration with multi-source resolving (YouTube Innertube and Qobuz FLAC endpoints). | `service/playback/`, `core/src/main/kotlin/.../innertube/YouTube.kt` |
 | Spotify Integration | Library synchronization, Spotify URIs resolving, and Canvas fetchers. | `spotifycore/`, `app/src/main/kotlin/.../spotify/` |
 | Manual backup export | Backs up local Room database and DataStore preferences into a single user-managed archive. | `app/src/main/kotlin/.../viewmodels/BackupRestoreViewModel.kt` |
