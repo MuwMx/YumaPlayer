@@ -10,7 +10,10 @@ import moe.rukamori.archivetune.deeplink.ResolveQueueMediaItemUseCase
 import moe.rukamori.archivetune.deeplink.ResolveWatchPlaylistEndpointUseCase
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsHelper
+import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCase
+import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCaseImpl
 import moe.rukamori.archivetune.models.ParsedIntentAction
+import moe.rukamori.archivetune.repository.LyricsRepository
 import moe.rukamori.archivetune.search.AddSearchHistoryUseCase
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerEvent
@@ -18,6 +21,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -35,7 +39,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.*
+import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
@@ -56,7 +62,7 @@ private val MascotAssets = listOf(
  */
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val application: Application,
+    application: Application? = null,
     private val connectionHolder: moe.rukamori.archivetune.playback.PlayerConnectionHolder,
     private val settingsRepository: SettingsRepository,
     private val lyricsHelper: LyricsHelper,
@@ -64,9 +70,29 @@ class PlayerViewModel @Inject constructor(
     resolveAlbumBrowseIdUseCase: ResolveAlbumBrowseIdUseCase? = null,
     resolveQueueMediaItemUseCase: ResolveQueueMediaItemUseCase? = null,
     resolveWatchPlaylistEndpointUseCase: ResolveWatchPlaylistEndpointUseCase? = null,
+    lyricsRepository: LyricsRepository? = null,
+    lyricsTranslationUseCase: LyricsTranslationUseCase? = null,
 ) : ViewModel() {
     private val playerConnection get() = connectionHolder.connection.value
     private val audioPlayer get() = playerConnection?.player
+
+    private val effectiveLyricsRepository: LyricsRepository = lyricsRepository ?: object : LyricsRepository {
+        override suspend fun getLyricsById(id: String): LyricsEntity? =
+            playerConnection?.database?.getLyricsById(id)
+
+        override suspend fun replaceLyrics(id: String, lyrics: String, source: String) {
+            playerConnection?.database?.query {
+                replaceLyrics(id, lyrics, source)
+            }
+        }
+    }
+
+    private val effectiveLyricsTranslationUseCase: LyricsTranslationUseCase = lyricsTranslationUseCase
+        ?: (application?.let { LyricsTranslationUseCaseImpl(it) } ?: object : LyricsTranslationUseCase {
+            override suspend fun translateAi(lyrics: String, targetLanguage: String): String = lyrics
+            override suspend fun onAiTranslationFailed() {}
+            override suspend fun translateStandard(lyrics: String, targetLanguage: String): String = lyrics
+        })
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -107,9 +133,10 @@ class PlayerViewModel @Inject constructor(
     val progressMsProvider: () -> Long = { audioPlayer?.currentPosition ?: _playbackProgress.value }
 
     val lyricsDelegate = LyricsDelegate(
-        application = application,
         coroutineScope = viewModelScope,
         lyricsHelper = lyricsHelper,
+        lyricsRepository = effectiveLyricsRepository,
+        lyricsTranslationUseCase = effectiveLyricsTranslationUseCase,
         playerConnectionProvider = { playerConnection },
         audioPlayerProvider = { audioPlayer },
         uiState = _uiState.asStateFlow(),

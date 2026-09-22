@@ -1,7 +1,5 @@
 package moe.rukamori.archivetune.ui
 
-import android.app.Application
-import androidx.datastore.preferences.core.edit
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import kotlinx.coroutines.CancellationException
@@ -11,41 +9,29 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import me.bush.translator.Language
-import moe.rukamori.archivetune.ai.AiLyricsTranslator
-import moe.rukamori.archivetune.ai.AiServiceConfig
-import moe.rukamori.archivetune.constants.AiApiKeyKey
-import moe.rukamori.archivetune.constants.AiApiValidationStatus
-import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
-import moe.rukamori.archivetune.constants.AiCustomEndpointKey
-import moe.rukamori.archivetune.constants.AiCustomModelKey
-import moe.rukamori.archivetune.constants.AiProvider
-import moe.rukamori.archivetune.constants.AiProviderKey
-import moe.rukamori.archivetune.constants.AiSelectedModelKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.lyrics.LrcParser
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
-import moe.rukamori.archivetune.lyrics.LyricsTranslator
+import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCase
 import moe.rukamori.archivetune.lyrics.Romanizer
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.repository.LyricsRepository
 import moe.rukamori.archivetune.ui.state.PlayerUiState
-import moe.rukamori.archivetune.utils.dataStore
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 
 class LyricsDelegate(
-    private val application: Application,
     private val coroutineScope: CoroutineScope,
     private val lyricsHelper: LyricsHelper,
+    private val lyricsRepository: LyricsRepository,
+    private val lyricsTranslationUseCase: LyricsTranslationUseCase,
     private val playerConnectionProvider: () -> PlayerConnection?,
     private val audioPlayerProvider: () -> Player?,
     private val uiState: StateFlow<PlayerUiState>,
@@ -163,8 +149,7 @@ class LyricsDelegate(
         val trackId = uiState.value.trackUrl
         if (trackId.isEmpty()) return
         coroutineScope.launch(Dispatchers.IO) {
-            val db = playerConnectionProvider()?.database
-            val cached = db?.getLyricsById(trackId)
+            val cached = lyricsRepository.getLyricsById(trackId)
             var rawText = cached?.lyrics ?: ""
             if (rawText.isBlank()) {
                 rawText = uiState.value.lyricsList.joinToString("\n") { line ->
@@ -187,13 +172,11 @@ class LyricsDelegate(
         if (trackId.isEmpty()) return
         val durationMs = audioPlayerProvider()?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
         coroutineScope.launch(Dispatchers.IO) {
-            connection.database.query {
-                replaceLyrics(
-                    id = trackId,
-                    lyrics = text,
-                    source = LyricsEntity.Source.USER_EDIT.value
-                )
-            }
+            lyricsRepository.replaceLyrics(
+                id = trackId,
+                lyrics = text,
+                source = LyricsEntity.Source.USER_EDIT.value
+            )
             val parsedLines = parseLyrics(text, durationMs)
             startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
             withContext(Dispatchers.Main) {
@@ -215,8 +198,7 @@ class LyricsDelegate(
                     updateUiState { it.copy(isAiTranslating = true, aiTranslationError = null) }
                 }
                 try {
-                    val db = connection.database
-                    val cached = db.getLyricsById(trackId)
+                    val cached = lyricsRepository.getLyricsById(trackId)
                     var rawText = cached?.lyrics ?: ""
                     if (rawText.isBlank()) {
                         rawText = uiState.value.lyricsList.joinToString("\n") { line ->
@@ -230,33 +212,14 @@ class LyricsDelegate(
                         throw IllegalStateException("Lyrics are empty")
                     }
 
-                    val prefs = application.dataStore.data.first()
-                    val translatedLyrics = AiLyricsTranslator().translate(
-                        config = AiServiceConfig(
-                            provider = prefs[AiProviderKey].toEnum(AiProvider.NONE),
-                            apiKey = prefs[AiApiKeyKey].orEmpty(),
-                            customEndpoint = prefs[AiCustomEndpointKey].orEmpty(),
-                            model = if (prefs[AiProviderKey].toEnum(AiProvider.NONE) == AiProvider.CUSTOM) {
-                                prefs[AiCustomModelKey].orEmpty()
-                            } else {
-                                prefs[AiSelectedModelKey].orEmpty()
-                            },
-                        ),
-                        lyrics = rawText,
-                        targetLanguage = langCode.ifBlank { "ENGLISH" },
+                    val translatedLyrics = lyricsTranslationUseCase.translateAi(rawText, langCode)
+
+                    lyricsRepository.replaceLyrics(
+                        id = trackId,
+                        lyrics = translatedLyrics,
+                        source = LyricsEntity.Source.AI_TRANSLATION.value,
                     )
 
-                    db.query {
-                        replaceLyrics(
-                            id = trackId,
-                            lyrics = translatedLyrics,
-                            source = LyricsEntity.Source.AI_TRANSLATION.value,
-                        )
-                    }
-
-                    application.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.SUCCESS.name
-                    }
                     val parsedLines = parseLyrics(translatedLyrics, durationMs)
                     startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
                     withContext(Dispatchers.Main) {
@@ -265,9 +228,7 @@ class LyricsDelegate(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    application.dataStore.edit { settings ->
-                        settings[AiApiValidationStatusKey] = AiApiValidationStatus.FAILED.name
-                    }
+                    lyricsTranslationUseCase.onAiTranslationFailed()
                     withContext(Dispatchers.Main) {
                         updateUiState { it.copy(isAiTranslating = false, aiTranslationError = e.localizedMessage ?: e.toString()) }
                     }
@@ -277,8 +238,7 @@ class LyricsDelegate(
                     updateUiState { it.copy(isStandardTranslating = true, aiTranslationError = null) }
                 }
                 try {
-                    val db = connection.database
-                    val cached = db.getLyricsById(trackId)
+                    val cached = lyricsRepository.getLyricsById(trackId)
                     var rawText = cached?.lyrics ?: ""
                     if (rawText.isBlank()) {
                         rawText = uiState.value.lyricsList.joinToString("\n") { line ->
@@ -292,23 +252,12 @@ class LyricsDelegate(
                         throw IllegalStateException("Lyrics are empty")
                     }
 
-                    val lang = try {
-                        Language(langCode)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    if (lang == null) {
-                        throw IllegalArgumentException("Unsupported language code: $langCode")
-                    }
-
-                    val translatedLyrics = LyricsTranslator.translate(rawText, lang)
-                    db.query {
-                        replaceLyrics(
-                            id = trackId,
-                            lyrics = translatedLyrics,
-                            source = LyricsEntity.Source.AI_TRANSLATION.value,
-                        )
-                    }
+                    val translatedLyrics = lyricsTranslationUseCase.translateStandard(rawText, langCode)
+                    lyricsRepository.replaceLyrics(
+                        id = trackId,
+                        lyrics = translatedLyrics,
+                        source = LyricsEntity.Source.AI_TRANSLATION.value,
+                    )
                     val parsedLines = parseLyrics(translatedLyrics, durationMs)
                     startRomanizationJob(parsedLines, lyricsFetchGeneration.get())
                     withContext(Dispatchers.Main) {
@@ -346,8 +295,7 @@ class LyricsDelegate(
         lyricsJob = coroutineScope.launch(Dispatchers.IO) {
             var success = false
             try {
-                val db = playerConnectionProvider()?.database
-                val cached = if (force) null else db?.getLyricsById(trackUrl)
+                val cached = if (force) null else lyricsRepository.getLyricsById(trackUrl)
 
                 if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
 
@@ -387,23 +335,19 @@ class LyricsDelegate(
                 if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
 
                 if (rawLyrics.isNotBlank() && rawLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                    playerConnectionProvider()?.database?.query {
-                        replaceLyrics(
-                            id = trackUrl,
-                            lyrics = rawLyrics,
-                            source = LyricsEntity.Source.REMOTE.value
-                        )
-                    }
+                    lyricsRepository.replaceLyrics(
+                        id = trackUrl,
+                        lyrics = rawLyrics,
+                        source = LyricsEntity.Source.REMOTE.value
+                    )
                     if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
                     success = true
                 } else {
-                    playerConnectionProvider()?.database?.query {
-                        replaceLyrics(
-                            id = trackUrl,
-                            lyrics = LyricsEntity.LYRICS_NOT_FOUND,
-                            source = LyricsEntity.Source.REMOTE.value
-                        )
-                    }
+                    lyricsRepository.replaceLyrics(
+                        id = trackUrl,
+                        lyrics = LyricsEntity.LYRICS_NOT_FOUND,
+                        source = LyricsEntity.Source.REMOTE.value
+                    )
                     if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@launch
                     withContext(Dispatchers.Main) {
                         if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != trackUrl) return@withContext
