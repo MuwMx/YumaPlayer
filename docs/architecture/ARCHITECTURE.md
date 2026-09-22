@@ -41,17 +41,17 @@ To keep the codebase maintainable as it grows, all modules and layers must stric
 └────────────────────────────────────────────────────────┘
 ```
 
-### Presentation Layer (`:feature:*`, `:app`)
+### Presentation Layer (`:app` UI + `:designsystem`)
 - **Responsibilities:** Declarative Jetpack Compose UI rendering, visual state representation, and user input handling.
-- **Components:** Composables, ViewModels (`StateFlow<UiState>`), `UiIntent`, `UiEffect`.
+- **Components:** Screens under `:app` (`ui/screens/`, `ui/player/player_0/`), Yuma UI Kit + YDS tokens in `:designsystem`, ViewModels (`StateFlow<UiState>`), `UiIntent`, `UiEffect`.
 
-### Domain Layer (`:core:domain`, `:core:model`)
-- **Responsibilities:** Pure, framework-independent business rules, application use cases, and core data structures.
-- **Components:** Use Cases / Interactors, Domain Models, Repository & Service Interfaces.
+### Domain Layer (colocated `:app` domain packages + `:core` contracts)
+- **Responsibilities:** Pure business rules, application use cases, and core data structures.
+- **Components:** Use Cases / Interactors colocated in `:app` domain packages (`artist/`, `search/`, `library/`, `spotify/`, `playlisttags/`, …), Domain Models, Repository & Service Interfaces, shared contracts in `:core` (`core/common/`, `core/model/`).
 
-### Data Layer (`:core:data`, `:core:network`, `:core:database`)
+### Data Layer (`:core:innertube`, `:database`, `:app` data sources)
 - **Responsibilities:** Fetching, caching, persisting, and transforming data from local databases and remote network APIs.
-- **Components:** Repository Implementations, Room Entities, Ktor Data Sources, Network DTOs, Mappers.
+- **Components:** Repository Implementations, Room Entities in `:database` (`db/entities/`, `MusicDatabase.kt` v36), InnerTube client in `:core:innertube`, Ktor Data Sources, Network DTOs, Mappers.
 
 ---
 

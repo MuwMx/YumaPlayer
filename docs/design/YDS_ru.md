@@ -17,7 +17,7 @@ Yuma — дизайн-система, ориентированная на муз
 ## 2. Visual Language & Character
 
 * **Calmness:** интерфейс не перегружает зрение и не отвлекает от прослушивания музыки.
-* **Depth & Geometry:** глубина создается через тонкие полупрозрачные поверхности (`glassBackground`) и контурную обводку в 1dp (`glassBorder`).
+* **Depth & Geometry:** глубина создается через тонкие полупрозрачные поверхности (`glassBackground`) и контурную обводку в 0.5dp (`glassBorder`).
 * **Soft Geometry:** составные скругления (22dp на внешних углах группы, 5dp на внутренних стыках) визуально объединяют разрозненные элементы в монолитный блок.
 * **Low Visual Noise:** полное отсутствие полос-разделителей (`Dividers`) в списках настроек. Разделение элементов строится исключительно на межстрочных зазорах (`SegmentGap = 1.5dp`) и внешних отступах. В M3-диалогах и шторках выбора разделители допустимы.
 * **Physicality:** каждый интерактивный элемент сжимается (scale down до 0.96) с мягкой пружинной анимацией при нажатии.
@@ -36,7 +36,7 @@ Yuma — дизайн-система, ориентированная на муз
 2. **Segmented Glass Structure:** списки настроек и карточки интеграций строятся как независимые сегментированные стеклянные кнопки, объединенные в смысловые блоки через зазор `SegmentGap`.
 3. **Surface Hierarchy (Строгое разделение поверхностей):**
 * **Solid Surfaces:** непрозрачные тональные контейнеры (`surface`, `surfaceContainer`) для основного контента, где прозрачность не требуется.
-* **Static Translucent Glass:** полупрозрачный фон (`glassBackground`) + 1dp обводка (`glassBorder`) **строго без backdrop blur**. Применяется для сегментированных списков настроек и карточек. Модальные шторки и диалоги выбора используют непрозрачные solid-поверхности (`surfaceContainerHigh`).
+* **Static Translucent Glass:** полупрозрачный фон (`glassBackground`) + обводка 0.5dp (`glassBorder`, `SettingsDimensions.GlassBorderThickness`) **строго без backdrop blur**. Применяется для сегментированных списков настроек и карточек. Модальные шторки и диалоги выбора используют непрозрачные solid-поверхности (`surfaceContainerHigh`).
 * **Backdrop Blur Glass:** размытие фона + тональная подложка. Применяется **исключительно** для плавающих оверлеев (Bottom Player Bar, плавающий FAB, модальные шторки).
 
 
@@ -47,7 +47,7 @@ Yuma — дизайн-система, ориентированная на муз
 
 ## 4. Foundations (Design Tokens)
 
-Все размеры, отступы и радиусы в коде должны браться строго из токенов (`SettingsDimensions` / `YumaSpacing` / `YumaRadius`). Использование произвольных хардкодных значений запрещено.
+Все размеры, отступы и радиусы в коде должны браться строго из токенов (`SettingsDimensions` / `SettingsAnimations` / `YdsInsets` в `:designsystem`, плюс layout-константы в `constants/Dimensions.kt`). Использование произвольных хардкодных значений запрещено.
 
 ### Spacing
 
@@ -69,7 +69,7 @@ Yuma — дизайн-система, ориентированная на муз
 ### Colors & Surfaces
 
 * **`glassBackground`:** статичная полупрозрачная матовая заливка для темной и светлой темы (без использования шейдеров размытия).
-* **`glassBorder`:** 1dp контурная обводка с легкой прозрачностью для четкой фиксации границ элементов.
+* **`glassBorder`:** контурная обводка 0.5dp (`SettingsDimensions.GlassBorderThickness`) с легкой прозрачностью для четкой фиксации границ элементов.
 * **`primaryContainer` / `primary`:** динамический акцентный цвет для активных пилюль, бейджей и тумб свитчеров.
 
 ---
@@ -99,11 +99,33 @@ Yuma — дизайн-система, ориентированная на муз
 
 ```
 
-* **Скругления по позиции (`PreferenceGroupPosition`):**
+* **Скругления по позиции (`PreferenceGroupPosition` / `YumaSegmentPosition`):**
 * **`Single`:** 22dp со всех четырех сторон.
 * **`First`:** верхние углы 22dp, нижние углы 5dp.
 * **`Middle`:** все углы 5dp.
 * **`Last`:** верхние углы 5dp, нижние углы 22dp.
+
+* **Подсветка группы (`YumaSegmentPosition`, градиентные альфы):**
+* Чтобы на стыках не возникали слепящие двойные линии, альфы верхней/нижней границы адаптируются под позицию в группе:
+  * **`Single`:** `0.20f → 0.04f`.
+  * **`First`:** `0.20f → 0.08f`.
+  * **`Middle`:** `0.08f → 0.08f`.
+  * **`Last`:** `0.08f → 0.04f`.
+* **Порядок модификаторов:**
+  * Для тактильного сжатия всей карточки `.yumaClickable(...)` ставится строго перед `.yumaGlassCard(...)`:
+    ```kotlin
+    Modifier
+        .fillMaxWidth()
+        .yumaClickable(pressedScale = 0.96f, onClick = onClick)
+        .yumaGlassCard(
+            shape = shape,
+            backgroundColor = backgroundColor,
+            borderColor = borderColor,
+            position = position,
+        )
+        .clip(shape)
+        .padding(...)
+    ```
 
 
 * **Иконные бейджи:** контейнер `46dp` (`SegmentedIconBoxSize`) с фигурной формой (сквиркл/лепесток) и монохромной либо акцентной заливкой.
@@ -128,13 +150,11 @@ Yuma — дизайн-система, ориентированная на муз
 
 ### 5.3 Выпадающие списки и диалоги выбора (Dropdowns & Dialogs)
 
-Выпадающие списки, контекстные диалоги и селекторы единичного выбора (`SingleChoice`) строятся по паттерну **Material 3** (эталон — главный экран настроек): сгруппированные кнопки в стиле M3, аккуратно объединенные в блоки.
-
-Отличия от ванильного M3 (ArchiveTune):
-
-* Вместо сплошной заливки контейнера — **полупрозрачная заливка + обводка на каждую кнопку**.
-* Для иконок используются фигурные подложки (сквирклы/лепестки).
-* Шеврон `R.drawable.ic_arrow_right` применяется строго для кнопок-переходов на другой экран.
+Выпадающие списки, контекстные диалоги и селекторы единичного выбора строятся по сегментированным стеклянным паттернам **YDS 2.1**:
+* Каждая опция выбора — независимая сегментированная стеклянная карточка с позиционной подсветкой (`YumaSegmentPosition`).
+* Внешняя поверхность модалки — solid `surfaceContainerHigh` со скруглением 28dp и обводкой 0.5dp (`SettingsDimensions.GlassBorderThickness`).
+* Никаких `HorizontalDivider` между опциями; разделение — зазор `SegmentGap = 1.5dp`.
+* Выбранные пункты подсвечиваются тинтом `primary.copy(alpha = 0.16f)` и галочкой справа.
 
 ---
 
@@ -142,8 +162,8 @@ Yuma — дизайн-система, ориентированная на муз
 
 | Состояние | Визуальный отклик |
 | --- | --- |
-| **Default** | Заливка `glassBackground` + 1dp обводка `glassBorder`. |
-| **Pressed** | Сжатие строки до `0.96f` со спецификацией `spring(stiffness = Spring.StiffnessMedium)`. |
+| **Default** | Заливка `glassBackground` + обводка 0.5dp `glassBorder` с позиционной подсветкой. |
+| **Pressed** | Сжатие строки до `0.96f` (`SettingsAnimations.PressScale`) со спецификацией `spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium)`; при отключенных анимациях — мгновенный `snap()`. |
 | **Active / Selected** | Заливка активного индикатора в цвет `primary`, текст `onPrimary`. |
 | **Disabled** | Прозрачность всей строки `0.5f`, блокировка обработки кликов. |
 
@@ -152,16 +172,17 @@ Yuma — дизайн-система, ориентированная на муз
 ## 7. Component Checklist
 
 ```
-Design Tokens (SettingsDimensions, YumaColors)
+Design Tokens (SettingsDimensions, SettingsAnimations, YdsInsets, LocalYumaColors)
                        ↓
 Primitive Modifiers
-(Modifier.yumaGlassCard, Modifier.yumaClickable)
+(Modifier.yumaGlassCard, Modifier.yumaClickable, yumaSegmentPosition / yumaSegmentAlphas)
                        ↓
 Composite Components
-(PreferenceGroup, PreferenceEntry, SwitchPreference, SegmentedPreference, ListPreference, EditTextPreference, SliderPreference, NumberPickerPreference)
+(PreferenceGroup, PreferenceEntry, SwitchPreference, EditTextPreference, SliderPreference, NumberPickerPreference,
+YumaMorphingHeader, FloatingNavigationToolbar / FluidTabsContainer, GlassScaffold, ExpressivePullToRefreshBox)
                        ↓
 Screens
-(SettingsScreen, AccountSettings, AppearanceSettings, etc.)
+(SettingsScreen, AccountSettings, AppearanceSettings, HomeScreen, player_0 sheets, etc.)
 
 ```
 
@@ -171,11 +192,12 @@ Screens
 
 ### ✔ DO
 
-* Использовать `Modifier.yumaGlassCard()` с фоном `glassBackground` и 1dp-бордером `glassBorder` для всех строк настроек.
+* Использовать `Modifier.yumaGlassCard()` с фоном `glassBackground` и 0.5dp-бордером `glassBorder` для всех строк настроек.
+* Ставить `.yumaClickable(...)` строго перед `.yumaGlassCard(...)` для тактильного сжатия всей карточки.
 * Использовать токен `SegmentGap` (1.5dp) для разделения строк вместо `HorizontalDivider`.
 * Применять сегментированные углы (22dp снаружи, 5dp внутри) для объединения элементов группы.
 * Использовать кастомные фигурные подложки под иконки (сквирклы/лепестки).
-* Использовать M3-паттерны для диалогов и шторок выбора (непрозрачные solid-поверхности, допустимые разделители).
+* Диалоги и шторки выбора строить как сегментированные стеклянные списки на solid-поверхности `surfaceContainerHigh` (28dp, без разделителей).
 
 ### ✘ DON'T
 

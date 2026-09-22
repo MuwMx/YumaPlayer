@@ -42,10 +42,10 @@ Standardized naming ensures instant clarity across all modules and layers:
 
 Network DTOs, Database Entities, Domain Models, and UI States **must be distinct data classes**.
 
-- **Network DTOs (`:core:network`):** Annotate with `@Serializable` or `@SerializedName`. Expose strictly inside data sources.
-- **DB Entities (`:data`):** Annotate with `@Entity`, `@PrimaryKey`. Internal to persistence layers.
-- **Domain Models (`:core:model`):** Pure Kotlin data classes. Zero framework or serialization annotations.
-- **UI State Models (`:feature:*`):** Immutable state classes representing exact screen states.
+- **Network DTOs (`:core:innertube` + `:app` data sources):** Annotate with `@Serializable` or `@SerializedName`. Expose strictly inside data sources.
+- **DB Entities (`:database`):** Annotate with `@Entity`, `@PrimaryKey`. Internal to the persistence module.
+- **Domain Models (`:app` colocated domain packages + `:core` shared contracts):** Pure Kotlin data classes. Zero framework or serialization annotations.
+- **UI State Models (`:app` screens):** Immutable state classes representing exact screen states.
 
 ### 3.2 Mappers & Parsing Utilities
 

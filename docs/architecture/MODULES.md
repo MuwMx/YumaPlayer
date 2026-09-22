@@ -16,30 +16,31 @@ This document serves as the official reference for the modular structure of Yuma
 
 ## 2. Architecture & Category Hierarchy
 
-YumaPlayer is organized into specialized Gradle modules grouped into logical categories. Dependencies point inward toward shared core abstractions.
+YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.kts`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
 
 ```
-                ┌──────────────┐
-                │    :app      │ (Composition Root)
-                └──────┬───────┘
-                       │
-┌──────────────────────┼─────────────────────────┐
-▼                      ▼                         ▼
-┌──────────────┐ ┌──────────────┐ ┌───────────────────────────┐
-│  :feature:*  │ │  :service:*  │ │ Integrations & Lyrics     │
-└──────┬───────┘ └──────┬───────┘ │ (:lyrics:*, :spotifycore, │
-       │                │         │  :shazamkit, :canvas,     │
-       │                │         │  :lastfm)                 │
-       └──────────────┬─┘         └─────────────┬─────────────┘
-                      ▼                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                           :core:*                           │
-└──────────────────────────────┬──────────────────────────────┘
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Low-Level Data Engines                      │
-│            (:moriextractor, :morideobfuscator)              │
-└─────────────────────────────────────────────────────────────┘
+                 ┌──────────────┐
+                 │    :app      │ (Composition Root: UI, playback, domain, DI)
+                 └──────┬───────┘
+                        │
+ ┌──────────────────────┼──────────────────────────────────┐
+ ▼                      ▼                                  ▼
+┌──────────────┐ ┌──────────────┐ ┌───────────────────────────────────────┐
+│:designsystem │ │  :database  │ │ Integrations & Lyrics                 │
+│ (YDS tokens, │ │ (Room, v36) │ │ (:lyrics:* ×7, :spotifycore,          │
+│  UI Kit)     │ │              │ │  :shazamkit, :canvas, :lastfm,        │
+└──────────────┘ └──────────────┘ │  :flaccore)                           │
+                                  └───────────────────┬───────────────────┘
+                                                      ▼
+                         ┌────────────────────────────────────────────┐
+                         │  :core + :core:innertube (shared logic,    │
+                         │   InnerTube API client, math, packed models)│
+                         └──────────────────────┬─────────────────────┘
+                                                ▼
+                         ┌────────────────────────────────────────────┐
+                         │            Low-Level Data Engines            │
+                         │       (:moriextractor, :morideobfuscator)   │
+                         └────────────────────────────────────────────┘
 ```
 
 ---
@@ -48,29 +49,32 @@ YumaPlayer is organized into specialized Gradle modules grouped into logical cat
 
 ### 📱 Application Root
 - **`:app`**
-  - **Responsibility:** Application entry point, Dependency Injection graph initialization, main navigation graph, and top-level container hosting.
+  - **Responsibility:** Application entry point, Hilt composition root (`di/AppModule.kt`, `di/NetworkModule.kt`, `di/RepositoryModule.kt`), navigation graph, all Compose screens (`ui/screens/`, `ui/player/player_0/`), background playback (`playback/MusicService.kt` + `MusicService*.kt` splits), colocated domain packages (UseCases, repositories under `artist/`, `search/`, `library/`, `spotify/`, …), and ViewModels.
   - **Rule:** Composition root. No other module may depend on `:app`.
 
-### 🧩 Feature Modules (`:feature:*`)
-- **Responsibility:** Isolated UI features and user flows (e.g., search, library, settings, player screen).
-- **Rule:** Must depend only on `:core:*` or defined service interfaces. Features cannot import code from other features directly.
+### 🎨 Design System
+- **`:designsystem`**
+  - **Responsibility:** YDS tokens (`ui/settings/SettingsDimensions.kt`, `ui/settings/SettingsAnimations.kt`, `ui/theme/YdsInsets.kt`, `ui/theme/YumaTheme.kt` / `LocalYumaColors`), primitive modifiers (`ui/theme/YumaModifiers.kt`: `yumaGlassCard`, `yumaClickable`, `yumaSegmentPosition`), and the Yuma UI Kit (`ui/component/`: preferences, `YumaMorphingHeader`, `FloatingNavigationToolbar`, `GlassScaffold`, shimmer placeholders, `YumaHaptics`).
+  - **Rule:** Pure UI, no business logic, no dependency on `:app` or `:database`.
 
-### 🎵 Service Modules (`:service:*`)
-- **Responsibility:** Background application services, including system media session management (`:service:playback`) and background tasks.
-- **Rule:** Operates independently of the UI lifecycle.
+### 💾 Persistence
+- **`:database`** (`namespace moe.rukamori.archivetune.database`, Room `CURRENT_VERSION = 36`)
+  - **Responsibility:** Room facade (`db/MusicDatabase.kt`), `db/entities/` (33 files), KSP schema snapshots (`schemas/`).
+  - **Rule:** Entities must not leak into Composables unmapped (known debt, see `LEGACY_WARNING.md` §B6).
 
 ### 🔌 Integrations & Extensions
-- **`:lyrics:*`** — Standalone providers responsible for parsing and fetching lyrics data (e.g., `:lyrics:lrclib`, `:lyrics:kugou`, `:lyrics:paxsenix`). All submodules implement shared domain interfaces.
-- **`:spotifycore`** — Integration with Spotify services for supplemental metadata and video loop assets.
+- **`:lyrics:*`** — 7 standalone providers: `:lyrics:lrclib`, `:lyrics:kugou`, `:lyrics:paxsenix`, `:lyrics:simpmusic`, `:lyrics:betterlyrics`, `:lyrics:unison`, `:lyrics:youlyplus`. Each implements the shared domain provider contract.
+- **`:spotifycore`** — Spotify metadata, sync helpers, and video-loop asset pipeline inputs.
 - **`:shazamkit`** — Audio recognition engine integration.
 - **`:canvas`** — Video background rendering engine.
 - **`:lastfm`** — Scrobbling integration and metadata synchronization.
+- **`:flaccore`** — Lossless FLAC domain (`FlacConfig`, `FlacKvStore`, `qbdlx/`: `QbdlxSigner`, `QbdlxCredentialStore`, `QbdlxPoolProvider`, `QbdlxQobuzSource`, `streaming/` resolvers). Implemented via `FlacConfigImpl` / `FlacKvStoreImpl` in `:app` (`lossless/`).
 
-### ⚙️ Core Infrastructure (`:core:*`)
-- **`:core`** — Shared domain abstractions, common math/color utilities, and packed models.
-- **`:core:innertube`** — InnerTube API client for YouTube Music (facade, request/response models, page parsers, and proxy rotation).
-- **Responsibility:** Shared domain abstractions, common models, networking, persistence, repositories, and application-wide utilities.
-- **Rule:** Single source of truth for business logic and data contracts.
+### ⚙️ Core Infrastructure
+- **`:core`** — Shared pure-Kotlin logic: `core/common/math/` (`lerp3`, palette/color/image math), `core/model/packed/` models.
+- **`:core:innertube`** — InnerTube API client for YouTube Music (`InnerTube.kt`, `YouTube.kt` facade, `utils/`, `pages/`, `models/`, `proxy/`).
+- **Responsibility:** Shared domain abstractions, common models, and application-wide utilities.
+- **Rule:** Single source of truth for shared contracts; `:core` stays free of Android UI imports.
 
 ### 🛠️ Low-Level Engines
 - **`:moriextractor`** — Media extraction engine and stream link resolution utilities.
@@ -83,12 +87,18 @@ YumaPlayer is organized into specialized Gradle modules grouped into logical cat
 
 | Category / Layer | Allowed Dependencies | Forbidden Dependencies |
 | :--- | :--- | :--- |
-| **Application Root** (`:app`) | `:feature:*`, `:service:*`, `:core:*`, Integrations, `:lyrics:*` | None (Root container) |
-| **Features** (`:feature:*`) | `:core:*`, `:service:*` (via controllers/interfaces) | `:app`, other `:feature:*` modules |
-| **Services** (`:service:*`) | `:core:*` | `:app`, `:feature:*` |
-| **Integrations & Lyrics** | `:core:*` | `:app`, Direct dependencies between independent integration modules |
-| **Core Infrastructure** (`:core:*`) | `:moriextractor`, `:morideobfuscator` | `:app`, `:feature:*`, `:service:*`, Integrations, `:lyrics:*` |
-| **Low-Level Engines** | Internal utility dependencies only | Higher-level modules (`:core:*`, `:app`, etc.) |
+| **Application Root** (`:app`) | `:designsystem`, `:database`, `:core`, `:core:innertube`, Integrations, `:lyrics:*`, low-level engines | None (Root container) |
+| **Design System** (`:designsystem`) | Design/token dependencies only | `:app`, `:database`, business logic, data sources |
+| **Persistence** (`:database`) | Internal Room/KSP dependencies only | `:app`, `:designsystem`, network clients |
+| **Integrations & Lyrics** | `:core` (+ `:database`/`network` only via domain interfaces where applicable) | `:app`, `:designsystem`, direct dependencies between independent integration modules |
+| **Core Infrastructure** (`:core`, `:core:innertube`) | `:moriextractor`, `:morideobfuscator` | `:app`, `:designsystem`, `:database`, Integrations, `:lyrics:*` |
+| **Low-Level Engines** | Internal utility dependencies only | Higher-level modules (`:core`, `:app`, etc.) |
+
+---
+
+## 6. Reserved Target Names (Not Real Modules)
+
+The names `:feature:*`, `:service:*` (e.g. `:service:playback`), `:core:model`, `:core:domain`, `:core:data`, `:core:network`, `:core:database`, and `:data` do **not** exist in `settings.gradle.kts`. They describe a possible future split (UI features, playback service, domain/data layers) and must not be referenced as real dependency targets in code or new docs. Until the split happens, their responsibilities live inside `:app` (screens, `playback/`, colocated domain packages) and `:core` / `:core:innertube` / `:database`.
 
 ---
 

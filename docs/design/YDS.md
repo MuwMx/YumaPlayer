@@ -33,7 +33,7 @@ The interface avoids generic, monolithic Material 3 templates with flat, continu
 2. **Segmented Glass Structure:** Settings rows and integration cards are composed as independent segmented glass buttons, grouped into functional blocks separated by `SegmentGap`.
 3. **Surface Hierarchy (Strict Separation of Surfaces):**
    * **Solid Surfaces:** Opaque tonal containers (`surface`, `surfaceContainer`) for main content surfaces where translucency is unnecessary.
-   * **Static Translucent Glass:** Translucent fill (`glassBackground`) + 1dp outline (`glassBorder`) **strictly without backdrop blur**. Applied to segmented settings lists and cards. Modal bottom sheets and selection dialogs utilize opaque solid surfaces (`surfaceContainerHigh`).
+   * **Static Translucent Glass:** Translucent fill (`glassBackground`) + 0.5dp outline (`glassBorder`, `SettingsDimensions.GlassBorderThickness`) **strictly without backdrop blur**. Applied to segmented settings lists and cards. Modal bottom sheets and selection dialogs utilize opaque solid surfaces (`surfaceContainerHigh`).
    * **Backdrop Blur Glass:** Background blur + tonal overlay. Applied **exclusively** to floating overlays (Bottom Player Bar, floating FAB, modal backdrops).
 4. **Color Driven:** Dynamic Material 3 Expressive palette generation extracted from the current track's album art for accents, switch thumbs, and active indicators.
 5. **No Divider Lines:** Divider lines are omitted in preference lists. Group boundaries are defined solely by card geometry and borders.
@@ -42,7 +42,7 @@ The interface avoids generic, monolithic Material 3 templates with flat, continu
 
 ## 4. Foundations (Design Tokens)
 
-All dimensions, paddings, and radii must be referenced directly from design tokens (`SettingsDimensions` / `YumaSpacing` / `YumaRadius`). Arbitrary hardcoded values are prohibited.
+All dimensions, paddings, and radii must be referenced directly from design tokens (`SettingsDimensions` / `SettingsAnimations` / `YdsInsets` in `:designsystem`, plus layout constants in `constants/Dimensions.kt`). Arbitrary hardcoded values are prohibited.
 
 ### Spacing
 * **`SegmentGap`:** `1.5dp` (inter-row gap within a segmented group)
@@ -148,7 +148,7 @@ Dropdowns, context dialogs, and single-choice selectors follow **YDS 2.1 segment
 | State | Visual Feedback |
 | :--- | :--- |
 | **Default** | Translucent `glassBackground` fill + 0.5dp hairline `glassBorder` with position-aware lighting. |
-| **Pressed** | Whole-card scale down to `0.96f` with `spring(stiffness = Spring.StiffnessMedium)`. |
+| **Pressed** | Whole-card scale down to `0.96f` (`SettingsAnimations.PressScale`) with `spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium)` via `SettingsAnimations.pressSpring()`. When animations are disabled (`LocalAnimationsDisabled`), the press resolves via `snap()` with zero animation. |
 | **Active / Selected** | Active indicator filled with `primary`, text colored `onPrimary` or tinted container. |
 | **Disabled** | Row opacity set to `0.5f`, touch handling blocked. |
 
@@ -158,16 +158,21 @@ Dropdowns, context dialogs, and single-choice selectors follow **YDS 2.1 segment
 
 
 
-Design Tokens (SettingsDimensions, YumaColors)
+Design Tokens (SettingsDimensions, SettingsAnimations, YdsInsets, LocalYumaColors)
 ↓
 Primitive Modifiers
-(Modifier.yumaGlassCard, Modifier.yumaClickable)
+(Modifier.yumaGlassCard, Modifier.yumaClickable, yumaSegmentPosition / yumaSegmentAlphas)
 ↓
 Composite Components
-(PreferenceGroup, PreferenceEntry, SwitchPreference, SegmentedPreference, ListPreference, EditTextPreference, SliderPreference, NumberPickerPreference)
+(PreferenceGroup, PreferenceEntry, SwitchPreference, EditTextPreference, SliderPreference, NumberPickerPreference,
+YumaMorphingHeader, FloatingNavigationToolbar / FluidTabsContainer, GlassScaffold, ExpressivePullToRefreshBox,
+LibraryFilterChipBar, shimmer placeholders)
+↓
+Shared Foundations
+(YumaHaptics, YdsInsets safe-area helpers, ThemePreviews / TestThemeWrapper)
 ↓
 Screens
-(SettingsScreen, AccountSettings, AppearanceSettings, etc.)
+(SettingsScreen, AccountSettings, AppearanceSettings, HomeScreen, player_0 sheets, etc.)
 
 
 ---

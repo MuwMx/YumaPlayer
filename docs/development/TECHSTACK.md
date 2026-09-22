@@ -37,7 +37,7 @@ In case of conflict between this file and code, this file takes precedence. In c
 
 | Forbidden | Reason | Replacement |
 | :--- | :--- | :--- |
-| Retrofit | Ktor / OkHttp is the approved stack. Two HTTP stacks are forbidden | Existing `HttpClient` from `:core:network` |
+| Retrofit | Ktor / OkHttp is the approved stack. Two HTTP stacks are forbidden | OkHttp singleton from `:app` (`di/NetworkModule.kt`), Ktor client in `:core:innertube` |
 | RxJava / RxKotlin / LiveData for new logic | Approved: Coroutines + `StateFlow` + UDF (ADR-003) | `StateFlow` + `collectAsStateWithLifecycle()` |
 | 3rd-party UI kits, dialog, animation, shimmer libraries | Break YDS 2.1 and 120fps kinematics | Yuma UI Kit + `docs/design/COMPONENT_GUIDE.md` |
 | Legacy XML layouts, Material 2, `AppCompat` widgets | Violates ADR-005 | Jetpack Compose |

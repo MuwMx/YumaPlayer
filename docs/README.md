@@ -18,12 +18,12 @@ Originally evolved from ArchiveTune (with core dependencies traced back to Metro
 
 The codebase is organized into independent modules with clearly defined responsibilities. Each module has a single responsibility and communicates through well-defined interfaces:
 
-- **`:app`** — Entry point, application class, and DI composition root.
-- **`:core` & `:data`** — Network clients (InnerTube API), local storage, and shared utilities.
-- **`:feature:*`** — Standalone UI features and screen-level logic.
-- **`:service:playback`** — Media3 ExoPlayer background playback infrastructure.
-- **`:lyrics:*`** — Isolated lyrics providers (`lrclib`, `paxsenix`, `kugou`, `unison`, `youlyplus`).
-- **`:spotifycore` & `:shazamkit`** — Dedicated third-party metadata and recognition integrations.
+- **`:app`** — Entry point, application class, and DI composition root (UI, playback, colocated domain).
+- **`:designsystem`** — YDS tokens and Yuma UI Kit.
+- **`:database`** — Room persistence (v36).
+- **`:core` / `:core:innertube`** — Shared logic and InnerTube API client.
+- **`:lyrics:*`** — Isolated lyrics providers (`lrclib`, `kugou`, `paxsenix`, `simpmusic`, `betterlyrics`, `unison`, `youlyplus`).
+- **`:spotifycore` / `:shazamkit` / `:canvas` / `:lastfm` / `:flaccore`** — Dedicated third-party, recognition, visual, scrobbling, and lossless integrations (19 modules total, see `architecture/MODULES.md`).
 
 ---
 
@@ -45,7 +45,7 @@ Development rules, standards, step-by-step guides, and agent guidelines.
 
 ### 3. 🎨 [Design](./design/)
 UI design system, tokens, and component guidelines.
-- **YDS.md** — Yuma Design System 1.0 specification (tokens, HCT color engine, elevation, motion).
+- **YDS.md** — Yuma Design System 2.1 specification (tokens, HCT color engine, elevation, motion).
 - **COMPONENT_GUIDE.md** — Guidelines for creating stateless Yuma UI Kit components.
 
 ---
@@ -66,7 +66,7 @@ UI design system, tokens, and component guidelines.
 
 ### ⚙️ If you are working on Data / Core / Network:
 1. **docs/architecture/ARCHITECTURE.md** — Domain layer boundaries and UDF.
-2. **docs/architecture/MODULES.md** — Module dependencies (`:core`, `:data:*`, InnerTube API client).
+2. **docs/architecture/MODULES.md** — Module dependencies (`:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`).
 3. **docs/development/CODING_STANDARD.md** — Repositories, DTO mapping, `Dispatchers.IO` rules.
 
 ### 🎵 If you are working on Lyrics Providers:

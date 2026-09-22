@@ -29,13 +29,13 @@ Example:
 ## 2. Section A — Ancestral Legacy (ArchiveTune / SimpMusic / Metrolist)
 
 ### A1. Root ancestor package `moe.rukamori.archivetune`
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/` (42 subdirectories: `playback/`, `db/`, `viewmodels/`, `ui/`, `spotify/`, …), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/`
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/` (41 entries: `playback/`, `viewmodels/`, `ui/`, `spotify/`, …; persistence moved out to `:database`), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/`
 - **Debt:** Historic ArchiveTune package name permeates DI, navigation (`archivetune://login`), `MusicService`, and `MainActivity`. Renaming breaks the Hilt graph, deep links, and Room migrations.
 - **Do not touch:** Hundreds of imports, `SessionToken(ComponentName(MusicService))`, external intent filters.
 - **Refactor criterion:** Standalone package-rename task with a migration script plus full regression on deep links and MediaSession.
 
 ### A2. InnerTube client and `YouTube.kt` facade
-- **Paths:** `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/InnerTube.kt`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/YouTube.kt` (~412-line facade, was ~2677 lines), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/utils/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/pages/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/models/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/proxy/`
+- **Paths:** `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/InnerTube.kt`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/YouTube.kt` (409-line facade), `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/utils/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/pages/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/models/`, `core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/proxy/`
 - **Debt:** Ktor client with mutable `authState` (`cookie`, `poToken`, `visitorData`, `dataSyncId`) managed via `AuthSessionStore`. Domain clients (`BrowseClient`, `PlaylistClient`, `SearchClient`, `PlayerClient`) extracted under a 412-line facade implementing `MusicBackend`, but shared HTTP transport, proxy rotation, and page parsers (`HomePage`, `AlbumPage`, `SearchPage`) remain coupled. Inherited from ViMusic / Metrolist / SimpMusic. Any YouTube format change breaks everything at once.
 - **Do not touch:** `HomeViewModel` and `MusicService` call `YouTube.*` directly (while `PlayerViewModel` routes via UseCases/Repositories); direct singleton calls persist across legacy callers.
 - **Refactor criterion:** Route remaining call sites (`HomeViewModel`, `MusicService`) through domain UseCases/Repositories and add contract tests on JSON fixtures.
@@ -52,10 +52,10 @@ Example:
 - **Do not touch:** Account-switch races desynchronize `YouTube.authState` from the Spotify token; `HomeViewModel` assigns `YouTube.cookie=cookie` in try/catch without rollback.
 - **Refactor criterion:** Single `AuthRepository` with `StateFlow<AuthState>` and atomic rotation, covered by a double-refresh test.
 
-### A5. Qobuz lazy providers and synchronous `runBlocking` in Hilt DI (ADR-009)
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/lossless/FlacConfigImpl.kt` (suspend `qbdlxTokenPool()` from DataStore), `app/src/main/kotlin/moe/rukamori/archivetune/di/AppModule.kt:225` (`provideQbdlxCredentialStore` calls `runBlocking { config.qbdlxTokenPool() }`), `app/src/main/kotlin/moe/rukamori/archivetune/playback/resolvers/StreamUrlCache.kt`, `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt` (`losslessUrlCache`)
-- **Debt (ADR-009):** Qobuz clients receive lazy `() -> String` token providers; an empty string means qbdlx is disabled. However, `QbdlxPoolProvider` in the Hilt graph performs `runBlocking` on the main DI path. URL cache holds 256 entries with a 60s safety margin; the FLAC resolve timeout was raised from 2500ms to 10000ms.
-- **Do not touch:** Replacing `runBlocking` with suspend breaks the synchronous `QbdlxCredentialStore` constructor; changing cache TTL reintroduces the silent fallback to YT_MUSIC.
+### A5. Qobuz lazy providers in Hilt DI (ADR-009)
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/lossless/FlacConfigImpl.kt` (suspend `qbdlxTokenPool()` from DataStore), `app/src/main/kotlin/moe/rukamori/archivetune/di/AppModule.kt:218-227` (`provideQbdlxCredentialStore` builds `:flaccore` `QbdlxCredentialStore` with `QbdlxPoolProvider { config.qbdlxTokenPool() }`), `app/src/main/kotlin/moe/rukamori/archivetune/playback/resolvers/StreamUrlCache.kt`, `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt:378` (`losslessUrlCache`)
+- **Debt (ADR-009):** Qobuz clients receive lazy `() -> String` token providers; an empty string means qbdlx is disabled. Qbdlx types now live in `:flaccore` (`FlacConfig`, `FlacKvStore`, `qbdlx/QbdlxSigner`, `qbdlx/QbdlxCredentialStore`). URL cache holds 256 entries with a 60s safety margin; the FLAC resolve timeout was raised from 2500ms to 10000ms.
+- **Do not touch:** Replacing the lazy pool provider with an eager suspend factory breaks the synchronous `QbdlxCredentialStore` constructor; changing cache TTL reintroduces the silent fallback to YT_MUSIC.
 - **Refactor criterion:** Migrate `QbdlxCredentialStore` to a suspend factory / AssistedInject and move `StreamUrlCache` into `:core` with expiry unit tests.
 
 ### A6. SpotifySync Mutex double-checked locking and 50-item batching (ADR-011)
@@ -75,7 +75,7 @@ Example:
 - **Refactor criterion:** Extract `PlaybackEngine`, `UrlResolveCache`, `AudioEffectsController`, and `PresenceController` as interfaced classes; keep `MusicService` as a thin `MediaLibraryService` facade.
 
 ### B2. `MusicDatabase.kt` Room facade (v36)
-- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/db/MusicDatabase.kt` (1184 lines, `CURRENT_VERSION=36`), `app/src/main/kotlin/moe/rukamori/archivetune/db/entities/` (33 files)
+- **Path:** `database/src/main/kotlin/moe/rukamori/archivetune/db/MusicDatabase.kt` (1183 lines, `CURRENT_VERSION=36`), `database/src/main/kotlin/moe/rukamori/archivetune/db/entities/` (33 files)
 - **Debt:** Wrapper over `InternalDatabase` with `query{}` / `transaction{}` on fixed 4+4 pools, `UniversalMigration` via in-memory `expectedDb + SchemaTools.reconcileDatabase`, `fallbackToDestructiveMigration`, `PRAGMA` tuning, `cleanupDuplicatePlaylistsOnOpen` with raw SQL in `onOpen`, and `MIGRATION_1_2` with a manual SimpMusic schema port. Every schema deviation is healed by drop and recreate.
 - **Do not touch:** Editing `reconcileDatabase` / `ensureTableSchema` destroys the user library; `fallbackToDestructiveMigration` hides migration errors.
 - **Refactor criterion:** Pin a schema snapshot (`schemas/`) with tests, remove the destructive fallback, and cover migrations 33→36 with autotests on real `.db` files.
@@ -108,14 +108,14 @@ Example:
 
 ## 4. Section C — Temporary Workarounds and Hot Fixes
 
-### C1. `DataStore.get` via `runBlocking` plus `PreferenceStore` cache
-- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/utils/DataStore.kt:101-126` (`runBlocking(Dispatchers.IO){withTimeoutOrNull(1500){data.first()}}`, `if (Looper.main==currentThread) return default`), `App.kt` (`PreferenceStore.start(this)`)
-- **Debt:** Synchronous DataStore access from Java-style code (`enumPreference`, `preference`, `AppModule.providePlayerCache`). On Main it silently returns `null` / default; off Main it blocks up to 1.5s. `PreferenceStore` is a global `MutableStateFlow<Preferences?>` without TTL.
+### C1. Sync `DataStore.get` via `PreferenceStore` cache
+- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/utils/DataStore.kt:100-107` (sync `get` delegates to `PreferenceStore` cache, zero blocking), `:109-124` (suspend `getAsync` via `withContext(IO) + withTimeoutOrNull(1500)`), `App.kt` (`PreferenceStore.start(this)`)
+- **Debt:** Synchronous DataStore access from Java-style code (`enumPreference`, `preference`, `AppModule.providePlayerCache`) reads the cached snapshot; before `PreferenceStore.start` it silently returns `null` / default. Off-Main suspend reads block up to 1.5s. `PreferenceStore` is a global `MutableStateFlow<Preferences?>` without TTL.
 - **Do not touch:** Migrating to suspend breaks `by enumPreference` in `MusicService` and `rememberPreference`; removing the Main guard causes cold-start ANR before `PreferenceStore.start`.
 - **Refactor criterion:** Forbid sync `get` in new code via a detekt rule, keep only `getAsync` / Flow; trigger when all `dataStore.get` calls disappear from `:app`.
 
 ### C2. Hardcoded boot and load delays
-- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/viewmodels/HomeViewModel.kt:457` (`delay(150)` before load), `:939` (`delay(3000)` before `cleanupDuplicatePlaylists`), `:967` (`delay(100)` before `refreshAccountIdentity`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:299` (`delay(150)` in `requestSheetCollapse`), `app/src/main/kotlin/moe/rukamori/archivetune/MainActivity.kt:757-760` (`while playerConnection==null delay(100)`; `delay(500)` before update check), `app/src/main/kotlin/moe/rukamori/archivetune/App.kt:324` (`Thread.sleep(100)` before `killProcess`)
+- **Paths:** `app/src/main/kotlin/moe/rukamori/archivetune/viewmodels/HomeViewModel.kt:457` (`delay(150)` before load), `:939` (`delay(3000)` before `cleanupDuplicatePlaylists`), `:967` (`delay(100)` before `refreshAccountIdentity`), `app/src/main/kotlin/moe/rukamori/archivetune/ui/PlayerViewModel.kt:299` (`delay(150)` in `requestSheetCollapse`), `app/src/main/kotlin/moe/rukamori/archivetune/MainActivity.kt:781-784` (`while playerConnection==null delay(100)`; `delay(500)` before update check), `app/src/main/kotlin/moe/rukamori/archivetune/App.kt:324` (`Thread.sleep(100)` before `killProcess`)
 - **Debt:** Delays mask races: DataStore collect not ready, service not bound, sheet not collapsed. Magic 100 / 150 / 500 / 3000ms values were tuned empirically.
 - **Do not touch:** Removing `delay(150)` in `HomeViewModel.load()` causes double loading (the `isLoading` flag lags); removing `delay(500)` in `MainActivity` shows the update sheet over the splash.
 - **Refactor criterion:** Replace with explicit readiness signals (`queueRestoreCompleted.first{}`, `isReady`, `snapshotFlow`); remove one at a time with low-RAM cold-start verification.

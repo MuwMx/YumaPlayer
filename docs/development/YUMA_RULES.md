@@ -21,8 +21,8 @@ If a rule conflicts with an implementation, the rule takes precedence.
 
 ## 2. Architecture & Module Isolation
 
-- **Strict Layer Inversion:** Inner layers (`:core:domain`, `:core:model`) must never import outer layers (`:data:*`, `:feature:*`, `:service:*`).
-- **Feature Isolation:** Feature modules (`:feature:*`) cannot depend on each other directly. Shared code belongs in `:core:*`.
+- **Strict Layer Inversion:** Inner domain packages (`:app` colocated domain packages, `:core` contracts) must never import outer UI/playback layers (`:app` `ui/`, `playback/`, `:designsystem`).
+- **Feature Isolation:** UI flows inside `:app` cannot depend on each other directly (no screen-to-screen imports). Shared code belongs in `:core` or `:designsystem`. (A future `:feature:*` split is reserved, not real — see `MODULES.md` §6.)
 - **UI Logic Separation:** Composable functions must not contain business logic. ViewModels coordinate UI state but must not implement business rules.
 - **No Direct API Access from ViewModel:** ViewModels must interact with data strictly via UseCases or Repositories.
 - **No Context in ViewModels:** Android `Context` objects must never be referenced inside ViewModel instances.

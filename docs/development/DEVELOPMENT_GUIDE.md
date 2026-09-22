@@ -9,7 +9,7 @@ This document provides standardized workflows for implementing common features, 
 All lyrics provider implementations reside under the `:lyrics:*` submodule namespace (e.g., `:lyrics:lrclib`, `:lyrics:kugou`).
 
 1. **Create Submodule Directory:**
-   Create a new module directory under `lyrics/<provider_name>/` containing a standard `build.gradle.kts` file that depends on `:core:model` or shared domain interfaces.
+   Create a new module directory under `lyrics/<provider_name>/` containing a standard `build.gradle.kts` file that depends on `:core` shared contracts.
 
 2. **Register in `settings.gradle.kts`:**
    ```kotlin
@@ -37,8 +37,8 @@ All lyrics provider implementations reside under the `:lyrics:*` submodule names
 
 ## 2. How to Add a New UI Screen / Feature Flow
 
-1. **Create Feature Module or Package:**
-   Place new features inside `:feature:<feature_name>` or inside the corresponding subpackage within an existing feature module.
+1. **Create Feature Package:**
+   Place new features inside `:app` under the corresponding domain package (e.g. `app/src/main/kotlin/moe/rukamori/archivetune/<feature>/`) with screens under `ui/screens/`. (`:feature:<name>` modules are reserved for a future split, not real — see `MODULES.md` §6.)
 2. **Define UI State (`UiState`):**
    ```kotlin
    sealed interface MyFeatureUiState {
@@ -108,7 +108,7 @@ All lyrics provider implementations reside under the `:lyrics:*` submodule names
 
 ## 3. How to Add a New Use Case
 
-1. **Locate Domain Package:** Place the Use Case in `:core:domain` inside the `usecase/` directory.
+1. **Locate Domain Package:** Place the Use Case in the owning `:app` domain package (e.g. `search/`, `library/`, `artist/`) alongside its repository interfaces.
 2. **Implement Single Action Class:**
    Use Cases represent a single unit of business logic. Do not handle Thread/Dispatcher context switching inside Use Cases — Repository implementations are responsible for executing I/O operations on `Dispatchers.IO`.
    ```kotlin
@@ -126,7 +126,7 @@ All lyrics provider implementations reside under the `:lyrics:*` submodule names
 
 ## 4. How to Add a New Gradle Module
 
-1. **Create Directory Structure:** Create the new module folder matching its architectural layer (e.g., `feature/artist/`).
+1. **Create Directory Structure:** Create the new module folder matching its architectural layer (e.g. `lyrics/myprovider/`).
 2. **Add `build.gradle.kts`:** Configure necessary Android or Kotlin plugins:
    ```kotlin
    plugins {
@@ -137,7 +137,7 @@ All lyrics provider implementations reside under the `:lyrics:*` submodule names
    ```
 3. **Include in `settings.gradle.kts`:**
    ```kotlin
-   include(":feature:artist")
+   include(":lyrics:myprovider")
    ```
 4. **Wire Dependencies:** Declare dependencies strictly in compliance with the module graph rules defined in `MODULES.md`. Never declare cyclic dependencies or bypass layer boundaries.
 

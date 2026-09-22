@@ -101,6 +101,15 @@ private fun YumaSegmentedItemPreview() {
 ### Step 5: Create Interactive Component Sample
 Place usage examples in component documentation or sample code blocks showing state binding.
 
+### Step 6: Register in the Component Inventory
+Yuma UI Kit (`designsystem/.../ui/component/`) currently provides, beyond the preference family
+(`PreferenceGroup`, `PreferenceEntry`, `SwitchPreference`, `EditTextPreference`, `SliderPreference`,
+`NumberPickerPreference` in `Preference.kt`): `YumaMorphingHeader` (scroll-linked `lerp3` header morph),
+`FloatingNavigationToolbar` with internal `FluidTabsContainer`, `GlassScaffold`, `ExpressivePullToRefreshBox`,
+`LibraryFilterChipBar`, `YumaPreferences`, `SearchBar`, bottom-sheet family (`BottomSheet`, `BottomSheetPage`,
+`BottomSheetMenu`), shimmer placeholders (`shimmer/`), haptics (`YumaHaptics`), and safe-area helpers (`YdsInsets`).
+Reuse them before creating a new component.
+
 ---
 
 ## 4. Anti-Patterns Checklist

@@ -18,6 +18,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-009](#adr-009-lossless-flac-streaming-playback)** — Lossless FLAC Streaming Playback
 - **[ADR-010](#adr-010-120fps-gesture-kinematics--player-sheet-layer-architecture)** — 120fps Gesture Kinematics & Player Sheet Layer Architecture
 - **[ADR-011](#adr-011-spotify-sync-architecture)** — Spotify Sync Architecture
+- **[ADR-012](#adr-012-room-persistence-extracted-into-database-module)** — Room Persistence Extracted into `:database` Module
 
 ---
 
@@ -25,7 +26,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 
 - **Status:** Accepted
 - **Context:** Music players require distinct visual identity, high contrast legibility, and rich motion while maintaining standard Android accessibility.
-- **Decision:** Adopt Material 3 Expressive principles as the foundation for Yuma Design System (YDS 1.0). Customize shapes (squircled corners, custom radii), elevation, and expressive motion curves.
+- **Decision:** Adopt Material 3 Expressive principles as the foundation for Yuma Design System (YDS 2.1). Customize shapes (squircled corners, custom radii), elevation, and expressive motion curves.
 - **Consequences:**
   - *Positive:* Unique music-centric aesthetic, smooth spring animations, unified design tokens.
   - *Negative:* Most UI components should be built through Yuma UI Kit wrappers rather than consuming raw Material 3 components directly.
@@ -91,7 +92,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 
 - **Status:** Accepted
 - **Context:** Coupling business logic to Android framework APIs makes unit testing slow and breaks multiplatform / modular architecture potential.
-- **Decision:** Domain modules (`:core:domain`, `:core:model`) must remain pure Kotlin modules with zero imports from `android.*` packages.
+- **Decision:** Domain code (colocated `:app` domain packages plus shared `:core` contracts) must remain pure Kotlin with zero imports from `android.*` packages.
 - **Consequences:**
   - *Positive:* Fast JVM unit testing (no Robolectric needed), clean separation of concerns.
   - *Negative:* Android Context utilities must be wrapped in domain interfaces implemented in `:data` or `:app`.
@@ -102,7 +103,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 
 - **Status:** Accepted
 - **Context:** A monolithic application module leads to slow build times, tight coupling, and uncontrolled dependencies.
-- **Decision:** Split YumaPlayer into isolated Gradle modules (`:app`, `:core`, `:feature:*`, `:lyrics:*`, `:canvas`, `:spotifycore`, `:shazamkit`) with inward dependency rules toward domain core.
+- **Decision:** Split YumaPlayer into 19 isolated Gradle modules (`:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:lyrics:*` ×7, `:canvas`, `:spotifycore`, `:shazamkit`, `:lastfm`, `:flaccore`, `:moriextractor`, `:morideobfuscator`) with inward dependency rules toward domain core.
 - **Consequences:**
   - *Positive:* Parallel Gradle builds, strict feature isolation, modular provider system.
   - *Negative:* Requires managing build logic across multiple module definitions.
@@ -154,3 +155,14 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Instant local UI feedback, zero UI thread blocking, optimal network throughput with chunked batching, and full user control over background Spotify synchronization.
   - *Negative:* Spotify library state reflects changes asynchronously with minor eventual-consistency delay.
+
+---
+
+## ADR-012: Room Persistence Extracted into `:database` Module
+
+- **Status:** Accepted
+- **Context:** The Room persistence layer (`MusicDatabase`, 33 entity files, universal migration machinery) lived inside `:app` next to UI and playback code, coupling the user library to the composition root's build and lifecycle.
+- **Decision:** Extract persistence into a dedicated `:database` Android library module (`namespace moe.rukamori.archivetune.database`, Room `CURRENT_VERSION = 36`, KSP schema snapshots under `database/schemas/`). `:app` consumes it as a library dependency; entities and migrations evolve behind the module boundary.
+- **Consequences:**
+  - *Positive:* Library storage builds and versions independently of UI/playback; schema snapshots are pinned per Room version via KSP.
+  - *Negative:* `fallbackToDestructiveMigration` and `UniversalMigration` reconciliation now span a module boundary, so schema mistakes surface as cross-module migration failures (see `LEGACY_WARNING.md` §B2).
