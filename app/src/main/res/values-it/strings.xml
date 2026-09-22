@@ -62,7 +62,7 @@
     <string name="edit">Modifica</string>
     <string name="start_radio">Avvia la radio</string>
     <string name="play">Riproduci</string>
-    <string name="play_next">Vai alla successiva</string>
+    <string name="play_next">Prossimo brano</string>
     <string name="add_to_queue">Aggiungi alla coda</string>
     <string name="add_to_library">Aggiungi alla libreria</string>
     <string name="remove_from_library">Rimuovi dalla libreria</string>
@@ -76,7 +76,7 @@
     <string name="view_artist">Visualizza artista</string>
     <string name="view_album">Visualizza l\'album</string>
     <string name="view_all">Visualizza tutto</string>
-    <string name="more">di più</string>
+    <string name="more">altro</string>
     <string name="share">Condividi</string>
     <string name="delete">Elimina</string>
     <string name="remove_from_history">Rimuovi dalla cronologia</string>
@@ -502,7 +502,7 @@
     <string name="together_kick_confirm">Rimuovere %1$s?</string>
     <string name="together_ban_confirm">Bloccare %1$s?</string>
     <string name="together_requesting_song_change">Richiedendo all\'host di cambiare brano…</string>
-    <string name="together_song_change_failed">Modifica brano non applicata. Riprovare.</string>
+    <string name="together_song_change_failed">Modifica brano non riuscita. Riprovare.</string>
     <string name="removed_song_from_queue">Rimosso \"%s\" dalla coda</string>
     <string name="removed_n_songs_from_queue">Rimossi %d brani dalla coda</string>
     <string name="aod_mode">Modalità AOD</string>
