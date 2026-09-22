@@ -62,6 +62,7 @@ fun PlayerBackgroundLayers(
     state: PlayerUiState,
     modifier: Modifier = Modifier,
     gradientColor: Color = Color(state.gradientColor),
+    expansionFractionProvider: () -> Float = { 1f },
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
     queueFractionProvider: () -> Float = { 0f },
     onColorsExtracted: (vibrant: Int, darkMuted: Int, gradient: Int) -> Unit = { _, _, _ -> },
@@ -82,6 +83,16 @@ fun PlayerBackgroundLayers(
     val isOverlayVisible by remember {
         derivedStateOf {
             state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+        }
+    }
+    val isLayerOnScreen by remember {
+        derivedStateOf {
+            expansionFractionProvider() > 0.005f
+        }
+    }
+    val needsBlur by remember {
+        derivedStateOf {
+            (state.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
         }
     }
     val immersiveTransitionAlpha by animateFloatAsState(
@@ -124,21 +135,6 @@ fun PlayerBackgroundLayers(
 
     val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
 
-    val blurImageRequest = remember(targetUrl) {
-        ImageRequest.Builder(context)
-            .data(targetUrl)
-            .apply {
-                if (targetUrl != null) {
-                    memoryCacheKey("blur:$targetUrl")
-                    diskCacheKey(targetUrl)
-                }
-            }
-            .size(240)
-            .crossfade(500)
-            .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
-            .build()
-    }
-
     val clearImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
@@ -161,8 +157,44 @@ fun PlayerBackgroundLayers(
     var currentBlurPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
 
-    val blurPainter = rememberAsyncImagePainter(model = blurImageRequest)
-    val blurState by blurPainter.state.collectAsState()
+    if (needsBlur) {
+        val blurImageRequest = remember(targetUrl) {
+            ImageRequest.Builder(context)
+                .data(targetUrl)
+                .apply {
+                    if (targetUrl != null) {
+                        memoryCacheKey("blur:$targetUrl")
+                        diskCacheKey(targetUrl)
+                    }
+                }
+                .size(240)
+                .crossfade(500)
+                .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
+                .build()
+        }
+
+        val blurPainter = rememberAsyncImagePainter(model = blurImageRequest)
+        val blurState by blurPainter.state.collectAsState()
+
+        LaunchedEffect(blurState) {
+            when (val s = blurState) {
+                is AsyncImagePainter.State.Success -> {
+                    currentBlurPainter = s.painter
+                }
+                is AsyncImagePainter.State.Error -> {
+                    currentBlurPainter = null
+                }
+                is AsyncImagePainter.State.Empty -> {}
+                else -> {}
+            }
+        }
+    }
+
+    LaunchedEffect(needsBlur) {
+        if (!needsBlur) {
+            currentBlurPainter = null
+        }
+    }
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
 
@@ -239,19 +271,6 @@ fun PlayerBackgroundLayers(
         }
     }
 
-    LaunchedEffect(blurState) {
-        when (val s = blurState) {
-            is AsyncImagePainter.State.Success -> {
-                currentBlurPainter = s.painter
-            }
-            is AsyncImagePainter.State.Error -> {
-                currentBlurPainter = null
-            }
-            is AsyncImagePainter.State.Empty -> {}
-            else -> {}
-        }
-    }
-
     val animatedBgColor by animateColorAsState(
         targetValue = activeGradientColor,
         animationSpec = tween(500),
@@ -281,20 +300,22 @@ fun PlayerBackgroundLayers(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Crossfade(
-            targetState = currentBlurPainter,
-            animationSpec = tween(500),
-            label = "BlurCrossfade"
-        ) { painter ->
-            if (painter != null) {
-                Image(
-                    painter = painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = blurOverlayAlpha },
-                    contentScale = ContentScale.Crop
-                )
+        if (needsBlur) {
+            Crossfade(
+                targetState = currentBlurPainter,
+                animationSpec = tween(500),
+                label = "BlurCrossfade"
+            ) { painter ->
+                if (painter != null) {
+                    Image(
+                        painter = painter,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = blurOverlayAlpha },
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
 
