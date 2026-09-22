@@ -43,6 +43,8 @@ val hasReleaseSigningConfig =
             releaseKeyAlias != null &&
             releaseKeyPassword != null
 
+val isCanary = findProperty("canary")?.toString()?.toBoolean() == true
+
 android {
     namespace = "moe.rukamori.archivetune"
     compileSdk = 37
@@ -53,6 +55,18 @@ android {
         targetSdk = 37
         versionCode = 5
         versionName = "1.2.0-Beta.4"
+
+        val nightlyVersionName = findProperty("nightlyVersionName")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val canaryDate = nightlyVersionName?.filter { it.isDigit() }?.takeIf { it.isNotEmpty() }
+        if (nightlyVersionName != null) {
+            versionName = nightlyVersionName
+            val dateCode = (if (canaryDate != null && canaryDate.length > 8) canaryDate.take(8) else canaryDate)
+                ?.toIntOrNull()
+                ?.takeIf { it > 5 }
+            if (dateCode != null) {
+                versionCode = dateCode
+            }
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -94,7 +108,8 @@ android {
 
         val nightlyBuildHash =
             (
-                localProperties.getProperty("NIGHTLY_BUILD_HASH")
+                canaryDate
+                    ?: localProperties.getProperty("NIGHTLY_BUILD_HASH")
                     ?: System.getenv("NIGHTLY_BUILD_HASH")
                     ?: ""
                 ).trim()
@@ -174,6 +189,9 @@ android {
 
     buildTypes {
         release {
+            if (isCanary) {
+                applicationIdSuffix = ".canary"
+            }
             if (hasReleaseSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
             }
