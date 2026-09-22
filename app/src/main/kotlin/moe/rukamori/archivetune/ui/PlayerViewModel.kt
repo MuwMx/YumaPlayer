@@ -41,12 +41,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.utils.LikeSourceResolver
-import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLocalMediaId
-import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 
@@ -74,19 +70,16 @@ class PlayerViewModel @Inject constructor(
     private val playerConnection get() = connectionHolder.connection.value
     private val audioPlayer get() = playerConnection?.player
 
-    private val _uiState = MutableStateFlow(
-        PlayerUiState(
-            isBlurBackgroundEnabled = settingsRepository.isBlurBackgroundEnabled(),
-            isAutoDownloadEnabled = settingsRepository.isAutoDownloadLyricsEnabled(),
-            isImmersiveEnabled = settingsRepository.isImmersiveEnabled(),
-            showCodecInfo = settingsRepository.isShowCodecInfoEnabled(),
-            isAlbumCoverGlowEnabled = settingsRepository.isAlbumCoverGlowEnabled(),
-            vibrantColor = PreferenceStore.get(LastVibrantColorKey) ?: android.graphics.Color.WHITE,
-            darkMutedColor = PreferenceStore.get(LastDarkMutedColorKey) ?: android.graphics.Color.parseColor("#282828"),
-            gradientColor = PreferenceStore.get(LastGradientColorKey) ?: android.graphics.Color.parseColor("#121212"),
-        )
-    )
+    private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    val appearanceStateHolder = AppearanceStateHolder(
+        coroutineScope = viewModelScope,
+        dataStore = application.dataStore,
+        settingsRepository = settingsRepository,
+        uiStateProvider = { _uiState.value },
+        updateUiState = { transform -> _uiState.update(transform) },
+    )
 
     val queueStateHolder = QueueStateHolder(
         coroutineScope = viewModelScope,
@@ -150,18 +143,6 @@ class PlayerViewModel @Inject constructor(
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
 
     init {
-        val cachedVibrant = PreferenceStore.get(LastVibrantColorKey)
-        val cachedDarkMuted = PreferenceStore.get(LastDarkMutedColorKey)
-        val cachedGradient = PreferenceStore.get(LastGradientColorKey)
-        if (cachedVibrant != null || cachedDarkMuted != null || cachedGradient != null) {
-            _uiState.update { current ->
-                current.copy(
-                    vibrantColor = cachedVibrant ?: current.vibrantColor,
-                    darkMutedColor = cachedDarkMuted ?: current.darkMutedColor,
-                    gradientColor = cachedGradient ?: current.gradientColor,
-                )
-            }
-        }
         // Подписка на лирику из базы данных через холдер плеера
         viewModelScope.launch {
             connectionHolder.connection
@@ -177,9 +158,6 @@ class PlayerViewModel @Inject constructor(
                     )
                 }
         }
-
-        val isFirstLaunch = settingsRepository.isFirstLaunch()
-        _uiState.update { it.copy(shouldShowWelcome = isFirstLaunch) }
 
         viewModelScope.launch {
             settingsRepository.lyricsRomanizationPrefsFlow.collect { prefs ->
@@ -216,7 +194,7 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.Like, is PlayerAction.ToggleLike -> playbackStateHolder.toggleLike()
             is PlayerAction.Shuffle -> playbackStateHolder.toggleShuffle()
             is PlayerAction.Repeat -> playbackStateHolder.toggleRepeat()
-            is PlayerAction.ToggleAutoDownload -> setAutoDownloadEnabled(!_uiState.value.isAutoDownloadEnabled)
+            is PlayerAction.ToggleAutoDownload -> appearanceStateHolder.toggleAutoDownload()
             is PlayerAction.SearchLyrics -> refreshLyrics()
             is PlayerAction.Lyrics -> setLyricsVisible(true)
             is PlayerAction.StartSleepTimer -> playbackStateHolder.startSleepTimer(action.minutes)
@@ -241,31 +219,10 @@ class PlayerViewModel @Inject constructor(
                 saveLyrics(action.text)
             }
             is PlayerAction.StartRadio -> playerConnection?.startRadioSeamlessly()
-            is PlayerAction.ToggleCodecInfo -> {
-                val newValue = !_uiState.value.showCodecInfo
-                settingsRepository.setShowCodecInfoEnabled(newValue)
-                _uiState.update { it.copy(showCodecInfo = newValue) }
-            }
-            is PlayerAction.ToggleAlbumCoverGlow -> {
-                val newValue = !_uiState.value.isAlbumCoverGlowEnabled
-                settingsRepository.setAlbumCoverGlowEnabled(newValue)
-                _uiState.update { it.copy(isAlbumCoverGlowEnabled = newValue) }
-            }
+            is PlayerAction.ToggleCodecInfo -> appearanceStateHolder.toggleCodecInfo()
+            is PlayerAction.ToggleAlbumCoverGlow -> appearanceStateHolder.toggleAlbumCoverGlow()
             is PlayerAction.UpdateColors -> {
-                _uiState.update {
-                    it.copy(
-                        vibrantColor = action.vibrant,
-                        darkMutedColor = action.darkMuted,
-                        gradientColor = action.gradient,
-                    )
-                }
-                viewModelScope.launch(Dispatchers.IO) {
-                    application.dataStore.edit { prefs ->
-                        prefs[LastVibrantColorKey] = action.vibrant
-                        prefs[LastDarkMutedColorKey] = action.darkMuted
-                        prefs[LastGradientColorKey] = action.gradient
-                    }
-                }
+                appearanceStateHolder.updateColors(action.vibrant, action.darkMuted, action.gradient)
             }
             is PlayerAction.Dismiss -> {
                 _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
@@ -331,23 +288,19 @@ class PlayerViewModel @Inject constructor(
 
 
     fun dismissWelcome() {
-        settingsRepository.setFirstLaunch(false)
-        _uiState.update { it.copy(shouldShowWelcome = false) }
+        appearanceStateHolder.dismissWelcome()
     }
 
     fun setAutoDownloadEnabled(enabled: Boolean) {
-        settingsRepository.setAutoDownloadLyricsEnabled(enabled)
-        _uiState.update { it.copy(isAutoDownloadEnabled = enabled) }
+        appearanceStateHolder.setAutoDownloadEnabled(enabled)
     }
 
     fun setBlurBackgroundEnabled(enabled: Boolean) {
-        settingsRepository.setBlurBackgroundEnabled(enabled)
-        _uiState.update { it.copy(isBlurBackgroundEnabled = enabled) }
-     }
+        appearanceStateHolder.setBlurBackgroundEnabled(enabled)
+    }
 
     fun setImmersiveEnabled(enabled: Boolean) {
-        settingsRepository.setImmersiveEnabled(enabled)
-        _uiState.update { it.copy(isImmersiveEnabled = enabled) }
+        appearanceStateHolder.setImmersiveEnabled(enabled)
     }
 
     fun onTrackChanged(
@@ -392,13 +345,7 @@ class PlayerViewModel @Inject constructor(
         manageTicker(isPlaying)
 
         if (cleanCoverUrl.isEmpty()) {
-            _uiState.update {
-                it.copy(
-                    vibrantColor = android.graphics.Color.WHITE,
-                    darkMutedColor = android.graphics.Color.parseColor("#282828"),
-                    gradientColor = android.graphics.Color.parseColor("#121212"),
-                )
-            }
+            appearanceStateHolder.resetColors()
         }
 
         if (_uiState.value.isLyricsVisible && _uiState.value.isAutoDownloadEnabled) {
