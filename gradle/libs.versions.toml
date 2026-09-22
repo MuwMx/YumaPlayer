@@ -34,6 +34,7 @@ apacheLang3 = "3.20.0"
 brotli = "0.1.2"
 desugaring = "2.1.5"
 mockk = "1.13.8"
+leakCanary = "2.14"
 junit = "4.13.2"
 turbine = "1.2.1"
 timber = "5.0.1"
@@ -71,6 +72,7 @@ coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", 
 concurrent-futures = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrentFutures" }
 google-material = { group = "com.google.android.material", name = "material", version.ref = "googleMaterial" }
 webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
+leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakCanary" }
 
 gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 activity = { module = "androidx.activity:activity-compose", version.ref = "activity" }
