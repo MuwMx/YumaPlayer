@@ -22,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -33,6 +35,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.media3.ui.AspectRatioFrameLayout
 import coil3.compose.AsyncImagePainter
@@ -41,7 +44,6 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
-import coil3.request.transformations
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +57,6 @@ import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.ExtractedColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.utils.FastBlurTransformation
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
@@ -179,7 +180,6 @@ fun PlayerBackgroundLayers(
                 }
                 .size(240)
                 .crossfade(500)
-                .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
                 .build()
         }
 
@@ -305,7 +305,11 @@ fun PlayerBackgroundLayers(
             }
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clipToBounds()
+    ) {
         if (needsBlur) {
             Crossfade(
                 targetState = currentBlurPainter,
@@ -318,7 +322,12 @@ fun PlayerBackgroundLayers(
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = blurOverlayAlpha },
+                            .graphicsLayer {
+                                scaleX = 1.15f
+                                scaleY = 1.15f
+                                alpha = blurOverlayAlpha
+                            }
+                            .blur(69.dp),
                         contentScale = ContentScale.Crop
                     )
                 }
