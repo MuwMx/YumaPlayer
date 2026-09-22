@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,9 +47,10 @@ import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
@@ -169,6 +171,36 @@ fun PlayerBackgroundLayers(
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
+    val currentTargetUrl by rememberUpdatedState(targetUrl)
+    val currentTrackUrl by rememberUpdatedState(state.trackUrl)
+
+    LaunchedEffect(clearPainter) {
+        clearPainter.state.collect { s ->
+            val activeTargetUrl = currentTargetUrl
+            val activeTrackUrl = currentTrackUrl
+            if (activeTargetUrl == null) {
+                currentClearPainter = null
+                return@collect
+            }
+            when (s) {
+                is AsyncImagePainter.State.Success -> {
+                    if (s.result.request.data == activeTargetUrl &&
+                        state.trackUrl == activeTrackUrl
+                    ) {
+                        currentClearPainter = s.painter
+                    }
+                }
+                is AsyncImagePainter.State.Error -> {
+                    if (s.result.request.data == activeTargetUrl &&
+                        state.trackUrl == activeTrackUrl
+                    ) {
+                        currentClearPainter = null
+                    }
+                }
+                else -> {}
+            }
+        }
+    }
 
     LaunchedEffect(gradientColor, targetUrl) {
         if (targetUrl == null) {
@@ -180,7 +212,6 @@ fun PlayerBackgroundLayers(
 
     LaunchedEffect(targetUrl, state.trackUrl) {
         if (targetUrl == null) {
-            currentClearPainter = null
             return@LaunchedEffect
         }
 
@@ -189,9 +220,17 @@ fun PlayerBackgroundLayers(
 
         val cached = colorCache[requestedTargetUrl]
         if (cached != null) {
-            onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
-        } else {
-            launch {
+            try {
+                onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+            }
+            return@LaunchedEffect
+        }
+
+        supervisorScope {
+            try {
                 val result = runCatching {
                     context.imageLoader.execute(paletteImageRequest)
                 }.getOrNull()
@@ -203,37 +242,24 @@ fun PlayerBackgroundLayers(
                     state.trackUrl == requestedTrackUrl
                 ) {
                     val colors = withContext(Dispatchers.Default) {
-                        PlayerColorExtractor.extractColors(bitmap)
+                        runCatching { PlayerColorExtractor.extractColors(bitmap) }.getOrNull()
                     }
-                    if (targetUrl == requestedTargetUrl &&
+                    if (colors != null &&
+                        targetUrl == requestedTargetUrl &&
                         state.trackUrl == requestedTrackUrl
                     ) {
                         colorCache[requestedTargetUrl] = colors
-                        onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
+                        try {
+                            onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (t: Throwable) {
+                        }
                     }
                 }
-            }
-        }
-
-        clearPainter.state.collect { s ->
-            when (s) {
-                is AsyncImagePainter.State.Success -> {
-                    if (targetUrl == requestedTargetUrl &&
-                        state.trackUrl == requestedTrackUrl &&
-                        s.result.request.data == requestedTargetUrl
-                    ) {
-                        currentClearPainter = s.painter
-                    }
-                }
-                is AsyncImagePainter.State.Error -> {
-                    if (targetUrl == requestedTargetUrl &&
-                        state.trackUrl == requestedTrackUrl &&
-                        s.result.request.data == requestedTargetUrl
-                    ) {
-                        currentClearPainter = null
-                    }
-                }
-                else -> {}
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
             }
         }
     }
