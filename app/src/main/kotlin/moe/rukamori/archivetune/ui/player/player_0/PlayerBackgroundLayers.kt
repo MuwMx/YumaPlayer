@@ -44,6 +44,7 @@ import coil3.request.transformations
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
@@ -153,6 +154,9 @@ fun PlayerBackgroundLayers(
             .build()
     }
 
+    var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
+    var previousGradientColors by remember { mutableStateOf(gradientColor) }
+
     var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
     var currentBlurPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
@@ -161,63 +165,77 @@ fun PlayerBackgroundLayers(
     val blurState by blurPainter.state.collectAsState()
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
-    val clearState by clearPainter.state.collectAsState()
 
-    LaunchedEffect(targetUrl) {
-        if (targetUrl != null) {
-            val cached = colorCache[targetUrl]
-            if (cached != null) {
-                onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
-            }
-        } else {
-            currentClearPainter = null
-            currentBlurPainter = null
-            activeGradientColor = Color(0xFF121212)
+    LaunchedEffect(state.trackUrl) {
+        val currentThumbnail = targetUrl
+        if (currentThumbnail != previousThumbnailUrl) {
+            previousThumbnailUrl = currentThumbnail
+            previousGradientColors = activeGradientColor
         }
     }
 
-    LaunchedEffect(clearState) {
-        when (val s = clearState) {
-            is AsyncImagePainter.State.Success -> {
-                currentClearPainter = s.painter
-                if (targetUrl != null) {
-                    val cached = colorCache[targetUrl]
-                    if (cached != null) {
-                        onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
-                    } else {
-                        val bitmap = withContext(Dispatchers.IO) {
-                            runCatching { s.result.image.toBitmap() }.getOrNull()
-                        }
-                        if (bitmap != null) {
-                            withContext(Dispatchers.Default) {
-                                val colors = PlayerColorExtractor.extractColors(bitmap)
-                                colorCache[targetUrl] = colors
-                                withContext(Dispatchers.Main) {
+    LaunchedEffect(gradientColor, targetUrl) {
+        if (targetUrl == null) {
+            activeGradientColor = Color(0xFF121212)
+        } else {
+            activeGradientColor = gradientColor
+        }
+    }
+
+    LaunchedEffect(targetUrl, state.trackUrl) {
+        if (targetUrl == null) {
+            currentClearPainter = null
+            currentBlurPainter = null
+            return@LaunchedEffect
+        }
+
+        val requestedTargetUrl = targetUrl
+        val requestedTrackUrl = state.trackUrl
+
+        val cached = colorCache[requestedTargetUrl]
+        if (cached != null) {
+            onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
+        }
+
+        clearPainter.state.collect { s ->
+            when (s) {
+                is AsyncImagePainter.State.Success -> {
+                    if (targetUrl == requestedTargetUrl &&
+                        state.trackUrl == requestedTrackUrl &&
+                        s.result.request.data == requestedTargetUrl
+                    ) {
+                        currentClearPainter = s.painter
+                        if (cached == null) {
+                            val bitmap = withContext(Dispatchers.IO) {
+                                runCatching { s.result.image.toBitmap() }.getOrNull()
+                            }
+                            if (bitmap != null &&
+                                targetUrl == requestedTargetUrl &&
+                                state.trackUrl == requestedTrackUrl
+                            ) {
+                                val colors = withContext(Dispatchers.Default) {
+                                    PlayerColorExtractor.extractColors(bitmap)
+                                }
+                                if (targetUrl == requestedTargetUrl &&
+                                    state.trackUrl == requestedTrackUrl
+                                ) {
+                                    colorCache[requestedTargetUrl] = colors
                                     onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
                                 }
                             }
                         }
                     }
                 }
+                is AsyncImagePainter.State.Error -> {
+                    if (targetUrl == requestedTargetUrl &&
+                        state.trackUrl == requestedTrackUrl &&
+                        s.result.request.data == requestedTargetUrl
+                    ) {
+                        currentClearPainter = null
+                    }
+                }
+                else -> {}
             }
-            is AsyncImagePainter.State.Error -> {
-                currentClearPainter = null
-            }
-            is AsyncImagePainter.State.Empty -> {}
-            else -> {}
-        }
-    }
-
-    LaunchedEffect(clearState, gradientColor) {
-        when (clearState) {
-            is AsyncImagePainter.State.Success -> {
-                activeGradientColor = gradientColor
-            }
-            is AsyncImagePainter.State.Error -> {
-                activeGradientColor = Color(0xFF121212)
-            }
-            is AsyncImagePainter.State.Empty -> {}
-            else -> {}
         }
     }
 
