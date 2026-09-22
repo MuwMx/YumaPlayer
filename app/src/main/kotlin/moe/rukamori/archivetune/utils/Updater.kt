@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.utils
 
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -53,6 +55,10 @@ object Updater {
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
     private const val StableReleaseBaseUrl = "https://github.com/MuwMx/YumaPlayer/releases"
     private const val CanaryReleaseBaseUrl = "https://github.com/MuwMx/YumaCanary/releases"
+    private val GitHubCanaryReleasesEtagKey = stringPreferencesKey("github_canary_releases_etag")
+    private val GitHubCanaryReleasesJsonKey = stringPreferencesKey("github_canary_releases_json")
+    private val GitHubCanaryReleasesLastCheckedAtKey = longPreferencesKey("github_canary_releases_last_checked_at")
+    private val GitHubCanaryReleasesFingerprintKey = stringPreferencesKey("github_canary_releases_fingerprint")
     var lastCheckTime = -1L
         private set
     private var latestReleaseTag: String? = null
@@ -88,8 +94,15 @@ object Updater {
         val minor: Int,
         val patch: Int,
         val preRelease: List<PreReleaseIdentifier>,
+        val canaryDate: Long? = null,
     ) : Comparable<SemVer> {
         override fun compareTo(other: SemVer): Int {
+            if (canaryDate != null && other.canaryDate != null) {
+                return canaryDate.compareTo(other.canaryDate)
+            }
+            if (canaryDate != null) return -1
+            if (other.canaryDate != null) return 1
+
             val majorCompare = major.compareTo(other.major)
             if (majorCompare != 0) return majorCompare
             val minorCompare = minor.compareTo(other.minor)
@@ -111,7 +124,9 @@ object Updater {
         }
 
         fun normalizedName(): String =
-            if (preRelease.isEmpty()) {
+            if (canaryDate != null) {
+                "canary.$canaryDate"
+            } else if (preRelease.isEmpty()) {
                 "$major.$minor.$patch"
             } else {
                 "$major.$minor.$patch-" + preRelease.joinToString(".") { it.raw }
@@ -143,10 +158,30 @@ object Updater {
             }
     }
 
+    private val canaryRegex =
+        Regex("""(?i)\bv?canary[-.\s]?(\d{4})[-.]?(\d{2})[-.]?(\d{2})\b""")
     private val semVerRegex =
         Regex("""(?i)\bv?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?\b""")
 
     private fun parseSemVerOrNull(text: String): SemVer? {
+        val canaryMatch = canaryRegex.find(text)
+        if (canaryMatch != null) {
+            val date =
+                "${canaryMatch.groupValues[1]}${canaryMatch.groupValues[2]}${canaryMatch.groupValues[3]}".toLongOrNull()
+            if (date != null) {
+                return SemVer(
+                    major = 0,
+                    minor = 0,
+                    patch = 0,
+                    preRelease =
+                        listOf(
+                            AlphaIdentifier("canary"),
+                            NumericIdentifier(raw = date.toString(), value = date),
+                        ),
+                    canaryDate = date,
+                )
+            }
+        }
         val match = semVerRegex.find(text) ?: return null
         val major = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
         val minor = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
@@ -182,10 +217,14 @@ object Updater {
         val aSemVer = parseSemVerOrNull(a)
         val bSemVer = parseSemVerOrNull(b)
         return if (aSemVer != null && bSemVer != null) {
-            aSemVer.major == bSemVer.major &&
-                aSemVer.minor == bSemVer.minor &&
-                aSemVer.patch == bSemVer.patch &&
-                aSemVer.preRelease == bSemVer.preRelease
+            if (aSemVer.canaryDate != null || bSemVer.canaryDate != null) {
+                aSemVer.canaryDate != null && aSemVer.canaryDate == bSemVer.canaryDate
+            } else {
+                aSemVer.major == bSemVer.major &&
+                    aSemVer.minor == bSemVer.minor &&
+                    aSemVer.patch == bSemVer.patch &&
+                    aSemVer.preRelease == bSemVer.preRelease
+            }
         } else {
             a.trim() == b.trim()
         }
@@ -198,7 +237,13 @@ object Updater {
         val latestSemVer = parseSemVerOrNull(latestVersion)
         val currentSemVer = parseSemVerOrNull(currentVersion)
         return if (latestSemVer != null && currentSemVer != null) {
-            latestSemVer > currentSemVer
+            if (latestSemVer.canaryDate != null && currentSemVer.canaryDate != null) {
+                latestSemVer.canaryDate > currentSemVer.canaryDate
+            } else if (latestSemVer.canaryDate != null || currentSemVer.canaryDate != null) {
+                !isSameVersion(latestVersion, currentVersion)
+            } else {
+                latestSemVer > currentSemVer
+            }
         } else {
             !isSameVersion(latestVersion, currentVersion)
         }
@@ -227,12 +272,13 @@ object Updater {
                 parseReleaseSemVerOrNull(release)?.let { version -> version to release }
             }
         if (parsed.isEmpty()) return releases.firstOrNull { it.prerelease } ?: releases.firstOrNull()
-        val canary = parsed.filter { it.second.prerelease }
+        val canary = parsed.filter { it.second.prerelease || it.first.canaryDate != null }
         val candidates = canary.ifEmpty { parsed }
         return candidates.maxWithOrNull(compareBy({ it.first }, { it.second.publishedAt }))?.second
     }
 
-    private fun preferredReleaseVersionNameOrNull(release: ReleaseInfo): String? = parseReleaseSemVerOrNull(release)?.normalizedName()
+    internal fun preferredReleaseVersionNameOrNull(release: ReleaseInfo): String? =
+        parseReleaseSemVerOrNull(release)?.normalizedName()
 
     private val markdownImageRegex = Regex("""!\[.*?]\((https?://[^)]+)\)""")
     private val directImageUrlRegex = Regex("""https?://\S+\.(gif|png|jpg|jpeg|webp)(\?\S*)?""", RegexOption.IGNORE_CASE)
@@ -309,8 +355,16 @@ object Updater {
             }
         }.toString()
 
-    private fun getTopReleaseFingerprint(releases: List<ReleaseInfo>): String {
-        val latest = findLatestRelease(releases) ?: findLatestCanaryRelease(releases) ?: return ""
+    private fun getTopReleaseFingerprint(
+        releases: List<ReleaseInfo>,
+        isCanary: Boolean = false,
+    ): String {
+        val latest =
+            if (isCanary) {
+                findLatestCanaryRelease(releases)
+            } else {
+                findLatestRelease(releases) ?: findLatestCanaryRelease(releases)
+            } ?: return ""
         return listOf(
             latest.tagName,
             latest.name,
@@ -326,9 +380,11 @@ object Updater {
     private suspend fun fetchReleasesNetwork(
         perPage: Int,
         cachedEtag: String?,
+        isCanary: Boolean = false,
     ): ReleasesNetworkResult {
+        val repo = if (isCanary) "MuwMx/YumaCanary" else "MuwMx/YumaPlayer"
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/MuwMx/YumaPlayer/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/$repo/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "YumaPlayerApp")
@@ -369,6 +425,22 @@ object Updater {
             ?: emptyList()
     }
 
+    suspend fun getCachedCanaryReleases(): List<ReleaseInfo> {
+        if (!isUpdaterDistribution) {
+            return emptyList()
+        }
+
+        val cachedJson = App.instance.dataStore.getAsync(GitHubCanaryReleasesJsonKey)
+        return cachedJson
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                runCatching {
+                    parseReleasesJson(it, expectedArtifactName = releaseArtifactName(isCanary = true))
+                }.getOrNull()
+            }
+            ?: emptyList()
+    }
+
     fun getReleaseVersionName(release: ReleaseInfo): String =
         preferredReleaseVersionNameOrNull(release) ?: release.name.ifBlank { release.tagName }
 
@@ -397,38 +469,115 @@ object Updater {
             latest
         }
 
-    suspend fun getLatestCanaryVersionName(): Result<String> =
-        getLatestCanaryReleaseInfo().map { latest ->
+    suspend fun getLatestCanaryVersionName(forceRefresh: Boolean = false): Result<String> =
+        getLatestCanaryReleaseInfo(forceRefresh = forceRefresh).map { latest ->
             preferredReleaseVersionNameOrNull(latest) ?: latest.tagName.ifBlank { latest.name }
         }
 
-    suspend fun getLatestCanaryReleaseNotes(): Result<String?> = getLatestCanaryReleaseInfo().map { it.body }
+    suspend fun getLatestCanaryReleaseNotes(forceRefresh: Boolean = false): Result<String?> =
+        getLatestCanaryReleaseInfo(forceRefresh = forceRefresh).map { it.body }
 
-    suspend fun getAllCanaryReleases(perPage: Int = 10): Result<List<ReleaseInfo>> =
+    suspend fun getAllCanaryReleases(
+        perPage: Int = 10,
+        forceRefresh: Boolean = false,
+    ): Result<List<ReleaseInfo>> =
         runCatching {
-            if (!isUpdaterDistribution) return@runCatching emptyList()
-            val response: HttpResponse =
-                client.get("https://api.github.com/repos/MuwMx/YumaCanary/releases?per_page=$perPage") {
-                    headers {
-                        append("Accept", "application/vnd.github+json")
-                        append("User-Agent", "YumaPlayerApp")
+            if (!isUpdaterDistribution) {
+                return Result.success(emptyList())
+            }
+
+            val now = System.currentTimeMillis()
+            val cachedJson = App.instance.dataStore.getAsync(GitHubCanaryReleasesJsonKey)
+            val cachedEtag = App.instance.dataStore.getAsync(GitHubCanaryReleasesEtagKey)
+            val lastCheckedAt = App.instance.dataStore.getAsync(GitHubCanaryReleasesLastCheckedAtKey, 0L)
+            val cachedFingerprint = App.instance.dataStore.getAsync(GitHubCanaryReleasesFingerprintKey)
+
+            val cachedReleases =
+                cachedJson
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let {
+                        runCatching {
+                            parseReleasesJson(it, expectedArtifactName = releaseArtifactName(isCanary = true))
+                        }.getOrNull()
+                    }
+
+            val shouldCheckNetwork =
+                forceRefresh || cachedReleases.isNullOrEmpty() || (now - lastCheckedAt) >= ReleaseCacheCheckIntervalMs
+
+            if (!shouldCheckNetwork) {
+                lastCheckTime = now
+                return@runCatching cachedReleases
+            }
+
+            val networkResult =
+                runCatching {
+                    fetchReleasesNetwork(
+                        perPage = perPage,
+                        cachedEtag = cachedEtag,
+                        isCanary = true,
+                    )
+                }.getOrNull()
+
+            if (networkResult == null) {
+                lastCheckTime = now
+                return@runCatching cachedReleases ?: emptyList()
+            }
+
+            when {
+                networkResult.status == HttpStatusCode.NotModified -> {
+                    val fallback = cachedReleases
+                    if (!fallback.isNullOrEmpty()) {
+                        App.instance.dataStore.edit { settings ->
+                            settings[GitHubCanaryReleasesLastCheckedAtKey] = now
+                            networkResult.etag?.let { settings[GitHubCanaryReleasesEtagKey] = it }
+                        }
+                        lastCheckTime = now
+                        return@runCatching fallback
+                    }
+                    return@runCatching emptyList()
+                }
+
+                networkResult.status.value in 200..299 && !networkResult.body.isNullOrBlank() -> {
+                    val networkBody = networkResult.body
+                    val releases =
+                        runCatching {
+                            parseReleasesJson(networkBody, expectedArtifactName = releaseArtifactName(isCanary = true))
+                        }.getOrNull().orEmpty()
+
+                    if (releases.isNotEmpty()) {
+                        val newFingerprint = getTopReleaseFingerprint(releases, isCanary = true)
+                        val hasPayloadChanged = cachedJson != networkBody
+                        val hasTopReleaseChanged = cachedFingerprint != newFingerprint
+
+                        App.instance.dataStore.edit { settings ->
+                            settings[GitHubCanaryReleasesLastCheckedAtKey] = now
+                            networkResult.etag?.let { settings[GitHubCanaryReleasesEtagKey] = it }
+                            if (hasPayloadChanged || hasTopReleaseChanged || cachedJson.isNullOrBlank()) {
+                                settings[GitHubCanaryReleasesJsonKey] = networkBody
+                                settings[GitHubCanaryReleasesFingerprintKey] = newFingerprint
+                            }
+                        }
+                        lastCheckTime = now
+                        releases
+                    } else {
+                        cachedReleases ?: emptyList()
                     }
                 }
-            if (response.status.value in 200..299) {
-                parseReleasesJson(response.bodyAsText(), expectedArtifactName = releaseArtifactName(isCanary = true))
-            } else {
-                emptyList()
+
+                else -> {
+                    cachedReleases ?: emptyList()
+                }
             }
         }
 
-    suspend fun getLatestCanaryReleaseInfo(): Result<ReleaseInfo> =
+    suspend fun getLatestCanaryReleaseInfo(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         runCatching {
             if (!isUpdaterDistribution) {
                 throw IllegalStateException("Updater is not available for this distribution")
             }
-            val releases = getAllCanaryReleases().getOrThrow()
+            val releases = getAllCanaryReleases(forceRefresh = forceRefresh).getOrThrow()
             val latest =
-                releases.firstOrNull()
+                findLatestCanaryRelease(releases)
                     ?: throw IllegalStateException("No canary releases found")
             lastCheckTime = System.currentTimeMillis()
             latestCanaryReleaseTag = latest.tagName
