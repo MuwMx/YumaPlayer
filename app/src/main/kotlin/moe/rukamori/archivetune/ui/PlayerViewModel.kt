@@ -11,7 +11,6 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.models.ParsedIntentAction
-import moe.rukamori.archivetune.playback.AdvancedSleepTimer
 import moe.rukamori.archivetune.playback.joinTogether
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
@@ -41,9 +40,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.*
-import moe.rukamori.archivetune.db.entities.codecLabel
-import moe.rukamori.archivetune.db.entities.formattedQuality
-import moe.rukamori.archivetune.db.entities.formattedBitrate
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
@@ -76,7 +72,6 @@ class PlayerViewModel @Inject constructor(
     private val lyricsHelper: LyricsHelper,
 ) : ViewModel() {
     private val playerConnection get() = connectionHolder.connection.value
-    private val sleepTimer get() = playerConnection?.service?.sleepTimer
     private val audioPlayer get() = playerConnection?.player
 
     private val _uiState = MutableStateFlow(
@@ -139,6 +134,17 @@ class PlayerViewModel @Inject constructor(
             progressTicker.isUserSeeking = value
         }
 
+    val playbackStateHolder = PlaybackStateHolder(
+        coroutineScope = viewModelScope,
+        connectionFlow = connectionHolder.connection,
+        playerConnectionProvider = { playerConnection },
+        audioPlayerProvider = { audioPlayer },
+        uiStateProvider = { _uiState.value },
+        updateUiState = { transform -> _uiState.update(transform) },
+        onResetLyrics = { lyricsDelegate.resetLyrics() },
+        onManageTicker = { playing -> manageTicker(playing) },
+    )
+
     private var likeJob: Job? = null
     private val _event = Channel<PlayerEvent>(Channel.BUFFERED)
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
@@ -172,165 +178,6 @@ class PlayerViewModel @Inject constructor(
                 }
         }
 
-        // Таймер сна
-        viewModelScope.launch {
-                // Подписываемся на поток оставшихся секунд напрямую из таймера
-                connectionHolder.connection
-                    .filterNotNull()
-                    .flatMapLatest { it.service.sleepTimer.remainingSeconds }
-                    .collect { seconds ->
-                        _uiState.update {
-                            it.copy(sleepTimerRemainingSeconds = if (seconds > 0L) seconds.toInt() else null)
-                        }
-                    }
-        }
-
-        // 1. Подписка на метаданные трека через холдер плеера
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { connection -> connection.mediaMetadata }
-                .collect { metadata ->
-                    if (metadata == null) {
-                        val oldId = _uiState.value.trackUrl
-                        if (oldId.isNotEmpty()) {
-                            lyricsDelegate.resetLyrics()
-                        }
-                        _uiState.update { it.copy(trackUrl = "", title = "", artist = "", album = null, coverUrl = "", isPlaying = false) }
-                        return@collect
-                    }
-                    val title = metadata.title
-                    val artist = metadata.artists.joinToString { it.name }
-                    val album = metadata.album?.title
-
-                    val resolvedDuration = if (metadata.duration > 0) {
-                        metadata.duration * 1000L
-                    } else {
-                        audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET } ?: 0L
-                    }
-
-                    val incomingCoverUrl = metadata.thumbnailUrl?.trim()?.takeIf(String::isNotBlank)
-
-                    val oldId = _uiState.value.trackUrl
-                    val newId = metadata.id
-                    if (oldId != newId) {
-                        lyricsDelegate.resetLyrics()
-                    }
-
-                    _uiState.update { currentUi ->
-                        val resolvedCoverUrl = incomingCoverUrl
-                            ?: currentUi.coverUrl.takeIf { oldId == newId && it.isNotBlank() }
-                            ?: ""
-                        currentUi.copy(
-                            title = title,
-                            artist = artist,
-                            album = album,
-                            trackUrl = metadata.id,
-                            durationMs = resolvedDuration,
-                            coverUrl = resolvedCoverUrl,
-                        )
-                    }
-                }
-        }
-
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { it.playbackState }
-                .collect { playbackState ->
-                    val realDuration = audioPlayer?.duration?.takeIf { it > 0L && it != androidx.media3.common.C.TIME_UNSET }
-                    _uiState.update { current ->
-                        current.copy(
-                            isLoading = playbackState == Player.STATE_BUFFERING,
-                            durationMs = if (realDuration != null && current.durationMs <= 0L) realDuration else current.durationMs
-                        )
-                    }
-                }
-        }
-
-        // 2. Подписка на состояние лайка через холдер плеера
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { connection ->
-                    combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
-                        if (metadata == null || song == null) return@combine false
-                        song.song.liked
-                    }
-                }
-                .collect { isLiked ->
-                    _uiState.update { currentUi ->
-                        currentUi.copy(isLiked = isLiked)
-                    }
-                }
-        }
-        // 3. Подписка на состояние воспроизведения (играет/пауза) для тикера сикбара
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { connection -> connection.isPlaying }
-                .collect { playing ->
-                    _uiState.update { it.copy(isPlaying = playing) }
-                    manageTicker(playing) // Запуск/остановка тикера
-                }
-        }
-
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { connection ->
-                    kotlinx.coroutines.flow.combine(
-                        connection.currentFormat,
-                        connection.audioFormat
-                    ) { dbFormat, liveFormat ->
-                        if (!liveFormat.isNullOrBlank() && liveFormat != "UNKNOWN") {
-                            liveFormat
-                        } else if (dbFormat != null) {
-                            val isLossless = dbFormat.codecLabel() == "FLAC" || dbFormat.codecLabel() == "ALAC"
-                            val quality = if (isLossless) {
-                                dbFormat.formattedQuality()
-                            } else {
-                                dbFormat.formattedBitrate()
-                            }
-                            "${dbFormat.codecLabel()} | $quality"
-                        } else {
-                            ""
-                        }
-                    }
-                }
-                .collect { format ->
-                    if (format.isNotEmpty()) {
-                        _uiState.update { it.copy(codecInfo = format) }
-                    }
-                }
-        }
-
-        // 1. Подписка на шаффл
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { it.shuffleModeEnabled }
-                .collect { enabled ->
-                    _uiState.update { it.copy(shuffleState = if (enabled) "on" else "off") }
-                }
-        }
-
-        // 2. Подписка на повтор
-        viewModelScope.launch {
-            connectionHolder.connection
-                .filterNotNull()
-                .flatMapLatest { it.repeatMode }
-                .collect { mode ->
-                    val state = when (mode) {
-                        Player.REPEAT_MODE_OFF -> "off"
-                        Player.REPEAT_MODE_ONE -> "one"
-                        Player.REPEAT_MODE_ALL -> "all"
-                        else -> "off"
-                    }
-                    _uiState.update { it.copy(repeatState = state) }
-                }
-        }
-
         val isFirstLaunch = settingsRepository.isFirstLaunch()
         _uiState.update { it.copy(shouldShowWelcome = isFirstLaunch) }
 
@@ -349,14 +196,14 @@ class PlayerViewModel @Inject constructor(
     // ==========================================
     fun handleAction(action: PlayerAction) {
         when (action) {
-            is PlayerAction.PlayPause -> togglePlayPause()
-            is PlayerAction.Next, is PlayerAction.SkipNext -> playNext()
-            is PlayerAction.Previous, is PlayerAction.SkipPrevious -> playPrevious()
+            is PlayerAction.PlayPause -> playbackStateHolder.togglePlayPause()
+            is PlayerAction.Next, is PlayerAction.SkipNext -> playbackStateHolder.playNext()
+            is PlayerAction.Previous, is PlayerAction.SkipPrevious -> playbackStateHolder.playPrevious()
             is PlayerAction.PlayQueueItem -> queueStateHolder.playQueueItem(action.index)
             is PlayerAction.RemoveQueueItem -> queueStateHolder.removeQueueItem(action.index)
             is PlayerAction.MoveQueueItem -> queueStateHolder.moveQueueItem(action.from, action.to)
             is PlayerAction.ClearQueue -> queueStateHolder.clearQueue()
-            is PlayerAction.ShuffleQueue -> toggleShuffle()
+            is PlayerAction.ShuffleQueue -> playbackStateHolder.toggleShuffle()
             is PlayerAction.ToggleAutoMix -> {
                 val enabled = !_uiState.value.isAutoMixEnabled
                 _uiState.update { it.copy(isAutoMixEnabled = enabled) }
@@ -366,15 +213,15 @@ class PlayerViewModel @Inject constructor(
                     playerConnection?.service?.onInfiniteQueueDisabled()
                 }
             }
-            is PlayerAction.Like, is PlayerAction.ToggleLike -> toggleLike()
-            is PlayerAction.Shuffle -> toggleShuffle()
-            is PlayerAction.Repeat -> toggleRepeat()
+            is PlayerAction.Like, is PlayerAction.ToggleLike -> playbackStateHolder.toggleLike()
+            is PlayerAction.Shuffle -> playbackStateHolder.toggleShuffle()
+            is PlayerAction.Repeat -> playbackStateHolder.toggleRepeat()
             is PlayerAction.ToggleAutoDownload -> setAutoDownloadEnabled(!_uiState.value.isAutoDownloadEnabled)
             is PlayerAction.SearchLyrics -> refreshLyrics()
             is PlayerAction.Lyrics -> setLyricsVisible(true)
-            is PlayerAction.StartSleepTimer -> startSleepTimer(action.minutes)
-            is PlayerAction.StopSleepTimer -> stopSleepTimer()
-            is PlayerAction.AdjustSleepTimer -> adjustSleepTimer(action.minutes)
+            is PlayerAction.StartSleepTimer -> playbackStateHolder.startSleepTimer(action.minutes)
+            is PlayerAction.StopSleepTimer -> playbackStateHolder.stopSleepTimer()
+            is PlayerAction.AdjustSleepTimer -> playbackStateHolder.adjustSleepTimer(action.minutes)
             is PlayerAction.ForceRefresh -> refreshLyrics()
             is PlayerAction.Share -> shareTrack()
             is PlayerAction.SetLyricsSyncOffset -> {
@@ -461,14 +308,7 @@ class PlayerViewModel @Inject constructor(
 
 
     fun adjustSleepTimer(minutes: Int) {
-        val timer = sleepTimer ?: return
-        val currentSeconds = timer.remainingSeconds.value
-        val newMinutes = (currentSeconds / 60) + minutes
-        if (newMinutes > 0) {
-            timer.start(newMinutes.toInt())
-        } else {
-            timer.stop()
-        }
+        playbackStateHolder.adjustSleepTimer(minutes)
     }
 
     fun onConnectStatusChanged(isActive: Boolean) {
@@ -482,11 +322,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun startSleepTimer(minutes: Int) {
-        sleepTimer?.start(minutes)
+        playbackStateHolder.startSleepTimer(minutes)
     }
 
     fun stopSleepTimer() {
-        sleepTimer?.stop()
+        playbackStateHolder.stopSleepTimer()
     }
 
 
@@ -728,11 +568,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun togglePlayPause() {
-        val player = audioPlayer ?: return
-        if (player.playbackState == Player.STATE_ENDED) {
-            player.seekTo(0)
-        }
-        if (player.playWhenReady) player.pause() else player.play()
+        playbackStateHolder.togglePlayPause()
     }
 
     fun seekTo(positionMs: Long) {
@@ -742,29 +578,23 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playNext() {
-        playerConnection?.seekToNext()
+        playbackStateHolder.playNext()
     }
 
     fun playPrevious() {
-        playerConnection?.seekToPrevious()
+        playbackStateHolder.playPrevious()
     }
 
     fun toggleShuffle() {
-        val player = audioPlayer ?: return
-        player.shuffleModeEnabled = !player.shuffleModeEnabled
+        playbackStateHolder.toggleShuffle()
     }
 
     fun toggleRepeat() {
-        val player = audioPlayer ?: return
-        player.repeatMode = when (player.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
+        playbackStateHolder.toggleRepeat()
     }
 
     fun toggleLike() {
-        playerConnection?.toggleLike()
+        playbackStateHolder.toggleLike()
     }
 
     private fun shareTrack() {
