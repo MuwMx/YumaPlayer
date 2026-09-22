@@ -37,7 +37,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -354,7 +353,6 @@ fun TextFieldDialog(
 ) {
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
     val focusRequester = remember { FocusRequester() }
-    var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (autoFocus) {
@@ -411,30 +409,10 @@ fun TextFieldDialog(
         },
     ) {
         Column {
-            val maskedTransformation = remember { PasswordVisualTransformation() }
-            val visualTransformation = if (isMasked && !isPasswordVisible) {
-                maskedTransformation
+            val visualTransformation = if (isMasked) {
+                remember { PasswordVisualTransformation() }
             } else {
                 VisualTransformation.None
-            }
-
-            val trailingIcon: (@Composable () -> Unit)? = if (isMasked) {
-                {
-                    IconButton(
-                        onClick = { isPasswordVisible = !isPasswordVisible },
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                if (isPasswordVisible) R.drawable.visibility_off else R.drawable.visibility
-                            ),
-                            contentDescription = stringResource(
-                                if (isPasswordVisible) R.string.spoiler_hide else R.string.spoiler_show
-                            ),
-                        )
-                    }
-                }
-            } else {
-                null
             }
 
             val fieldContent: @Composable () -> Unit = {
@@ -449,7 +427,6 @@ fun TextFieldDialog(
                             colors = OutlinedTextFieldDefaults.colors(),
                             keyboardOptions = keyboardOptions,
                             visualTransformation = visualTransformation,
-                            trailingIcon = trailingIcon,
                             keyboardActions =
                                 KeyboardActions(
                                     onDone = {
@@ -476,7 +453,6 @@ fun TextFieldDialog(
                         colors = OutlinedTextFieldDefaults.colors(),
                         keyboardOptions = keyboardOptions,
                         visualTransformation = visualTransformation,
-                        trailingIcon = trailingIcon,
                         keyboardActions =
                             KeyboardActions(
                                 onDone = {

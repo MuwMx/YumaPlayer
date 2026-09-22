@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.background
@@ -55,7 +54,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
@@ -179,7 +177,6 @@ fun SpotifyLoginSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             var spDcInput by rememberSaveable { mutableStateOf("") }
-            var spDcRevealed by rememberSaveable { mutableStateOf(false) }
             val maskedTransformation = remember { PasswordVisualTransformation() }
 
             Row(
@@ -193,19 +190,7 @@ fun SpotifyLoginSheet(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
                     singleLine = true,
-                    visualTransformation = if (!spDcRevealed) maskedTransformation else VisualTransformation.None,
-                    trailingIcon = {
-                        IconButton(onClick = { spDcRevealed = !spDcRevealed }) {
-                            Icon(
-                                painter = painterResource(
-                                    if (spDcRevealed) R.drawable.visibility_off else R.drawable.visibility
-                                ),
-                                contentDescription = stringResource(
-                                    if (spDcRevealed) R.string.spoiler_hide else R.string.spoiler_show
-                                ),
-                            )
-                        }
-                    },
+                    visualTransformation = maskedTransformation,
                     shape = RoundedCornerShape(12.dp),
                 )
                 Button(
