@@ -108,25 +108,24 @@ import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.utils.ColorExtractor
-// Закомментированы неиспользуемые сейчас импорты для чистоты
-// import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
-// import moe.rukamori.archivetune.viewmodels.AboutContributorsUiState
+import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
+import moe.rukamori.archivetune.viewmodels.AboutContributorsUiState
 import moe.rukamori.archivetune.viewmodels.AboutDependencyLicenseUiCollection
 import moe.rukamori.archivetune.viewmodels.AboutDependencyLicensesUiState
 import moe.rukamori.archivetune.viewmodels.AboutDialog
 import moe.rukamori.archivetune.viewmodels.AboutLinkCollection
 import moe.rukamori.archivetune.viewmodels.AboutUiModel
-// import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorUiCollection
-// import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorsUiState
+import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorUiCollection
+import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorsUiState
 import moe.rukamori.archivetune.viewmodels.TeamMember
-// import moe.rukamori.archivetune.viewmodels.TeamMemberCollection
+import moe.rukamori.archivetune.viewmodels.TeamMemberCollection
 
 @Composable
 internal fun AboutOverflowMenu(
     expanded: Boolean,
     onShowMenu: () -> Unit,
     onDismissMenu: () -> Unit,
-    // onOpenTranslationContributors: () -> Unit,
+    onOpenTranslationContributors: () -> Unit,
     onOpenDependencyLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -145,11 +144,6 @@ internal fun AboutOverflowMenu(
             expanded = expanded,
             onDismissRequest = onDismissMenu,
         ) {
-            /*
-             * ЗАКОММЕНТИРОВАНО: Секция переводчиков
-             * Раскомментировать, когда появятся свои контрибьюторы
-             */
-            /*
             DropdownMenuItem(
                 text = { Text(text = stringResource(R.string.about_contributor_translation)) },
                 onClick = onOpenTranslationContributors,
@@ -160,7 +154,6 @@ internal fun AboutOverflowMenu(
                     )
                 },
             )
-            */
 
             DropdownMenuItem(
                 text = { Text(text = stringResource(R.string.about_license)) },
@@ -207,18 +200,12 @@ internal fun AboutMessageContent(
 internal fun AboutFullScreenDialogs(
     model: AboutUiModel,
     onDismiss: () -> Unit,
-    // onRetryTranslationContributors: () -> Unit,
+    onRetryTranslationContributors: () -> Unit,
     onRetryDependencyLicenses: () -> Unit,
 ) {
     when (model.activeDialog) {
-        AboutDialog.NONE -> {
-            Unit
-        }
+        AboutDialog.NONE -> {}
 
-        /*
-         * ЗАКОММЕНТИРОВАНО: Диалог переводчиков
-         */
-        /*
         AboutDialog.TRANSLATION_CONTRIBUTORS -> {
             AboutFullScreenDialog(
                 title = stringResource(R.string.about_contributor_translation),
@@ -231,7 +218,6 @@ internal fun AboutFullScreenDialogs(
                 )
             }
         }
-        */
 
         AboutDialog.DEPENDENCY_LICENSES -> {
             AboutFullScreenDialog(
@@ -312,7 +298,6 @@ internal fun AboutFullScreenDialog(
  * Раскомментировать вместе с AboutDialog.TRANSLATION_CONTRIBUTORS
  * ============================================================================
  */
-/*
 @Composable
 private fun TranslationContributorsDialogContent(
     state: AboutTranslationContributorsUiState,
@@ -425,7 +410,6 @@ private fun TranslationContributorListItem(
             },
     )
 }
-*/
 
 @Composable
 internal fun DependencyLicensesDialogContent(
@@ -646,7 +630,7 @@ internal fun segmentedListItemShape(
 internal fun AboutSuccessContent(
     model: AboutUiModel,
     onOpenUri: (String) -> Unit,
-    // onRetryContributors: () -> Unit,
+    onRetryContributors: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
     listState: LazyListState,
@@ -677,14 +661,6 @@ internal fun AboutSuccessContent(
             }
         }
 
-        /*
-         * ====================================================================
-         * ЗАКОММЕНТИРОВАНО: Секции команды, респектеров и контрибьюторов
-         * Раскомментировать, когда появятся свои люди
-         * ====================================================================
-         */
-
-        /*
         item(key = "team", contentType = "about_team_section") {
             AboutContentContainer {
                 TeamMemberSection(
@@ -718,7 +694,6 @@ internal fun AboutSuccessContent(
                 )
             }
         }
-        */
     }
 }
 
@@ -1063,7 +1038,6 @@ internal fun LeadDeveloperSection(
  * ЗАКОММЕНТИРОВАНО: Компоненты для списка участников команды
  * ====================================================================
  */
-/*
 @Composable
 private fun TeamMemberSection(
     title: String,
@@ -1071,6 +1045,7 @@ private fun TeamMemberSection(
     onOpenUri: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (members.isEmpty) return
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1106,7 +1081,6 @@ private fun TeamMemberSection(
         }
     }
 }
-*/
 
 @Composable
 internal fun AboutSectionHeader(
@@ -1278,7 +1252,6 @@ internal fun MemberLinkActions(
  * ЗАКОММЕНТИРОВАНО: Секция внешних контрибьюторов GitHub
  * ====================================================================
  */
-/*
 @Composable
 private fun ContributorsSection(
     state: AboutContributorsUiState,
@@ -1502,4 +1475,3 @@ private fun ContributorReadMoreListItem(
         },
     )
 }
-*/

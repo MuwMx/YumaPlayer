@@ -74,10 +74,13 @@ fun AboutScreen(
             onNavigateUp = navController::navigateUp,
             onNavigateHome = navController::backToMain,
             onOpenUri = viewModel::openUri,
+            onRetryContributors = viewModel::retryContributors,
             onShowOverflowMenu = viewModel::showOverflowMenu,
             onDismissOverflowMenu = viewModel::dismissOverflowMenu,
+            onOpenTranslationContributors = viewModel::openTranslationContributors,
             onOpenDependencyLicenses = viewModel::openDependencyLicenses,
             onDismissDialog = viewModel::dismissDialog,
+            onRetryTranslationContributors = viewModel::retryTranslationContributors,
             onRetryDependencyLicenses = viewModel::retryDependencyLicenses,
         )
     }
@@ -101,10 +104,13 @@ internal fun AboutScreenContent(
         onNavigateUp = actions.onNavigateUp,
         onNavigateHome = actions.onNavigateHome,
         onOpenUri = actions.onOpenUri,
+        onRetryContributors = actions.onRetryContributors,
         onShowOverflowMenu = actions.onShowOverflowMenu,
         onDismissOverflowMenu = actions.onDismissOverflowMenu,
+        onOpenTranslationContributors = actions.onOpenTranslationContributors,
         onOpenDependencyLicenses = actions.onOpenDependencyLicenses,
         onDismissDialog = actions.onDismissDialog,
+        onRetryTranslationContributors = actions.onRetryTranslationContributors,
         onRetryDependencyLicenses = actions.onRetryDependencyLicenses,
     )
 }
@@ -116,13 +122,13 @@ internal fun AboutScreenContent(
     onNavigateUp: () -> Unit,
     onNavigateHome: () -> Unit,
     onOpenUri: (String) -> Unit,
-    // onRetryContributors: () -> Unit,
+    onRetryContributors: () -> Unit,
     onShowOverflowMenu: () -> Unit,
     onDismissOverflowMenu: () -> Unit,
-    // onOpenTranslationContributors: () -> Unit,
+    onOpenTranslationContributors: () -> Unit,
     onOpenDependencyLicenses: () -> Unit,
     onDismissDialog: () -> Unit,
-    // onRetryTranslationContributors: () -> Unit,
+    onRetryTranslationContributors: () -> Unit,
     onRetryDependencyLicenses: () -> Unit,
 ) {
     val listState = rememberLazyListState()
@@ -165,7 +171,7 @@ internal fun AboutScreenContent(
                                 expanded = state.model.isOverflowMenuExpanded,
                                 onShowMenu = onShowOverflowMenu,
                                 onDismissMenu = onDismissOverflowMenu,
-                                // onOpenTranslationContributors = onOpenTranslationContributors,
+                                onOpenTranslationContributors = onOpenTranslationContributors,
                                 onOpenDependencyLicenses = onOpenDependencyLicenses,
                             )
                         }
@@ -207,7 +213,7 @@ internal fun AboutScreenContent(
                     AboutSuccessContent(
                         model = state.model,
                         onOpenUri = onOpenUri,
-                        // onRetryContributors = onRetryContributors,
+                        onRetryContributors = onRetryContributors,
                         modifier =
                             Modifier
                                 .fillMaxSize()
@@ -231,7 +237,7 @@ internal fun AboutScreenContent(
             AboutFullScreenDialogs(
                 model = state.model,
                 onDismiss = onDismissDialog,
-                // onRetryTranslationContributors = onRetryTranslationContributors,
+                onRetryTranslationContributors = onRetryTranslationContributors,
                 onRetryDependencyLicenses = onRetryDependencyLicenses,
             )
         }

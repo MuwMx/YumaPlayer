@@ -7,9 +7,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.about.AboutContributor
+import moe.rukamori.archivetune.about.AboutContributorCollection
 import moe.rukamori.archivetune.about.AboutDependencyLicense
 import moe.rukamori.archivetune.about.AboutDependencyLicenseCollection
+import moe.rukamori.archivetune.about.AboutTranslationContributor
+import moe.rukamori.archivetune.about.AboutTranslationContributorCollection
+import moe.rukamori.archivetune.about.FetchAboutContributorsUseCase
 import moe.rukamori.archivetune.about.FetchAboutDependencyLicensesUseCase
+import moe.rukamori.archivetune.about.FetchAboutTranslationContributorsUseCase
 import moe.rukamori.archivetune.currentBuildHash
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -38,7 +44,12 @@ data class AboutUiModel(
     val buildVariant: String,
     val primaryLinks: AboutLinkCollection,
     val leadDeveloper: TeamMember,
+    val collaborators: TeamMemberCollection,
+    val respecters: TeamMemberCollection,
+    val contributorsState: AboutContributorsUiState,
+    val contributorsReadMoreUrl: String,
     val dependencyLicensesState: AboutDependencyLicensesUiState,
+    val translationContributorsState: AboutTranslationContributorsUiState,
     val isOverflowMenuExpanded: Boolean,
     val activeDialog: AboutDialog,
 )
@@ -51,6 +62,23 @@ data class TeamMember(
     val profileUrl: String?,
     val links: AboutLinkCollection,
 )
+
+@Immutable
+data class TeamMemberCollection private constructor(
+    private val values: List<TeamMember>,
+) {
+    val size: Int get() = values.size
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun get(index: Int): TeamMember = values[index]
+
+    companion object {
+        val Empty = TeamMemberCollection(emptyList())
+
+        fun of(vararg values: TeamMember): TeamMemberCollection = TeamMemberCollection(values.toList())
+        fun from(values: List<TeamMember>): TeamMemberCollection = TeamMemberCollection(values.toList())
+    }
+}
 
 @Immutable
 data class AboutLinkUiModel(
@@ -69,6 +97,71 @@ data class AboutLinkCollection private constructor(
     companion object {
         val Empty = AboutLinkCollection(emptyList())
         fun of(vararg values: AboutLinkUiModel): AboutLinkCollection = AboutLinkCollection(values.toList())
+    }
+}
+
+sealed interface AboutContributorsUiState {
+    data object Loading : AboutContributorsUiState
+    data class Success(val contributors: AboutContributorUiCollection) : AboutContributorsUiState
+    data object Empty : AboutContributorsUiState
+    data class Error(@StringRes val messageResId: Int) : AboutContributorsUiState
+}
+
+@Immutable
+data class AboutContributorUiModel(
+    val login: String,
+    val avatarUrl: String,
+    val profileUrl: String,
+)
+
+@Immutable
+data class AboutContributorUiCollection private constructor(
+    private val values: List<AboutContributorUiModel>,
+) {
+    val size: Int get() = values.size
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun get(index: Int): AboutContributorUiModel = values[index]
+
+    fun forEach(action: (AboutContributorUiModel) -> Unit) {
+        values.forEach(action)
+    }
+
+    companion object {
+        val Empty = AboutContributorUiCollection(emptyList())
+
+        fun from(values: List<AboutContributorUiModel>): AboutContributorUiCollection =
+            AboutContributorUiCollection(values.toList())
+    }
+}
+
+sealed interface AboutTranslationContributorsUiState {
+    data object Loading : AboutTranslationContributorsUiState
+    data class Success(val contributors: AboutTranslationContributorUiCollection) : AboutTranslationContributorsUiState
+    data object Empty : AboutTranslationContributorsUiState
+    data class Error(@StringRes val messageResId: Int) : AboutTranslationContributorsUiState
+}
+
+@Immutable
+data class AboutTranslationContributorUiModel(
+    val language: String,
+    val contributors: String?,
+)
+
+@Immutable
+data class AboutTranslationContributorUiCollection private constructor(
+    private val values: List<AboutTranslationContributorUiModel>,
+) {
+    val size: Int get() = values.size
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun get(index: Int): AboutTranslationContributorUiModel = values[index]
+
+    companion object {
+        val Empty = AboutTranslationContributorUiCollection(emptyList())
+
+        fun from(values: List<AboutTranslationContributorUiModel>): AboutTranslationContributorUiCollection =
+            AboutTranslationContributorUiCollection(values.toList())
     }
 }
 
@@ -101,6 +194,7 @@ data class AboutDependencyLicenseUiCollection private constructor(
 
 enum class AboutDialog {
     NONE,
+    TRANSLATION_CONTRIBUTORS,
     DEPENDENCY_LICENSES,
 }
 
@@ -110,6 +204,8 @@ sealed interface AboutScreenEffect {
 
 @HiltViewModel
 class AboutViewModel @Inject constructor(
+    private val fetchAboutContributors: FetchAboutContributorsUseCase,
+    private val fetchTranslationContributors: FetchAboutTranslationContributorsUseCase,
     private val fetchDependencyLicenses: FetchAboutDependencyLicensesUseCase,
 ) : ViewModel() {
 
@@ -119,17 +215,36 @@ class AboutViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<AboutScreenEffect>(extraBufferCapacity = 1)
     val effects = _effects.asSharedFlow()
 
+    private var contributorsJob: Job? = null
+    private var translationContributorsJob: Job? = null
     private var dependencyLicensesJob: Job? = null
+
+    private var contributorsState: AboutContributorsUiState = AboutContributorsUiState.Loading
+    private var translationContributorsState: AboutTranslationContributorsUiState =
+        AboutTranslationContributorsUiState.Loading
     private var dependencyLicensesState: AboutDependencyLicensesUiState = AboutDependencyLicensesUiState.Loading
+
     private var isOverflowMenuExpanded = false
     private var activeDialog = AboutDialog.NONE
 
     init {
         updateState()
+        loadContributors()
     }
 
     fun showOverflowMenu() { isOverflowMenuExpanded = true; updateState() }
     fun dismissOverflowMenu() { isOverflowMenuExpanded = false; updateState() }
+
+    fun retryContributors() {
+        loadContributors(force = true)
+    }
+
+    fun openTranslationContributors() {
+        isOverflowMenuExpanded = false
+        activeDialog = AboutDialog.TRANSLATION_CONTRIBUTORS
+        updateState()
+        loadTranslationContributors()
+    }
 
     fun openDependencyLicenses() {
         isOverflowMenuExpanded = false
@@ -139,11 +254,72 @@ class AboutViewModel @Inject constructor(
     }
 
     fun dismissDialog() { activeDialog = AboutDialog.NONE; updateState() }
+    fun retryTranslationContributors() { loadTranslationContributors(force = true) }
     fun retryDependencyLicenses() { loadDependencyLicenses(force = true) }
 
     fun openUri(uri: String) {
         if (uri.isBlank()) return
         _effects.tryEmit(AboutScreenEffect.OpenUri(uri))
+    }
+
+    private fun loadContributors(force: Boolean = false) {
+        if (!force && contributorsJob?.isActive == true) return
+        contributorsJob?.cancel()
+        contributorsState = AboutContributorsUiState.Loading
+        updateState()
+        contributorsJob = viewModelScope.launch(Dispatchers.IO) {
+            contributorsState = try {
+                fetchAboutContributors().fold(
+                    onSuccess = { contributors ->
+                        val contributorUiModels =
+                            contributors
+                                .take(MaxDisplayedContributors)
+                                .toUiCollection()
+                        if (contributorUiModels.isEmpty) {
+                            AboutContributorsUiState.Empty
+                        } else {
+                            AboutContributorsUiState.Success(contributorUiModels)
+                        }
+                    },
+                    onFailure = {
+                        AboutContributorsUiState.Error(R.string.error_unknown)
+                    }
+                )
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                AboutContributorsUiState.Error(R.string.error_unknown)
+            }
+            updateState()
+        }
+    }
+
+    private fun loadTranslationContributors(force: Boolean = false) {
+        if (!force && translationContributorsJob?.isActive == true) return
+        if (!force && translationContributorsState is AboutTranslationContributorsUiState.Success) return
+        translationContributorsJob?.cancel()
+        translationContributorsState = AboutTranslationContributorsUiState.Loading
+        updateState()
+        translationContributorsJob = viewModelScope.launch(Dispatchers.IO) {
+            translationContributorsState = try {
+                fetchTranslationContributors().fold(
+                    onSuccess = { contributors ->
+                        val contributorUiModels = contributors.toUiCollection()
+                        if (contributorUiModels.isEmpty) {
+                            AboutTranslationContributorsUiState.Empty
+                        } else {
+                            AboutTranslationContributorsUiState.Success(contributorUiModels)
+                        }
+                    },
+                    onFailure = {
+                        AboutTranslationContributorsUiState.Error(R.string.error_unknown)
+                    }
+                )
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                AboutTranslationContributorsUiState.Error(R.string.error_unknown)
+            }
+            updateState()
+        }
     }
 
     private fun loadDependencyLicenses(force: Boolean = false) {
@@ -213,10 +389,142 @@ class AboutViewModel @Inject constructor(
                 ),
             ),
         ),
+        collaborators = TeamMemberCollection.of(
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/89002922?v=4",
+                name = "Miko",
+                positionResId = R.string.about_position_developers,
+                profileUrl = "https://github.com/mikooochi",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/mikooochi",
+                    ),
+                ),
+            ),
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/195509093?v=4",
+                name = "Shino",
+                positionResId = R.string.about_position_developers,
+                profileUrl = "https://github.com/shinonatsukii",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/shinonatsukii",
+                    ),
+                    AboutLinkUiModel(
+                        id = "telegram",
+                        iconResId = R.drawable.ic_telegram,
+                        labelResId = R.string.about_content_desc_telegram,
+                        url = "https://t.me/shinonatsukii",
+                    ),
+                ),
+            ),
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/93458424?v=4",
+                name = "WTTexe",
+                positionResId = R.string.about_position_developers,
+                profileUrl = "https://github.com/Windowstechtips",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/Windowstechtips",
+                    ),
+                    AboutLinkUiModel(
+                        id = "discord",
+                        iconResId = R.drawable.alternate_email,
+                        labelResId = R.string.about_content_desc_discord,
+                        url = "https://discord.com/users/840839409640800258",
+                    ),
+                ),
+            ),
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/203143605?v=4",
+                name = "Yuki/Reze",
+                positionResId = R.string.about_position_developers,
+                profileUrl = "https://github.com/4nx3b",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/4nx3b",
+                    ),
+                ),
+            ),
+        ),
+        respecters = TeamMemberCollection.of(
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/80542861?v=4",
+                name = "MO AGAMY",
+                positionResId = R.string.about_position_mo_agamy,
+                profileUrl = "https://github.com/mostafaalagamy",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/mostafaalagamy",
+                    ),
+                ),
+            ),
+            TeamMember(
+                avatarUrl = "https://avatars.githubusercontent.com/u/110614797?v=4",
+                name = "Zion Huang",
+                positionResId = R.string.about_position_zion_huang,
+                profileUrl = "https://github.com/z-huang",
+                links = AboutLinkCollection.of(
+                    AboutLinkUiModel(
+                        id = "github",
+                        iconResId = R.drawable.ic_github,
+                        labelResId = R.string.about_content_desc_github,
+                        url = "https://github.com/z-huang",
+                    ),
+                ),
+            ),
+        ),
+        contributorsState = contributorsState,
+        contributorsReadMoreUrl = ContributorsReadMoreUrl,
         dependencyLicensesState = dependencyLicensesState,
+        translationContributorsState = translationContributorsState,
         isOverflowMenuExpanded = isOverflowMenuExpanded,
         activeDialog = activeDialog,
     )
+
+    private fun AboutContributorCollection.toUiCollection(): AboutContributorUiCollection {
+        val contributors = ArrayList<AboutContributorUiModel>(MaxDisplayedContributors)
+        forEach { contributor ->
+            contributors.add(contributor.toUiModel())
+        }
+        return AboutContributorUiCollection.from(contributors)
+    }
+
+    private fun AboutContributor.toUiModel(): AboutContributorUiModel =
+        AboutContributorUiModel(
+            login = login,
+            avatarUrl = avatarUrl,
+            profileUrl = profileUrl,
+        )
+
+    private fun AboutTranslationContributorCollection.toUiCollection(): AboutTranslationContributorUiCollection {
+        val contributors = ArrayList<AboutTranslationContributorUiModel>(size)
+        for (index in 0 until size) {
+            contributors.add(this[index].toUiModel())
+        }
+        return AboutTranslationContributorUiCollection.from(contributors)
+    }
+
+    private fun AboutTranslationContributor.toUiModel(): AboutTranslationContributorUiModel =
+        AboutTranslationContributorUiModel(
+            language = language,
+            contributors = contributors.joinToString().takeIf(String::isNotBlank),
+        )
 
     private fun AboutDependencyLicenseCollection.toUiCollection(): AboutDependencyLicenseUiCollection {
         val licenses = ArrayList<AboutDependencyLicenseUiModel>(size)
@@ -228,4 +536,9 @@ class AboutViewModel @Inject constructor(
 
     private fun AboutDependencyLicense.toUiModel(): AboutDependencyLicenseUiModel =
         AboutDependencyLicenseUiModel(name = name, version = version, licenses = licenses)
+
+    private companion object {
+        const val MaxDisplayedContributors = 20
+        const val ContributorsReadMoreUrl = "https://github.com/MuwMx/YumaPlayer/graphs/contributors"
+    }
 }
