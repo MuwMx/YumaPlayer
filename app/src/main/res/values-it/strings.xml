@@ -82,8 +82,8 @@
     <string name="remove_from_history">Rimuovi dalla cronologia</string>
     <string name="remove_from_playlist">Rimuovi dalla playlist</string>
     <string name="remove_from_queue">Rimuovi dalla coda</string>
-    <string name="search_online">Cerca in linea</string>
-    <string name="tempo_and_pitch">Tempo e intonazione</string>
+    <string name="search_online">Cerca online</string>
+    <string name="tempo_and_pitch">Velocità e intonazione</string>
     <string name="sort_by_create_date">Data aggiunta</string>
     <string name="sort_by_name">Nome</string>
     <string name="sort_by_artist">Artista</string>
@@ -382,7 +382,7 @@
     <string name="scrobble_min_track_duration">Durata minima della traccia</string>
     <string name="scrobble_delay_percent">Percentuale ritardo scrobble</string>
     <string name="scrobble_delay_minutes">Ritardo Scrobble (secondi)</string>
-    <string name="username">Nome utente</string>
+    <string name="username">Username</string>
     <string name="password">Parola d\'ordine</string>
     <string name="logging_in">Accesso in corso</string>
     <string name="listenbrainz_scrobbling">AscoltaBrainz che scrobbling</string>
@@ -503,12 +503,12 @@
     <string name="together_ban_confirm">Bloccare %1$s?</string>
     <string name="together_requesting_song_change">Richiedendo all\'host di cambiare brano…</string>
     <string name="together_song_change_failed">Modifica brano non riuscita. Riprovare.</string>
-    <string name="removed_song_from_queue">Rimosso \"%s\" dalla coda</string>
+    <string name="removed_song_from_queue">\"%s\" rimosso dalla coda</string>
     <string name="removed_n_songs_from_queue">Rimossi %d brani dalla coda</string>
     <string name="aod_mode">Modalità AOD</string>
     <string name="aod_mode_exit">Lascia AOD</string>
-    <string name="tempo">Ritmo</string>
-    <string name="pitch">Tono</string>
+    <string name="tempo">Velocità</string>
+    <string name="pitch">Tonalità</string>
     <string name="pitch_mode_semitones_short">st</string>
     <string name="pitch_mode_multiplier_short">x</string>
     <string name="sort_by_most_played">Più riproduzioni</string>
@@ -840,8 +840,8 @@
     <string name="lastfm_secret_override">Segreto condiviso</string>
     <string name="lastfm_endpoint_invalid">Inserisci un endpoint HTTP o HTTPS valido.</string>
     <string name="lastfm_service_not_configured">Configura il servizio di invio dati prima di effettuare l\'accesso.</string>
-    <string name="lastfm_login_missing_credentials">Inserisci nome utente e password.</string>
-    <string name="lastfm_login_invalid_credentials">Nome utente o password non validi.</string>
+    <string name="lastfm_login_missing_credentials">Inserisci username e password.</string>
+    <string name="lastfm_login_invalid_credentials">Username o password non validi.</string>
     <string name="lastfm_login_invalid_api_key">Chiave API non valida.</string>
     <string name="lastfm_login_authentication_error">Autenticazione fallita. Prova di nuovo.</string>
     <string name="lastfm_login_api_key_suspended">Chiave API sospesa.</string>
