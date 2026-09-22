@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +22,7 @@ import androidx.compose.ui.util.lerp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.text.TextStyle
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.MarqueeText
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.player.player_0.buttons.MiniPlayerButtons
@@ -97,7 +99,7 @@ internal fun MiniPlayerContentInternal(
                 if (targetUrl == null) {
                     Image(
                         painter = painterResource(id = state.placeholderResId),
-                        contentDescription = "Mini Album Art",
+                        contentDescription = stringResource(R.string.mini_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -110,7 +112,7 @@ internal fun MiniPlayerContentInternal(
                     }
                     AsyncImage(
                         model = request,
-                        contentDescription = "Mini Album Art",
+                        contentDescription = stringResource(R.string.mini_album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                         error = painterResource(id = state.placeholderResId)

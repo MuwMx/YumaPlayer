@@ -223,7 +223,7 @@ fun FullPlayerOptionsMenu(
                     // АДАПТИВНЫЙ ПОДВАЛ (Footer)
                     // ==========================================
                     Text(
-                        text = if (currentScreen == PlayerMenuScreen.SETTINGS) "Close" else "Back",
+                        text = if (currentScreen == PlayerMenuScreen.SETTINGS) stringResource(R.string.close) else stringResource(R.string.back_button_desc),
                         color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -255,17 +255,17 @@ fun DownloadMenuContent(
     val download by LocalDownloadUtil.current
         .getDownload(state.trackUrl)
         .collectAsState(initial = null)
-    
+
     val (playbackSource) = moe.rukamori.archivetune.utils.rememberEnumPreference(
-        moe.rukamori.archivetune.constants.PlaybackSourceKey, 
+        moe.rukamori.archivetune.constants.PlaybackSourceKey,
         defaultValue = moe.rukamori.archivetune.constants.PlaybackSource.YT_MUSIC
     )
     val (externalDownloaderEnabled) = moe.rukamori.archivetune.utils.rememberPreference(
-        moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey, 
+        moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey,
         defaultValue = false
     )
     val (externalDownloaderPackage) = moe.rukamori.archivetune.utils.rememberPreference(
-        moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey, 
+        moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey,
         defaultValue = ""
     )
 
@@ -275,7 +275,7 @@ fun DownloadMenuContent(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Download",
+            text = stringResource(R.string.download),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -286,8 +286,8 @@ fun DownloadMenuContent(
         when (download?.state) {
             Download.STATE_COMPLETED -> {
                 CompactMenuRow(
-                    title = "Downloaded",
-                    subtitle = "Tap to delete offline cache",
+                    title = stringResource(R.string.filter_downloaded),
+                    subtitle = stringResource(R.string.tap_to_delete_offline_cache),
                     iconResId = R.drawable.offline,
                     isActive = true,
                     activeIconTint = Color(0xFFFF5252),
@@ -305,8 +305,8 @@ fun DownloadMenuContent(
             }
             Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
                 CompactMenuRow(
-                    title = "Downloading...",
-                    subtitle = "Tap to cancel",
+                    title = stringResource(R.string.downloading_ellipsis),
+                    subtitle = stringResource(R.string.tap_to_cancel),
                     leadingContent = {
                         CircularWavyProgressIndicator(
                             modifier = Modifier.size(20.dp),
@@ -327,8 +327,8 @@ fun DownloadMenuContent(
             }
             else -> {
                 CompactMenuRow(
-                    title = "Standard Download",
-                    subtitle = "Opus / AAC offline cache",
+                    title = stringResource(R.string.standard_download),
+                    subtitle = stringResource(R.string.standard_download_desc),
                     iconResId = R.drawable.download,
                     onClick = {
                         val downloadRequest = DownloadRequest
@@ -359,8 +359,8 @@ fun DownloadMenuContent(
             when (flacWorkState) {
                 WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> {
                     CompactMenuRow(
-                        title = "Downloading FLAC...",
-                        subtitle = "Tap to cancel",
+                        title = stringResource(R.string.downloading_flac_ellipsis),
+                        subtitle = stringResource(R.string.tap_to_cancel),
                         leadingContent = {
                             CircularWavyProgressIndicator(
                                 modifier = Modifier.size(20.dp),
@@ -376,8 +376,8 @@ fun DownloadMenuContent(
                 }
                 WorkInfo.State.SUCCEEDED -> {
                     CompactMenuRow(
-                        title = "FLAC Downloaded",
-                        subtitle = "Tap to delete .flac file",
+                        title = stringResource(R.string.flac_downloaded),
+                        subtitle = stringResource(R.string.flac_downloaded_desc),
                         iconResId = R.drawable.offline,
                         isActive = true,
                         activeIconTint = Color(0xFFFF5252),
@@ -396,8 +396,8 @@ fun DownloadMenuContent(
                 }
                 else -> {
                     CompactMenuRow(
-                        title = "Lossless FLAC",
-                        subtitle = "Download full quality .flac",
+                        title = stringResource(R.string.lossless_flac),
+                        subtitle = stringResource(R.string.lossless_flac_desc),
                         iconResId = R.drawable.download,
                         onClick = {
                             FlacDownloader.downloadFlac(
@@ -418,8 +418,8 @@ fun DownloadMenuContent(
         if (externalDownloaderEnabled) {
             Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
             CompactMenuRow(
-                title = "External Downloader",
-                subtitle = "Open in external download manager",
+                title = stringResource(R.string.external_downloader),
+                subtitle = stringResource(R.string.external_downloader_row_desc),
                 iconResId = R.drawable.download,
                 onClick = {
                     onDismissRequest()

@@ -21,8 +21,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.utils.bounceClick
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
@@ -79,7 +81,7 @@ fun MiniPlayerButtons(
         ) {
             Image(
                 painter = rememberVectorPainter(Icons.Rounded.SkipPrevious),
-                contentDescription = "Prev",
+                contentDescription = stringResource(R.string.prev),
                 modifier = Modifier.size(sideIconSize),
                 colorFilter = ColorFilter.tint(Color.White),
             )
@@ -100,7 +102,7 @@ fun MiniPlayerButtons(
         ) {
             Image(
                 painter = rememberVectorPainter(playPauseIcon),
-                contentDescription = "Play/Pause",
+                contentDescription = stringResource(R.string.play_pause),
                 modifier = Modifier
                     .size(centerIconSize)
                     .offset(x = playOffset),
@@ -122,7 +124,7 @@ fun MiniPlayerButtons(
         ) {
             Image(
                 painter = rememberVectorPainter(Icons.Rounded.SkipNext),
-                contentDescription = "Next",
+                contentDescription = stringResource(R.string.next),
                 modifier = Modifier.size(sideIconSize),
                 colorFilter = ColorFilter.tint(Color.White),
             )

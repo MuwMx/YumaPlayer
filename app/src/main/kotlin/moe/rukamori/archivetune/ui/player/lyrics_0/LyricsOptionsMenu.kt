@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -199,7 +200,7 @@ private fun LyricsMenuMain(
 
     Column {
         Text(
-            text = "Lyrics Options",
+            text = stringResource(R.string.lyrics_options),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -208,8 +209,8 @@ private fun LyricsMenuMain(
         )
 
         SettingsSwitchRow(
-            title = "Auto-Download",
-            subtitle = "Automatically search and cache lyrics when a new track starts.",
+            title = stringResource(R.string.lyrics_auto_download),
+            subtitle = stringResource(R.string.lyrics_auto_download_desc),
             checked = state.isAutoDownloadEnabled,
             onCheckedChange = { onAction(PlayerAction.ToggleAutoDownload) },
             vibrantColor = Color(state.vibrantColor),
@@ -220,8 +221,8 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsSwitchRow(
-            title = "Player Controls",
-            subtitle = "Show playback controls panel over lyrics.",
+            title = stringResource(R.string.lyrics_player_controls),
+            subtitle = stringResource(R.string.lyrics_player_controls_desc),
             checked = showPlayerControls,
             onCheckedChange = setShowPlayerControls,
             vibrantColor = Color(state.vibrantColor),
@@ -232,8 +233,8 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsMenuRow(
-            title = "Edit Lyrics",
-            subtitle = "Modify the lyric lines of this track manually",
+            title = stringResource(R.string.edit_lyrics),
+            subtitle = stringResource(R.string.edit_lyrics_desc),
             iconResId = R.drawable.edit,
             onClick = {
                 onAction(PlayerAction.PrepareLyricsEdit)
@@ -246,8 +247,8 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsMenuRow(
-            title = "Translate Lyrics",
-            subtitle = "Translate cached lyrics using AI or Translator",
+            title = stringResource(R.string.translate_lyrics),
+            subtitle = stringResource(R.string.translate_lyrics_desc),
             iconResId = R.drawable.translate,
             onClick = {
                 onNavigateTo(LyricsMenuScreen.TRANSLATE)
@@ -259,8 +260,8 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsMenuRow(
-            title = "Sync Offset",
-            subtitle = "Shift lyrics timeline backward or forward",
+            title = stringResource(R.string.sync_offset),
+            subtitle = stringResource(R.string.sync_offset_desc),
             iconResId = R.drawable.speed,
             onClick = {
                 onNavigateTo(LyricsMenuScreen.SYNC_OFFSET)
@@ -272,8 +273,8 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsMenuRow(
-            title = "Search / Refresh Lyrics",
-            subtitle = "Find lyrics online and force update cache",
+            title = stringResource(R.string.search_refresh_lyrics),
+            subtitle = stringResource(R.string.search_refresh_lyrics_desc),
             iconResId = R.drawable.ic_search,
             onClick = {
                 onAction(PlayerAction.SearchLyrics)
@@ -286,7 +287,7 @@ private fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Close",
+            text = stringResource(R.string.close),
             color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -313,7 +314,7 @@ private fun LyricsMenuEdit(
 
     Column {
         Text(
-            text = "Edit Lyrics",
+            text = stringResource(R.string.edit_lyrics),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -339,13 +340,13 @@ private fun LyricsMenuEdit(
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onBack) {
-                Text("CANCEL", color = Color.White, fontFamily = font)
+                Text(stringResource(R.string.action_cancel), color = Color.White, fontFamily = font)
             }
             TextButton(onClick = {
                 onAction(PlayerAction.SaveLyrics(state.lyricsEditText))
                 onBack()
             }) {
-                Text("SAVE", color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
+                Text(stringResource(R.string.action_save), color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
             }
         }
     }
@@ -389,7 +390,7 @@ private fun LyricsMenuTranslate(
 
     Column {
         Text(
-            text = "Translate Lyrics",
+            text = stringResource(R.string.translate_lyrics),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -409,7 +410,7 @@ private fun LyricsMenuTranslate(
         } else {
             if (state.aiTranslationError != null) {
                 Text(
-                    text = "Error: ${state.aiTranslationError}",
+                    text = stringResource(R.string.error_with_message, state.aiTranslationError),
                     color = Color(0xFFFF5252),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -424,7 +425,7 @@ private fun LyricsMenuTranslate(
                         .padding(bottom = 12.dp)
                 ) {
                     Text(
-                        text = "Use AI translation",
+                        text = stringResource(R.string.use_ai_translation),
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
@@ -441,7 +442,7 @@ private fun LyricsMenuTranslate(
             }
 
             Text(
-                text = "Target Language:",
+                text = stringResource(R.string.target_language_label),
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 4.dp)
@@ -449,7 +450,7 @@ private fun LyricsMenuTranslate(
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = selectedLang?.name ?: "Select Language",
+                    value = selectedLang?.name ?: stringResource(R.string.select_language),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = {
@@ -500,14 +501,14 @@ private fun LyricsMenuTranslate(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onBack) {
-                    Text("CANCEL", color = Color.White, fontFamily = font)
+                    Text(stringResource(R.string.action_cancel), color = Color.White, fontFamily = font)
                 }
                 TextButton(
                     onClick = {
                         onAction(PlayerAction.TranslateLyrics(state.lyricsTranslateLanguage, useAi))
                     }
                 ) {
-                    Text("TRANSLATE", color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
+                    Text(stringResource(R.string.action_translate), color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
                 }
             }
         }
@@ -526,7 +527,7 @@ private fun LyricsMenuSyncOffset(
 
     Column {
         Text(
-            text = "Sync Offset",
+            text = stringResource(R.string.sync_offset),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -559,7 +560,7 @@ private fun LyricsMenuSyncOffset(
                     inactiveTrackColor = Color.White.copy(alpha = 0.2f)
                 )
             )
-            
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("-1s", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, fontFamily = font)
                 Text("+1s", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, fontFamily = font)
@@ -572,17 +573,17 @@ private fun LyricsMenuSyncOffset(
             TextButton(onClick = {
                 tempOffset = 0
             }) {
-                Text("RESET", color = Color.White, fontFamily = font)
+                Text(stringResource(R.string.action_reset), color = Color.White, fontFamily = font)
             }
             Row {
                 TextButton(onClick = onBack) {
-                    Text("CANCEL", color = Color.White, fontFamily = font)
+                    Text(stringResource(R.string.action_cancel), color = Color.White, fontFamily = font)
                 }
                 TextButton(onClick = {
                     onAction(PlayerAction.SetLyricsSyncOffset(tempOffset))
                     onBack()
                 }) {
-                    Text("APPLY", color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
+                    Text(stringResource(R.string.action_apply), color = Color(state.vibrantColor), fontWeight = FontWeight.Bold, fontFamily = font)
                 }
             }
         }

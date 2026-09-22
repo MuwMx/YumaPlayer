@@ -1,5 +1,5 @@
 package moe.rukamori.archivetune.ui.player.player_0
- 
+
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -34,7 +34,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import androidx.compose.ui.util.lerp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.painter.Painter
@@ -71,23 +73,23 @@ fun PlayerCoverCard(
     val shadowColor = MaterialTheme.colorScheme.scrim
     val surfaceColor: Color = MaterialTheme.colorScheme.surface
     val outlineColor: Color = MaterialTheme.colorScheme.outlineVariant
-    
+
     val haptics = LocalYumaHaptics.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
     val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
     var canvasArtwork by remember(mediaId) { mutableStateOf<CanvasArtwork?>(null) }
-    
+
     val offsetX = remember { Animatable(0f) }
     var accumulatedDragX by remember { mutableStateOf(0f) }
-    
+
     val maxTensionOffsetPx = with(density) { 60.dp.toPx() }
     val snapThresholdPx = with(density) { 80.dp.toPx() }
-    
+
     var currentPainter by remember { mutableStateOf<Painter?>(null) }
     var activeVibrantColor by remember { mutableStateOf(Color.Transparent) }
-    
+
     val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
 
     LaunchedEffect(isCanvasEnabled, mediaId, songTitle, artistName) {
@@ -128,10 +130,10 @@ fun PlayerCoverCard(
             .crossfade(500)
             .build()
     }
-    
+
     val painter = rememberAsyncImagePainter(model = request)
     val state by painter.state.collectAsState()
-    
+
     LaunchedEffect(cleanUrl) {
         if (cleanUrl == null) {
             currentPainter = null
@@ -155,13 +157,13 @@ fun PlayerCoverCard(
             }
         }
     }
-    
+
     val animatedVibrantColor by animateColorAsState(
         targetValue = activeVibrantColor,
         animationSpec = tween(500),
         label = "CoverGlowColor"
     )
-    
+
     Box(
         modifier = modifier
             .aspectRatio(1f, matchHeightConstraintsFirst = true)
@@ -249,14 +251,14 @@ fun PlayerCoverCard(
             if (targetPainter == null) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(id = placeholderResId),
-                    contentDescription = "Album Art Large",
+                    contentDescription = stringResource(R.string.album_art_large),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 androidx.compose.foundation.Image(
                     painter = targetPainter,
-                    contentDescription = "Album Art Large",
+                    contentDescription = stringResource(R.string.album_art_large),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )

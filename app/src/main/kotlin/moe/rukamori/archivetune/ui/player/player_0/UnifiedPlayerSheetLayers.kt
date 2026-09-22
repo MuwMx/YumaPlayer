@@ -466,7 +466,7 @@ private fun QueueSheetHeader(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = "Collapse", modifier = Modifier.size(20.dp))
+                Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = stringResource(R.string.collapse), modifier = Modifier.size(20.dp))
             }
             Column(
                 modifier = Modifier
@@ -505,7 +505,7 @@ private fun QueueSheetHeader(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.auto_awesome),
-                    contentDescription = "AutoMix",
+                    contentDescription = stringResource(R.string.automix),
                     modifier = Modifier.size(20.dp),
                     colorFilter = ColorFilter.tint(autoMixTint)
                 )
@@ -521,7 +521,7 @@ private fun QueueSheetHeader(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = painterResource(id = R.drawable.ic_more), contentDescription = "More", modifier = Modifier.size(20.dp))
+                Image(painter = painterResource(id = R.drawable.ic_more), contentDescription = stringResource(R.string.more_label), modifier = Modifier.size(20.dp))
             }
         }
         if (state.isBlurBackgroundEnabled) {

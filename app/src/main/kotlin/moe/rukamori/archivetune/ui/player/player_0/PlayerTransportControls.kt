@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
@@ -125,7 +126,7 @@ fun PlayerTransportControls(
             ) {
                 Image(
                     painter = painterResource(id = shuffleIcon),
-                    contentDescription = "Shuffle",
+                    contentDescription = stringResource(R.string.shuffle),
                     modifier = Modifier.size(OuterIconSize),
                     colorFilter = ColorFilter.tint(shuffleColor),
                 )
@@ -168,7 +169,7 @@ fun PlayerTransportControls(
                 ) {
                     Image(
                         painter = rememberVectorPainter(Icons.Rounded.SkipPrevious),
-                        contentDescription = "Previous Track",
+                        contentDescription = stringResource(R.string.previous_track),
                         modifier = Modifier.size(SkipIconSize),
                         colorFilter = ColorFilter.tint(Color.White),
                     )
@@ -198,7 +199,7 @@ fun PlayerTransportControls(
                     } else {
                         Image(
                             painter = rememberVectorPainter(playPauseIcon),
-                            contentDescription = "Play/Pause",
+                            contentDescription = stringResource(R.string.play_pause),
                             modifier = Modifier.size(CenterIconSize),
                             colorFilter = ColorFilter.tint(Color(0xFF121212)),
                         )
@@ -219,7 +220,7 @@ fun PlayerTransportControls(
                 ) {
                     Image(
                         painter = rememberVectorPainter(Icons.Rounded.SkipNext),
-                        contentDescription = "Next Track",
+                        contentDescription = stringResource(R.string.next_track),
                         modifier = Modifier.size(SkipIconSize),
                         colorFilter = ColorFilter.tint(Color.White),
                     )
@@ -239,7 +240,7 @@ fun PlayerTransportControls(
             ) {
                 Image(
                     painter = painterResource(id = repeatIcon),
-                    contentDescription = "Repeat",
+                    contentDescription = stringResource(R.string.repeat),
                     modifier = Modifier.size(OuterIconSize),
                     colorFilter = ColorFilter.tint(repeatColor),
                 )

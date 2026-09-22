@@ -145,7 +145,7 @@ fun PlayerToolbar(
                     Box(modifier = Modifier.size(24.dp)) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_more),
-                            contentDescription = "More Options",
+                            contentDescription = stringResource(R.string.more_options),
                             modifier = Modifier
                                 .size(20.dp)
                                 .align(Alignment.Center)
@@ -166,10 +166,10 @@ fun PlayerToolbar(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 0.dp, top = 0.dp)
-                    .graphicsLayer {
-                        scaleX = collapseScale
-                        scaleY = collapseScale
-                    }
+                .graphicsLayer {
+                    scaleX = collapseScale
+                    scaleY = collapseScale
+                }
                     .size(40.dp)
                     .clip(RoundedCornerShape(50))
                     .background(buttonBackground)
@@ -184,7 +184,7 @@ fun PlayerToolbar(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_collapse),
-                    contentDescription = "Collapse Player",
+                    contentDescription = stringResource(R.string.collapse_player),
                     modifier = Modifier.size(20.dp)
                 )
             }

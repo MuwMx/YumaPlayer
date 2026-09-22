@@ -41,7 +41,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
 import moe.rukamori.archivetune.ui.player.player_0.PlayerSeekBar
@@ -167,7 +169,7 @@ fun LyricsContentCard(
                         ) {
                             Image(
                                 painter = rememberVectorPainter(Icons.Rounded.SkipPrevious),
-                                contentDescription = "Previous Track",
+                                contentDescription = stringResource(R.string.previous_track),
                                 modifier = Modifier.size(36.dp),
                                 colorFilter = ColorFilter.tint(Color.White),
                             )
@@ -194,7 +196,7 @@ fun LyricsContentCard(
                             } else {
                                 Image(
                                     painter = rememberVectorPainter(playPauseIcon),
-                                    contentDescription = "Play/Pause",
+                                    contentDescription = stringResource(R.string.play_pause),
                                     modifier = Modifier.size(48.dp),
                                     colorFilter = ColorFilter.tint(Color(0xFF121212)),
                                 )
@@ -213,7 +215,7 @@ fun LyricsContentCard(
                         ) {
                             Image(
                                 painter = rememberVectorPainter(Icons.Rounded.SkipNext),
-                                contentDescription = "Next Track",
+                                contentDescription = stringResource(R.string.next_track),
                                 modifier = Modifier.size(36.dp),
                                 colorFilter = ColorFilter.tint(Color.White),
                             )

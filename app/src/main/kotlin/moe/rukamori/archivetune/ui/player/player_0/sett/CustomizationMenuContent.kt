@@ -26,7 +26,7 @@ fun CustomizationMenuContent(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Customization",
+            text = stringResource(R.string.customization),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -35,11 +35,11 @@ fun CustomizationMenuContent(
         )
 
         SettingsSwitchRow(
-            title = "Theme",
+            title = stringResource(R.string.theme),
             subtitle = if (state.isBlurBackgroundEnabled) {
-                "Current: Blur\nHigh-performance blur effect."
+                stringResource(R.string.theme_blur_desc)
             } else {
-                "Current: Gradient\nClean art gradient background."
+                stringResource(R.string.theme_gradient_desc)
             },
             checked = state.isBlurBackgroundEnabled,
             onCheckedChange = onBackgroundStyleChanged,
@@ -53,9 +53,9 @@ fun CustomizationMenuContent(
         SettingsSwitchRow(
             title = stringResource(id = R.string.immersive_mode),
             subtitle = if (state.isImmersiveEnabled) {
-                "Current: Immersive\nFull screen cover background."
+                stringResource(R.string.theme_immersive_desc)
             } else {
-                "Current: Standard\nCompact player card."
+                stringResource(R.string.theme_standard_desc)
             },
             checked = state.isImmersiveEnabled,
             onCheckedChange = onImmersiveChanged,
@@ -67,8 +67,8 @@ fun CustomizationMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsSwitchRow(
-            title = "Codec Info",
-            subtitle = "Show audio format and sample rate above seekbar",
+            title = stringResource(R.string.codec_info),
+            subtitle = stringResource(R.string.codec_info_desc),
             checked = state.showCodecInfo,
             onCheckedChange = { onAction(PlayerAction.ToggleCodecInfo) },
             vibrantColor = Color(state.vibrantColor),
@@ -79,8 +79,8 @@ fun CustomizationMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsSwitchRow(
-            title = "Ambient Glow",
-            subtitle = "Soft neon light around the player card",
+            title = stringResource(R.string.ambient_glow),
+            subtitle = stringResource(R.string.ambient_glow_desc),
             checked = state.isAlbumCoverGlowEnabled,
             onCheckedChange = { onAction(PlayerAction.ToggleAlbumCoverGlow) },
             vibrantColor = Color(state.vibrantColor),
@@ -89,7 +89,7 @@ fun CustomizationMenuContent(
         )
 
         Text(
-            text = "More visual effects coming soon...",
+            text = stringResource(R.string.more_visual_effects_coming_soon),
             color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
             fontSize = 11.sp,
             lineHeight = 14.sp,

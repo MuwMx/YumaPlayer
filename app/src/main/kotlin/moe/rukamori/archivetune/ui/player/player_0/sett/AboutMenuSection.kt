@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,7 +65,7 @@ fun SettingsMenuContent(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Player Settings",
+            text = stringResource(R.string.player_settings),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -124,15 +125,15 @@ fun SettingsMenuContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(id = R.drawable.download),
-                        contentDescription = "Update",
+                        contentDescription = stringResource(R.string.update_button),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         val formattedVer = if (updateState.versionName.startsWith("v", ignoreCase = true)) updateState.versionName else "v${updateState.versionName}"
-                        Text(text = "Update Available ($formattedVer)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LocalArchiveTuneFontFamily.current)
-                        Text(text = "Tap to download from Telegram", color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha), fontSize = 12.sp, fontFamily = LocalArchiveTuneFontFamily.current)
+                        Text(text = stringResource(R.string.update_available_format, formattedVer), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LocalArchiveTuneFontFamily.current)
+                        Text(text = stringResource(R.string.update_download_telegram), color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha), fontSize = 12.sp, fontFamily = LocalArchiveTuneFontFamily.current)
                     }
                 }
             }
@@ -144,8 +145,8 @@ fun SettingsMenuContent(
         var currentRow = 0
 
         CompactMenuRow(
-            title = "Interface & Visuals",
-            subtitle = "Blur, Glow, and background styles",
+            title = stringResource(R.string.interface_and_visuals),
+            subtitle = stringResource(R.string.interface_and_visuals_desc),
             iconResId = R.drawable.ic_palette,
             onClick = onNavigateToCustomization,
             showArrow = true,
@@ -156,8 +157,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = "Start Radio",
-            subtitle = "Radio from current track",
+            title = stringResource(R.string.start_radio_title),
+            subtitle = stringResource(R.string.start_radio_desc),
             iconResId = R.drawable.radio,
             onClick = { onAction(PlayerAction.StartRadio) },
             index = currentRow++,
@@ -167,8 +168,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = "Add to Playlist",
-            subtitle = "Add to custom playlist",
+            title = stringResource(R.string.add_to_playlist_title),
+            subtitle = stringResource(R.string.add_to_playlist_desc),
             iconResId = R.drawable.playlist_add,
             onClick = onOpenAddToPlaylist,
             showArrow = true,
@@ -181,7 +182,7 @@ fun SettingsMenuContent(
         if (castAction != null) {
             CompactMenuRow(
                 title = castAction.text,
-                subtitle = "Stream to Chromecast",
+                subtitle = stringResource(R.string.stream_to_chromecast),
                 leadingContent = castAction.icon,
                 onClick = castAction.onClick,
                 showArrow = true,
@@ -193,8 +194,8 @@ fun SettingsMenuContent(
         }
 
         CompactMenuRow(
-            title = "Download",
-            subtitle = "Save track offline",
+            title = stringResource(R.string.download),
+            subtitle = stringResource(R.string.save_track_offline),
             iconResId = R.drawable.download,
             onClick = onNavigateToDownload,
             showArrow = true,
@@ -205,8 +206,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = "Track Details",
-            subtitle = "Codec, bitrate, file info",
+            title = stringResource(R.string.track_details),
+            subtitle = stringResource(R.string.track_details_desc),
             iconResId = R.drawable.ic_about,
             onClick = onNavigateToDetails,
             showArrow = true,
@@ -217,8 +218,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = "Equalizer",
-            subtitle = "System audio effects",
+            title = stringResource(R.string.equalizer),
+            subtitle = stringResource(R.string.system_audio_effects),
             iconResId = R.drawable.equalizer,
             onClick = onOpenEqualizer,
             showArrow = true,
@@ -229,8 +230,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = "Playback Speed",
-            subtitle = "Tempo and pitch settings",
+            title = stringResource(R.string.playback_speed_label),
+            subtitle = stringResource(R.string.playback_speed_desc),
             iconResId = R.drawable.speed,
             onClick = onOpenPlaybackSpeed,
             showArrow = true,
@@ -241,8 +242,8 @@ fun SettingsMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
-            title = if (isPinned) "Unpin Track" else "Pin Track",
-            subtitle = if (isPinned) "Remove from Speed Dial" else "Pin to Speed Dial",
+            title = if (isPinned) stringResource(R.string.unpin_track) else stringResource(R.string.pin_track),
+            subtitle = if (isPinned) stringResource(R.string.remove_from_speed_dial_title) else stringResource(R.string.pin_to_speed_dial_title),
             iconResId = if (isPinned) R.drawable.bookmark_filled else R.drawable.bookmark,
             isActive = isPinned,
             activeIconTint = Color(state.vibrantColor),
@@ -265,7 +266,7 @@ fun AboutMenuSection(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "About & Support",
+            text = stringResource(R.string.about_and_support),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -437,7 +438,7 @@ fun SleepTimerMenuContent(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Sleep Timer",
+            text = stringResource(R.string.sleep_timer_title),
             color = Color.White,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
@@ -485,7 +486,7 @@ fun SleepTimerMenuContent(
                     fontFamily = LocalArchiveTuneFontFamily.current
                 )
                 Text(
-                    text = "minutes",
+                    text = stringResource(R.string.minutes_unit),
                     color = Color.White.copy(alpha = SettingsDimensions.YumaRowSubtitleAlpha),
                     fontSize = 12.sp,
                     fontFamily = LocalArchiveTuneFontFamily.current
@@ -539,7 +540,7 @@ fun SleepTimerMenuContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = if (isTimerActive) "Stop Timer" else "Start Timer",
+                text = if (isTimerActive) stringResource(R.string.stop_timer) else stringResource(R.string.start_timer),
                 color = if (isTimerActive) Color.White else (if (Color(state.vibrantColor).luminance() > 0.5f) Color.Black else Color.White),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
