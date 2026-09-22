@@ -4,60 +4,32 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
-import android.view.View
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -73,7 +45,6 @@ import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
-import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
@@ -89,13 +60,9 @@ import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
+import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.component.ListPreference
-import moe.rukamori.archivetune.ui.component.PreferenceEntry
-import moe.rukamori.archivetune.ui.component.PreferenceGroup
-import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
@@ -103,10 +70,7 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.roundToInt
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettings(navController: NavController) {
     val context = LocalContext.current
@@ -232,10 +196,6 @@ fun AppearanceSettings(navController: NavController) {
         }
     }
 
-    val onFontPreferenceSelected: (AppFontPreference) -> Unit = { preference ->
-        onFontPreferenceChange(preference)
-    }
-
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val useDarkTheme =
         remember(darkMode, isSystemInDarkTheme) {
@@ -243,14 +203,83 @@ fun AppearanceSettings(navController: NavController) {
         }
 
     val supportedHighestFps = rememberSupportedHighestFps()
-    val isHighRefreshRateSupported = supportedHighestFps > HIGH_REFRESH_RATE_THRESHOLD_FPS
+    val isHighRefreshRateSupported = supportedHighestFps > AppearanceContract.HIGH_REFRESH_RATE_THRESHOLD_FPS
 
     ApplyRefreshRate(
         isEnabled = forceHighRefreshRate && isHighRefreshRateSupported,
         targetFps = supportedHighestFps,
     )
 
-    SettingsScreenBackground {
+    val state =
+        AppearanceUiState(
+            dynamicTheme = dynamicTheme,
+            randomThemeOnStartup = randomThemeOnStartup,
+            darkMode = darkMode,
+            useDarkTheme = useDarkTheme,
+            pureBlack = pureBlack,
+            disableAnimations = disableAnimations,
+            splashOverlayEnabled = splashOverlayEnabled,
+            archiveTuneCanvas = archiveTuneCanvas,
+            homeBackgroundStyle = homeBackgroundStyle,
+            homeBackgroundParallaxEnabled = homeBackgroundParallaxEnabled,
+            homeBackgroundParallaxStrength = homeBackgroundParallaxStrength,
+            homeBackgroundBrightness = homeBackgroundBrightness,
+            forceHighRefreshRate = forceHighRefreshRate,
+            isHighRefreshRateSupported = isHighRefreshRateSupported,
+            supportedHighestFps = supportedHighestFps,
+            fontPreference = fontPreference,
+            customFontUri = customFontUri,
+            customFontName = customFontName,
+            quickPicksDisplayMode = quickPicksDisplayMode,
+            defaultOpenTab = defaultOpenTab,
+            defaultChip = defaultChip,
+            showHomeCategoryChips = showHomeCategoryChips,
+            showTagsInLibrary = showTagsInLibrary,
+            swipeToSong = swipeToSong,
+        )
+
+    val actions =
+        remember(navController) {
+            AppearanceUiActions(
+                onNavigateUp = navController::navigateUp,
+                onNavigateHome = navController::backToMain,
+                onNavigatePalettePicker = { navController.navigate(AppearanceContract.PALETTE_PICKER_ROUTE) },
+                onDynamicThemeChange = onDynamicThemeChange,
+                onRandomThemeOnStartupChange = onRandomThemeOnStartupChange,
+                onDarkModeChange = onDarkModeChange,
+                onPureBlackChange = onPureBlackChange,
+                onDisableAnimationsChange = onDisableAnimationsChange,
+                onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
+                onArchiveTuneCanvasChange = onArchiveTuneCanvasChange,
+                onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
+                onHomeBackgroundParallaxEnabledChange = onHomeBackgroundParallaxEnabledChange,
+                onHomeBackgroundParallaxStrengthChange = onHomeBackgroundParallaxStrengthChange,
+                onHomeBackgroundBrightnessChange = onHomeBackgroundBrightnessChange,
+                onForceHighRefreshRateChange = onForceHighRefreshRateChange,
+                onFontPreferenceChange = onFontPreferenceChange,
+                onPickCustomFont = pickCustomFont,
+                onQuickPicksDisplayModeChange = onQuickPicksDisplayModeChange,
+                onDefaultOpenTabChange = onDefaultOpenTabChange,
+                onDefaultChipChange = onDefaultChipChange,
+                onShowHomeCategoryChipsChange = onShowHomeCategoryChipsChange,
+                onShowTagsInLibraryChange = onShowTagsInLibraryChange,
+                onSwipeToSongChange = onSwipeToSongChange,
+            )
+        }
+
+    AppearanceSettingsScreen(
+        state = state,
+        actions = actions,
+    )
+}
+
+@Composable
+internal fun AppearanceSettingsScreen(
+    state: AppearanceSettingsUiState,
+    actions: AppearanceSettingsUiActions,
+    modifier: Modifier = Modifier,
+) {
+    SettingsScreenBackground(modifier = modifier) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -258,8 +287,8 @@ fun AppearanceSettings(navController: NavController) {
                     title = { Text(stringResource(R.string.appearance)) },
                     navigationIcon = {
                         IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
+                            onClick = actions.onNavigateUp,
+                            onLongClick = actions.onNavigateHome,
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.arrow_back),
@@ -277,407 +306,19 @@ fun AppearanceSettings(navController: NavController) {
         ) { innerPadding ->
             val topPadding = innerPadding.calculateTopPadding()
 
-            Column(
-                Modifier
+            AppearanceSettingsContent(
+                state = state,
+                actions = actions,
+                modifier = Modifier
                     .padding(top = topPadding)
-                    .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-            ) {
-            PreferenceGroup(title = stringResource(R.string.theme)) {
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.enable_dynamic_theme)) },
-                        icon = { Icon(painterResource(R.drawable.ic_palette), null, modifier = Modifier.size(24.dp)) },
-                        checked = dynamicTheme,
-                        onCheckedChange = onDynamicThemeChange,
-                    )
-                }
-
-                item(visible = !dynamicTheme || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.random_theme_on_startup)) },
-                        description = stringResource(R.string.random_theme_on_startup_desc),
-                        icon = { Icon(painterResource(R.drawable.shuffle), null, modifier = Modifier.size(24.dp)) },
-                        checked = randomThemeOnStartup,
-                        onCheckedChange = onRandomThemeOnStartupChange,
-                    )
-                }
-
-                item(visible = !dynamicTheme || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.color_palette)) },
-                        description = stringResource(R.string.customize_theme_colors),
-                        icon = { Icon(painterResource(R.drawable.format_paint), null, modifier = Modifier.size(24.dp)) },
-                        onClick = { navController.navigate("settings/appearance/palette_picker") },
-                        showChevron = true,
-                    )
-                }
-
-                item {
-                    DarkModeSelector(
-                        darkMode = darkMode,
-                        onDarkModeChange = onDarkModeChange
-                    )
-                }
-
-                item(visible = useDarkTheme) {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.pure_black)) },
-                        icon = { Icon(painterResource(R.drawable.contrast), null, modifier = Modifier.size(24.dp)) },
-                        checked = pureBlack,
-                        onCheckedChange = onPureBlackChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.disable_animations)) },
-                        description = stringResource(R.string.disable_animations_desc),
-                        icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
-                        checked = disableAnimations,
-                        onCheckedChange = onDisableAnimationsChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.splash_overlay_enabled)) },
-                        description = stringResource(R.string.splash_overlay_enabled_desc),
-                        icon = { Icon(painterResource(R.drawable.auto_awesome), null, modifier = Modifier.size(24.dp)) },
-                        checked = splashOverlayEnabled,
-                        onCheckedChange = onSplashOverlayEnabledChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.archivetune_canvas)) },
-                        description = stringResource(R.string.archivetune_canvas_desc),
-                        icon = { Icon(painterResource(R.drawable.motion_photos_on), null, modifier = Modifier.size(24.dp)) },
-                        checked = archiveTuneCanvas,
-                        onCheckedChange = onArchiveTuneCanvasChange,
-                    )
-                }
-
-                item {
-                    HomeBackgroundSelector(
-                        homeBackgroundStyle = homeBackgroundStyle,
-                        onHomeBackgroundStyleChange = onHomeBackgroundStyleChange
-                    )
-                }
-
-                item(visible = homeBackgroundStyle != HomeBackgroundStyle.TONAL) {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.home_background_parallax)) },
-                        icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
-                        checked = homeBackgroundParallaxEnabled,
-                        onCheckedChange = onHomeBackgroundParallaxEnabledChange,
-                    )
-                }
-
-                item(
-                    visible =
-                        homeBackgroundStyle != HomeBackgroundStyle.TONAL &&
-                            homeBackgroundParallaxEnabled,
-                ) {
-                    HomeBackgroundSliderItem(
-                        title = stringResource(R.string.home_background_parallax_strength),
-                        value = homeBackgroundParallaxStrength,
-                        onValueChangeFinished = onHomeBackgroundParallaxStrengthChange,
-                        valueRange = HOME_BACKGROUND_PARALLAX_RANGE,
-                        valueText = { strength ->
-                            String.format(java.util.Locale.US, "%.1f", strength)
-                        },
-                    )
-                }
-
-                item(visible = homeBackgroundStyle != HomeBackgroundStyle.TONAL) {
-                    HomeBackgroundSliderItem(
-                        title = stringResource(R.string.home_background_brightness),
-                        value = homeBackgroundBrightness,
-                        onValueChangeFinished = onHomeBackgroundBrightnessChange,
-                        valueRange = HOME_BACKGROUND_BRIGHTNESS_RANGE,
-                        valueText = { brightness ->
-                            "${(brightness * 100).roundToInt()}%"
-                        },
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.force_high_refresh_rate)) },
-                        description =
-                            stringResource(
-                                R.string.max_supported_refresh_rate,
-                                supportedHighestFps.roundToInt(),
-                            ),
-                        icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
-                        checked = forceHighRefreshRate,
-                        onCheckedChange = onForceHighRefreshRateChange,
-                        isEnabled = isHighRefreshRateSupported,
-                    )
-                }
-
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.font_preference)) },
-                        description = stringResource(R.string.font_preference_desc),
-                        icon = { Icon(painterResource(R.drawable.text_fields), null, modifier = Modifier.size(24.dp)) },
-                        selectedValue = fontPreference,
-                        onValueSelected = onFontPreferenceSelected,
-                        valueText = {
-                            when (it) {
-                                AppFontPreference.DEFAULT -> stringResource(R.string.font_preference_default)
-                                AppFontPreference.SYSTEM -> stringResource(R.string.font_preference_system)
-                                AppFontPreference.CUSTOM -> stringResource(R.string.font_preference_custom)
-                            }
-                        },
-                    )
-                }
-
-                item(visible = fontPreference == AppFontPreference.CUSTOM) {
-                    val customFontDescription =
-                        if (customFontName.isNotBlank()) {
-                            customFontName
-                        } else if (customFontUri.isBlank()) {
-                            stringResource(R.string.custom_font_desc)
-                        } else {
-                            customFontUri
-                        }
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.custom_font)) },
-                        description = customFontDescription,
-                        icon = { Icon(painterResource(R.drawable.text_fields), null, modifier = Modifier.size(24.dp)) },
-                        onClick = pickCustomFont,
-                    )
-                }
-            }
-
-            PreferenceGroup(title = stringResource(R.string.misc)) {
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.quick_picks_display_mode)) },
-                        icon = { Icon(painterResource(R.drawable.grid_view), null, modifier = Modifier.size(24.dp)) },
-                        selectedValue = quickPicksDisplayMode,
-                        onValueSelected = onQuickPicksDisplayModeChange,
-                        valueText = {
-                            when (it) {
-                                QuickPicksDisplayMode.CARD -> stringResource(R.string.quick_picks_display_mode_card)
-                                QuickPicksDisplayMode.LIST -> stringResource(R.string.quick_picks_display_mode_list)
-                            }
-                        },
-                    )
-                }
-
-                item {
-                    EnumListPreference(
-                        title = { Text(stringResource(R.string.default_open_tab)) },
-                        icon = { Icon(painterResource(R.drawable.nav_bar), null, modifier = Modifier.size(24.dp)) },
-                        selectedValue = defaultOpenTab,
-                        onValueSelected = onDefaultOpenTabChange,
-                        valueText = {
-                            when (it) {
-                                NavigationTab.HOME -> stringResource(R.string.home)
-                                NavigationTab.SEARCH -> stringResource(R.string.search)
-                                NavigationTab.MOODANDGENRES -> stringResource(R.string.mood_and_genres)
-                                NavigationTab.LIBRARY -> stringResource(R.string.filter_library)
-                            }
-                        },
-                    )
-                }
-
-                item {
-                    ListPreference(
-                        title = { Text(stringResource(R.string.default_lib_chips)) },
-                        icon = { Icon(painterResource(R.drawable.tab), null, modifier = Modifier.size(24.dp)) },
-                        selectedValue = defaultChip,
-                        values =
-                            listOf(
-                                LibraryFilter.LIBRARY,
-                                LibraryFilter.PLAYLISTS,
-                                LibraryFilter.SONGS,
-                                LibraryFilter.ALBUMS,
-                                LibraryFilter.ARTISTS,
-                            ),
-                        valueText = {
-                            when (it) {
-                                LibraryFilter.SONGS -> stringResource(R.string.songs)
-                                LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-                                LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-                                LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-                                LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
-                                LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
-                            }
-                        },
-                        onValueSelected = onDefaultChipChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.show_home_category_chips)) },
-                        description = stringResource(R.string.show_home_category_chips_desc),
-                        icon = { Icon(painterResource(R.drawable.ic_home_outline), null, modifier = Modifier.size(24.dp)) },
-                        checked = showHomeCategoryChips,
-                        onCheckedChange = onShowHomeCategoryChipsChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.show_tags_in_library)) },
-                        description = stringResource(R.string.show_tags_in_library_desc),
-                        icon = { Icon(painterResource(R.drawable.filter_alt), null, modifier = Modifier.size(24.dp)) },
-                        checked = showTagsInLibrary,
-                        onCheckedChange = onShowTagsInLibraryChange,
-                    )
-                }
-
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.swipe_song_to_add)) },
-                        icon = { Icon(painterResource(R.drawable.swipe), null, modifier = Modifier.size(24.dp)) },
-                        checked = swipeToSong,
-                        onCheckedChange = onSwipeToSongChange,
-                    )
-                }
-            }
-        }
-    }
-}
-}
-
-@Composable
-fun ApplyRefreshRate(
-    isEnabled: Boolean,
-    targetFps: Float,
-) {
-    val context = LocalContext.current
-    val view = LocalView.current
-    val activity = remember(context) { context.findActivity() }
-    val requestedFps = if (isEnabled) targetFps else DEFAULT_REFRESH_RATE_REQUEST
-
-    DisposableEffect(view, activity, requestedFps) {
-        applyRefreshRate(
-            view = view,
-            activity = activity,
-            requestedFps = requestedFps,
-        )
-
-        onDispose {
-            applyRefreshRate(
-                view = view,
-                activity = activity,
-                requestedFps = DEFAULT_REFRESH_RATE_REQUEST,
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                        ),
+                    ),
             )
         }
     }
-}
-
-@Composable
-private fun rememberSupportedHighestFps(): Float {
-    val view = LocalView.current
-
-    return remember(view) {
-        val display = view.display
-        display?.supportedModes
-            ?.maxOfOrNull { mode -> mode.refreshRate }
-            ?: display?.refreshRate
-            ?: DEFAULT_STANDARD_REFRESH_RATE_FPS
-    }
-}
-
-private fun applyRefreshRate(
-    view: View,
-    activity: Activity?,
-    requestedFps: Float,
-) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-        view.setRequestedFrameRate(requestedFps)
-        return
-    }
-
-    activity?.window?.let { window ->
-        val attributes = window.attributes
-        if (attributes.preferredRefreshRate != requestedFps) {
-            attributes.preferredRefreshRate = requestedFps
-            window.attributes = attributes
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? =
-    when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
-    }
-
-private const val HIGH_REFRESH_RATE_THRESHOLD_FPS = 60.5f
-private const val DEFAULT_STANDARD_REFRESH_RATE_FPS = 60f
-private const val DEFAULT_REFRESH_RATE_REQUEST = 0f
-
-private val HOME_BACKGROUND_PARALLAX_RANGE = 0.1f..1.5f
-private val HOME_BACKGROUND_BRIGHTNESS_RANGE = 0.1f..1.5f
-
-@Composable
-private fun HomeBackgroundSliderItem(
-    title: String,
-    value: Float,
-    onValueChangeFinished: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    valueText: (Float) -> String,
-) {
-    var localValue by remember { mutableFloatStateOf(value) }
-    LaunchedEffect(value) { localValue = value }
-
-    val sliderState =
-        rememberSliderState(
-            value = localValue,
-            steps = 19,
-            valueRange = valueRange,
-            onValueChangeFinished = { onValueChangeFinished(localValue) },
-        )
-    sliderState.onValueChange = { localValue = it }
-    sliderState.value = localValue
-
-    PreferenceEntry(
-        title = { Text(title) },
-        description = valueText(localValue),
-        content = {
-            Spacer(Modifier.height(4.dp))
-            Slider(
-                state = sliderState,
-                modifier = Modifier.fillMaxWidth(),
-                track = {
-                    SliderDefaults.Track(
-                        sliderState = sliderState,
-                        trackCornerSize = 12.dp,
-                    )
-                },
-            )
-        }
-    )
-}
-
-enum class DarkMode {
-    ON,
-    OFF,
-    AUTO,
-}
-
-enum class NavigationTab {
-    HOME,
-    SEARCH,
-    MOODANDGENRES,
-    LIBRARY,
-}
-
-enum class LyricsPosition {
-    LEFT,
-    CENTER,
-    RIGHT,
 }
 
 @ThemePreviews
@@ -686,49 +327,4 @@ private fun AppearanceSettingsPreview() {
     TestThemeWrapper {
         AppearanceSettings(navController = rememberNavController())
     }
-}
-
-@Composable
-fun DarkModeSelector(
-    darkMode: DarkMode,
-    onDarkModeChange: (DarkMode) -> Unit
-) {
-    EnumListPreference(
-        title = { Text(stringResource(R.string.dark_theme)) },
-        icon = { Icon(painterResource(R.drawable.dark_mode), null, modifier = Modifier.size(24.dp)) },
-        selectedValue = darkMode,
-        onValueSelected = onDarkModeChange,
-        valueText = {
-            when (it) {
-                DarkMode.ON -> stringResource(R.string.dark_theme_on)
-                DarkMode.OFF -> stringResource(R.string.dark_theme_off)
-                DarkMode.AUTO -> stringResource(R.string.dark_theme_follow_system)
-            }
-        },
-    )
-}
-
-@Composable
-fun HomeBackgroundSelector(
-    homeBackgroundStyle: HomeBackgroundStyle,
-    onHomeBackgroundStyleChange: (HomeBackgroundStyle) -> Unit
-) {
-    EnumListPreference(
-        title = { Text(stringResource(R.string.home_background)) },
-        icon = { Icon(painterResource(R.drawable.image), null, modifier = Modifier.size(24.dp)) },
-        selectedValue = homeBackgroundStyle,
-        onValueSelected = onHomeBackgroundStyleChange,
-        valueText = {
-            when (it) {
-                HomeBackgroundStyle.TONAL -> stringResource(R.string.home_background_tonal)
-                HomeBackgroundStyle.CIRCLES -> stringResource(R.string.home_background_circles)
-                HomeBackgroundStyle.RINGS -> stringResource(R.string.home_background_rings)
-                HomeBackgroundStyle.MESH -> stringResource(R.string.home_background_mesh)
-                HomeBackgroundStyle.GRID -> stringResource(R.string.home_background_grid)
-                HomeBackgroundStyle.PARTICLES -> stringResource(R.string.home_background_particles)
-                HomeBackgroundStyle.SNOW -> stringResource(R.string.home_background_snow)
-                HomeBackgroundStyle.SPACE -> stringResource(R.string.home_background_space)
-            }
-        },
-    )
 }
