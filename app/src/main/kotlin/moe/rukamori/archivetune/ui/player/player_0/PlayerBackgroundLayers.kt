@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.media3.ui.AspectRatioFrameLayout
-import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.imageLoader
@@ -153,6 +152,19 @@ fun PlayerBackgroundLayers(
             .build()
     }
 
+    val blurArtworkRequest = remember(targetUrl) {
+        ImageRequest.Builder(context)
+            .data(targetUrl)
+            .apply {
+                if (targetUrl != null) {
+                    memoryCacheKey(targetUrl)
+                    diskCacheKey(targetUrl)
+                }
+            }
+            .crossfade(500)
+            .build()
+    }
+
     val paletteImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
@@ -168,9 +180,11 @@ fun PlayerBackgroundLayers(
     }
 
     var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
+    var currentBlurPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
+    val blurPainter = rememberAsyncImagePainter(model = blurArtworkRequest)
     val currentTargetUrl by rememberUpdatedState(targetUrl)
     val currentTrackUrl by rememberUpdatedState(state.trackUrl)
 
@@ -195,6 +209,34 @@ fun PlayerBackgroundLayers(
                         state.trackUrl == activeTrackUrl
                     ) {
                         currentClearPainter = null
+                    }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    LaunchedEffect(blurPainter) {
+        blurPainter.state.collect { s ->
+            val activeTargetUrl = currentTargetUrl
+            val activeTrackUrl = currentTrackUrl
+            if (activeTargetUrl == null) {
+                currentBlurPainter = null
+                return@collect
+            }
+            when (s) {
+                is AsyncImagePainter.State.Success -> {
+                    if (s.result.request.data == activeTargetUrl &&
+                        state.trackUrl == activeTrackUrl
+                    ) {
+                        currentBlurPainter = s.painter
+                    }
+                }
+                is AsyncImagePainter.State.Error -> {
+                    if (s.result.request.data == activeTargetUrl &&
+                        state.trackUrl == activeTrackUrl
+                    ) {
+                        currentBlurPainter = null
                     }
                 }
                 else -> {}
@@ -297,17 +339,10 @@ fun PlayerBackgroundLayers(
             .fillMaxSize()
             .clipToBounds()
     ) {
-        if (needsBlur && targetUrl != null) {
-            val blurArtworkRequest = remember(context, targetUrl) {
-                ImageRequest.Builder(context)
-                    .data(targetUrl)
-                    .memoryCacheKey(targetUrl)
-                    .diskCacheKey(targetUrl)
-                    .crossfade(500)
-                    .build()
-            }
-            AsyncImage(
-                model = blurArtworkRequest,
+        val blurPainterToRender = currentBlurPainter
+        if (needsBlur && blurPainterToRender != null) {
+            Image(
+                painter = blurPainterToRender,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
