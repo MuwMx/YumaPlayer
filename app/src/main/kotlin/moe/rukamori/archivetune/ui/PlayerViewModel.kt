@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import moe.rukamori.archivetune.data.repository.SettingsRepository
-import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.LyricsHelper
@@ -94,9 +93,14 @@ class PlayerViewModel @Inject constructor(
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
-    private val _queueState = MutableStateFlow(QueueUiState())
-    val queueState: StateFlow<QueueUiState> = _queueState.asStateFlow()
-
+    val queueStateHolder = QueueStateHolder(
+        coroutineScope = viewModelScope,
+        connectionFlow = connectionHolder.connection,
+        playerConnectionProvider = { playerConnection },
+        audioPlayerProvider = { audioPlayer },
+        updateUiState = { transform -> _uiState.update(transform) },
+    )
+    val queueState: StateFlow<QueueUiState> = queueStateHolder.queueState
 
     private val _playbackProgress = MutableStateFlow(0L)
 
@@ -338,34 +342,6 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
-
-        viewModelScope.launch {
-            connectionHolder.connection
-                .flatMapLatest { connection ->
-                    if (connection != null) {
-                        combine(
-                            connection.queueWindows,
-                            connection.currentWindowIndex,
-                            connection.queueTitle
-                        ) { windows, index, title ->
-                            QueueUiState(
-                                queueWindows = windows,
-                                currentWindowIndex = index,
-                                title = title,
-                                songCount = windows.size,
-                                queueDurationMs = windows.sumOf { (it.mediaItem.metadata?.duration ?: 0).toLong() } * 1000L
-                            )
-                        }
-                    } else {
-                        flowOf(QueueUiState())
-                    }
-                }
-                .collect { state ->
-                    _queueState.value = state
-                    _uiState.update { it.copy(queueTitle = state.title) }
-                }
-        }
-
     }
 
     // ==========================================
@@ -376,10 +352,10 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.PlayPause -> togglePlayPause()
             is PlayerAction.Next, is PlayerAction.SkipNext -> playNext()
             is PlayerAction.Previous, is PlayerAction.SkipPrevious -> playPrevious()
-            is PlayerAction.PlayQueueItem -> audioPlayer?.seekToDefaultPosition(action.index)
-            is PlayerAction.RemoveQueueItem -> audioPlayer?.removeMediaItem(action.index)
-            is PlayerAction.MoveQueueItem -> audioPlayer?.moveMediaItem(action.from, action.to)
-            is PlayerAction.ClearQueue -> playerConnection?.clearQueue()
+            is PlayerAction.PlayQueueItem -> queueStateHolder.playQueueItem(action.index)
+            is PlayerAction.RemoveQueueItem -> queueStateHolder.removeQueueItem(action.index)
+            is PlayerAction.MoveQueueItem -> queueStateHolder.moveQueueItem(action.from, action.to)
+            is PlayerAction.ClearQueue -> queueStateHolder.clearQueue()
             is PlayerAction.ShuffleQueue -> toggleShuffle()
             is PlayerAction.ToggleAutoMix -> {
                 val enabled = !_uiState.value.isAutoMixEnabled
