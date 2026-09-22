@@ -61,4 +61,6 @@
     <string name="spotify_playlists">Spotify Playlist</string>
     <string name="spoiler_hidden">Hidden</string>
     <string name="spoiler_revealed">Revealed</string>
+    <string name="spoiler_show">Show</string>
+    <string name="spoiler_hide">Hide</string>
 </resources>

@@ -55,13 +55,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
-import moe.rukamori.archivetune.ui.component.SpoilerVeil
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -187,22 +187,27 @@ fun SpotifyLoginSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SpoilerVeil(
-                    revealed = spDcRevealed,
-                    onRevealChange = { spDcRevealed = !spDcRevealed },
+                OutlinedTextField(
+                    value = spDcInput,
+                    onValueChange = { spDcInput = it },
                     modifier = Modifier.weight(1f),
+                    placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
+                    singleLine = true,
+                    visualTransformation = if (!spDcRevealed) maskedTransformation else VisualTransformation.None,
+                    trailingIcon = {
+                        IconButton(onClick = { spDcRevealed = !spDcRevealed }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (spDcRevealed) R.drawable.visibility_off else R.drawable.visibility
+                                ),
+                                contentDescription = stringResource(
+                                    if (spDcRevealed) R.string.spoiler_hide else R.string.spoiler_show
+                                ),
+                            )
+                        }
+                    },
                     shape = RoundedCornerShape(12.dp),
-                ) {
-                    OutlinedTextField(
-                        value = spDcInput,
-                        onValueChange = { spDcInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(text = stringResource(R.string.spotify_sp_dc)) },
-                        singleLine = true,
-                        visualTransformation = if (!spDcRevealed) maskedTransformation else VisualTransformation.None,
-                        shape = RoundedCornerShape(12.dp),
-                    )
-                }
+                )
                 Button(
                     onClick = {
                         val token = spDcInput.trim()
