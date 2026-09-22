@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
@@ -808,7 +809,8 @@ fun EditTextPreference(
                 Spacer(Modifier.height(SettingsDimensions.SegmentedRowSpacing))
                 SpoilerVeil(
                     revealed = isRevealed,
-                    onRevealChange = { isRevealed = !isRevealed },
+                    onRevealChange = { isRevealed = true },
+                    modifier = Modifier.wrapContentWidth(),
                 ) {
                     MarqueeText(
                         text = value,

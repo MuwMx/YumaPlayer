@@ -520,15 +520,8 @@ fun AccountSettings(
                     tokenPreview = if (isLoggedIn && innerTubeCookie.isNotBlank()) previewSecureValue(innerTubeCookie) else null,
                     showToken = showToken,
                     onNavigateHiddenPlaylists = { navController.navigate("settings/hidden_playlists") },
-                    onTokenEntryClick = {
-                        if (!isLoggedIn) {
-                            showTokenEditor = true
-                        } else if (!showToken) {
-                            showToken = true
-                        } else {
-                            showTokenEditor = true
-                        }
-                    },
+                    onTokenEntryClick = { showTokenEditor = true },
+                    onRevealToken = { showToken = true },
                 )
             }
 
