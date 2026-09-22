@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -22,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -33,14 +34,15 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.media3.ui.AspectRatioFrameLayout
+import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
-import coil3.request.transformations
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +56,6 @@ import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.ExtractedColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.utils.FastBlurTransformation
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
@@ -62,6 +63,7 @@ fun PlayerBackgroundLayers(
     state: PlayerUiState,
     modifier: Modifier = Modifier,
     gradientColor: Color = Color(state.gradientColor),
+    expansionFractionProvider: () -> Float = { 1f },
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
     queueFractionProvider: () -> Float = { 0f },
     onColorsExtracted: (vibrant: Int, darkMuted: Int, gradient: Int) -> Unit = { _, _, _ -> },
@@ -84,6 +86,12 @@ fun PlayerBackgroundLayers(
             state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
         }
     }
+    val isLayerOnScreen by remember {
+        derivedStateOf {
+            expansionFractionProvider() > 0.005f && !isOverlayVisible
+        }
+    }
+    val needsBlur = (state.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
     val immersiveTransitionAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled && !isOverlayVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
@@ -124,21 +132,6 @@ fun PlayerBackgroundLayers(
 
     val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
 
-    val blurImageRequest = remember(targetUrl) {
-        ImageRequest.Builder(context)
-            .data(targetUrl)
-            .apply {
-                if (targetUrl != null) {
-                    memoryCacheKey("blur:$targetUrl")
-                    diskCacheKey(targetUrl)
-                }
-            }
-            .size(240)
-            .crossfade(500)
-            .transformations(FastBlurTransformation(radius = 18, sampling = 1f))
-            .build()
-    }
-
     val clearImageRequest = remember(targetUrl) {
         ImageRequest.Builder(context)
             .data(targetUrl)
@@ -158,11 +151,7 @@ fun PlayerBackgroundLayers(
     var previousGradientColors by remember { mutableStateOf(gradientColor) }
 
     var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
-    var currentBlurPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
-
-    val blurPainter = rememberAsyncImagePainter(model = blurImageRequest)
-    val blurState by blurPainter.state.collectAsState()
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
 
@@ -185,7 +174,6 @@ fun PlayerBackgroundLayers(
     LaunchedEffect(targetUrl, state.trackUrl) {
         if (targetUrl == null) {
             currentClearPainter = null
-            currentBlurPainter = null
             return@LaunchedEffect
         }
 
@@ -239,19 +227,6 @@ fun PlayerBackgroundLayers(
         }
     }
 
-    LaunchedEffect(blurState) {
-        when (val s = blurState) {
-            is AsyncImagePainter.State.Success -> {
-                currentBlurPainter = s.painter
-            }
-            is AsyncImagePainter.State.Error -> {
-                currentBlurPainter = null
-            }
-            is AsyncImagePainter.State.Empty -> {}
-            else -> {}
-        }
-    }
-
     val animatedBgColor by animateColorAsState(
         targetValue = activeGradientColor,
         animationSpec = tween(500),
@@ -280,22 +255,33 @@ fun PlayerBackgroundLayers(
             }
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Crossfade(
-            targetState = currentBlurPainter,
-            animationSpec = tween(500),
-            label = "BlurCrossfade"
-        ) { painter ->
-            if (painter != null) {
-                Image(
-                    painter = painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = blurOverlayAlpha },
-                    contentScale = ContentScale.Crop
-                )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clipToBounds()
+    ) {
+        if (needsBlur && targetUrl != null) {
+            val blurArtworkRequest = remember(context, targetUrl) {
+                ImageRequest.Builder(context)
+                    .data(targetUrl)
+                    .memoryCacheKey(targetUrl)
+                    .diskCacheKey(targetUrl)
+                    .crossfade(500)
+                    .build()
             }
+            AsyncImage(
+                model = blurArtworkRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.15f
+                        scaleY = 1.15f
+                        alpha = blurOverlayAlpha
+                    }
+                    .blur(28.dp),
+            )
         }
 
         Crossfade(
