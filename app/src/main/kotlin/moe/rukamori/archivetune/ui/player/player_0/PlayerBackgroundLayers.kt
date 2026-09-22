@@ -91,7 +91,11 @@ fun PlayerBackgroundLayers(
             expansionFractionProvider() > 0.005f && !isOverlayVisible
         }
     }
-    val needsBlur = (state.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
+    val needsBlur by remember {
+        derivedStateOf {
+            (state.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
+        }
+    }
     val immersiveTransitionAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled && !isOverlayVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
@@ -147,21 +151,10 @@ fun PlayerBackgroundLayers(
             .build()
     }
 
-    var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
-    var previousGradientColors by remember { mutableStateOf(gradientColor) }
-
     var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
-
-    LaunchedEffect(state.trackUrl) {
-        val currentThumbnail = targetUrl
-        if (currentThumbnail != previousThumbnailUrl) {
-            previousThumbnailUrl = currentThumbnail
-            previousGradientColors = activeGradientColor
-        }
-    }
 
     LaunchedEffect(gradientColor, targetUrl) {
         if (targetUrl == null) {
