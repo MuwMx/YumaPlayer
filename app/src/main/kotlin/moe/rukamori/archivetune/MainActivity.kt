@@ -968,16 +968,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val animatedThemeColor by androidx.compose.animation.animateColorAsState(
-                targetValue = themeColor,
-                animationSpec = tween(durationMillis = 450, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                label = "animatedThemeColor",
-            )
-
             ArchiveTuneTheme(
                 darkTheme = useDarkTheme,
                 pureBlack = pureBlack,
-                themeColor = animatedThemeColor,
+                themeColor = themeColor,
                 seedPalette = if (!enableDynamicTheme) customThemeSeedPalette else null,
                 disableAnimations = disableAnimations,
                 fontPreference = fontPreference,
