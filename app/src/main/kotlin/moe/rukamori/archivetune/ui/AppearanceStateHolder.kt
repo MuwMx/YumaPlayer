@@ -3,7 +3,7 @@ package moe.rukamori.archivetune.ui
 import android.graphics.Color
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.data.repository.SettingsRepository
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -14,9 +14,6 @@ class AppearanceStateHolder(
     private val uiStateProvider: () -> PlayerUiState,
     private val updateUiState: ((PlayerUiState) -> PlayerUiState) -> Unit,
 ) {
-    @Volatile
-    private var hasExtractedColors = false
-
     init {
         updateUiState { current ->
             current.copy(
@@ -30,26 +27,20 @@ class AppearanceStateHolder(
         }
 
         coroutineScope.launch {
-            val colors = settingsRepository.playerColorsFlow
+            settingsRepository.playerColorsFlow
+                .distinctUntilChanged()
                 .catch { }
-                .firstOrNull() ?: return@launch
-
-            if (!hasExtractedColors && (colors.vibrant != null || colors.darkMuted != null || colors.gradient != null)) {
-                updateUiState { current ->
-                    val isDefault = current.vibrantColor == Color.WHITE &&
-                        current.darkMutedColor == Color.parseColor("#282828") &&
-                        current.gradientColor == Color.parseColor("#121212")
-                    if (isDefault && !hasExtractedColors) {
-                        current.copy(
-                            vibrantColor = colors.vibrant ?: current.vibrantColor,
-                            darkMutedColor = colors.darkMuted ?: current.darkMutedColor,
-                            gradientColor = colors.gradient ?: current.gradientColor,
-                        )
-                    } else {
-                        current
+                .collect { colors ->
+                    if (colors.vibrant != null || colors.darkMuted != null || colors.gradient != null) {
+                        updateUiState { current ->
+                            current.copy(
+                                vibrantColor = colors.vibrant ?: current.vibrantColor,
+                                darkMutedColor = colors.darkMuted ?: current.darkMutedColor,
+                                gradientColor = colors.gradient ?: current.gradientColor,
+                            )
+                        }
                     }
                 }
-            }
         }
     }
 
@@ -90,7 +81,6 @@ class AppearanceStateHolder(
     }
 
     fun updateColors(vibrant: Int, darkMuted: Int, gradient: Int) {
-        hasExtractedColors = true
         updateUiState {
             it.copy(
                 vibrantColor = vibrant,

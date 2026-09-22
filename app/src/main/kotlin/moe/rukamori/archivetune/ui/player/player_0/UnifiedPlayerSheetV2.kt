@@ -399,14 +399,8 @@ fun UnifiedPlayerSheetV2(
             registrationKey = currentSheetState
         )
 
-        val backgroundGradient = remember(state.gradientColor) {
-            Brush.verticalGradient(
-                listOf(
-                    Color(state.gradientColor),
-                    Color(0xFF121212)
-                )
-            )
-        }
+        val colorTop = Color(state.gradientColor)
+        val colorBottom = Color(0xFF121212)
 
         Box(
             modifier = Modifier
@@ -449,7 +443,7 @@ fun UnifiedPlayerSheetV2(
                         shape = dynamicShape
                         clip = true
                     }
-                    .background(backgroundGradient)
+                    .background(Brush.verticalGradient(listOf(colorTop, colorBottom)))
             ) {
                 UnifiedPlayerSheetLayers(
                     state = state,

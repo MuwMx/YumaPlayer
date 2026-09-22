@@ -157,7 +157,6 @@ internal fun UnifiedPlayerSheetLayers(
         ) {
             moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
                 state = state,
-                expansionFractionProvider = expansionFractionProvider,
                 lyricsFractionProvider = lyricsFractionProvider,
                 queueFractionProvider = queueFractionProvider,
                 onColorsExtracted = { vibrant, darkMuted, gradient ->
