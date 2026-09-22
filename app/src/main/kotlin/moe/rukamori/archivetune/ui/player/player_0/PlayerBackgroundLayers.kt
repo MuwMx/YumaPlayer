@@ -147,6 +147,7 @@ fun PlayerBackgroundLayers(
                     diskCacheKey(targetUrl)
                 }
             }
+            .size(128, 128)
             .crossfade(500)
             .allowHardware(false)
             .build()
@@ -184,7 +185,9 @@ fun PlayerBackgroundLayers(
                     if (cached != null) {
                         onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
                     } else {
-                        val bitmap = runCatching { s.result.image.toBitmap() }.getOrNull()
+                        val bitmap = withContext(Dispatchers.IO) {
+                            runCatching { s.result.image.toBitmap() }.getOrNull()
+                        }
                         if (bitmap != null) {
                             withContext(Dispatchers.Default) {
                                 val colors = PlayerColorExtractor.extractColors(bitmap)
