@@ -177,7 +177,6 @@ class PlayerViewModel @Inject constructor(
         onManageTicker = { playing -> manageTicker(playing) },
     )
 
-    private var likeJob: Job? = null
     private val _event = Channel<PlayerEvent>(Channel.BUFFERED)
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
 
