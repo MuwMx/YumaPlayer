@@ -81,8 +81,8 @@
     <string name="all_songs">Todas as músicas</string>
     <string name="newest_first">Mais recentes primeiro</string>
     <string name="oldest_first">Mais antigas primeiro</string>
-    <string name="sort_a_to_z">A \u2192 Z</string>
-    <string name="sort_z_to_a">Z \u2192 A</string>
+    <string name="sort_a_to_z">A → Z</string>
+    <string name="sort_z_to_a">Z → A</string>
     <string name="sort_artist">Artista</string>
     <string name="most_played_sort">Mais tocadas</string>
     <string name="recently_added">Adicionadas recentemente</string>
@@ -191,7 +191,7 @@
     <string name="hide_playlist">Ocultar playlist</string>
     <string name="unhide_playlist">Reexibir playlist</string>
     <string name="show_hidden_playlists">Mostrar ocultas</string>
-    <string name="hide_playlist_confirm">Ocultar \u0022%1$s\u0022 da biblioteca?</string>
+    <string name="hide_playlist_confirm">Ocultar \"%1$s\" da biblioteca?</string>
     <string name="together_participants">Participantes</string>
     <string name="together_connected_count">%1$d conectados</string>
     <string name="together_role_host">Anfitrião</string>
@@ -207,7 +207,7 @@
     <string name="together_kick_confirm">Expulsar %1$s?</string>
     <string name="together_ban_confirm">Banir %1$s?</string>
     <string name="together_transfer_host_confirm">Transferir a propriedade de anfitrião para %1$s?</string>
-    <string name="together_requesting_song_change">Solicitando ao anfitrião para trocar a música\u2026</string>
+    <string name="together_requesting_song_change">Solicitando ao anfitrião para trocar a música…</string>
     <string name="together_song_change_failed">A troca de música não foi aplicada. Tente novamente.</string>
     <string name="together_participant_joined_notification">%1$s entrou na sala</string>
     <string name="together_participant_left_notification">%1$s saiu da sala</string>
@@ -215,7 +215,7 @@
     <string name="remove_from_history">Remover do histórico</string>
     <string name="remove_from_playlist">Remover da playlist</string>
     <string name="remove_from_queue">Remover da fila</string>
-    <string name="removed_song_from_queue">"%s" removido da fila</string>
+    <string name="removed_song_from_queue">%s removido da fila</string>
     <string name="removed_n_songs_from_queue">%d músicas removidas da fila</string>
     <string name="search_online">Pesquisar online</string>
     <string name="tempo_and_pitch">Tempo e tom</string>

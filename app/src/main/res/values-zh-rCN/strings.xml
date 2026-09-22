@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="update_critical_title">重要更新</string>
     <string name="update_soft_title">有可用更新</string>

@@ -395,7 +395,7 @@
     <string name="discord_show_when_paused_desc">Si cette option est activée, Rich Presence restera visible pendant la pause, avec une icône de pause. Si elle est désactivée, RPC disparaîtra pendant la pause.</string>
     <string name="discord_paused">En pause</string>
     <string name="logout_confirm_title">Confirmer la déconnexion</string>
-    <string name="logout_confirm_message">Êtes-vous sûr de vouloir vous déconnecter de Discord ?</string>
+    <string name="logout_confirm_message">Êtes-vous sûr de vouloir vous déconnecter de Discord ?</string>
     <string name="logout_confirm_yes">Déconnexion</string>
     <string name="logout_confirm_no">Annuler</string>
     <string name="experiment_settings">Paramètres avancés</string>
@@ -874,7 +874,7 @@
     <string name="cast_connected_to">Connecté à %1$s</string>
     <string name="cast_disconnect">Déconnecter</string>
     <string name="cast_available_device">Appareil disponible</string>
-    <string name="cast_available_device_count">Appareils détectés : %1$d</string>
+    <string name="cast_available_device_count">Appareils détectés : %1$d</string>
     <string name="cast_route_picker_unavailable">La diffusion n\'est pas disponible pour le moment.</string>
     <string name="widget_insights_title">Perspectives d\'écoute</string>
     <string name="widget_recommendations">Recommandations</string>
@@ -886,7 +886,7 @@
         <item quantity="many">%d lectures</item>
         <item quantity="other">%d lectures</item>
     </plurals>
-    <string name="widget_top_song_summary">Tendances du moment : %1$s</string>
+    <string name="widget_top_song_summary">Tendances du moment : %1$s</string>
     <string name="widget_no_recent_songs">Aucune titre récent pour le moment</string>
     <string name="widget_no_genres">Aucun genre pour l\'instant</string>
     <string name="widget_no_recommendations">Aucune recommandation pour l\'instant</string>
@@ -896,11 +896,11 @@
     <string name="hide_playlist">Masquer la playlist</string>
     <string name="unhide_playlist">Afficher la playlist</string>
     <string name="show_hidden_playlists">Afficher le contenu masqué</string>
-    <string name="hide_playlist_confirm">Masquer « %1$s » dans la bibliothèque ?</string>
+    <string name="hide_playlist_confirm">Masquer « %1$s » dans la bibliothèque ?</string>
     <string name="together_transfer_host">Hôte de transfert</string>
     <string name="together_approve">Approuver</string>
     <string name="together_reject">Refuser</string>
-    <string name="together_transfer_host_confirm">Transférer la propriété de l\'hôte à %1$s ?</string>
+    <string name="together_transfer_host_confirm">Transférer la propriété de l\'hôte à %1$s ?</string>
     <string name="together_participant_joined_notification">%1$s a rejoint la salle</string>
     <string name="together_participant_left_notification">%1$s a quitté la salle</string>
     <string name="together_unknown_participant">Quelqu\'un</string>
@@ -928,7 +928,7 @@
     <string name="onboarding_error_generic">Impossible de charger le programme d\'installation</string>
     <string name="onboarding_permission_allowed_by_install">Autorisé par l\'installation</string>
     <string name="lyrics_search_result_stats">%1$d lignes, %2$d caractères</string>
-    <string name="unsupported_language">Langue non prise en charge : %1$s</string>
+    <string name="unsupported_language">Langue non prise en charge : %1$s</string>
     <string name="playback_error_code">Code</string>
     <string name="playback_error_http">HTTP</string>
     <string name="playback_error_message">Message</string>
@@ -950,7 +950,7 @@
     <string name="lastfm_login_api_key_suspended">Clé API suspendue.</string>
     <string name="lastfm_login_network_error">Erreur réseau. Vérifiez votre connexion.</string>
     <string name="lastfm_login_failed">Échec de la connexion. Veuillez réessayer.</string>
-    <string name="updates_channel_warning_intro">YumaPlayer propose deux canaux de téléchargement pour les versions :</string>
+    <string name="updates_channel_warning_intro">YumaPlayer propose deux canaux de téléchargement pour les versions :</string>
     <string name="updates_channel_warning_stable_title">Versions stables</string>
     <string name="updates_channel_warning_stable_source">Distribué via les versions officielles de GitHub.</string>
     <string name="updates_channel_warning_stable_desc">Ces versions ont été testées et sont recommandées pour la plupart des utilisateurs.</string>
@@ -978,8 +978,8 @@
     <string name="updates_channel_warning_nightly_title">Versions nightly</string>
     <string name="updates_channel_warning_nightly_risk">Les versions « nightly » peuvent contenir des fonctionnalités expérimentales, des modifications non finalisées ou des régressions temporaires.</string>
     <string name="updates_channel_warning_nightly_unstable">Les versions « nightly » sont fournies uniquement à des fins de test et d\'accès anticipé.\nLa stabilité, la compatibilité et le bon fonctionnement ne sont pas garantis.</string>
-    <string name="updates_channel_warning_acknowledgement">Remarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.\nEn poursuivant, vous reconnaissez que les versions « nightly » peuvent être instables et que vous les utilisez à vos propres risques.</string>
-    <string name="updates_daily_channel_confirmation">Passez sur la chaîne « daily » pour recevoir les mises à jour provenant du dépôt « daily-nightly ».\n\nLes versions « daily » sont publiées automatiquement chaque jour à partir de la dernière branche de développement.\nRemarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique depuis laquelle vous avez initialement installé l\'application.</string>
+    <string name="updates_channel_warning_acknowledgement">Remarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique à partir de laquelle vous avez initialement installé l\'application.\nEn poursuivant, vous reconnaissez que les versions « nightly » peuvent être instables et que vous les utilisez à vos propres risques.</string>
+    <string name="updates_daily_channel_confirmation">Passez sur la chaîne « daily » pour recevoir les mises à jour provenant du dépôt « daily-nightly ».\n\nLes versions « daily » sont publiées automatiquement chaque jour à partir de la dernière branche de développement.\nRemarque : le téléchargement direct depuis GitHub contourne tout contrôle supplémentaire effectué par la boutique depuis laquelle vous avez initialement installé l\'application.</string>
     <string name="download_complete">Téléchargement complet</string>
     <string name="onboarding_welcome_title">Bienvenue sur YumaPlayer</string>
     <string name="onboarding_welcome_subtitle">Configurez la lecture, la musique locale et les autorisations de mise à jour avant de commencer à écouter.</string>
@@ -999,7 +999,7 @@
     <string name="onboarding_community_telegram_title">Rejoindre Telegram</string>
     <string name="onboarding_community_telegram_desc">Discutez avec la communauté et restez informé des dernières actualités.</string>
     <string name="onboarding_community_donate_desc">Soutenez le développement continu.</string>
-    <string name="unsaved_account_dialog_text">Votre compte actuel n\'a pas encore été enregistré. Souhaitez-vous l\'enregistrer avant d\'ajouter un autre compte ?</string>
+    <string name="unsaved_account_dialog_text">Votre compte actuel n\'a pas encore été enregistré. Souhaitez-vous l\'enregistrer avant d\'ajouter un autre compte ?</string>
     <string name="unsaved_account_dialog_cancel">Annuler la connexion</string>
     <string name="unsaved_account_dialog_save_yes">Oui, enregistrer le compte actuel</string>
     <string name="hidden_playlists">Playlists masquées</string>
@@ -1017,7 +1017,7 @@
     <string name="together_activity_song_skipped">%1$s a été ignoré pour %2$s</string>
     <string name="together_activity_queue_updated">%1$s a modifié la file d\'attente</string>
     <string name="together_activity_playback_state_changed">%1$s a changé d\'état de lecture</string>
-    <string name="together_activity_error">Erreur : %1$s</string>
+    <string name="together_activity_error">Erreur : %1$s</string>
     <string name="add_another_account">Ajouter un autre compte</string>
     <string name="unsaved_account_dialog_title">Compte non enregistré</string>
     <string name="source">Source</string>

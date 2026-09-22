@@ -287,6 +287,16 @@ jobs:
             distributionName: Gms
             deviceName: Mobile
             abi: universal
+          - device: mobile
+            distribution: foss
+            distributionName: Foss
+            deviceName: Mobile
+            abi: arm64
+          - device: mobile
+            distribution: foss
+            distributionName: Foss
+            deviceName: Mobile
+            abi: universal
 #          - device: mobile
 #            distribution: gms
 #            distributionName: Gms
@@ -307,17 +317,7 @@ jobs:
 #            distributionName: Gms
 #            deviceName: Tv
 #            abi: universal
-          - device: mobile
-            distribution: foss
-            distributionName: Foss
-            deviceName: Mobile
-            abi: arm64
-          - device: mobile
-            distribution: foss
-            distributionName: Foss
-            deviceName: Mobile
-            abi: universal
-
+         
     steps:
       - uses: actions/checkout@v7
         with:

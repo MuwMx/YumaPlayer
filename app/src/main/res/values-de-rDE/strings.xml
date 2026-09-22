@@ -50,7 +50,6 @@
     <string name="other_versions">Andere Versionen</string>
     <string name="liked_songs">Gefallene Lieder</string>
     <string name="downloaded_songs">Heruntergeladene Lieder</string>
-
     <string name="playlist_is_empty">Die Playlist ist leer</string>
     <string name="remove_download_playlist_confirm">Möchten Sie wirklich alle \"%s\" Playlist-Lieder aus dem Speicher für heruntergeladene Songs entfernen?</string>
     <string name="delete_playlist_confirm">Möchten Sie die Playlist \"%s\" wirklich löschen?</string>
