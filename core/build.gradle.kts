@@ -1,4 +1,5 @@
 plugins {
+    `java-library`
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.jvm)
 }
@@ -8,16 +9,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-    implementation(libs.okhttp.dnsoverhttps)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.json)
-    implementation(libs.ktor.client.encoding)
-    implementation(libs.brotli)
-    implementation(libs.newpipe.extractor)
-    implementation(project(":morideobfuscator"))
-    implementation(libs.re2j)
-    implementation(libs.rhino)
+    api(project(":core:innertube"))
     testImplementation(libs.junit)
 }

@@ -67,6 +67,8 @@ YumaPlayer is organized into specialized Gradle modules grouped into logical cat
 - **`:lastfm`** — Scrobbling integration and metadata synchronization.
 
 ### ⚙️ Core Infrastructure (`:core:*`)
+- **`:core`** — Shared domain abstractions, common math/color utilities, and packed models.
+- **`:core:innertube`** — InnerTube API client for YouTube Music (facade, request/response models, page parsers, and proxy rotation).
 - **Responsibility:** Shared domain abstractions, common models, networking, persistence, repositories, and application-wide utilities.
 - **Rule:** Single source of truth for business logic and data contracts.
 
