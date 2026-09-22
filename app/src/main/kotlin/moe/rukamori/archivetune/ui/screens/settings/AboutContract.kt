@@ -22,7 +22,6 @@ data class AboutUiActions(
     val onNavigateUp: () -> Unit = {},
     val onNavigateHome: () -> Unit = {},
     val onOpenUri: (String) -> Unit = {},
-    val onRetryContributors: () -> Unit = {},
     val onShowOverflowMenu: () -> Unit = {},
     val onDismissOverflowMenu: () -> Unit = {},
     val onOpenTranslationContributors: () -> Unit = {},

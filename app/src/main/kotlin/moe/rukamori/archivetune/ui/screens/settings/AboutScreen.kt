@@ -74,7 +74,6 @@ fun AboutScreen(
             onNavigateUp = navController::navigateUp,
             onNavigateHome = navController::backToMain,
             onOpenUri = viewModel::openUri,
-            onRetryContributors = viewModel::retryContributors,
             onShowOverflowMenu = viewModel::showOverflowMenu,
             onDismissOverflowMenu = viewModel::dismissOverflowMenu,
             onOpenTranslationContributors = viewModel::openTranslationContributors,
@@ -104,7 +103,6 @@ internal fun AboutScreenContent(
         onNavigateUp = actions.onNavigateUp,
         onNavigateHome = actions.onNavigateHome,
         onOpenUri = actions.onOpenUri,
-        onRetryContributors = actions.onRetryContributors,
         onShowOverflowMenu = actions.onShowOverflowMenu,
         onDismissOverflowMenu = actions.onDismissOverflowMenu,
         onOpenTranslationContributors = actions.onOpenTranslationContributors,
@@ -122,7 +120,6 @@ internal fun AboutScreenContent(
     onNavigateUp: () -> Unit,
     onNavigateHome: () -> Unit,
     onOpenUri: (String) -> Unit,
-    onRetryContributors: () -> Unit,
     onShowOverflowMenu: () -> Unit,
     onDismissOverflowMenu: () -> Unit,
     onOpenTranslationContributors: () -> Unit,
@@ -213,7 +210,6 @@ internal fun AboutScreenContent(
                     AboutSuccessContent(
                         model = state.model,
                         onOpenUri = onOpenUri,
-                        onRetryContributors = onRetryContributors,
                         modifier =
                             Modifier
                                 .fillMaxSize()
