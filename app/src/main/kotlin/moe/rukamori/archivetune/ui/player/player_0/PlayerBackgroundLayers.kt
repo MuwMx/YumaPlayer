@@ -45,7 +45,6 @@ import coil3.request.transformations
 import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
@@ -164,9 +163,6 @@ fun PlayerBackgroundLayers(
             .build()
     }
 
-    var previousThumbnailUrl by remember { mutableStateOf<String?>(null) }
-    var previousGradientColors by remember { mutableStateOf(gradientColor) }
-
     var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
     var currentBlurPainter by remember { mutableStateOf<Painter?>(null) }
     var activeGradientColor by remember { mutableStateOf(gradientColor) }
@@ -211,14 +207,6 @@ fun PlayerBackgroundLayers(
     }
 
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
-
-    LaunchedEffect(state.trackUrl) {
-        val currentThumbnail = targetUrl
-        if (currentThumbnail != previousThumbnailUrl) {
-            previousThumbnailUrl = currentThumbnail
-            previousGradientColors = activeGradientColor
-        }
-    }
 
     LaunchedEffect(gradientColor, targetUrl) {
         if (targetUrl == null) {
