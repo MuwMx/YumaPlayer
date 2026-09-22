@@ -202,6 +202,7 @@ fun SpoilerVeil(
 
     val hiddenDesc = stringResource(R.string.spoiler_hidden)
     val revealedDesc = stringResource(R.string.spoiler_revealed)
+    val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
@@ -209,12 +210,17 @@ fun SpoilerVeil(
             .semantics(mergeDescendants = true) {
                 stateDescription = if (revealed) revealedDesc else hiddenDesc
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = !revealed,
-                role = Role.Button,
-                onClick = onRevealChange,
+            .then(
+                if (!revealed) {
+                    Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = onRevealChange,
+                    )
+                } else {
+                    Modifier
+                }
             )
             .drawWithContent {
                 val revealProgress = revealProgressState.value

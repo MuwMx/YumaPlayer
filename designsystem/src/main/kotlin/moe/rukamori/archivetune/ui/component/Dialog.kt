@@ -63,7 +63,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -409,12 +408,6 @@ fun TextFieldDialog(
         },
     ) {
         Column {
-            val visualTransformation = if (isMasked) {
-                remember { PasswordVisualTransformation() }
-            } else {
-                VisualTransformation.None
-            }
-
             val fieldContent: @Composable () -> Unit = {
                 if (textFields != null) {
                     textFields.forEachIndexed { index, (label, value) ->
@@ -426,7 +419,7 @@ fun TextFieldDialog(
                             maxLines = maxLines,
                             colors = OutlinedTextFieldDefaults.colors(),
                             keyboardOptions = keyboardOptions,
-                            visualTransformation = visualTransformation,
+                            visualTransformation = VisualTransformation.None,
                             keyboardActions =
                                 KeyboardActions(
                                     onDone = {
@@ -452,7 +445,7 @@ fun TextFieldDialog(
                         maxLines = maxLines,
                         colors = OutlinedTextFieldDefaults.colors(),
                         keyboardOptions = keyboardOptions,
-                        visualTransformation = visualTransformation,
+                        visualTransformation = VisualTransformation.None,
                         keyboardActions =
                             KeyboardActions(
                                 onDone = {
