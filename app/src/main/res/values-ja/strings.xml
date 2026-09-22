@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="update_critical_title">重要なアップデート</string>
     <string name="update_soft_title">アップデートがあります</string>
@@ -154,7 +154,6 @@
     <string name="widget_listening_time_minutes">%1$d分</string>
     <string name="widget_listening_time_hours_minutes">%1$d時間%2$d分</string>
     <plurals name="widget_total_plays">
-        <item quantity="one">1回再生</item>
         <item quantity="other">%d回再生</item>
     </plurals>
     <string name="widget_top_song_summary">最近のトップ: %1$s</string>
@@ -264,31 +263,24 @@
     <string name="duplicates_description_single">この曲はすでにプレイリストにある</string>
     <string name="duplicates_description_multiple">%d曲はすでにプレイリストにある</string>
     <plurals name="n_song">
-        <item quantity="one">%d曲</item>
         <item quantity="other">%d曲</item>
     </plurals>
     <plurals name="n_artist">
-        <item quantity="one">%d組のアーティスト</item>
         <item quantity="other">%d組のアーティスト</item>
     </plurals>
     <plurals name="n_album">
-        <item quantity="one">%d枚のアルバム</item>
         <item quantity="other">%d枚のアルバム</item>
     </plurals>
     <plurals name="n_playlist">
-        <item quantity="one">%d個のプレイリスト</item>
         <item quantity="other">%d個のプレイリスト</item>
     </plurals>
     <plurals name="n_week">
-        <item quantity="one">%d週間</item>
         <item quantity="other">%d週間</item>
     </plurals>
     <plurals name="n_month">
-        <item quantity="one">%dか月</item>
         <item quantity="other">%dか月</item>
     </plurals>
     <plurals name="n_year">
-        <item quantity="one">%d年</item>
         <item quantity="other">%d年</item>
     </plurals>
     <string name="added_to_playlist">%sに追加した</string>
@@ -302,7 +294,6 @@
     <string name="sleep_timer">スリープタイマー</string>
     <string name="end_of_song">曲の終わり</string>
     <plurals name="minute">
-        <item quantity="one">1分</item>
         <item quantity="other">%d分</item>
     </plurals>
     <string name="error_no_stream">利用できるストリームがない</string>
@@ -335,7 +326,6 @@
     <string name="app_icon_identifier">ID %1$s</string>
     <string name="app_icon_community_notice">コミュニティアイコンはユーザー作成のため、時間とともに変わる場合がある。</string>
     <plurals name="app_icon_count">
-        <item quantity="one">%d個のアイコン</item>
         <item quantity="other">%d個のアイコン</item>
     </plurals>
     <string name="app_icon_empty">利用できるアプリアイコンがない</string>
@@ -844,14 +834,9 @@
     <string name="updates_channel_warning_stable_desc">これらのバージョンはテスト済みで、ほとんどのユーザーにおすすめ。</string>
     <string name="updates_channel_warning_nightly_title">Nightlyビルド</string>
     <string name="updates_channel_warning_nightly_risk">Nightlyビルドには実験的機能、未完成の変更、一時的な不具合が含まれる場合がある。</string>
-    <string name="updates_channel_warning_nightly_unstable">Nightlyビルドはテストと早期アクセス専用。
-安定性、互換性、機能性は保証されない。</string>
-    <string name="updates_channel_warning_acknowledgement">注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。
-続行すると、Nightlyビルドが不安定な場合があり、自己責任で使用することに同意したものとみなされる。</string>
-    <string name="updates_daily_channel_confirmation">Dailyチャンネルに切り替えると、daily-nightlyリポジトリから更新を受け取る。
-
-Dailyビルドは最新の開発ブランチから毎日自動公開される。
-注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。</string>
+    <string name="updates_channel_warning_nightly_unstable">Nightlyビルドはテストと早期アクセス専用。 安定性、互換性、機能性は保証されない。</string>
+    <string name="updates_channel_warning_acknowledgement">注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。 続行すると、Nightlyビルドが不安定な場合があり、自己責任で使用することに同意したものとみなされる。</string>
+    <string name="updates_daily_channel_confirmation">Dailyチャンネルに切り替えると、daily-nightlyリポジトリから更新を受け取る。 Dailyビルドは最新の開発ブランチから毎日自動公開される。 注意: GitHubから直接ダウンロードすると、元々アプリをインストールしたストアによる追加の審査をバイパスする。</string>
     <string name="updates_latest_commit">最新コミット: %s</string>
     <string name="updates_loading_commits">最近のコミットを読み込み中</string>
     <string name="updates_recent_commits_count">最近のコミット%1$d件</string>
@@ -1036,4 +1021,84 @@ Dailyビルドは最新の開発ブランチから毎日自動公開される。
     <string name="hidden_playlists_description">ライブラリから非表示にしたプレイリストがここに表示される</string>
     <string name="no_hidden_playlists">非表示のプレイリストはない</string>
     <string name="unhide">再表示</string>
+    <string name="home_screen_provider"></string>
+    <string name="clear_queue"></string>
+    <string name="spotify_sp_dc"></string>
+    <string name="home_background_space"></string>
+    <string name="ai_content_filter_update"></string>
+    <string name="home_background_snow"></string>
+    <string name="settings_section_appearance"></string>
+    <string name="spotify_login_via_token"></string>
+    <string name="home_switch_to_yt"></string>
+    <string name="source_flac"></string>
+    <string name="spotify_discover"></string>
+    <string name="home_background"></string>
+    <string name="flac_quality_hi_res"></string>
+    <string name="home_screen_provider_desc"></string>
+    <string name="lossless_integration"></string>
+    <string name="channel_canary_soon"></string>
+    <string name="shuffle_queue_desc"></string>
+    <string name="home_background_brightness"></string>
+    <string name="ai_content_filter_source_summary"></string>
+    <string name="home_provider_spotify"></string>
+    <string name="flac_quality_max"></string>
+    <string name="clear_queue_desc"></string>
+    <string name="ai_content_filter_moderate"></string>
+    <string name="enable_lossless"></string>
+    <string name="save_as_playlist"></string>
+    <string name="qobuz_app_id"></string>
+    <string name="immersive_mode"></string>
+    <string name="flac_download_failed"></string>
+    <string name="flac_streaming_quality"></string>
+    <string name="settings_player_subtitle"></string>
+    <string name="source_yt_music"></string>
+    <string name="spotify_sync_likes"></string>
+    <string name="hide_ytm_liked_songs"></string>
+    <string name="ai_content_filter_hide"></string>
+    <string name="spotify_top_artists"></string>
+    <string name="folder_persist_failed"></string>
+    <string name="spotify_new_releases"></string>
+    <string name="settings_section_about"></string>
+    <string name="spotify_made_for_you"></string>
+    <string name="qobuz_user_auth_token"></string>
+    <string name="settings_section_account"></string>
+    <string name="flac_quality_cd"></string>
+    <string name="flac_download_saved"></string>
+    <string name="settings_section_network"></string>
+    <string name="onboarding_lets_go"></string>
+    <string name="playback_source"></string>
+    <string name="ai_content_filter_source"></string>
+    <string name="home_provider_youtube_music"></string>
+    <string name="home_background_rings"></string>
+    <string name="flac_download_quality"></string>
+    <string name="solana_address_copied"></string>
+    <string name="onboarding_customization_title"></string>
+    <string name="flac_download_deleted"></string>
+    <string name="ai_content_filter_updated"></string>
+    <string name="spotify_your_playlists"></string>
+    <string name="audio_quality_highest"></string>
+    <string name="ai_content_filter_update_failed"></string>
+    <string name="memory_cache_toggle"></string>
+    <string name="channel_canary"></string>
+    <string name="ai_content_filter_list_counts"></string>
+    <string name="select_flac_download_folder"></string>
+    <string name="ai_content_filter_hide_summary"></string>
+    <string name="spotify_because_you_like"></string>
+    <string name="home_background_parallax"></string>
+    <string name="home_background_particles"></string>
+    <string name="save_as_playlist_desc"></string>
+    <string name="spotify_sync_likes_desc"></string>
+    <string name="spotify_top_tracks"></string>
+    <string name="home_background_circles"></string>
+    <string name="home_background_grid"></string>
+    <string name="download_flac"></string>
+    <string name="system_equalizer_not_found"></string>
+    <string name="spotify_integration"></string>
+    <string name="ai_content_filter_moderate_summary"></string>
+    <string name="home_background_parallax_strength"></string>
+    <string name="onboarding_customization_subtitle"></string>
+    <string name="home_background_tonal"></string>
+    <string name="home_background_mesh"></string>
+    <string name="ai_content_filter"></string>
+    <string name="qobuz_app_secret"></string>
 </resources>
