@@ -53,55 +53,61 @@ flowchart TB
         DB["Room Database<br/>Local cache"]
     end
 
-    subgraph Core["core (this library)"]
-        YT["YouTube.kt<br/>High-level API singleton"]
-        IT["InnerTube.kt<br/>Ktor HTTP client"]
-        MB["MusicBackend.kt<br/>API contract"]
+    subgraph InnertubeModule[":core:innertube (Standalone JVM Module)"]
+        YT["YouTube.kt<br/>(Thin Facade)"]
 
-        subgraph Models["Models"]
-            REQ["Request bodies<br/>(SearchBody, PlayerBody, ...)"]
-            RES["Response models<br/>(PlayerResponse, BrowseResponse, ...)"]
+        subgraph Clients["Domain Clients"]
+            SC["SearchClient.kt"]
+            BC["BrowseClient.kt"]
+            PC["PlayerClient.kt"]
+            PLC["PlaylistClient.kt"]
+        end
+
+        AUTH["AuthSessionStore.kt<br/>Session, PO Tokens, Proxy"]
+        IT["InnerTube.kt<br/>Ktor HTTP Transport"]
+
+        subgraph Models["Models & DTOs"]
+            REQ["Request Bodies"]
+            RES["Response Models"]
+            JSON["InnertubeJson.kt"]
         end
 
         subgraph Pages["Pages"]
-            PARSERS["Page parsers<br/>(AlbumPage, ArtistPage, SearchPage, ...)"]
+            PARSERS["Page Parsers<br/>(AlbumPage, ArtistPage, etc.)"]
         end
 
-        subgraph Proxy["Proxy"]
-            RPS["RotatingProxySelector<br/>IP rotation with cooldown"]
-            RPC["RotatingProxyClient<br/>Proxy list fetcher"]
+        subgraph Proxy["Proxy Layer"]
+            RPS["RotatingProxySelector"]
+            RPC["RotatingProxyClient"]
         end
-
-        AUTH["PlaybackAuthState<br/>PO token & cookie management"]
-        UTILS["Utils"]
     end
 
-    subgraph External["External"]
+    subgraph External["External Services"]
         YTM["YouTube Music<br/>InnerTube API"]
-        NEWPIPE["NewPipe Extractor<br/>Cipher / stream URL"]
-        BANDCAMP["Bandcamp / SoundCloud<br/>(via NewPipe)"]
+        NEWPIPE["NewPipe Extractor<br/>Cipher / Streams"]
     end
 
     UI --> VM --> SVC
+    VM --> DB
     SVC --> YT
-    YT --> IT
-    YT --> MB
-    MB --> IT
+
+    YT --> Clients
+    YT --> AUTH
+    Clients --> IT
+    Clients --> AUTH
+    AUTH --> IT
+    AUTH --> Proxy
+
     IT --> Models
     IT --> Pages
-    IT --> AUTH
-    IT --> Proxy
-    IT --> UTILS
     IT -->|HTTP / Ktor| YTM
-    IT -->|Stream decryption| NEWPIPE
-    NEWPIPE --> BANDCAMP
-    VM --> DB
+    IT -->|Stream Decryption| NEWPIPE
 ```
 
 **Data flow:**
 1. User interacts with YumaPlayer's Compose UI
 2. ViewModels & Services call `YouTube.*` methods
-3. `YouTube` delegates to `InnerTube` via the `MusicBackend` interface
+3. `YouTube` fan-outs to domain clients (`Search/Browse/Player/Playlist`) sharing one `InnerTube` transport via `AuthSessionStore`
 4. `InnerTube` builds signed requests, sends them via Ktor to YouTube Music's InnerTube API
 5. Raw JSON responses are deserialized into typed response models
 6. Page parsers transform structured responses into domain page objects
@@ -110,19 +116,23 @@ flowchart TB
 ## Package Structure
 
 ```
-com.muwmx.yuma.innertube/
-├── InnerTube.kt              — Core HTTP client
-├── YouTube.kt                — High-level API singleton (main entry point)
-├── MusicBackend.kt           — API contract interface
+core/innertube/src/main/kotlin/moe/rukamori/archivetune/innertube/
+├── YouTube.kt                — High-level facade (main entry point)
+├── AuthSessionStore.kt       — Centralized auth state, tokens & proxy configuration
+├── SearchClient.kt           — Search suggestions and query execution
+├── BrowseClient.kt           — Catalogs, artist/album details, and browse continuations
+├── PlayerClient.kt           — Playback resolution, streaming tokens, and queue tracking
+├── PlaylistClient.kt         — Mutations, playlist creation, and batch track operations
+├── InnertubeJson.kt          — Pure JSON parsers and response tree extractors
+├── InnerTube.kt              — Low-level Ktor HTTP client
+├── MusicBackend.kt           — InnerTube client interface contract
 ├── PlaybackAuthState.kt      — Authentication state model
-├── SearchFilter.kt           — Search filter parameter helpers
-├── LibraryFilter.kt          — Library filter parameter helpers
-├── models/                   — Response data models (JSON deserialization targets)
-│   ├── body/                 — Request body models
-│   └── response/             — Response wrapper models
-├── pages/                    — Page parsers (response-to-domain transformation)
-├── proxy/                    — Proxy rotation and configuration
-└── utils/                    — Shared utilities
+├── SearchFilter.kt           — Search query filters
+├── LibraryFilter.kt          — Library sorting & filter helpers
+├── models/                   — DTOs & response deserialization targets
+├── pages/                    — Response-to-domain page mappers
+├── proxy/                    — Rotating proxy selectors and fetchers
+└── utils/                    — Shared module utilities
 ```
 
 ## Dependencies
