@@ -298,7 +298,7 @@ object YouTube {
     suspend fun addSongsToPlaylist(
         playlistId: String,
         videoIds: List<String>,
-        batchSize: Int = DEFAULT_PLAYLIST_EDIT_BATCH_SIZE,
+        batchSize: Int = PlaylistClient.DEFAULT_PLAYLIST_EDIT_BATCH_SIZE,
         onProgress: (completedSongs: Int, totalSongs: Int) -> Unit = { _, _ -> },
     ): Result<List<String?>> =
         PlaylistClient.addSongsToPlaylist(playlistId, videoIds, batchSize, onProgress)
@@ -406,7 +406,4 @@ object YouTube {
 
     typealias SearchFilter = moe.rukamori.archivetune.innertube.SearchFilter
     typealias LibraryFilter = moe.rukamori.archivetune.innertube.LibraryFilter
-
-    const val MAX_GET_QUEUE_SIZE = 1000
-    private const val DEFAULT_PLAYLIST_EDIT_BATCH_SIZE = 50
 }

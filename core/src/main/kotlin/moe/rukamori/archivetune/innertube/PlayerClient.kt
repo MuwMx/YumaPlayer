@@ -41,9 +41,9 @@ object PlayerClient {
 
     private inline val innerTube: InnerTube get() = YouTube.innerTube
 
-    fun currentPlaybackAuthState(): PlaybackAuthState = YouTube.currentPlaybackAuthState()
+    internal fun currentPlaybackAuthState(): PlaybackAuthState = YouTube.currentPlaybackAuthState()
 
-    fun resolvePlayerPoToken(
+    internal fun resolvePlayerPoToken(
         client: YouTubeClient,
         explicitPoToken: String?,
         authState: PlaybackAuthState,
@@ -53,10 +53,10 @@ object PlayerClient {
             explicitPoToken = explicitPoToken,
         )
 
-    fun resolveGvsPoToken(authState: PlaybackAuthState = currentPlaybackAuthState()): String? =
+    internal fun resolveGvsPoToken(authState: PlaybackAuthState = currentPlaybackAuthState()): String? =
         authState.resolveGvsPoToken()
 
-    fun appendGvsPoToken(
+    internal fun appendGvsPoToken(
         url: String,
         client: YouTubeClient? = null,
         authState: PlaybackAuthState = currentPlaybackAuthState(),
