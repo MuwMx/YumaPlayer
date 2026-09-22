@@ -338,9 +338,15 @@ fun UpdateScreen(
                     else -> Updater.getLatestReleaseInfo()
                 }
             releaseResult.onSuccess { release ->
-                latestVersion = release.tagName
+                val version =
+                    if (updateChannel == UpdateChannel.DAILY_NIGHTLY) {
+                        Updater.getCanaryReleaseVersionName(release)
+                    } else {
+                        Updater.getReleaseVersionName(release)
+                    }
+                latestVersion = version
                 latestImageUrl = release.imageUrl
-                if (!Updater.isUpdateAvailable(release.tagName, BuildConfig.VERSION_NAME)) {
+                if (!Updater.isUpdateAvailable(version, BuildConfig.VERSION_NAME)) {
                     onUpToDate()
                 }
             }.onFailure {

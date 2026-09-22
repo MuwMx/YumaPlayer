@@ -752,9 +752,16 @@ class MainActivity : ComponentActivity() {
                                 launchSingleTop = true
                             }
                         } else {
-                            val releaseUrl = Updater.getLatestDownloadUrl().ifBlank {
-                                "https://github.com/MuwMx/YumaPlayer/releases/latest"
-                            }
+                            val releaseUrl =
+                                if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
+                                    Updater.getLatestCanaryDownloadUrl().ifBlank {
+                                        "https://github.com/MuwMx/YumaCanary/releases/latest"
+                                    }
+                                } else {
+                                    Updater.getLatestDownloadUrl().ifBlank {
+                                        "https://github.com/MuwMx/YumaPlayer/releases/latest"
+                                    }
+                                }
                             try {
                                 uriHandler.openUri(releaseUrl)
                             } catch (_: Exception) {
@@ -779,12 +786,26 @@ class MainActivity : ComponentActivity() {
                     BuildConfig.UPDATER_AVAILABLE &&
                     System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
                 ) {
-                    val versionResult = Updater.getLatestVersionName()
+                    val isCanary =
+                        BuildConfig.VERSION_NAME.startsWith("canary.") ||
+                            BuildConfig.NIGHTLY_BUILD_HASH.isNotBlank()
+                    val targetChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
+                    val versionResult =
+                        if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
+                            Updater.getLatestCanaryVersionName()
+                        } else {
+                            Updater.getLatestVersionName()
+                        }
                     versionResult.onSuccess {
                         if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                            latestUpdateChannel = UpdateChannel.STABLE
+                            latestUpdateChannel = targetChannel
                             latestVersionName = it
-                            latestImageUrl = Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
+                            latestImageUrl =
+                                if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
+                                    Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
+                                } else {
+                                    Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
+                                }
                         }
                     }
                 }
@@ -814,19 +835,33 @@ class MainActivity : ComponentActivity() {
                 }
             }
             LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel, splashDone) {
+                val isCanary =
+                    BuildConfig.VERSION_NAME.startsWith("canary.") ||
+                        BuildConfig.NIGHTLY_BUILD_HASH.isNotBlank()
+                val expectedChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
                 if (
                     splashDone &&
                     BuildConfig.UPDATER_AVAILABLE &&
-                    latestUpdateChannel == updateChannel &&
+                    latestUpdateChannel == expectedChannel &&
                     Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
                 ) {
-                    val releaseNotesResult = Updater.getLatestReleaseNotes()
+                    val releaseNotesResult =
+                        if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
+                            Updater.getLatestCanaryReleaseNotes()
+                        } else {
+                            Updater.getLatestReleaseNotes()
+                        }
                     releaseNotesResult.onSuccess {
                         releaseNotesState.value = it
                     }.onFailure {
                         releaseNotesState.value = null
                     }
-                    latestImageUrl = Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
+                    latestImageUrl =
+                        if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
+                            Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
+                        } else {
+                            Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
+                        }
                     bottomSheetPageState.show(updateSheetContent)
                 }
             }

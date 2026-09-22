@@ -28,8 +28,14 @@ class UpdateRepositoryImpl @Inject constructor() : UpdateRepository {
         }
 
         result.onSuccess { release ->
+            val versionName =
+                if (channel == UpdateChannel.DAILY_NIGHTLY) {
+                    Updater.getCanaryReleaseVersionName(release)
+                } else {
+                    Updater.getReleaseVersionName(release)
+                }
             val currentVersion = BuildConfig.VERSION_NAME
-            if (Updater.isUpdateAvailable(release.tagName, currentVersion)) {
+            if (Updater.isUpdateAvailable(versionName, currentVersion)) {
                 val downloadUrl = when (channel) {
                     UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
                     else -> Updater.getLatestDownloadUrl()
@@ -40,7 +46,7 @@ class UpdateRepositoryImpl @Inject constructor() : UpdateRepository {
                 emit(
                     AppUpdateInfo(
                         versionCode = 0,
-                        versionName = release.tagName,
+                        versionName = versionName,
                         updateUrl = downloadUrl,
                         isCritical = isCritical,
                         changelog = MarkdownCleaner.clean(release.body),
@@ -73,8 +79,14 @@ class UpdateRepositoryImpl @Inject constructor() : UpdateRepository {
             }
 
             if (latest != null) {
+                val versionName =
+                    if (channel == UpdateChannel.DAILY_NIGHTLY) {
+                        Updater.getCanaryReleaseVersionName(latest)
+                    } else {
+                        Updater.getReleaseVersionName(latest)
+                    }
                 val currentVersion = BuildConfig.VERSION_NAME
-                if (Updater.isUpdateAvailable(latest.tagName, currentVersion)) {
+                if (Updater.isUpdateAvailable(versionName, currentVersion)) {
                     val downloadUrl = when (channel) {
                         UpdateChannel.DAILY_NIGHTLY -> Updater.getLatestCanaryDownloadUrl()
                         else -> Updater.getLatestDownloadUrl()
@@ -85,7 +97,7 @@ class UpdateRepositoryImpl @Inject constructor() : UpdateRepository {
                     emit(
                         AppUpdateInfo(
                             versionCode = 0,
-                            versionName = latest.tagName,
+                            versionName = versionName,
                             updateUrl = downloadUrl,
                             isCritical = isCritical,
                             changelog = MarkdownCleaner.clean(latest.body),

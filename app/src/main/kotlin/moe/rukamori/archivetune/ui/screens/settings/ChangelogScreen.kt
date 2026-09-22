@@ -80,11 +80,11 @@ fun ChangelogScreen(
     }
 
     LaunchedEffect(Unit) {
-        val cachedAll = Updater.getCachedReleases()
         val cachedReleases =
-            when (channel) {
-                UpdateChannel.DAILY_NIGHTLY -> cachedAll.filter { it.prerelease }
-                else -> cachedAll.filter { !it.prerelease }
+            if (channel == UpdateChannel.DAILY_NIGHTLY) {
+                Updater.getCachedCanaryReleases()
+            } else {
+                Updater.getCachedReleases().filter { !it.prerelease }
             }
         if (cachedReleases.isNotEmpty()) {
             releases = cachedReleases
