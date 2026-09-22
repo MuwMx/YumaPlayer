@@ -6,10 +6,7 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import android.content.Context
-import android.net.Uri
 import androidx.compose.runtime.Immutable
-import androidx.documentfile.provider.DocumentFile
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
@@ -113,16 +110,3 @@ data class PlayerSettingsUiActions(
 )
 
 typealias PlayerSettingsActions = PlayerSettingsUiActions
-
-fun resolveFlacFolderPath(context: Context, downloadLocationUri: String): String? {
-    if (downloadLocationUri.isBlank()) {
-        return null
-    }
-    return runCatching {
-        val uri = Uri.parse(downloadLocationUri)
-        val docFile = DocumentFile.fromTreeUri(context, uri)
-        val name = docFile?.name?.takeIf { it.isNotBlank() }
-        val rawPath = uri.lastPathSegment?.substringAfterLast(":")?.takeIf { it.isNotBlank() }
-        name ?: rawPath ?: downloadLocationUri
-    }.getOrNull() ?: downloadLocationUri
-}

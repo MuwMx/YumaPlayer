@@ -91,7 +91,7 @@ internal fun LyricsProviderOrderDialog(
                         .fillMaxWidth()
                         .heightIn(max = 440.dp),
             ) {
-                itemsIndexed(providers, key = { _, item -> item.name }) { index, provider ->
+                itemsIndexed(providers, key = { _, item -> item.name }, contentType = { _, _ -> "provider" }) { index, provider ->
                     ReorderableItem(reorderableState, key = provider.name) {
                         val isFirst = index == 0
                         val containerColor =

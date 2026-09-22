@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +67,6 @@ private const val PARTICLE_STRIDE = 8
 private const val TWO_PI = (2.0 * PI).toFloat()
 private val PARTICLE_ALPHAS = floatArrayOf(0.3f, 0.6f, 1.0f)
 
-@Immutable
 private class SpoilerParticleField(
     val data: FloatArray,
     val layerPoints: Array<FloatArray>,
@@ -276,8 +274,8 @@ fun SpoilerVeil(
                         }
                         particleField.lastDrawTimeMs = curTime
 
-                        @Suppress("UNUSED_VARIABLE")
-                        val phase = sparklePhaseState?.value ?: 0f
+                        // Frame ticker: this read schedules the next Draw pass that advances dt-based drift.
+                        sparklePhaseState?.value
 
                         val widthDp = w / densityScale
                         val activeParticles = ((widthDp / 6f) * 2.5f).toInt().coerceIn(MIN_PARTICLES, MAX_PARTICLES)

@@ -8,11 +8,14 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import android.content.Context
 import android.content.Intent
 import android.media.audiofx.AudioEffect
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -138,7 +141,6 @@ fun PlayerSettings(navController: NavController) {
     val flacFolderPath = remember(downloadLocationUri, context) {
         resolveFlacFolderPath(context, downloadLocationUri)
     }
-
     val (qobuzAppId, onQobuzAppIdChange) = rememberPreference(QobuzAppIdKey, "")
     val (qobuzAppSecret, onQobuzAppSecretChange) = rememberPreference(QobuzAppSecretKey, "")
     val (qobuzUserAuthToken, onQobuzUserAuthTokenChange) = rememberPreference(QobuzUserAuthTokenKey, "")
@@ -280,4 +282,17 @@ private fun PlayerSettingsPreview() {
     TestThemeWrapper {
         PlayerSettings(navController = rememberNavController())
     }
+}
+
+private fun resolveFlacFolderPath(context: Context, downloadLocationUri: String): String? {
+    if (downloadLocationUri.isBlank()) {
+        return null
+    }
+    return runCatching {
+        val uri = Uri.parse(downloadLocationUri)
+        val docFile = DocumentFile.fromTreeUri(context, uri)
+        val name = docFile?.name?.takeIf { it.isNotBlank() }
+        val rawPath = uri.lastPathSegment?.substringAfterLast(":")?.takeIf { it.isNotBlank() }
+        name ?: rawPath ?: downloadLocationUri
+    }.getOrNull() ?: downloadLocationUri
 }
