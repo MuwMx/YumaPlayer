@@ -37,6 +37,7 @@ import androidx.compose.ui.util.lerp
 import androidx.media3.ui.AspectRatioFrameLayout
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
@@ -45,6 +46,7 @@ import coil3.toBitmap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
@@ -144,8 +146,20 @@ fun PlayerBackgroundLayers(
                     diskCacheKey(targetUrl)
                 }
             }
-            .size(128, 128)
             .crossfade(500)
+            .build()
+    }
+
+    val paletteImageRequest = remember(targetUrl) {
+        ImageRequest.Builder(context)
+            .data(targetUrl)
+            .apply {
+                if (targetUrl != null) {
+                    memoryCacheKey("palette:$targetUrl")
+                    diskCacheKey(targetUrl)
+                }
+            }
+            .size(128, 128)
             .allowHardware(false)
             .build()
     }
@@ -227,6 +241,29 @@ fun PlayerBackgroundLayers(
         val cached = colorCache[requestedTargetUrl]
         if (cached != null) {
             onColorsExtracted(cached.vibrant, cached.darkMuted, cached.gradient)
+        } else {
+            launch {
+                val result = runCatching {
+                    context.imageLoader.execute(paletteImageRequest)
+                }.getOrNull()
+                val bitmap = withContext(Dispatchers.IO) {
+                    runCatching { result?.image?.toBitmap() }.getOrNull()
+                }
+                if (bitmap != null &&
+                    targetUrl == requestedTargetUrl &&
+                    state.trackUrl == requestedTrackUrl
+                ) {
+                    val colors = withContext(Dispatchers.Default) {
+                        PlayerColorExtractor.extractColors(bitmap)
+                    }
+                    if (targetUrl == requestedTargetUrl &&
+                        state.trackUrl == requestedTrackUrl
+                    ) {
+                        colorCache[requestedTargetUrl] = colors
+                        onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
+                    }
+                }
+            }
         }
 
         clearPainter.state.collect { s ->
@@ -237,25 +274,6 @@ fun PlayerBackgroundLayers(
                         s.result.request.data == requestedTargetUrl
                     ) {
                         currentClearPainter = s.painter
-                        if (cached == null) {
-                            val bitmap = withContext(Dispatchers.IO) {
-                                runCatching { s.result.image.toBitmap() }.getOrNull()
-                            }
-                            if (bitmap != null &&
-                                targetUrl == requestedTargetUrl &&
-                                state.trackUrl == requestedTrackUrl
-                            ) {
-                                val colors = withContext(Dispatchers.Default) {
-                                    PlayerColorExtractor.extractColors(bitmap)
-                                }
-                                if (targetUrl == requestedTargetUrl &&
-                                    state.trackUrl == requestedTrackUrl
-                                ) {
-                                    colorCache[requestedTargetUrl] = colors
-                                    onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
-                                }
-                            }
-                        }
                     }
                 }
                 is AsyncImagePainter.State.Error -> {
