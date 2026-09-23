@@ -217,7 +217,7 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.Previous, is PlayerAction.SkipPrevious -> playbackStateHolder.playPrevious()
             is PlayerAction.PlayQueueItem -> queueStateHolder.playQueueItem(action.windowUid)
             is PlayerAction.RemoveQueueItem -> queueStateHolder.removeQueueItem(action.windowUid)
-            is PlayerAction.MoveQueueItem -> queueStateHolder.moveQueueItem(action.from, action.to)
+            is PlayerAction.MoveQueueItem -> queueStateHolder.moveQueueItem(action.fromUid, action.toUid)
             is PlayerAction.ClearQueue -> queueStateHolder.clearQueue()
             is PlayerAction.ShuffleQueue -> playbackStateHolder.toggleShuffle()
             is PlayerAction.ToggleAutoMix -> {

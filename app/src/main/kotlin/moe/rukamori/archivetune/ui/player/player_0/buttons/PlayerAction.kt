@@ -37,7 +37,7 @@ sealed interface PlayerAction {
     data object ShuffleQueue : PlayerAction
     data class PlayQueueItem(val windowUid: Any) : PlayerAction
     data class RemoveQueueItem(val windowUid: Any) : PlayerAction
-    data class MoveQueueItem(val from: Int, val to: Int) : PlayerAction
+    data class MoveQueueItem(val fromUid: Any, val toUid: Any) : PlayerAction
     // Перемотка трека
     data class SeekTo(val positionMs: Long) : PlayerAction
 

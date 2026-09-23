@@ -168,7 +168,7 @@ fun QueueScreen(
                 val fromWindow = snapshot.firstOrNull { it.queueItemKey == fromKey }
                 val toWindow = snapshot.firstOrNull { it.queueItemKey == toKey }
                 if (fromWindow != null && toWindow != null) {
-                    onAction(PlayerAction.MoveQueueItem(fromWindow.firstPeriodIndex, toWindow.firstPeriodIndex))
+                    onAction(PlayerAction.MoveQueueItem(fromWindow.uid, toWindow.uid))
                 }
             }
             dragFromKey = null
