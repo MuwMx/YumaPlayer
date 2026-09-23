@@ -28,6 +28,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import java.util.Locale
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -115,6 +116,7 @@ object SpotifyGraphqlClient {
                 header("app-platform", "WebPlayer")
                 header("Origin", "https://open.spotify.com")
                 header("Referer", "https://open.spotify.com/")
+                header("Accept-Language", Locale.getDefault().toLanguageTag())
             }
             expectSuccess = false
         }
@@ -135,6 +137,7 @@ object SpotifyGraphqlClient {
                 header("Origin", "https://open.spotify.com")
                 header("Referer", "https://open.spotify.com/")
                 header("Accept", "application/json")
+                header("Accept-Language", Locale.getDefault().toLanguageTag())
             }
             expectSuccess = false
         }
