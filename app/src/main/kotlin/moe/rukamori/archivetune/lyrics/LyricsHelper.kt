@@ -365,7 +365,9 @@ class LyricsHelper
                         },
                         onFailure = {
                             if (it is CancellationException) throw it
-                            reportException(it)
+                            if (it.message?.contains("Paxsenix API key is not configured", ignoreCase = true) != true) {
+                                reportException(it)
+                            }
                             null
                         },
                     )
@@ -417,10 +419,17 @@ class LyricsHelper
             val rest = baseProviders.filterNot { it in userOrdered }
             val paxsenixEnabled = preferences[EnablePaxsenixLyricsKey] ?: true
             val paxsenixApiKeyConfigured = !preferences[PaxsenixApiKeyKey].isNullOrBlank()
+            if (paxsenixEnabled && !paxsenixApiKeyConfigured) {
+                GlobalLog.append(
+                    Log.WARN,
+                    "LyricsHelper",
+                    "Paxsenix is enabled but API key is not configured; Paxsenix providers will fall through",
+                )
+            }
             return (userOrdered + rest).distinct().filter { provider ->
                 val providerEnabled = providerPreferenceKeys[provider]?.let { preferences[it] } ?: true
                 val paxsenixProviderEnabled =
-                    provider !in paxsenixProviders || (paxsenixEnabled && paxsenixApiKeyConfigured)
+                    provider !in paxsenixProviders || paxsenixEnabled
                 providerEnabled && paxsenixProviderEnabled
             }
         }

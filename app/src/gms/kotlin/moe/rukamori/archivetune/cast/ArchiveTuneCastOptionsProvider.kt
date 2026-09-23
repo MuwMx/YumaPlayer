@@ -11,6 +11,9 @@ import com.google.android.gms.cast.CastMediaControlIntent
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.OptionsProvider
 import com.google.android.gms.cast.framework.SessionProvider
+import com.google.android.gms.cast.framework.media.CastMediaOptions
+import com.google.android.gms.cast.framework.media.MediaIntentReceiver
+import com.google.android.gms.cast.framework.media.NotificationOptions
 import moe.rukamori.archivetune.R
 
 class ArchiveTuneCastOptionsProvider : OptionsProvider {
@@ -21,9 +24,28 @@ class ArchiveTuneCastOptionsProvider : OptionsProvider {
                 .takeIf(String::isNotBlank)
                 ?: CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
 
-        return CastOptions
-            .Builder()
+        val notificationOptions =
+            NotificationOptions.Builder()
+                .setActions(
+                    listOf(
+                        MediaIntentReceiver.ACTION_SKIP_PREV,
+                        MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
+                        MediaIntentReceiver.ACTION_SKIP_NEXT,
+                        MediaIntentReceiver.ACTION_STOP_CASTING,
+                    ),
+                    intArrayOf(1, 2),
+                )
+                .build()
+
+        val mediaOptions =
+            CastMediaOptions.Builder()
+                .setNotificationOptions(notificationOptions)
+                .build()
+
+        return CastOptions.Builder()
             .setReceiverApplicationId(receiverApplicationId)
+            .setCastMediaOptions(mediaOptions)
+            .setStopReceiverApplicationWhenEndingSession(true)
             .build()
     }
 

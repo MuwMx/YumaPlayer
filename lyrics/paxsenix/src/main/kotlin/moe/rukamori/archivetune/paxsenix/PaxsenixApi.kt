@@ -35,6 +35,8 @@ internal object PaxsenixApi {
         this.apiKey = apiKey.trim()
     }
 
+    fun hasApiKey(): Boolean = apiKey.isNotBlank()
+
     @Volatile
     private var customClient: HttpClient? = null
 
@@ -62,7 +64,9 @@ internal object PaxsenixApi {
         request: HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse {
         val currentApiKey = apiKey
-        check(currentApiKey.isNotEmpty()) { "Paxsenix API key is not configured" }
+        if (currentApiKey.isBlank()) {
+            throw IllegalStateException("Paxsenix API key is not configured")
+        }
 
         return client.get(resolveUrl(path)) {
             header(HttpHeaders.UserAgent, userAgent)
@@ -79,8 +83,8 @@ internal object PaxsenixApi {
     ): String {
         val response = apiGet(path, request)
         val body = response.body<String>()
-        check(response.status.value in 200..299) {
-            "Paxsenix request failed with HTTP ${response.status.value}"
+        if (response.status.value !in 200..299) {
+            throw IllegalStateException("Paxsenix request failed with HTTP ${response.status.value}")
         }
         return body
     }

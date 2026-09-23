@@ -140,6 +140,10 @@
     <string name="cast_available_device">Available device</string>
     <string name="cast_available_device_count">Devices found: %1$d</string>
     <string name="cast_route_picker_unavailable">Cast is unavailable right now.</string>
+    <string name="cast_no_play_services">Google Play Services unavailable</string>
+    <string name="cast_no_play_services_desc">Cast requires Google Play Services to discover and connect to devices.</string>
+    <string name="cast_no_network">No Wi-Fi or local network</string>
+    <string name="cast_no_network_desc">Connect to Wi-Fi to find Cast devices on your local network.</string>
     <string name="shuffle">Shuffle</string>
     <string name="music_recognition">Music Recognition</string>
     <string name="reset">Reset</string>

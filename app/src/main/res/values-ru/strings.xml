@@ -759,4 +759,8 @@
     <string name="check_again">Проверить снова</string>
     <string name="download_apk">Скачать APK</string>
     <string name="all_releases_github">Все релизы на GitHub</string>
+    <string name="cast_no_play_services">Сервисы Google Play недоступны</string>
+    <string name="cast_no_play_services_desc">Для поиска устройств Cast требуются сервисы Google Play.</string>
+    <string name="cast_no_network">Нет подключения к сети</string>
+    <string name="cast_no_network_desc">Подключитесь к Wi-Fi для поиска устройств Cast в локальной сети.</string>
 </resources>

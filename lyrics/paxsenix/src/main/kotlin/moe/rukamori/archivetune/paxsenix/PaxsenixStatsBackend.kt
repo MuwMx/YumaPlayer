@@ -18,8 +18,8 @@ internal object PaxsenixStatsBackend {
                 header(HttpHeaders.UserAgent, PaxsenixApi.userAgent)
                 header(HttpHeaders.Accept, "application/json, text/plain, */*")
             }
-            check(response.status.value in 200..299) {
-                "Paxsenix stats request failed with HTTP ${response.status.value}"
+            if (response.status.value !in 200..299) {
+                throw IllegalStateException("Paxsenix stats request failed with HTTP ${response.status.value}")
             }
             response.body<PaxsenixStats>()
         }

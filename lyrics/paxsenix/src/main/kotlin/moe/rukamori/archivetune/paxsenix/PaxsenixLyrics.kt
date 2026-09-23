@@ -28,6 +28,8 @@ object PaxsenixLyrics {
         PaxsenixApi.setApiKey(apiKey)
     }
 
+    fun hasApiKey(): Boolean = PaxsenixApi.hasApiKey()
+
     fun setClient(client: HttpClient) {
         PaxsenixApi.setClient(client)
     }

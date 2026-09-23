@@ -11,6 +11,7 @@ import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
+import timber.log.Timber
 
 object PaxsenixMusixmatchLyricsProvider : LyricsProvider {
     override val name = "Paxsenix: Musixmatch"
@@ -23,7 +24,13 @@ object PaxsenixMusixmatchLyricsProvider : LyricsProvider {
         artist: String,
         album: String?,
         duration: Int,
-    ): Result<String> = PaxsenixLyrics.getMusixmatchLyrics(title, artist, duration)
+    ): Result<String> {
+        if (!PaxsenixLyrics.hasApiKey()) {
+            Timber.tag("Paxsenix").w("Paxsenix API key is not configured; skipping $name")
+            return Result.failure(IllegalStateException("Paxsenix API key is not configured"))
+        }
+        return PaxsenixLyrics.getMusixmatchLyrics(title, artist, duration)
+    }
 
     override suspend fun getAllLyrics(
         id: String,
@@ -33,6 +40,10 @@ object PaxsenixMusixmatchLyricsProvider : LyricsProvider {
         duration: Int,
         callback: (String) -> Unit,
     ) {
+        if (!PaxsenixLyrics.hasApiKey()) {
+            Timber.tag("Paxsenix").w("Paxsenix API key is not configured; skipping $name")
+            return
+        }
         getLyrics(id, title, artist, album, duration).onSuccess(callback)
     }
 }

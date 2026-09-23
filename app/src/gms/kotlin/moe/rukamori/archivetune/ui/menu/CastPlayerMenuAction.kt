@@ -316,7 +316,7 @@ private fun CastRoutePickerContent(
 
         when (screenState) {
             CastRoutePickerScreenState.Loading -> CastRoutePickerLoading()
-            CastRoutePickerScreenState.Empty -> CastRoutePickerEmpty()
+            is CastRoutePickerScreenState.Empty -> CastRoutePickerEmpty(screenState.reason)
             is CastRoutePickerScreenState.Error -> CastRoutePickerError(messageResId = screenState.messageResId)
             is CastRoutePickerScreenState.Success -> CastRoutePickerRouteList(screenState.routes, onRouteClick)
         }
@@ -414,7 +414,16 @@ private fun CastRoutePickerLoading() {
 }
 
 @Composable
-private fun CastRoutePickerEmpty() {
+private fun CastRoutePickerEmpty(
+    reason: CastEmptyReason = CastEmptyReason.NO_DEVICES,
+) {
+    val (titleRes, descRes) =
+        when (reason) {
+            CastEmptyReason.NO_DEVICES -> R.string.cast_no_devices to R.string.cast_no_devices_desc
+            CastEmptyReason.NO_PLAY_SERVICES -> R.string.cast_no_play_services to R.string.cast_no_play_services_desc
+            CastEmptyReason.NO_NETWORK -> R.string.cast_no_network to R.string.cast_no_network_desc
+        }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -436,13 +445,13 @@ private fun CastRoutePickerEmpty() {
                 modifier = Modifier.size(38.dp),
             )
             Text(
-                text = stringResource(R.string.cast_no_devices),
+                text = stringResource(titleRes),
                 modifier = Modifier.padding(top = 16.dp),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.cast_no_devices_desc),
+                text = stringResource(descRes),
                 modifier = Modifier.padding(top = 6.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -538,7 +547,12 @@ private fun CastRouteUiModel.supportingText(): String =
 private fun CastRoutePickerScreenState.statusText(): String =
     when (this) {
         CastRoutePickerScreenState.Loading -> stringResource(R.string.cast_searching_devices)
-        CastRoutePickerScreenState.Empty -> stringResource(R.string.cast_no_devices)
+        is CastRoutePickerScreenState.Empty ->
+            when (reason) {
+                CastEmptyReason.NO_DEVICES -> stringResource(R.string.cast_no_devices)
+                CastEmptyReason.NO_PLAY_SERVICES -> stringResource(R.string.cast_no_play_services)
+                CastEmptyReason.NO_NETWORK -> stringResource(R.string.cast_no_network)
+            }
         is CastRoutePickerScreenState.Error -> stringResource(messageResId)
         is CastRoutePickerScreenState.Success -> stringResource(R.string.cast_available_device_count, routes.size)
     }

@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.ui.menu
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
@@ -14,6 +16,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastState
+import com.google.android.gms.cast.framework.CastStateListener
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +27,12 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import timber.log.Timber
 
+internal enum class CastEmptyReason {
+    NO_DEVICES,
+    NO_PLAY_SERVICES,
+    NO_NETWORK,
+}
+
 internal sealed interface CastRoutePickerScreenState {
     data object Loading : CastRoutePickerScreenState
 
@@ -30,7 +40,9 @@ internal sealed interface CastRoutePickerScreenState {
         val routes: List<CastRouteUiModel>,
     ) : CastRoutePickerScreenState
 
-    data object Empty : CastRoutePickerScreenState
+    data class Empty(
+        val reason: CastEmptyReason = CastEmptyReason.NO_DEVICES,
+    ) : CastRoutePickerScreenState
 
     data class Error(
         @StringRes val messageResId: Int,
@@ -52,11 +64,29 @@ internal class CastRoutePickerViewModel(
 ) : AndroidViewModel(application) {
     private val router = MediaRouter.getInstance(application)
     private val _screenState = MutableStateFlow<CastRoutePickerScreenState>(CastRoutePickerScreenState.Loading)
+    private val _castState = MutableStateFlow(CastState.NO_DEVICES_AVAILABLE)
+    val castState: StateFlow<Int> = _castState.asStateFlow()
+
+    private var castContext: CastContext? = null
     private var selector: MediaRouteSelector? = null
     private var callback: MediaRouter.Callback? = null
     private var emptyStateJob: Job? = null
 
     val screenState: StateFlow<CastRoutePickerScreenState> = _screenState.asStateFlow()
+
+    private val castStateListener = CastStateListener { state ->
+        _castState.value = state
+        Timber.tag("Cast").d("Cast state changed: $state")
+        refreshRoutes()
+    }
+
+    private fun isNetworkConnected(): Boolean =
+        runCatching {
+            val cm = getApplication<Application>().getSystemService(Application.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val activeNetwork = cm?.activeNetwork ?: return@runCatching false
+            val capabilities = cm.getNetworkCapabilities(activeNetwork) ?: return@runCatching false
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }.getOrDefault(true)
 
     fun startDiscovery() {
         if (callback != null) {
@@ -64,13 +94,32 @@ internal class CastRoutePickerViewModel(
             return
         }
 
-        val castSelector =
-            runCatching { CastContext.getSharedInstance(getApplication<Application>()).mergedSelector }
+        if (!isNetworkConnected()) {
+            _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_NETWORK)
+            return
+        }
+
+        val context =
+            runCatching { CastContext.getSharedInstance(getApplication<Application>()) }
                 .onFailure { Timber.tag("Cast").w(it, "Unable to start Cast route discovery") }
                 .getOrNull()
 
+        if (context == null) {
+            _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
+            return
+        }
+
+        castContext = context
+        context.addCastStateListener(castStateListener)
+        _castState.value = context.castState
+
+        val castSelector =
+            runCatching { context.mergedSelector }
+                .onFailure { Timber.tag("Cast").w(it, "Unable to get Cast mergedSelector") }
+                .getOrNull()
+
         if (castSelector == null) {
-            _screenState.value = CastRoutePickerScreenState.Error(R.string.cast_route_picker_unavailable)
+            _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
             return
         }
 
@@ -115,6 +164,8 @@ internal class CastRoutePickerViewModel(
     }
 
     fun stopDiscovery() {
+        castContext?.removeCastStateListener(castStateListener)
+        castContext = null
         emptyStateJob?.cancel()
         emptyStateJob = null
         callback?.let(router::removeCallback)
@@ -151,9 +202,15 @@ internal class CastRoutePickerViewModel(
                 .toList()
 
         if (routes.isEmpty()) {
-            if (_screenState.value !is CastRoutePickerScreenState.Empty) {
-                _screenState.value = CastRoutePickerScreenState.Loading
-                scheduleEmptyState()
+            if (!isNetworkConnected()) {
+                emptyStateJob?.cancel()
+                emptyStateJob = null
+                _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_NETWORK)
+            } else {
+                if (_screenState.value !is CastRoutePickerScreenState.Empty) {
+                    _screenState.value = CastRoutePickerScreenState.Loading
+                    scheduleEmptyState()
+                }
             }
         } else {
             emptyStateJob?.cancel()
@@ -169,7 +226,13 @@ internal class CastRoutePickerViewModel(
                 delay(3_500)
                 val castSelector = selector ?: return@launch
                 if (router.routes.none { it.isSelectableCastRoute(castSelector) }) {
-                    _screenState.value = CastRoutePickerScreenState.Empty
+                    val reason =
+                        when {
+                            !isNetworkConnected() -> CastEmptyReason.NO_NETWORK
+                            castContext == null -> CastEmptyReason.NO_PLAY_SERVICES
+                            else -> CastEmptyReason.NO_DEVICES
+                        }
+                    _screenState.value = CastRoutePickerScreenState.Empty(reason)
                 }
             }
     }

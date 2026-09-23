@@ -379,10 +379,14 @@ private class LocalCastMediaServer(
     fun stop() {
         servedItems.clear()
         servedArtwork.clear()
-        val currentEngine = engine ?: return
+        hostAddress = null
+        port = 0
+        val currentEngine = engine
         engine = null
-        runCatching { currentEngine.stop(1000, 2000) }
-            .onFailure { Timber.tag("Cast").w(it, "Unable to stop local Cast media server") }
+        if (currentEngine != null) {
+            runCatching { currentEngine.stop(1000, 2000) }
+                .onFailure { Timber.tag("Cast").w(it, "Unable to stop local Cast media server") }
+        }
     }
 
     private fun ensureStarted(): String? {
