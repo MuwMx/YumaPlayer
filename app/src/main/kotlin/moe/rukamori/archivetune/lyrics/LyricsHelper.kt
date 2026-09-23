@@ -435,7 +435,7 @@ class LyricsHelper
                 )
             val userOrdered = orderedEnums.mapNotNull { providerMap[it] }
             val rest = baseProviders.filterNot { it in userOrdered }
-            val paxsenixEnabled = preferences[EnablePaxsenixLyricsKey] ?: true
+            val paxsenixEnabled = preferences[EnablePaxsenixLyricsKey] ?: false
             val paxsenixApiKeyConfigured = !preferences[PaxsenixApiKeyKey].isNullOrBlank()
             if (paxsenixEnabled && !paxsenixApiKeyConfigured) {
                 GlobalLog.append(

@@ -181,6 +181,8 @@ internal fun LyricsSettingsContent(
             onEnableSimpMusicLyricsChange = actions.onEnableSimpMusicLyricsChange,
             enablePaxsenixLyrics = state.enablePaxsenixLyrics,
             onEnablePaxsenixLyricsChange = actions.onEnablePaxsenixLyricsChange,
+            paxsenixApiKey = state.paxsenixApiKey,
+            onOpenPaxsenixApiKeyDialog = actions.onOpenPaxsenixApiKeyDialog,
             enablePaxsenixAppleMusicLyrics = state.enablePaxsenixAppleMusicLyrics,
             onEnablePaxsenixAppleMusicLyricsChange = actions.onEnablePaxsenixAppleMusicLyricsChange,
             enablePaxsenixNeteaseLyrics = state.enablePaxsenixNeteaseLyrics,

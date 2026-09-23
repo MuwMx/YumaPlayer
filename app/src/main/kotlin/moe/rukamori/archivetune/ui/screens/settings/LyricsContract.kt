@@ -16,6 +16,7 @@ import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixNeteaseLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixSpotifyLyricsKey
 import moe.rukamori.archivetune.constants.EnablePaxsenixYouTubeLyricsKey
+import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
@@ -53,6 +54,7 @@ internal object LyricsContract {
     val UnisonKey = EnableUnisonLyricsKey
     val SimpMusicKey = EnableSimpMusicLyricsKey
     val PaxsenixKey = EnablePaxsenixLyricsKey
+    val PaxsenixApiKey = PaxsenixApiKeyKey
     val PaxsenixAppleMusicKey = EnablePaxsenixAppleMusicLyricsKey
     val PaxsenixNeteaseKey = EnablePaxsenixNeteaseLyricsKey
     val PaxsenixSpotifyKey = EnablePaxsenixSpotifyLyricsKey
@@ -122,7 +124,8 @@ data class LyricsSettingsUiState(
     val enableKugou: Boolean = true,
     val enableUnisonLyrics: Boolean = true,
     val enableSimpMusicLyrics: Boolean = true,
-    val enablePaxsenixLyrics: Boolean = true,
+    val enablePaxsenixLyrics: Boolean = false,
+    val paxsenixApiKey: String = "",
     val enablePaxsenixAppleMusicLyrics: Boolean = true,
     val enablePaxsenixNeteaseLyrics: Boolean = true,
     val enablePaxsenixSpotifyLyrics: Boolean = true,
@@ -158,6 +161,8 @@ data class LyricsSettingsUiActions(
     val onEnableUnisonLyricsChange: (Boolean) -> Unit = {},
     val onEnableSimpMusicLyricsChange: (Boolean) -> Unit = {},
     val onEnablePaxsenixLyricsChange: (Boolean) -> Unit = {},
+    val onPaxsenixApiKeyChange: (String) -> Unit = {},
+    val onOpenPaxsenixApiKeyDialog: () -> Unit = {},
     val onEnablePaxsenixAppleMusicLyricsChange: (Boolean) -> Unit = {},
     val onEnablePaxsenixNeteaseLyricsChange: (Boolean) -> Unit = {},
     val onEnablePaxsenixSpotifyLyricsChange: (Boolean) -> Unit = {},

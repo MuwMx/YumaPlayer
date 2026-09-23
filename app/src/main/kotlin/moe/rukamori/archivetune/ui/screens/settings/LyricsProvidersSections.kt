@@ -163,6 +163,8 @@ internal fun LyricsProvidersSection(
     onEnableSimpMusicLyricsChange: (Boolean) -> Unit,
     enablePaxsenixLyrics: Boolean,
     onEnablePaxsenixLyricsChange: (Boolean) -> Unit,
+    paxsenixApiKey: String,
+    onOpenPaxsenixApiKeyDialog: () -> Unit,
     enablePaxsenixAppleMusicLyrics: Boolean,
     onEnablePaxsenixAppleMusicLyricsChange: (Boolean) -> Unit,
     enablePaxsenixNeteaseLyrics: Boolean,
@@ -238,6 +240,20 @@ internal fun LyricsProvidersSection(
                 icon = { Icon(painterResource(R.drawable.lyrics), null) },
                 checked = enablePaxsenixLyrics,
                 onCheckedChange = onEnablePaxsenixLyricsChange,
+            )
+        }
+
+        item(visible = enablePaxsenixLyrics) {
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.paxsenix_api_key)) },
+                description =
+                    if (paxsenixApiKey.isBlank()) {
+                        stringResource(R.string.paxsenix_api_key_missing)
+                    } else {
+                        stringResource(R.string.paxsenix_api_key_configured)
+                    },
+                icon = { Icon(painterResource(R.drawable.token), null) },
+                onClick = onOpenPaxsenixApiKeyDialog,
             )
         }
 

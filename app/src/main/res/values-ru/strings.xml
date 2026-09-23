@@ -331,6 +331,10 @@
     <string name="proxy_type">Тип прокси</string>
     <string name="enable_betterlyrics">Включить BetterLyrics</string>
     <string name="enable_simpmusic_lyrics">Включить SimpMusic lyrics</string>
+    <string name="enable_paxsenix_lyrics">Включить тексты песен Paxsenix</string>
+    <string name="paxsenix_api_key">API-ключ Paxsenix</string>
+    <string name="paxsenix_api_key_configured">Настроен</string>
+    <string name="paxsenix_api_key_missing">Требуется для аутентифицированных запросов Paxsenix</string>
     <string name="player_and_audio">Плеер и аудио</string>
     <string name="audio_quality">Качество аудио</string>
     <string name="audio_quality_auto">Авто</string>

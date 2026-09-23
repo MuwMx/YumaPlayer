@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -34,6 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -62,10 +67,13 @@ import moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
 import moe.rukamori.archivetune.constants.LyricsScrollKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
+import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.PreloadQueueLyricsEnabledKey
 import moe.rukamori.archivetune.constants.QueueLyricsPreloadCountKey
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
+import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -78,6 +86,7 @@ fun LyricsSettings(
 ) {
     var showClearLyricsDialog by remember { mutableStateOf(false) }
     var showPaxsenixStatsDialog by remember { mutableStateOf(false) }
+    var showPaxsenixApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     var showProviderOrderDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsTextSizeDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsLineSpacingDialog by rememberSaveable { mutableStateOf(false) }
@@ -96,7 +105,12 @@ fun LyricsSettings(
     val (enableSimpMusicLyrics, onEnableSimpMusicLyricsChange) =
         rememberPreference(key = EnableSimpMusicLyricsKey, defaultValue = true)
     val (enablePaxsenixLyrics, onEnablePaxsenixLyricsChange) =
-        rememberPreference(key = EnablePaxsenixLyricsKey, defaultValue = true)
+        rememberPreference(key = EnablePaxsenixLyricsKey, defaultValue = false)
+    val (paxsenixApiKey, onPaxsenixApiKeyChange) =
+        rememberPreference(
+            key = PaxsenixApiKeyKey,
+            defaultValue = "",
+        )
     val (enablePaxsenixAppleMusicLyrics, onEnablePaxsenixAppleMusicLyricsChange) =
         rememberPreference(
             key = EnablePaxsenixAppleMusicLyricsKey,
@@ -168,6 +182,31 @@ fun LyricsSettings(
         )
     }
 
+    if (showPaxsenixApiKeyDialog) {
+        val passwordVisualTransformation = remember { PasswordVisualTransformation() }
+        val keyboardOptions =
+            remember {
+                KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                )
+            }
+
+        TextFieldDialog(
+            title = { Text(stringResource(R.string.paxsenix_api_key)) },
+            initialTextFieldValue = TextFieldValue(paxsenixApiKey),
+            keyboardOptions = keyboardOptions,
+            visualTransformation = passwordVisualTransformation,
+            isInputValid = { true },
+            onDone = { value ->
+                val normalizedValue = value.trim()
+                onPaxsenixApiKeyChange(normalizedValue)
+                PaxsenixLyrics.setApiKey(normalizedValue)
+            },
+            onDismiss = { showPaxsenixApiKeyDialog = false },
+        )
+    }
+
     if (showPaxsenixStatsDialog) {
         val statsState by viewModel.paxsenixStatsState.collectAsStateWithLifecycle()
 
@@ -229,6 +268,7 @@ fun LyricsSettings(
             enableUnisonLyrics = enableUnisonLyrics,
             enableSimpMusicLyrics = enableSimpMusicLyrics,
             enablePaxsenixLyrics = enablePaxsenixLyrics,
+            paxsenixApiKey = paxsenixApiKey,
             enablePaxsenixAppleMusicLyrics = enablePaxsenixAppleMusicLyrics,
             enablePaxsenixNeteaseLyrics = enablePaxsenixNeteaseLyrics,
             enablePaxsenixSpotifyLyrics = enablePaxsenixSpotifyLyrics,
@@ -262,6 +302,8 @@ fun LyricsSettings(
             onEnableUnisonLyricsChange = onEnableUnisonLyricsChange,
             onEnableSimpMusicLyricsChange = onEnableSimpMusicLyricsChange,
             onEnablePaxsenixLyricsChange = onEnablePaxsenixLyricsChange,
+            onPaxsenixApiKeyChange = onPaxsenixApiKeyChange,
+            onOpenPaxsenixApiKeyDialog = { showPaxsenixApiKeyDialog = true },
             onEnablePaxsenixAppleMusicLyricsChange = onEnablePaxsenixAppleMusicLyricsChange,
             onEnablePaxsenixNeteaseLyricsChange = onEnablePaxsenixNeteaseLyricsChange,
             onEnablePaxsenixSpotifyLyricsChange = onEnablePaxsenixSpotifyLyricsChange,

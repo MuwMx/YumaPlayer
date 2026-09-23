@@ -340,6 +340,7 @@ fun TextFieldDialog(
     autoFocus: Boolean = true,
     maxLines: Int = if (singleLine) 1 else 10,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     isInputValid: (String) -> Boolean = { true },
     onDone: (String) -> Unit = {},
     // new multi-field support
@@ -419,7 +420,7 @@ fun TextFieldDialog(
                             maxLines = maxLines,
                             colors = OutlinedTextFieldDefaults.colors(),
                             keyboardOptions = keyboardOptions,
-                            visualTransformation = VisualTransformation.None,
+                            visualTransformation = visualTransformation,
                             keyboardActions =
                                 KeyboardActions(
                                     onDone = {
@@ -445,7 +446,7 @@ fun TextFieldDialog(
                         maxLines = maxLines,
                         colors = OutlinedTextFieldDefaults.colors(),
                         keyboardOptions = keyboardOptions,
-                        visualTransformation = VisualTransformation.None,
+                        visualTransformation = visualTransformation,
                         keyboardActions =
                             KeyboardActions(
                                 onDone = {
