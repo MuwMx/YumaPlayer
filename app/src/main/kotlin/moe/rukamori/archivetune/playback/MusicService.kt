@@ -512,6 +512,7 @@ class MusicService :
     internal val currentMediaMetadata = MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
     val queueRestoreCompleted = MutableStateFlow(false)
     val infiniteQueueLoading = MutableStateFlow(false)
+    private var infiniteQueueJob: Job? = null
     private val playerInitialized = MutableStateFlow(false)
     private val currentSong =
         currentMediaMetadata
@@ -2100,6 +2101,7 @@ class MusicService :
         cancelRestoredQueueHydration()
         ensureScopesActive()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
         playQueueJob?.cancel()
         isInitializingQueue = true
@@ -2162,6 +2164,14 @@ class MusicService :
                 }
             } finally {
                 isInitializingQueue = false
+            }
+            scope.launch(SilentHandler) {
+                if (player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
+                    !currentQueue.hasNextPage() &&
+                    dataStore.get(AutoLoadMoreKey, true)
+                ) {
+                    onInfiniteQueueEnabled()
+                }
             }
         }
     }
@@ -2238,6 +2248,7 @@ class MusicService :
             showTogetherNotice(getString(R.string.not_allowed), key = "GUEST_RADIO_UNSUPPORTED")
             return
         }
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
         val currentMediaMetadata = player.currentMetadata ?: return
 
@@ -2298,6 +2309,7 @@ class MusicService :
     }
 
     fun clearQueue() {
+        cancelInfiniteQueueBootstrap()
         val currentIdx = player.currentMediaItemIndex
         if (currentIdx < 0 || player.mediaItemCount <= 1) return
 
@@ -2313,7 +2325,7 @@ class MusicService :
     }
 
     fun onInfiniteQueueDisabled() {
-        infiniteQueueLoading.value = false
+        cancelInfiniteQueueBootstrap()
         val currentIndex = player.currentMediaItemIndex
         val idsToRemove = synchronized(autoAddedMediaIds) { autoAddedMediaIds.toSet() }
         if (idsToRemove.isEmpty()) {
@@ -2331,41 +2343,53 @@ class MusicService :
     }
 
     fun onInfiniteQueueEnabled() {
+        if (infiniteQueueJob?.isActive == true) return
         if (currentQueue is SpotifyTracksQueue) return
         val currentMeta = player.currentMetadata ?: return
         if (isCurrentPlaybackItemLocal(currentMeta)) return
         if (infiniteQueueLoading.value) return
         infiniteQueueLoading.value = true
 
-        scope.launch(SilentHandler) {
-            try {
-                val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMeta.id), followAutomixPreview = true)
-                val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
+        infiniteQueueJob =
+            scope.launch(SilentHandler) {
+                try {
+                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMeta.id), followAutomixPreview = true)
+                    val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
 
-                val existingIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
-                val newItems = status.items.filter { it.mediaId !in existingIds }
+                    val existingIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
+                    val newItems = status.items.filter { it.mediaId !in existingIds }
 
-                if (newItems.isNotEmpty()) {
-                    player.addMediaItems(newItems)
-                    newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
+                    if (newItems.isNotEmpty()) {
+                        player.addMediaItems(newItems)
+                        newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
+                    }
+
+                    currentQueue = radioQueue
+
+                    if (player.playbackState == Player.STATE_ENDED || player.mediaItemCount == player.currentMediaItemIndex + 1) {
+                        player.seekToNext()
+                        player.play()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to bootstrap auto-queue")
+                } finally {
+                    infiniteQueueJob = null
+                    infiniteQueueLoading.value = false
                 }
-
-                currentQueue = radioQueue
-
-                if (player.playbackState == Player.STATE_ENDED || player.mediaItemCount == player.currentMediaItemIndex + 1) {
-                    player.seekToNext()
-                    player.play()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to bootstrap auto-queue")
-            } finally {
-                infiniteQueueLoading.value = false
             }
-        }
+    }
+
+    private fun cancelInfiniteQueueBootstrap() {
+        infiniteQueueJob?.cancel()
+        infiniteQueueJob = null
+        infiniteQueueLoading.value = false
     }
 
     fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
         cancelRestoredQueueHydration()
+        cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = true
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         clearAutomix()
@@ -2717,6 +2741,17 @@ class MusicService :
             }
         }
 
+        if (!suppressAutoPlayback &&
+            !timelineEmpty &&
+            dataStore.get(AutoLoadMoreKey, true) &&
+            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
+            player.repeatMode == REPEAT_MODE_OFF &&
+            remainingTracks <= 3 &&
+            !currentQueue.hasNextPage()
+        ) {
+            onInfiniteQueueEnabled()
+        }
+
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
             scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
         }
@@ -2751,6 +2786,13 @@ class MusicService :
             enqueueCurrentHistorySessionForFinalization()
             if (!isCrossfading || playbackState == Player.STATE_IDLE) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            }
+            if (playbackState == Player.STATE_ENDED &&
+                !suppressAutoPlayback &&
+                dataStore.get(AutoLoadMoreKey, true) &&
+                player.repeatMode == REPEAT_MODE_OFF
+            ) {
+                onInfiniteQueueEnabled()
             }
         } else if (playbackState == Player.STATE_READY) {
             scheduleCrossfade()
