@@ -35,8 +35,8 @@ sealed interface PlayerAction {
     data object ToggleAutoMix : PlayerAction
     data object ClearQueue : PlayerAction
     data object ShuffleQueue : PlayerAction
-    data class PlayQueueItem(val index: Int) : PlayerAction
-    data class RemoveQueueItem(val index: Int) : PlayerAction
+    data class PlayQueueItem(val windowUid: Any) : PlayerAction
+    data class RemoveQueueItem(val windowUid: Any) : PlayerAction
     data class MoveQueueItem(val from: Int, val to: Int) : PlayerAction
     // Перемотка трека
     data class SeekTo(val positionMs: Long) : PlayerAction

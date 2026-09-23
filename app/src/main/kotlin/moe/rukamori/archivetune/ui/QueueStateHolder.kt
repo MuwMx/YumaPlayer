@@ -56,52 +56,67 @@ class QueueStateHolder(
         }
     }
 
-    fun playQueueItem(index: Int) {
+    fun playQueueItem(windowUid: Any) {
         val player = audioPlayerProvider() ?: return
-        val resolvedIndex = resolveMediaItemIndex(index) ?: return
-        player.seekToDefaultPosition(resolvedIndex)
-        player.playWhenReady = true
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) {
+            if (windowUid is Int) {
+                player.seekToDefaultPosition(windowUid)
+                player.playWhenReady = true
+            }
+            return
+        }
+        val window = Timeline.Window()
+        for (i in 0 until timeline.windowCount) {
+            val w = timeline.getWindow(i, window)
+            if (w.uid == windowUid || matchesQueueKey(w, windowUid)) {
+                player.seekToDefaultPosition(i)
+                player.playWhenReady = true
+                return
+            }
+        }
     }
 
-    fun removeQueueItem(index: Int) {
+    fun removeQueueItem(windowUid: Any) {
         val player = audioPlayerProvider() ?: return
-        val resolvedIndex = resolveMediaItemIndex(index) ?: return
-        player.removeMediaItem(resolvedIndex)
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) {
+            if (windowUid is Int) {
+                player.removeMediaItem(windowUid)
+            }
+            return
+        }
+        val window = Timeline.Window()
+        for (i in 0 until timeline.windowCount) {
+            val w = timeline.getWindow(i, window)
+            if (w.uid == windowUid || matchesQueueKey(w, windowUid)) {
+                player.removeMediaItem(i)
+                return
+            }
+        }
     }
 
     fun moveQueueItem(from: Int, to: Int) {
         val player = audioPlayerProvider() ?: return
-        val resolvedFrom = resolveMediaItemIndex(from) ?: return
-        val resolvedTo = resolveMediaItemIndex(to) ?: return
-        if (resolvedFrom != resolvedTo) {
-            player.moveMediaItem(resolvedFrom, resolvedTo)
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) {
+            if (from != to) {
+                player.moveMediaItem(from, to)
+            }
+            return
+        }
+        val fromIndex = if (from in 0 until timeline.windowCount) from else timeline.getPeriod(from, Timeline.Period()).windowIndex
+        val toIndex = if (to in 0 until timeline.windowCount) to else timeline.getPeriod(to, Timeline.Period()).windowIndex
+        if (fromIndex != toIndex && fromIndex in 0 until timeline.windowCount && toIndex in 0 until timeline.windowCount) {
+            player.moveMediaItem(fromIndex, toIndex)
         }
     }
 
-    private fun resolveMediaItemIndex(index: Int): Int? {
-        val player = audioPlayerProvider() ?: return null
-        val timeline = player.currentTimeline
-        if (timeline.isEmpty) return null
-
-        val cachedWindow = _queueState.value.queueWindows.firstOrNull { it.firstPeriodIndex == index }
-        if (cachedWindow != null) {
-            val window = Timeline.Window()
-            for (i in 0 until timeline.windowCount) {
-                if (timeline.getWindow(i, window).uid == cachedWindow.uid) {
-                    return i
-                }
-            }
-        }
-
-        if (index in 0 until timeline.periodCount) {
-            val period = timeline.getPeriod(index, Timeline.Period())
-            val windowIndex = period.windowIndex
-            if (windowIndex in 0 until timeline.windowCount) {
-                return windowIndex
-            }
-        }
-
-        return if (index in 0 until timeline.windowCount) index else null
+    private fun matchesQueueKey(window: Timeline.Window, key: Any): Boolean {
+        if (key !is Long) return false
+        val computed = (window.uid.hashCode().toLong() shl Int.SIZE_BITS) xor
+            (window.mediaItem.mediaId.hashCode().toLong() and UInt.MAX_VALUE.toLong())
+        return computed == key
     }
 
     fun clearQueue() {

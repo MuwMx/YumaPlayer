@@ -14,14 +14,18 @@ import androidx.datastore.preferences.core.Preferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
@@ -56,6 +60,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.utils.GlobalLog
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
+import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
 import okhttp3.Credentials
@@ -72,8 +77,19 @@ class LyricsHelper
         @ApplicationContext private val context: Context,
         private val networkConnectivity: NetworkConnectivityObserver,
     ) {
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         init {
-            SharedLyricsEngine.update()
+            scope.launch {
+                val preferences = context.dataStore.data.first()
+                SharedLyricsEngine.update(preferences)
+                context.dataStore.data
+                    .map { it[PaxsenixApiKeyKey].orEmpty() }
+                    .distinctUntilChanged()
+                    .collect { apiKey ->
+                        PaxsenixLyrics.setApiKey(apiKey)
+                    }
+            }
         }
 
         private val baseProviders =
@@ -401,6 +417,8 @@ class LyricsHelper
 
         internal suspend fun orderedProviders(): List<LyricsProvider> {
             val preferences = context.dataStore.data.first()
+            val apiKey = preferences[PaxsenixApiKeyKey].orEmpty()
+            PaxsenixLyrics.setApiKey(apiKey)
             val orderStr = preferences[LyricsProviderOrderKey]
             val orderedEnums = deserializeLyricsProviderOrder(orderStr)
             val providerMap: Map<PreferredLyricsProvider, LyricsProvider> =
@@ -512,6 +530,8 @@ object SharedLyricsEngine {
     init {
         PaxsenixLyrics.setClient(httpClient)
         BetterLyrics.setClient(httpClient)
+        val apiKey = PreferenceStore.get(PaxsenixApiKeyKey).orEmpty()
+        PaxsenixLyrics.setApiKey(apiKey)
     }
 
     fun createOkHttpClient(): OkHttpClient =
@@ -559,7 +579,7 @@ object SharedLyricsEngine {
             expectSuccess = false
         }
 
-    fun update() {
+    fun update(preferences: Preferences? = null) {
         synchronized(lock) {
             val oldClient = httpClient
             val newOkHttp = createOkHttpClient()
@@ -570,6 +590,8 @@ object SharedLyricsEngine {
 
             PaxsenixLyrics.setClient(newClient)
             BetterLyrics.setClient(newClient)
+            val apiKey = preferences?.get(PaxsenixApiKeyKey) ?: PreferenceStore.get(PaxsenixApiKeyKey).orEmpty()
+            PaxsenixLyrics.setApiKey(apiKey)
 
             runCatching { oldClient.close() }
         }

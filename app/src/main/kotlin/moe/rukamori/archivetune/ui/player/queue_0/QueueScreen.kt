@@ -111,8 +111,8 @@ fun QueueScreen(
     }
 
     val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
-    var dragFromKey by remember { mutableStateOf<Long?>(null) }
-    var dragToKey by remember { mutableStateOf<Long?>(null) }
+    var dragFromKey by remember { mutableStateOf<Any?>(null) }
+    var dragToKey by remember { mutableStateOf<Any?>(null) }
     var initialWindowsSnapshot by remember { mutableStateOf<List<Timeline.Window>?>(null) }
     var reorderHandleInUse by remember { mutableStateOf(false) }
 
@@ -144,9 +144,9 @@ fun QueueScreen(
             onMove = { from, to ->
                 if (dragFromKey == null) {
                     initialWindowsSnapshot = mutableQueueWindows.toList()
-                    dragFromKey = from.key as? Long ?: (from.key as? Number)?.toLong()
+                    dragFromKey = from.key
                 }
-                dragToKey = to.key as? Long ?: (to.key as? Number)?.toLong()
+                dragToKey = to.key
                 mutableQueueWindows.add(to.index, mutableQueueWindows.removeAt(from.index))
             },
         )
@@ -231,7 +231,6 @@ fun QueueScreen(
             key = { _, window -> window.queueItemKey },
             contentType = { _, _ -> "queue_item" },
         ) { _, window ->
-            val targetIndex = window.firstPeriodIndex
             ReorderableItem(
                 state = reorderableState,
                 key = window.queueItemKey,
@@ -249,7 +248,6 @@ fun QueueScreen(
 
                 QueueItem(
                     window = window,
-                    index = targetIndex,
                     isActive = currentPlayingUid != null && window.uid == currentPlayingUid,
                     isDragging = isDragging,
                     cropToSquare = cropToSquare,
@@ -258,9 +256,12 @@ fun QueueScreen(
                     hapticView = hapticView,
                     onPlay = {
                         haptics.click()
-                        onAction(PlayerAction.PlayQueueItem(targetIndex))
+                        onAction(PlayerAction.PlayQueueItem(window.uid))
                     },
-                    onRemove = { onAction(PlayerAction.RemoveQueueItem(targetIndex)) },
+                    onRemove = {
+                        mutableQueueWindows.removeAll { it.uid == window.uid }
+                        onAction(PlayerAction.RemoveQueueItem(window.uid))
+                    },
                     dragHandle = {
                         IconButton(
                             onClick = {},
@@ -318,7 +319,6 @@ fun QueueScreen(
 @Composable
 private fun QueueItem(
     window: Timeline.Window,
-    index: Int,
     isActive: Boolean,
     isDragging: Boolean,
     cropToSquare: Boolean,

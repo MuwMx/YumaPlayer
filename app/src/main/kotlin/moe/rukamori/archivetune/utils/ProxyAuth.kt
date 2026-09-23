@@ -24,10 +24,10 @@ object ProxyAuth {
             JavaAuthenticator.setDefault(
                 object : JavaAuthenticator() {
                     override fun getPasswordAuthentication(): PasswordAuthentication? {
-                        if (requestorType != RequestorType.PROXY) return null
+                        if (requestorType != RequestorType.PROXY && requestorType != RequestorType.SERVER) return null
                         val targetProxy = YouTube.proxy ?: return null
                         val address = targetProxy.address() as? InetSocketAddress ?: return null
-                        val reqHost = requestingHost
+                        val reqHost = requestingHost ?: requestingSite?.hostAddress ?: requestingSite?.hostName
                         val hostMatches =
                             reqHost != null && (
                                 reqHost.equals(address.hostString, ignoreCase = true) ||
