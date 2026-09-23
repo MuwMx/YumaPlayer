@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui
 
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,15 +57,51 @@ class QueueStateHolder(
     }
 
     fun playQueueItem(index: Int) {
-        audioPlayerProvider()?.seekToDefaultPosition(index)
+        val player = audioPlayerProvider() ?: return
+        val resolvedIndex = resolveMediaItemIndex(index) ?: return
+        player.seekToDefaultPosition(resolvedIndex)
+        player.playWhenReady = true
     }
 
     fun removeQueueItem(index: Int) {
-        audioPlayerProvider()?.removeMediaItem(index)
+        val player = audioPlayerProvider() ?: return
+        val resolvedIndex = resolveMediaItemIndex(index) ?: return
+        player.removeMediaItem(resolvedIndex)
     }
 
     fun moveQueueItem(from: Int, to: Int) {
-        audioPlayerProvider()?.moveMediaItem(from, to)
+        val player = audioPlayerProvider() ?: return
+        val resolvedFrom = resolveMediaItemIndex(from) ?: return
+        val resolvedTo = resolveMediaItemIndex(to) ?: return
+        if (resolvedFrom != resolvedTo) {
+            player.moveMediaItem(resolvedFrom, resolvedTo)
+        }
+    }
+
+    private fun resolveMediaItemIndex(index: Int): Int? {
+        val player = audioPlayerProvider() ?: return null
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return null
+
+        val cachedWindow = _queueState.value.queueWindows.firstOrNull { it.firstPeriodIndex == index }
+        if (cachedWindow != null) {
+            val window = Timeline.Window()
+            for (i in 0 until timeline.windowCount) {
+                if (timeline.getWindow(i, window).uid == cachedWindow.uid) {
+                    return i
+                }
+            }
+        }
+
+        if (index in 0 until timeline.periodCount) {
+            val period = timeline.getPeriod(index, Timeline.Period())
+            val windowIndex = period.windowIndex
+            if (windowIndex in 0 until timeline.windowCount) {
+                return windowIndex
+            }
+        }
+
+        return if (index in 0 until timeline.windowCount) index else null
     }
 
     fun clearQueue() {

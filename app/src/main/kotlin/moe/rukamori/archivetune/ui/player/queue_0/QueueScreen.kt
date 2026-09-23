@@ -111,9 +111,15 @@ fun QueueScreen(
     }
 
     val mutableQueueWindows = remember { mutableStateListOf<Timeline.Window>() }
-    var dragFromIndex by remember { mutableStateOf<Int?>(null) }
-    var dragToIndex by remember { mutableStateOf<Int?>(null) }
+    var dragFromKey by remember { mutableStateOf<Long?>(null) }
+    var dragToKey by remember { mutableStateOf<Long?>(null) }
+    var initialWindowsSnapshot by remember { mutableStateOf<List<Timeline.Window>?>(null) }
     var reorderHandleInUse by remember { mutableStateOf(false) }
+
+    val currentPlayingUid =
+        remember(state.currentWindowIndex, state.queueWindows) {
+            state.queueWindows.getOrNull(state.currentWindowIndex)?.uid
+        }
 
     LaunchedEffect(lazyListState) {
         snapshotFlow {
@@ -136,10 +142,11 @@ fun QueueScreen(
         rememberReorderableLazyListState(
             lazyListState = lazyListState,
             onMove = { from, to ->
-                if (dragFromIndex == null) {
-                    dragFromIndex = from.index
+                if (dragFromKey == null) {
+                    initialWindowsSnapshot = mutableQueueWindows.toList()
+                    dragFromKey = from.key as? Long ?: (from.key as? Number)?.toLong()
                 }
-                dragToIndex = to.index
+                dragToKey = to.key as? Long ?: (to.key as? Number)?.toLong()
                 mutableQueueWindows.add(to.index, mutableQueueWindows.removeAt(from.index))
             },
         )
@@ -154,13 +161,19 @@ fun QueueScreen(
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         onReorderStateChange(reorderableState.isAnyItemDragging)
         if (!reorderableState.isAnyItemDragging) {
-            val from = dragFromIndex
-            val to = dragToIndex
-            if (from != null && to != null && from != to) {
-                onAction(PlayerAction.MoveQueueItem(from, to))
+            val fromKey = dragFromKey
+            val toKey = dragToKey
+            val snapshot = initialWindowsSnapshot
+            if (fromKey != null && toKey != null && fromKey != toKey && snapshot != null) {
+                val fromWindow = snapshot.firstOrNull { it.queueItemKey == fromKey }
+                val toWindow = snapshot.firstOrNull { it.queueItemKey == toKey }
+                if (fromWindow != null && toWindow != null) {
+                    onAction(PlayerAction.MoveQueueItem(fromWindow.firstPeriodIndex, toWindow.firstPeriodIndex))
+                }
             }
-            dragFromIndex = null
-            dragToIndex = null
+            dragFromKey = null
+            dragToKey = null
+            initialWindowsSnapshot = null
         }
     }
 
@@ -217,7 +230,8 @@ fun QueueScreen(
             items = mutableQueueWindows,
             key = { _, window -> window.queueItemKey },
             contentType = { _, _ -> "queue_item" },
-        ) { index, window ->
+        ) { _, window ->
+            val targetIndex = window.firstPeriodIndex
             ReorderableItem(
                 state = reorderableState,
                 key = window.queueItemKey,
@@ -235,8 +249,8 @@ fun QueueScreen(
 
                 QueueItem(
                     window = window,
-                    index = index,
-                    isActive = index == state.currentWindowIndex,
+                    index = targetIndex,
+                    isActive = currentPlayingUid != null && window.uid == currentPlayingUid,
                     isDragging = isDragging,
                     cropToSquare = cropToSquare,
                     itemWidthPx = itemWidthPx,
@@ -244,9 +258,9 @@ fun QueueScreen(
                     hapticView = hapticView,
                     onPlay = {
                         haptics.click()
-                        onAction(PlayerAction.PlayQueueItem(index))
+                        onAction(PlayerAction.PlayQueueItem(targetIndex))
                     },
-                    onRemove = { onAction(PlayerAction.RemoveQueueItem(index)) },
+                    onRemove = { onAction(PlayerAction.RemoveQueueItem(targetIndex)) },
                     dragHandle = {
                         IconButton(
                             onClick = {},

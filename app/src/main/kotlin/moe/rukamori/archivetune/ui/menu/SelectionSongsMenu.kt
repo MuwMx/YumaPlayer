@@ -925,7 +925,7 @@ fun SelectionMediaMetadataMenu(
                                 onRemoveFromQueue(currentItems)
                             } else {
                                 var i = 0
-                                currentItems.forEach { cur ->
+                                currentItems.sortedBy { it.firstPeriodIndex }.forEach { cur ->
                                     if (playerConnection.player.availableCommands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)) {
                                         playerConnection.player.removeMediaItem(cur.firstPeriodIndex - i++)
                                     }
