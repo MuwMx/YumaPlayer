@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
+import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.dataStore
@@ -79,6 +80,7 @@ class DownloadUtil
             OkHttpClient
                 .Builder()
                 .proxy(YouTube.streamOkHttpProxy)
+                .proxyAuthenticator(ProxyAuth.proxyAuthenticator)
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)

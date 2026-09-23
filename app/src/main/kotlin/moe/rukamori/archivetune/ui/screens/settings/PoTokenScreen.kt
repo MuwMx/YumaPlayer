@@ -44,12 +44,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -126,6 +128,7 @@ fun PoTokenScreen(
     val clipboardManager = LocalClipboardManager.current
     val tokenState by viewModel.state.collectAsState()
     var showRegenerateSheet by remember { mutableStateOf(false) }
+    var showCookieBypassDialog by remember { mutableStateOf(false) }
     val regenerateSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var (webClientPoTokenEnabled, onWebClientPoTokenEnabledChange) =
@@ -158,7 +161,7 @@ fun PoTokenScreen(
             VisitorDataKey,
             defaultValue = "",
         )
-    val (innerTubeCookie, _) =
+    val (innerTubeCookie, onInnerTubeCookieChange) =
         rememberPreference(
             InnerTubeCookieKey,
             defaultValue = "",
@@ -321,6 +324,35 @@ fun PoTokenScreen(
     }
 }
 
+    if (showCookieBypassDialog) {
+        AlertDialog(
+            onDismissRequest = { showCookieBypassDialog = false },
+            title = { Text(stringResource(R.string.use_visitor_data)) },
+            text = { Text(stringResource(R.string.cookies_must_be_disabled)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onInnerTubeCookieChange("")
+                        onUseVisitorDataChange(true)
+                        showCookieBypassDialog = false
+                    },
+                ) {
+                    Text(stringResource(R.string.unlink_cookie_and_enable))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onUseVisitorDataChange(true)
+                        showCookieBypassDialog = false
+                    },
+                ) {
+                    Text(stringResource(R.string.continue_with_visitor_data))
+                }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -451,12 +483,7 @@ fun PoTokenScreen(
                                 checked = useVisitorData,
                                 onCheckedChange = { enabled ->
                                     if (enabled && hasCookie) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                R.string.cookies_must_be_disabled,
-                                                Toast.LENGTH_LONG,
-                                            ).show()
+                                        showCookieBypassDialog = true
                                     } else {
                                         onUseVisitorDataChange(enabled)
                                     }

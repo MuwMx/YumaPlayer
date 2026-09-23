@@ -158,11 +158,16 @@ class InnerTube {
                     dns(this@InnerTube.dns)
                     val sel = this@InnerTube.proxySelector
                     if (sel != null) {
+                        // Priority: rotating proxy selector takes precedence over fixed proxy settings.
+                        // Rotating proxies are unauthenticated public endpoints; fixed credentials must not be routed to them.
                         proxySelector(sel)
                     } else if (this@InnerTube.proxy == null) {
                         proxy(Proxy.NO_PROXY)
                     } else if (this@InnerTube.proxy != null && !proxyUsername.isNullOrBlank() && !proxyPassword.isNullOrBlank()) {
                         proxyAuthenticator { _, response ->
+                            if (response.request.header("Proxy-Authorization") != null) {
+                                return@proxyAuthenticator null
+                            }
                             val credential = okhttp3.Credentials.basic(proxyUsername!!, proxyPassword!!)
                             response.request
                                 .newBuilder()

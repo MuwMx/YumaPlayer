@@ -47,6 +47,7 @@ import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
 import moe.rukamori.archivetune.utils.PreferenceStore
+import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.ProxyUtils
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -121,6 +122,7 @@ class App :
     }
 
     private fun initializeCriticalSync() {
+        ProxyAuth.init()
         CanvasArtworkPlaybackCache.init(this)
         MoriCipherRuntime.initialize(
             MoriCipherConfig(

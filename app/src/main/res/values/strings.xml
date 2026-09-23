@@ -1053,6 +1053,8 @@
     <string name="use_visitor_data">Use Visitor Data</string>
     <string name="use_visitor_data_desc">Use visitor data for token generation. Requires cookies to be disabled.</string>
     <string name="cookies_must_be_disabled">Cookies must be disabled to use visitor data</string>
+    <string name="unlink_cookie_and_enable">Unlink cookie and enable</string>
+    <string name="continue_with_visitor_data">Continue with visitor data</string>
     <string name="regenerate">Re-generate</string>
     <string name="regenerate_token">Regenerate Token</string>
     <string name="source_url">Source URL</string>

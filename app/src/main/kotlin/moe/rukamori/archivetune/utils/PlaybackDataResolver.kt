@@ -59,6 +59,7 @@ object PlaybackDataResolver {
             OkHttpClient
                 .Builder()
                 .proxy(current)
+                .proxyAuthenticator(ProxyAuth.proxyAuthenticator)
                 .connectTimeout(STREAM_PROBE_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .readTimeout(STREAM_PROBE_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .callTimeout(STREAM_PROBE_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)

@@ -252,6 +252,7 @@ import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
+import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -402,6 +403,7 @@ class MusicService :
         OkHttpClient
             .Builder()
             .proxy(YouTube.streamOkHttpProxy)
+            .proxyAuthenticator(ProxyAuth.proxyAuthenticator)
             .followRedirects(true)
             .followSslRedirects(true)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -963,6 +965,7 @@ class MusicService :
 
     override fun onCreate() {
         super.onCreate()
+        ProxyAuth.init()
         ensureScopesActive()
 
         try {

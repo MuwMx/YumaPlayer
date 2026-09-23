@@ -656,6 +656,8 @@
     <string name="use_visitor_data">Использовать данные посетителя</string>
     <string name="use_visitor_data_desc">Использовать данные посетителя для генерации токена. Требует отключения cookies.</string>
     <string name="cookies_must_be_disabled">Cookies должны быть выключены для использования данных посетителя</string>
+    <string name="unlink_cookie_and_enable">Отвязать cookie и включить</string>
+    <string name="continue_with_visitor_data">Продолжить с visitor data</string>
     <string name="regenerate">Повторить генерацию</string>
     <string name="regenerate_token">Повторить генерацию токена</string>
     <string name="source_url">URL источника</string>
