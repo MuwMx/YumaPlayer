@@ -78,6 +78,9 @@ If a rule conflicts with an implementation, the rule takes precedence.
 
 ## 8. Gestures, Custom Layouts & Effect Guardrails
 
+- **Single-Root Screen Requirement:** Every screen Composable must have exactly one root layout container (`Scaffold` or `Box`). Placing toolbars (`TopAppBar`), dialogs, or overlay layers as sibling nodes outside the screen's root container is strictly prohibited (multi-root breaks parent `NavHost` measurement constraints and touch gesture dispatch).
+- **Mandatory ScrollBehavior Wiring:** If a screen accepts a `scrollBehavior: TopAppBarScrollBehavior` parameter, it MUST be passed to the top bar (`TopAppBar(..., scrollBehavior = scrollBehavior)`). Dangling unattached scroll behavior parameters lock or desynchronize parent `nestedScroll` connections.
+- **TopAppBar Alignment in Free-Form Screens:** On screens utilizing free-form overlays (e.g. `Box` with `LazyColumn` and `YumaMorphingHeader`), the `TopAppBar` must be placed inside the common root `Box` with explicit `Modifier.align(Alignment.TopCenter)` above the content lists.
 - **BackHandler Cascading Hierarchy:** The top-level player `BackHandler` must never be disabled via child overlay flags (`!isLyricsVisible`, `!isOverlayVisible`). Back navigation must cascade strictly from top to bottom:
   1. Dismiss open modal overlays (lyrics, queue).
   2. Collapse the expanded player sheet.
