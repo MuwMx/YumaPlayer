@@ -164,7 +164,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -238,23 +237,18 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.models.ParsedIntentAction
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.musicrecognition.ACTION_MUSIC_RECOGNITION
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
-import moe.rukamori.archivetune.musicrecognition.openMusicRecognition
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.MusicService.MusicBinder
-import moe.rukamori.archivetune.playback.joinTogether
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.PlayerConnectionHolder
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
-import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.PlayerViewModel
@@ -305,7 +299,6 @@ import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
 import moe.rukamori.archivetune.constants.UpdateChannel
-import moe.rukamori.archivetune.utils.IntentParser
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -358,189 +351,60 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var playerConnectionHolder: PlayerConnectionHolder
+
+    private val musicServiceBinding = MusicServiceBinding(this)
+    private val intentRouter = MainIntentRouter(this, musicServiceBinding)
+
+    init {
+        musicServiceBinding.intentRouter = intentRouter
+    }
+
     private lateinit var navController: NavHostController
-    private var pendingIntent: Intent? = null
-    private var pendingDeepLinkQueue: Queue? = null
-    private var pendingVoiceSearchQuery: String? = null
-    private var pendingAodModeRequest = false
-    private var pendingAodModeJob: Job? = null
-    private var aodModeLaunchRequestCount by mutableIntStateOf(0)
-    private var pendingTogetherJoinLink: String? = null
-    private var pendingBackupRestoreUri by mutableStateOf<Uri?>(null)
+
+    private var pendingIntent: Intent?
+        get() = intentRouter.pendingIntent
+        set(value) {
+            intentRouter.pendingIntent = value
+        }
+
+    private var pendingBackupRestoreUri: Uri?
+        get() = intentRouter.pendingBackupRestoreUri
+        set(value) {
+            intentRouter.pendingBackupRestoreUri = value
+        }
+
+    private var aodModeLaunchRequestCount: Int
+        get() = intentRouter.aodModeLaunchRequestCount
+        set(value) {
+            intentRouter.aodModeLaunchRequestCount = value
+        }
+
+    private val playerConnection: PlayerConnection?
+        get() = musicServiceBinding.playerConnection
+
     private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
     private var latestUpdateChannel by mutableStateOf(defaultUpdateChannel)
     private var latestImageUrl by mutableStateOf<String?>(null)
 
-    private var playerConnection by mutableStateOf<PlayerConnection?>(null)
-    private var isMusicServiceBound = false
     private val systemBarController = SystemBarController(this)
     private var isOnboardingCompleted by mutableStateOf<Boolean?>(null)
     private var isReady by mutableStateOf(false)
-    private val playerViewModel: PlayerViewModel by viewModels()
+    internal val playerViewModel: PlayerViewModel by viewModels()
     private val onboardingViewModel: OnboardingViewModel by viewModels()
-    private val serviceConnection =
-        object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                isMusicServiceBound = true
-                if (service is MusicBinder) {
-                    val conn = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
-                    playerConnection = conn
-                    playerConnectionHolder.connection.value = conn // ЗАЛИВАЕМ ПРОВОД В ХОЛДЕР
-
-                    playPendingDeepLinkQueueIfReady()
-                    playPendingVoiceSearchIfReady()
-                    openPendingAodModeIfReady()
-                    joinPendingTogetherIfReady()
-                }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                isMusicServiceBound = false
-                pendingAodModeJob?.cancel()
-                pendingAodModeJob = null
-                playerConnection?.dispose()
-                playerConnection = null
-                playerConnectionHolder.connection.value = null //ОБНУЛЯЕМ ПРИ ОТКЛЮЧЕНИИ
-            }
-        }
-
-    private fun toExternalAudioMediaItem(uri: Uri): MediaItem {
-        val mediaId = uri.toString()
-        val title = IntentParser.resolveExternalAudioTitle(this, uri) // Безопасный вызов утилиты
-        val metadata = moe.rukamori.archivetune.models.MediaMetadata(
-            id = mediaId,
-            title = title,
-            artists = emptyList(),
-            duration = -1,
-        )
-        return MediaItem.Builder()
-            .setMediaId(mediaId)
-            .setUri(uri)
-            .setTag(metadata)
-            .setMediaMetadata(
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(title)
-                    .setIsPlayable(true)
-                    .setMediaType(MEDIA_TYPE_MUSIC)
-                    .build()
-            ).build()
-    }
-
-    private fun playPendingDeepLinkQueueIfReady() {
-        val pending = pendingDeepLinkQueue ?: return
-        val connection = playerConnection ?: return
-        pendingDeepLinkQueue = null
-        connection.playQueue(pending)
-    }
-
-    private fun playPendingVoiceSearchIfReady() {
-        val query = pendingVoiceSearchQuery ?: return
-        val connection = playerConnection ?: return
-        pendingVoiceSearchQuery = null
-        connection.playFromVoiceSearch(query)
-    }
-
-    private fun requestAodMode() {
-        pendingAodModeRequest = true
-        startMusicServiceSafely()
-        openPendingAodModeIfReady()
-    }
-
-    private fun openPendingAodModeIfReady() {
-        if (!pendingAodModeRequest) return
-        val connection = playerConnection ?: return
-        pendingAodModeRequest = false
-        pendingAodModeJob?.cancel()
-        pendingAodModeJob =
-            lifecycleScope.launch {
-                connection.queueRestoreCompleted.first { it }
-                if (awaitRestorablePlayback(connection)) {
-                    aodModeLaunchRequestCount++
-                }
-            }
-    }
-
-    private fun joinPendingTogetherIfReady() {
-        val pending = pendingTogetherJoinLink ?: return
-        val connection = playerConnection ?: return
-        pendingTogetherJoinLink = null
-        lifecycleScope.launch(Dispatchers.IO) {
-            val displayName =
-                runCatching { dataStore.data.first()[moe.rukamori.archivetune.constants.TogetherDisplayNameKey] }
-                    .getOrNull()
-                    ?.trim()
-                    .orEmpty()
-                    .ifBlank { Build.MODEL ?: getString(R.string.app_name) }
-            withContext(Dispatchers.Main) {
-                connection.service.joinTogether(pending, displayName)
-            }
-        }
-    }
-
-    private suspend fun awaitRestorablePlayback(connection: PlayerConnection): Boolean {
-        repeat(15) {
-            if (
-                connection.player.currentMediaItem != null ||
-                connection.player.mediaItemCount > 0 ||
-                connection.mediaMetadata.value != null
-            ) {
-                return true
-            }
-            delay(100)
-        }
-
-        return (
-            connection.player.currentMediaItem != null ||
-                connection.player.mediaItemCount > 0 ||
-                connection.mediaMetadata.value != null
-        )
-    }
 
     override fun onStart() {
         super.onStart()
-        isMusicServiceBound =
-            bindService(
-                Intent(this, MusicService::class.java),
-                serviceConnection,
-                Context.BIND_AUTO_CREATE,
-            )
-        playPendingDeepLinkQueueIfReady()
-        openPendingAodModeIfReady()
-    }
-
-    private fun safeUnbindMusicService() {
-        if (!isMusicServiceBound) return
-        try {
-            unbindService(serviceConnection)
-        } catch (e: IllegalArgumentException) {
-        } catch (e: Exception) {
-            reportException(e)
-        } finally {
-            isMusicServiceBound = false
-        }
+        musicServiceBinding.onStart()
     }
 
     override fun onStop() {
-        safeUnbindMusicService()
+        musicServiceBinding.onStop()
         super.onStop()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-
-        val shouldStopOnTaskClear =
-            if (!isFinishing) {
-                false
-            } else {
-                dataStore.get(StopMusicOnTaskClearKey, false)
-            }
-
-        if (shouldStopOnTaskClear) {
-            playerConnection?.service?.stopAndClearPlayback(clearPersistentState = true)
-            safeUnbindMusicService()
-            stopService(Intent(this, MusicService::class.java))
-            playerConnection = null
-        }
+        musicServiceBinding.onDestroy()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -2703,57 +2567,7 @@ class MainActivity : ComponentActivity() {
         intent: Intent?,
         navController: NavHostController,
     ) {
-        if (intent == null) return
-
-        intent.getStringExtra("navigate_to")?.takeIf { it.isNotBlank() }?.let { route ->
-            navController.navigate(route) {
-                launchSingleTop = true
-            }
-            intent.removeExtra("navigate_to")
-            return
-        }
-
-        val action = IntentParser.parse(intent, this) ?: return
-
-        when (action) {
-            is ParsedIntentAction.BackupRestore -> {
-                pendingBackupRestoreUri = action.uri
-            }
-            is ParsedIntentAction.MusicRecognition -> {
-                navController.openMusicRecognition()
-            }
-            is ParsedIntentAction.AodMode -> {
-                requestAodMode()
-            }
-            is ParsedIntentAction.VoiceSearch -> {
-                pendingVoiceSearchQuery = action.query
-                startMusicServiceSafely()
-                playPendingVoiceSearchIfReady()
-            }
-            is ParsedIntentAction.ExternalAudio -> {
-                val mediaItems = action.uris.map { uri -> toExternalAudioMediaItem(uri) }
-                pendingDeepLinkQueue = ListQueue(items = mediaItems)
-                startMusicServiceSafely()
-                playPendingDeepLinkQueueIfReady()
-            }
-            // Вся логика YT-диплинков и Together уехала во ViewModel
-            is ParsedIntentAction.TogetherJoin,
-            is ParsedIntentAction.Login,
-            is ParsedIntentAction.YouTubePlaylist,
-            is ParsedIntentAction.YouTubeAlbum,
-            is ParsedIntentAction.YouTubeArtist,
-            is ParsedIntentAction.YouTubeVideo,
-            is ParsedIntentAction.YouTubeWatchPlaylist -> {
-                startMusicServiceSafely()
-                playerViewModel.handleDeepLinkAction(action)
-            }
-        }
-    }
-
-
-    private fun startMusicServiceSafely() {
-        runCatching { startService(Intent(this, moe.rukamori.archivetune.playback.MusicService::class.java)) }
-            .onFailure { reportException(it) }
+        intentRouter.handleIntent(intent, navController)
     }
 
     @Composable
