@@ -13,8 +13,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -73,8 +71,6 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -117,7 +113,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -127,7 +122,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -379,7 +373,7 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var isMusicServiceBound = false
-    private var immersiveStatusBarsHidden = false
+    private val systemBarController = SystemBarController(this)
     private var isOnboardingCompleted by mutableStateOf<Boolean?>(null)
     private var isReady by mutableStateOf(false)
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -551,8 +545,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && immersiveStatusBarsHidden) {
-            setStatusBarsHidden(true)
+        if (hasFocus && systemBarController.immersiveStatusBarsHidden) {
+            systemBarController.setStatusBarsHidden(true)
         }
     }
 
@@ -1229,7 +1223,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 useDarkTheme
                             }
-                        setSystemBarAppearance(isDarkStatusBar)
+                        systemBarController.setSystemBarAppearance(isDarkStatusBar)
                     }
 
                     val miniPlayerAnchor by remember {
@@ -1260,7 +1254,7 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
-                        setStatusBarsHidden(shouldHideStatusBars)
+                        systemBarController.setStatusBarsHidden(shouldHideStatusBars)
                     }
 
                     LaunchedEffect(isYearInMusicScreen, playerConnection) {
@@ -2762,50 +2756,6 @@ class MainActivity : ComponentActivity() {
             .onFailure { reportException(it) }
     }
 
-    @SuppressLint("ObsoleteSdkInt")
-    private fun setSystemBarAppearance(isDark: Boolean) {
-        WindowCompat.getInsetsController(window, window.decorView.rootView).apply {
-            isAppearanceLightStatusBars = !isDark
-            isAppearanceLightNavigationBars = !isDark
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            window.statusBarColor =
-                (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            window.navigationBarColor =
-                (if (isDark) Color.Transparent else Color.Black.copy(alpha = 0.2f)).toArgb()
-        }
-    }
-
-    private fun setStatusBarsHidden(hidden: Boolean) {
-        immersiveStatusBarsHidden = hidden
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes =
-                window.attributes.apply {
-                    layoutInDisplayCutoutMode =
-                        if (hidden) {
-                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                        } else {
-                            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-                        }
-                }
-        }
-
-        if (hidden) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.statusBars())
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-            controller.show(WindowInsetsCompat.Type.statusBars())
-        }
-    }
-
     @Composable
     private fun BackupRestoreFromIntentDialog(
         uri: Uri,
@@ -2902,84 +2852,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    companion object {
-        const val ACTION_SEARCH = "moe.rukamori.archivetune.action.SEARCH"
-        const val ACTION_LIBRARY = "moe.rukamori.archivetune.action.LIBRARY"
-    }
-}
-
-val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
-val LocalPlayerConnection =
-    staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
-val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
-val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
-
-@Composable
-private fun OnlineSearchSortMenu(
-    selectedSort: OnlineSearchSort,
-    onSortSelected: (OnlineSearchSort) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val options =
-        remember {
-            listOf(
-                OnlineSearchSort.DEFAULT,
-                OnlineSearchSort.VIEWS,
-            )
-        }
-
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                painter = painterResource(R.drawable.filter_alt),
-                contentDescription = null,
-            )
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { sort ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text =
-                                stringResource(
-                                    when (sort) {
-                                        OnlineSearchSort.DEFAULT -> R.string.default_style
-                                        OnlineSearchSort.VIEWS -> R.string.views
-                                    },
-                                ),
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onSortSelected(sort)
-                    },
-                    leadingIcon = {
-                        if (sort == selectedSort) {
-                            Icon(
-                                painter = painterResource(R.drawable.done),
-                                contentDescription = null,
-                            )
-                        } else {
-                            Spacer(Modifier.size(24.dp))
-                        }
-                    },
-                )
-            }
-        }
-    }
-}
-
-private fun Context.isTvDevice(): Boolean {
-    val isTelevisionUiMode =
-        (resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) ==
-            Configuration.UI_MODE_TYPE_TELEVISION
-    return isTelevisionUiMode ||
-        packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
-        packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
 }
 
 @Composable
