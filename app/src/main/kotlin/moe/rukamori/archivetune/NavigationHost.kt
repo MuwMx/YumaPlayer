@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -44,7 +45,7 @@ import moe.rukamori.archivetune.ui.state.UpdateState
 fun NavigationHost(
     navController: NavHostController,
     topAppBarScrollBehavior: TopAppBarScrollBehavior,
-    @Suppress("UNUSED_PARAMETER") hazeState: HazeState? = null,
+    hazeState: HazeState? = null,
     updateState: UpdateState,
     modifier: Modifier = Modifier,
     homeScrollConnection: NestedScrollConnection? = null,
@@ -158,6 +159,7 @@ fun NavigationHost(
         },
         modifier =
             modifier
+                .then(if (hazeState != null) Modifier.hazeSource(hazeState) else Modifier)
                 .then(
                     if (isTvDevice) {
                         Modifier

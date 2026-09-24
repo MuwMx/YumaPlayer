@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.ui.screens.settings
 import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
@@ -47,6 +48,7 @@ internal object AppearanceContract {
     val RandomThemeOnStartup = RandomThemeOnStartupKey
     val DarkModePref = DarkModeKey
     val PureBlack = PureBlackKey
+    val BlurNavBar = BlurNavBarKey
     val DisableAnimations = DisableAnimationsKey
     val SplashOverlayEnabled = SplashOverlayEnabledKey
     val ArchiveTuneCanvas = ArchiveTuneCanvasKey
@@ -92,6 +94,7 @@ data class AppearanceSettingsUiState(
     val darkMode: DarkMode = DarkMode.AUTO,
     val useDarkTheme: Boolean = false,
     val pureBlack: Boolean = false,
+    val blurNavBar: Boolean = true,
     val disableAnimations: Boolean = false,
     val splashOverlayEnabled: Boolean = true,
     val archiveTuneCanvas: Boolean = false,
@@ -124,6 +127,7 @@ data class AppearanceSettingsUiActions(
     val onRandomThemeOnStartupChange: (Boolean) -> Unit = {},
     val onDarkModeChange: (DarkMode) -> Unit = {},
     val onPureBlackChange: (Boolean) -> Unit = {},
+    val onBlurNavBarChange: (Boolean) -> Unit = {},
     val onDisableAnimationsChange: (Boolean) -> Unit = {},
     val onSplashOverlayEnabledChange: (Boolean) -> Unit = {},
     val onArchiveTuneCanvasChange: (Boolean) -> Unit = {},

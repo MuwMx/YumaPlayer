@@ -61,7 +61,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -103,7 +106,7 @@ fun FloatingNavigationToolbar(
     items: List<Screens>,
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
-    @Suppress("UNUSED_PARAMETER") hazeState: HazeState? = null,
+    hazeState: HazeState? = null,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
     shuffleContentDescription: String = "",
@@ -123,6 +126,16 @@ fun FloatingNavigationToolbar(
     val containerColor = NavBarColors.container(pureBlack)
     val tintAlpha = if (pureBlack) 0.85f else 0.80f
     val tintColor = containerColor.copy(alpha = tintAlpha)
+
+    val glassTintAlpha = if (pureBlack) 0.55f else 0.40f
+    val hazeStyle = remember(containerColor, pureBlack) {
+        HazeDefaults.style(
+            backgroundColor = Color.Transparent,
+            tint = HazeTint(containerColor.copy(alpha = glassTintAlpha)),
+            blurRadius = 24.dp,
+            noiseFactor = 0f,
+        )
+    }
 
     val density = LocalDensity.current
     val shadowDyPx = remember(density) { with(density) { 0.85.dp.toPx() } }
@@ -163,7 +176,16 @@ fun FloatingNavigationToolbar(
                 }
             }
             .clip(capsuleShape)
-            .background(tintColor)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = hazeStyle,
+                    )
+                } else {
+                    Modifier.background(tintColor)
+                },
+            )
             .glassStroke(
                 shape = capsuleShape,
                 strokeWidth = SettingsDimensions.GlassBorderThickness,

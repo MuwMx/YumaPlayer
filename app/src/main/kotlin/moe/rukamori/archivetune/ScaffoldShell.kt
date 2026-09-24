@@ -99,6 +99,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
@@ -245,6 +246,7 @@ fun ScaffoldShell(
             }
         val defaultOpenTab by rememberEnumPreference(DefaultOpenTabKey, NavigationTab.HOME)
         val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+        val blurNavBar by rememberPreference(BlurNavBarKey, defaultValue = true)
         val tabOpenedFromShortcut =
             remember {
                 when (activity.intent?.action) {
@@ -668,6 +670,7 @@ fun ScaffoldShell(
                 }
 
                 val hazeState = remember { HazeState() }
+                val effectiveHazeState = if (blurNavBar) hazeState else null
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -1090,7 +1093,7 @@ fun ScaffoldShell(
                     NavigationHost(
                         navController = navController,
                         topAppBarScrollBehavior = topAppBarScrollBehavior,
-                        hazeState = hazeState,
+                        hazeState = effectiveHazeState,
                         updateState = updateState,
                         modifier = Modifier.fillMaxSize(),
                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
@@ -1115,7 +1118,7 @@ fun ScaffoldShell(
                     shouldShowNav = shouldShowNavigationBar,
                     isYearInMusic = isYearInMusicScreen,
                     useRail = useRail,
-                    hazeState = hazeState,
+                    hazeState = effectiveHazeState,
                     pureBlack = pureBlack,
                     playerViewModel = playerViewModel,
                     homeViewModel = homeViewModel,

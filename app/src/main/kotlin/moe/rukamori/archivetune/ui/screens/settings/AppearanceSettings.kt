@@ -39,6 +39,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
@@ -91,6 +92,7 @@ fun AppearanceSettings(navController: NavController) {
             defaultValue = DarkMode.AUTO,
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
+    val (blurNavBar, onBlurNavBarChange) = rememberPreference(BlurNavBarKey, defaultValue = true)
     val (disableAnimations, onDisableAnimationsChange) =
         rememberPreference(
             DisableAnimationsKey,
@@ -217,6 +219,7 @@ fun AppearanceSettings(navController: NavController) {
             darkMode = darkMode,
             useDarkTheme = useDarkTheme,
             pureBlack = pureBlack,
+            blurNavBar = blurNavBar,
             disableAnimations = disableAnimations,
             splashOverlayEnabled = splashOverlayEnabled,
             archiveTuneCanvas = archiveTuneCanvas,
@@ -248,6 +251,7 @@ fun AppearanceSettings(navController: NavController) {
                 onRandomThemeOnStartupChange = onRandomThemeOnStartupChange,
                 onDarkModeChange = onDarkModeChange,
                 onPureBlackChange = onPureBlackChange,
+                onBlurNavBarChange = onBlurNavBarChange,
                 onDisableAnimationsChange = onDisableAnimationsChange,
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
                 onArchiveTuneCanvasChange = onArchiveTuneCanvasChange,

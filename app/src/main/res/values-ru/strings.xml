@@ -314,6 +314,8 @@
     <string name="pure_black">Чистый чёрный</string>
     <string name="disable_blur">Убрать эффекты размытия</string>
     <string name="disable_blur_desc">Убрать эффекты размытия во всем приложении</string>
+    <string name="blur_nav_bar">Размытие панели навигации</string>
+    <string name="blur_nav_bar_desc">Размывать контент под парящей панелью навигации</string>
     <string name="player">Плеер</string>
     <string name="player_slider_style">Стиль ползунка плеера</string>
     <string name="misc">Разное</string>

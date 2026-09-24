@@ -192,7 +192,7 @@ fun PlayerOverlayHost(
     isYearInMusic: Boolean,
     modifier: Modifier = Modifier,
     useRail: Boolean = false,
-    hazeState: HazeState = remember { HazeState() },
+    hazeState: HazeState? = null,
     pureBlack: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),

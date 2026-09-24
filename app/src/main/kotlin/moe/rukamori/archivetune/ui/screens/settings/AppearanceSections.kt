@@ -71,6 +71,8 @@ fun AppearanceThemeSection(
         useDarkTheme = state.useDarkTheme,
         pureBlack = state.pureBlack,
         onPureBlackChange = actions.onPureBlackChange,
+        blurNavBar = state.blurNavBar,
+        onBlurNavBarChange = actions.onBlurNavBarChange,
         disableAnimations = state.disableAnimations,
         onDisableAnimationsChange = actions.onDisableAnimationsChange,
         splashOverlayEnabled = state.splashOverlayEnabled,
@@ -110,6 +112,8 @@ fun AppearanceThemeSection(
     useDarkTheme: Boolean,
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
+    blurNavBar: Boolean,
+    onBlurNavBarChange: (Boolean) -> Unit,
     disableAnimations: Boolean,
     onDisableAnimationsChange: (Boolean) -> Unit,
     splashOverlayEnabled: Boolean,
@@ -181,6 +185,16 @@ fun AppearanceThemeSection(
                 icon = { Icon(painterResource(R.drawable.contrast), null, modifier = Modifier.size(24.dp)) },
                 checked = pureBlack,
                 onCheckedChange = onPureBlackChange,
+            )
+        }
+
+        item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.blur_nav_bar)) },
+                description = stringResource(R.string.blur_nav_bar_desc),
+                icon = { Icon(painterResource(R.drawable.blur_on), null, modifier = Modifier.size(24.dp)) },
+                checked = blurNavBar,
+                onCheckedChange = onBlurNavBarChange,
             )
         }
 
