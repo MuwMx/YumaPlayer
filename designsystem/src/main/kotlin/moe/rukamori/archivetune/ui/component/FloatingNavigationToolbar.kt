@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -124,14 +123,10 @@ fun FloatingNavigationToolbar(
 
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
-    val tintAlpha = if (pureBlack) 0.85f else 0.80f
-    val tintColor = containerColor.copy(alpha = tintAlpha)
 
-    val glassTintAlpha = if (pureBlack) 0.55f else 0.40f
-    val hazeStyle = remember(containerColor, pureBlack) {
+    val hazeStyle = remember(containerColor) {
         HazeDefaults.style(
-            backgroundColor = Color.Transparent,
-            tint = HazeTint(containerColor.copy(alpha = glassTintAlpha)),
+            backgroundColor = containerColor,
             blurRadius = 24.dp,
             noiseFactor = 0f,
         )
@@ -183,7 +178,7 @@ fun FloatingNavigationToolbar(
                         style = hazeStyle,
                     )
                 } else {
-                    Modifier.background(tintColor)
+                    Modifier.background(containerColor)
                 },
             )
             .glassStroke(
