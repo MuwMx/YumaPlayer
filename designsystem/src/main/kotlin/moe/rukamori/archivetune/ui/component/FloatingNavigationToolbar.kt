@@ -129,7 +129,7 @@ fun FloatingNavigationToolbar(
 
     val hazeStyle = remember(tintColor) {
         HazeDefaults.style(
-            backgroundColor = tintColor,
+            backgroundColor = Color.Transparent,
             tint = HazeTint(tintColor),
             blurRadius = 24.dp,
             noiseFactor = 0f,
