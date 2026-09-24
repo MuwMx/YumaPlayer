@@ -21,7 +21,6 @@ import android.widget.Toast
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
@@ -188,18 +187,9 @@ import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.home.effects.HomeBackgroundSettings
 import moe.rukamori.archivetune.home.effects.LocalHomeBackgroundStyle
 import moe.rukamori.archivetune.home.effects.ScreenBackground
-import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
-import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
-import moe.rukamori.archivetune.constants.MiniPlayerOnlyOffset
-import moe.rukamori.archivetune.constants.MiniPlayerWithNavBarOffset
-import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.OnboardingCompletedKey
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
-import moe.rukamori.archivetune.constants.PlayerDesignStyle
-import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.SYSTEM_DEFAULT
 import moe.rukamori.archivetune.constants.SearchSource
@@ -209,33 +199,14 @@ import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.constants.UseSystemFontKey
 import moe.rukamori.archivetune.db.MusicDatabase
-import moe.rukamori.archivetune.db.entities.Album
-import moe.rukamori.archivetune.db.entities.Artist
-import moe.rukamori.archivetune.db.entities.Playlist
-import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
-import moe.rukamori.archivetune.innertube.models.PlaylistItem
-import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.musicrecognition.ACTION_MUSIC_RECOGNITION
-import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
 import moe.rukamori.archivetune.playback.DownloadUtil
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.PlayerConnectionHolder
-import moe.rukamori.archivetune.playback.queues.ListQueue
 import dev.chrisbanes.haze.HazeState
-import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
-import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.PlayerViewModel
-import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
-import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
-import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
-import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -245,10 +216,7 @@ import moe.rukamori.archivetune.ui.component.splash.SplashSlots
 import moe.rukamori.archivetune.ui.component.splash.SplashVectorLoader
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
-import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
-import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
-import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.search.LocalSearchScreen
@@ -259,7 +227,6 @@ import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
-import moe.rukamori.archivetune.ui.state.PlayerEvent
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
@@ -468,44 +435,15 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
-            val isPlayerLyricsVisible by remember(playerViewModel) {
-                playerViewModel.uiState
-                    .map { it.isLyricsVisible }
-                    .distinctUntilChanged()
-            }.collectAsStateWithLifecycle(initialValue = false)
-            val isPlayerQueueVisible by remember(playerViewModel) {
-                playerViewModel.uiState
-                    .map { it.isQueueVisible }
-                    .distinctUntilChanged()
-            }.collectAsStateWithLifecycle(initialValue = false)
+            var playerExpansionFractionProvider by remember { mutableStateOf<() -> Float>({ 0f }) }
             val isHomeScreenVisible by remember {
-                derivedStateOf { playerExpansionFraction < 0.99f }
+                derivedStateOf { playerExpansionFractionProvider() < 0.99f }
             }
 
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
             val context = LocalContext.current
             val uriHandler = LocalUriHandler.current
-
-            LaunchedEffect(playerViewModel) {
-                playerViewModel.event.collect { event ->
-                    when (event) {
-                        is PlayerEvent.ShareTrack -> {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, event.url)
-                            }
-                            context.startActivity(Intent.createChooser(intent, null))
-                        }
-                        is PlayerEvent.Navigate -> {
-                            navController.navigate(event.route) {
-                                launchSingleTop = true
-                            }
-                        }
-                    }
-                }
-            }
 
             // Use remembered instances so the same state object is used everywhere
             // (previously retrieving the composition local directly created different
@@ -732,11 +670,6 @@ class MainActivity : ComponentActivity() {
                         remember(isTvDevice) {
                             if (isTvDevice) Screens.TvMainScreens else Screens.MainScreens
                         }
-                    val (savedMiniPlayerAnchor, setSavedMiniPlayerAnchor) =
-                        rememberPreference(
-                            MiniPlayerLastAnchorKey,
-                            defaultValue = COLLAPSED_ANCHOR,
-                        )
                     val defaultOpenTab by rememberEnumPreference(DefaultOpenTabKey, NavigationTab.HOME)
                     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
                     val tabOpenedFromShortcut =
@@ -818,154 +751,16 @@ class MainActivity : ComponentActivity() {
                         currentRoute == Screens.Home.route &&
                             (homeViewModel.allLocalItems.value.isNotEmpty() || homeViewModel.allYtItems.value.isNotEmpty())
 
-                    fun getBottomNavPadding(): Dp =
-                        if (shouldShowNavigationBar && !useRail) {
-                            FloatingToolbarHeight
-                        } else {
-                            0.dp
-                        }
-
                     val floatingToolbarBottomPadding = YdsInsets.floatingToolbarBottomPadding()
                     val navVisibleHeight = FloatingToolbarHeight
 
-                    val bottomNavigationBarHeight by animateDpAsState(
-                        targetValue = if (shouldShowNavigationBar && !useRail) navVisibleHeight else 0.dp,
-                        animationSpec = if (disableAnimations) snap() else NavigationBarAnimationSpec,
-                        label = "",
-                    )
-
-                    // СТАЛО: теперь шторка Activity синхронно следит за движением нижней панели
                     val playerBottomSheetState =
-                        rememberBottomSheetState(
-                            dismissedBound = 0.dp,
-                            collapsedBound = bottomInset + if (shouldShowNavigationBar && !useRail) {
-                                MiniPlayerWithNavBarOffset // 152.dp + системный отступ
-                            } else {
-                                MiniPlayerOnlyOffset       // 72.dp + системный отступ
-                            },
-                            expandedBound = maxHeight,
+                        rememberPlayerBottomSheetState(
+                            maxHeight = maxHeight,
+                            bottomInset = bottomInset,
+                            shouldShowNav = shouldShowNavigationBar,
+                            useRail = useRail,
                         )
-
-                    val playerBackground by rememberEnumPreference(
-                        key = PlayerBackgroundStyleKey,
-                        defaultValue = PlayerBackgroundStyle.DEFAULT,
-                    )
-                    val playerDesignStyle by rememberEnumPreference(
-                        key = PlayerDesignStyleKey,
-                        defaultValue = PlayerDesignStyle.V4,
-                    )
-
-                    val aodModeEnabled by remember(playerConnection) {
-                        playerConnection?.aodModeEnabled ?: MutableStateFlow(false)
-                    }.collectAsStateWithLifecycle()
-
-                    LaunchedEffect(aodModeLaunchRequestCount, playerConnection) {
-                        val launchRequestCount = aodModeLaunchRequestCount
-                        if (launchRequestCount == 0) return@LaunchedEffect
-                        val connection = playerConnection ?: return@LaunchedEffect
-                        if (!awaitRestorablePlayback(connection)) return@LaunchedEffect
-                        if (!playerBottomSheetState.isExpandedOrExpanding) {
-                            playerBottomSheetState.expandSoft()
-                        }
-                        connection.aodModeEnabled.value = true
-                        if (aodModeLaunchRequestCount == launchRequestCount) {
-                            aodModeLaunchRequestCount = 0
-                        }
-                    }
-
-                    LaunchedEffect(aodModeEnabled) {
-                        val controller = WindowCompat.getInsetsController(window, window.decorView)
-                        if (aodModeEnabled) {
-                            controller.systemBarsBehavior =
-                                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                            controller.hide(WindowInsetsCompat.Type.systemBars())
-                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        } else {
-                            controller.show(WindowInsetsCompat.Type.systemBars())
-                            controller.systemBarsBehavior =
-                                WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        }
-                    }
-
-                    LaunchedEffect(useDarkTheme, playerBottomSheetState.isExpanded, playerBackground, aodModeEnabled) {
-                        if (aodModeEnabled) return@LaunchedEffect
-                        val isDarkStatusBar =
-                            if (playerBottomSheetState.isExpanded &&
-                                playerBackground != PlayerBackgroundStyle.DEFAULT
-                            ) {
-                                true
-                            } else {
-                                useDarkTheme
-                            }
-                        systemBarController.setSystemBarAppearance(isDarkStatusBar)
-                    }
-
-                    val miniPlayerAnchor by remember {
-                        derivedStateOf {
-                            when {
-                                playerBottomSheetState.isExpanded -> EXPANDED_ANCHOR
-                                playerBottomSheetState.isDismissed -> DISMISSED_ANCHOR
-                                else -> COLLAPSED_ANCHOR
-                            }
-                        }
-                    }
-
-                    var miniPlayerAnchorPersistenceEnabled by remember(playerConnection) {
-                        mutableStateOf(false)
-                    }
-
-                    LaunchedEffect(miniPlayerAnchor, isYearInMusicScreen, miniPlayerAnchorPersistenceEnabled) {
-                        if (!isYearInMusicScreen && miniPlayerAnchorPersistenceEnabled) {
-                            setSavedMiniPlayerAnchor(miniPlayerAnchor)
-                        }
-                    }
-
-                    var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableStateOf(-1) }
-
-                    val shouldHideStatusBars =
-                        isYearInMusicScreen ||
-                            (playerBottomSheetState.isExpanded && playerDesignStyle == PlayerDesignStyle.V7)
-
-                    LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
-                        if (aodModeEnabled) return@LaunchedEffect
-                        systemBarController.setStatusBarsHidden(shouldHideStatusBars)
-                    }
-
-                    LaunchedEffect(isYearInMusicScreen, playerConnection) {
-                        val connection = playerConnection ?: return@LaunchedEffect
-                        val player = connection.player
-
-                        if (isYearInMusicScreen) {
-                            if (yearInMusicSavedPlayerAnchor == -1) {
-                                yearInMusicSavedPlayerAnchor =
-                                    when {
-                                        playerBottomSheetState.isExpanded -> EXPANDED_ANCHOR
-                                        playerBottomSheetState.isCollapsed -> COLLAPSED_ANCHOR
-                                        playerBottomSheetState.isDismissed -> DISMISSED_ANCHOR
-                                        else -> COLLAPSED_ANCHOR
-                                    }
-                            }
-
-                            if (!playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.dismiss()
-                            }
-                        } else if (yearInMusicSavedPlayerAnchor != -1) {
-                            val anchorToRestore = yearInMusicSavedPlayerAnchor
-                            yearInMusicSavedPlayerAnchor = -1
-
-                            if (!awaitRestorablePlayback(connection)) {
-                                playerBottomSheetState.dismiss()
-                            } else {
-                                when (anchorToRestore) {
-                                    EXPANDED_ANCHOR -> playerBottomSheetState.expandSoft()
-                                    COLLAPSED_ANCHOR -> playerBottomSheetState.collapseSoft()
-                                    DISMISSED_ANCHOR -> playerBottomSheetState.collapseSoft()
-                                    else -> playerBottomSheetState.collapseSoft()
-                                }
-                            }
-                        }
-                    }
 
                     val isMiniPlayerVisible by remember(playerViewModel) {
                         playerViewModel.uiState
@@ -974,31 +769,14 @@ class MainActivity : ComponentActivity() {
                     }.collectAsStateWithLifecycle(initialValue = false)
 
                     val playerAwareWindowInsets =
-                        remember(
-                            useRail,
-                            bottomInset,
-                            shouldShowNavigationBar,
-                            isMiniPlayerVisible,
-                            floatingToolbarBottomPadding,
-                        ) {
-                            var bottom = bottomInset
-                            if (shouldShowNavigationBar && !useRail) {
-                                bottom = floatingToolbarBottomPadding + getBottomNavPadding()
-                            }
-                            if (isMiniPlayerVisible) {
-                                bottom += MiniPlayerHeight + MiniPlayerBottomSpacing
-                            }
-                            windowsInsets
-                                .only(
-                                    (
-                                        if (useRail) {
-                                            WindowInsetsSides.Right
-                                        } else {
-                                            WindowInsetsSides.Horizontal
-                                        }
-                                    ) + WindowInsetsSides.Top,
-                                ).add(WindowInsets(top = AppBarHeight, bottom = bottom))
-                        }
+                        rememberPlayerAwareWindowInsets(
+                            useRail = useRail,
+                            bottomInset = bottomInset,
+                            shouldShowNavigationBar = shouldShowNavigationBar,
+                            isMiniPlayerVisible = isMiniPlayerVisible,
+                            floatingToolbarBottomPadding = floatingToolbarBottomPadding,
+                            windowsInsets = windowsInsets,
+                        )
 
                     val homeScrollBehavior =
                         appBarScrollBehavior(
@@ -1139,83 +917,6 @@ class MainActivity : ComponentActivity() {
                         ) {
                             delay(100)
                             tvRailFocusRequester.requestFocus()
-                        }
-                    }
-
-                    var restoredMiniPlayerAnchor by remember(playerConnection) { mutableStateOf(false) }
-
-                    LaunchedEffect(playerConnection, savedMiniPlayerAnchor, isYearInMusicScreen) {
-                        if (restoredMiniPlayerAnchor) return@LaunchedEffect
-                        val connection = playerConnection ?: return@LaunchedEffect
-                        connection.queueRestoreCompleted.first { it }
-                        if (!awaitRestorablePlayback(connection)) {
-                            if (!playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.dismiss()
-                            }
-                        } else {
-                            if (!isYearInMusicScreen) {
-                                when (savedMiniPlayerAnchor) {
-                                    EXPANDED_ANCHOR -> playerBottomSheetState.expandSoft()
-                                    COLLAPSED_ANCHOR -> playerBottomSheetState.collapseSoft()
-                                    DISMISSED_ANCHOR -> playerBottomSheetState.collapseSoft()
-                                    else -> playerBottomSheetState.collapseSoft()
-                                }
-                            }
-                        }
-                        restoredMiniPlayerAnchor = true
-                        miniPlayerAnchorPersistenceEnabled = true
-                    }
-
-                    val currentPlayerBottomSheetState = rememberUpdatedState(playerBottomSheetState)
-                    val currentIsYearInMusicScreen = rememberUpdatedState(isYearInMusicScreen)
-
-                    DisposableEffect(playerConnection) {
-                        val player =
-                            playerConnection?.player ?: return@DisposableEffect onDispose { }
-                        val listener =
-                            object : Player.Listener {
-                                private fun collapseDismissedMiniPlayerForActivePlayback() {
-                                    if (
-                                        player.mediaItemCount > 0 &&
-                                        player.currentMediaItem != null &&
-                                        player.playWhenReady &&
-                                        player.playbackState != Player.STATE_IDLE &&
-                                        player.playbackState != Player.STATE_ENDED &&
-                                        currentPlayerBottomSheetState.value.isDismissed &&
-                                        !currentIsYearInMusicScreen.value
-                                    ) {
-                                        currentPlayerBottomSheetState.value.collapseSoft()
-                                    }
-                                }
-
-                                override fun onMediaItemTransition(
-                                    mediaItem: MediaItem?,
-                                    reason: Int,
-                                ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
-                                }
-
-                                override fun onTimelineChanged(
-                                    timeline: Timeline,
-                                    reason: Int,
-                                ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
-                                }
-
-                                override fun onPlaybackStateChanged(playbackState: Int) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
-                                }
-
-                                override fun onPlayWhenReadyChanged(
-                                    playWhenReady: Boolean,
-                                    reason: Int,
-                                ) {
-                                    collapseDismissedMiniPlayerForActivePlayback()
-                                }
-                            }
-                        player.addListener(listener)
-                        onDispose {
-                            player.removeListener(listener)
                         }
                     }
 
@@ -1847,194 +1548,40 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 bottomBar = {
-                                    Box {
-                                        ScopedPlayerSheet(
-                                            playerViewModel = playerViewModel,
-                                            playerConnection = playerConnection,
-                                            navController = navController,
-                                            bottomNavigationBarHeight = bottomNavigationBarHeight,
-                                            onExpansionFractionChanged = { fraction ->
-                                                playerExpansionFraction = fraction
-                                            },
-                                        )
-
-                                        if (useRail) return@Box
-
-                                        val navSlideDistance =
-                                            floatingToolbarBottomPadding + navVisibleHeight
-
-                                        Box(
-                                            modifier =
-                                                Modifier
-                                                    .align(Alignment.BottomCenter)
-                                                    .height(navSlideDistance)
-                                                    .offset {
-                                                        if (bottomNavigationBarHeight == 0.dp) {
-                                                            IntOffset(
-                                                                x = 0,
-                                                                y = navSlideDistance.roundToPx(),
-                                                            )
-                                                        } else {
-                                                            val slideOffset =
-                                                                navSlideDistance.toPx() *
-                                                                    playerExpansionFraction.coerceIn(
-                                                                        0f,
-                                                                        1f,
-                                                                    )
-                                                            val hideOffset =
-                                                                navSlideDistance.toPx() *
-                                                                    (
-                                                                        1f -
-                                                                            bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) /
-                                                                            navVisibleHeight
-                                                                    )
-                                                            IntOffset(
-                                                                x = 0,
-                                                                y = (slideOffset + hideOffset).roundToInt(),
-                                                            )
-                                                        }
-                                                    },
-                                        ) {
-                                            FloatingNavigationToolbar(
-                                                items = navigationItems,
-                                                pureBlack = pureBlack,
-                                                hazeState = hazeState,
-                                                modifier =
-                                                    Modifier
-                                                        .align(Alignment.BottomCenter)
-                                                        .padding(
-                                                            start = FloatingToolbarHorizontalPadding,
-                                                            end = FloatingToolbarHorizontalPadding,
-                                                            bottom = floatingToolbarBottomPadding,
-                                                        ).height(navVisibleHeight),
-                                                onShuffleClick =
-                                                    if (shouldShowHomeShuffleButton) {
-                                                        {
-                                                            val localItems = homeViewModel.allLocalItems.value
-                                                            val ytItems = homeViewModel.allYtItems.value
-                                                            val useLocalSource =
-                                                                when {
-                                                                    localItems.isNotEmpty() && ytItems.isNotEmpty() -> {
-                                                                        Random.nextFloat() <
-                                                                            0.5f
-                                                                    }
-
-                                                                    localItems.isNotEmpty() -> {
-                                                                        true
-                                                                    }
-
-                                                                    else -> {
-                                                                        false
-                                                                    }
-                                                                }
-
-                                                            coroutineScope.launch(Dispatchers.Main) {
-                                                                if (useLocalSource) {
-                                                                    when (val luckyItem = localItems.random()) {
-                                                                        is Song -> {
-                                                                            playerConnection?.playQueue(
-                                                                                if (luckyItem.song.isLocal) {
-                                                                                    ListQueue(items = listOf(luckyItem.toMediaItem()))
-                                                                                } else {
-                                                                                    YouTubeQueue.radio(luckyItem.toMediaMetadata())
-                                                                                },
-                                                                            )
-                                                                        }
-
-                                                                        is Album -> {
-                                                                            val albumWithSongs =
-                                                                                withContext(Dispatchers.IO) {
-                                                                                    database.albumWithSongs(luckyItem.id).first()
-                                                                                }
-
-                                                                            albumWithSongs?.let {
-                                                                                playerConnection?.playQueue(LocalAlbumRadio(it))
-                                                                            }
-                                                                        }
-
-                                                                        is Artist -> {
-                                                                            Unit
-                                                                        }
-
-                                                                        is Playlist -> {
-                                                                            Unit
-                                                                        }
-                                                                    }
-                                                                } else {
-                                                                    when (val luckyItem = ytItems.random()) {
-                                                                        is SongItem -> {
-                                                                            playerConnection?.playQueue(
-                                                                                YouTubeQueue.radio(luckyItem.toMediaMetadata()),
-                                                                            )
-                                                                        }
-
-                                                                        is AlbumItem -> {
-                                                                            playerConnection?.playQueue(
-                                                                                YouTubeAlbumRadio(luckyItem.playlistId),
-                                                                            )
-                                                                        }
-
-                                                                        is ArtistItem -> {
-                                                                            luckyItem.radioEndpoint?.let {
-                                                                                playerConnection?.playQueue(YouTubeQueue(it))
-                                                                            }
-                                                                        }
-
-                                                                        is PlaylistItem -> {
-                                                                            luckyItem.playEndpoint?.let {
-                                                                                playerConnection?.playQueue(YouTubeQueue.playlist(it))
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        null
-                                                    },
-                                                shuffleIconRes = if (shouldShowHomeShuffleButton) R.drawable.shuffle else null,
-                                                shuffleContentDescription =
-                                                    if (shouldShowHomeShuffleButton) {
-                                                        stringResource(
-                                                            R.string.shuffle,
-                                                        )
-                                                    } else {
-                                                        ""
-                                                    },
-                                                onMusicRecognitionClick =
-                                                    if (shouldShowHomeShuffleButton) {
-                                                        { navController.navigate(MusicRecognitionRoute) }
-                                                    } else {
-                                                        null
-                                                    },
-                                                musicRecognitionContentDescription =
-                                                    if (shouldShowHomeShuffleButton) {
-                                                        stringResource(
-                                                            R.string.music_recognition,
-                                                        )
-                                                    } else {
-                                                        ""
-                                                    },
-                                                onMusicTogetherClick =
-                                                    if (shouldShowHomeShuffleButton) {
-                                                        { navController.navigate("settings/music_together") }
-                                                    } else {
-                                                        null
-                                                    },
-                                                isSelected = { screen ->
-                                                    navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
-                                                        true
-                                                },
-                                                onItemClick = { screen, isSelected ->
-                                                    handlePrimaryNavigationClick(screen, isSelected)
-                                                },
-                                                onSearchItemDoubleClick = {
-                                                    searchSource = SearchSource.ONLINE
-                                                    openSearch()
-                                                },
-                                            )
-                                        }
-                                    }
+                                    PlayerOverlayHost(
+                                        navController = navController,
+                                        maxHeight = this@BoxWithConstraints.maxHeight,
+                                        bottomInset = bottomInset,
+                                        shouldShowNav = shouldShowNavigationBar,
+                                        isYearInMusic = isYearInMusicScreen,
+                                        useRail = useRail,
+                                        hazeState = hazeState,
+                                        pureBlack = pureBlack,
+                                        playerViewModel = playerViewModel,
+                                        homeViewModel = homeViewModel,
+                                        playerConnection = playerConnection,
+                                        database = database,
+                                        systemBarController = systemBarController,
+                                        window = window,
+                                        sheetState = playerBottomSheetState,
+                                        aodModeLaunchRequestCount = aodModeLaunchRequestCount,
+                                        onResetAodLaunchRequestCount = { aodModeLaunchRequestCount = 0 },
+                                        useDarkTheme = useDarkTheme,
+                                        shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
+                                        navigationItems = navigationItems,
+                                        navBackStackEntry = navBackStackEntry,
+                                        handlePrimaryNavigationClick = handlePrimaryNavigationClick,
+                                        onSearchItemDoubleClick = {
+                                            searchSource = SearchSource.ONLINE
+                                            openSearch()
+                                        },
+                                        disableAnimations = disableAnimations,
+                                        navVisibleHeight = navVisibleHeight,
+                                        floatingToolbarBottomPadding = floatingToolbarBottomPadding,
+                                        onExpansionFraction = { provider ->
+                                            playerExpansionFractionProvider = provider
+                                        },
+                                    )
                                 },
                                 containerColor = Color.Transparent,
                                 modifier = Modifier.fillMaxSize(),
@@ -2057,20 +1604,6 @@ class MainActivity : ComponentActivity() {
                                     navigationItems = navigationItems,
                                     updateChannel = updateChannel,
                                 )
-                            }
-                        }
-
-                        BackHandler(enabled = playerExpansionFraction > 0.5f) {
-                            when {
-                                isPlayerLyricsVisible -> {
-                                    playerViewModel.setLyricsVisible(false)
-                                }
-                                isPlayerQueueVisible -> {
-                                    playerViewModel.setQueueVisible(false)
-                                }
-                                else -> {
-                                    playerViewModel.requestSheetCollapse()
-                                }
                             }
                         }
 
@@ -2126,51 +1659,5 @@ class MainActivity : ComponentActivity() {
     }
 
 }
-@Composable
-private fun ScopedPlayerSheet(
-    playerViewModel: PlayerViewModel,
-    playerConnection: PlayerConnection?,
-    navController: NavController,
-    bottomNavigationBarHeight: Dp,
-    onExpansionFractionChanged: (Float) -> Unit,
-) {
-    val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
-    val queueState by playerViewModel.queueState.collectAsStateWithLifecycle()
-    UnifiedPlayerSheetV2(
-        state = uiState,
-        queueState = queueState,
-        progressMsProvider = playerViewModel.progressMsProvider,
-        onAction = { action ->
-            when (action) {
-                is PlayerAction.StartRadio -> {
-                    playerConnection?.startRadioSeamlessly()
-                }
-                is PlayerAction.OpenArtist -> {
-                    playerConnection?.service?.currentMediaMetadata?.value?.artists?.firstOrNull()?.id?.let { artistId ->
-                        playerViewModel.requestSheetCollapse()
-                        navController.navigate("artist/$artistId")
-                    }
-                }
-                is PlayerAction.OpenAlbum -> {
-                    playerConnection?.service?.currentMediaMetadata?.value?.album?.id?.let { albumId ->
-                        playerViewModel.requestSheetCollapse()
-                        navController.navigate("album/$albumId")
-                    }
-                }
-                else -> playerViewModel.handleAction(action)
-            }
-        },
-        onLyricsClick = { playerViewModel.setLyricsVisible(true) },
-        onCloseLyricsClick = { playerViewModel.setLyricsVisible(false) },
-        onOpenQueue = { playerViewModel.setQueueVisible(true) },
-        onCloseQueueClick = { playerViewModel.setQueueVisible(false) },
-        onSearchLyricsClick = { playerViewModel.fetchLyrics() },
-        onSeek = { position -> playerViewModel.seekTo(position.toLong()) },
-        onSeekStarted = { playerViewModel.onSeekStarted() },
-        onBackgroundStyleChanged = { playerViewModel.setBlurBackgroundEnabled(it) },
-        onImmersiveChanged = { playerViewModel.setImmersiveEnabled(it) },
-        bottomBarHeight = bottomNavigationBarHeight,
-        onExpansionFractionChanged = onExpansionFractionChanged,
-    )
-}
+
 
