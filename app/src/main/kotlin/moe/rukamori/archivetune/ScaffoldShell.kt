@@ -232,12 +232,11 @@ fun ScaffoldShell(
             } else {
                 null
             }
-        val onlineSearchSort =
-            if (onlineSearchViewModel != null) {
-                onlineSearchViewModel.sort.collectAsStateWithLifecycle().value
-            } else {
-                OnlineSearchSort.DEFAULT
-            }
+        val onlineSearchSort by
+            onlineSearchViewModel
+                ?.sort
+                ?.collectAsStateWithLifecycle()
+                ?: remember { mutableStateOf(OnlineSearchSort.DEFAULT) }
         val isYearInMusicScreen = currentRoute?.startsWith("year_in_music") == true
 
         val navigationItems =
@@ -320,9 +319,11 @@ fun ScaffoldShell(
                     !active
             }
 
+        val allLocalItems by homeViewModel.allLocalItems.collectAsStateWithLifecycle()
+        val allYtItems by homeViewModel.allYtItems.collectAsStateWithLifecycle()
         val shouldShowHomeShuffleButton =
             currentRoute == Screens.Home.route &&
-                (homeViewModel.allLocalItems.value.isNotEmpty() || homeViewModel.allYtItems.value.isNotEmpty())
+                (allLocalItems.isNotEmpty() || allYtItems.isNotEmpty())
 
         val floatingToolbarBottomPadding = YdsInsets.floatingToolbarBottomPadding()
         val navVisibleHeight = FloatingToolbarHeight
@@ -668,7 +669,8 @@ fun ScaffoldShell(
 
                 val hazeState = remember { HazeState() }
 
-                Scaffold(
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Scaffold(
                     topBar = {
                         if (shouldShowTopBar) {
                             val shouldUseFloatingTopBar =
@@ -892,7 +894,7 @@ fun ScaffoldShell(
                                 )
                             }
                         }
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible =
                                 active ||
                                     navBackStackEntry?.destination?.route?.startsWith(OnlineSearchResultRoutePrefix) == true,
@@ -1081,43 +1083,10 @@ fun ScaffoldShell(
                             }
                         }
                     },
-                    bottomBar = {
-                        PlayerOverlayHost(
-                            navController = navController,
-                            maxHeight = this@BoxWithConstraints.maxHeight,
-                            bottomInset = bottomInset,
-                            shouldShowNav = shouldShowNavigationBar,
-                            isYearInMusic = isYearInMusicScreen,
-                            useRail = useRail,
-                            hazeState = hazeState,
-                            pureBlack = pureBlack,
-                            playerViewModel = playerViewModel,
-                            homeViewModel = homeViewModel,
-                            playerConnection = playerConnection,
-                            database = database,
-                            systemBarController = systemBarController,
-                            window = activity.window,
-                            sheetState = playerBottomSheetState,
-                            aodModeLaunchRequestCount = aodModeLaunchRequestCount,
-                            onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
-                            useDarkTheme = useDarkTheme,
-                            shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
-                            navigationItems = navigationItems,
-                            navBackStackEntry = navBackStackEntry,
-                            handlePrimaryNavigationClick = handlePrimaryNavigationClick,
-                            onSearchItemDoubleClick = {
-                                searchSource = SearchSource.ONLINE
-                                openSearch()
-                            },
-                            disableAnimations = disableAnimations,
-                            navVisibleHeight = navVisibleHeight,
-                            floatingToolbarBottomPadding = floatingToolbarBottomPadding,
-                            onExpansionFraction = onExpansionFraction,
-                        )
-                    },
+                    bottomBar = {},
                     containerColor = Color.Transparent,
                     modifier = Modifier.fillMaxSize(),
-                ) {
+                ) { _ ->
                     NavigationHost(
                         navController = navController,
                         topAppBarScrollBehavior = topAppBarScrollBehavior,
@@ -1137,23 +1106,58 @@ fun ScaffoldShell(
                         updateChannel = updateChannel,
                     )
                 }
-            }
 
-            GlobalDialogsHost(
-                navController = navController,
-                playerConnection = playerConnection,
-                bottomSheetPageState = bottomSheetPageState,
-                menuState = menuState,
-                networkBannerState = networkBannerState,
-                pendingBackupRestoreUri = pendingBackupRestoreUri,
-                onDismissBackupRestore = onClearPendingBackupRestoreUri,
-                splashDone = splashDone,
-                shouldShowTopBar = shouldShowTopBar,
-                topInset = topInset,
-                updateChannel = updateChannel,
-                coroutineScope = coroutineScope,
-            )
+                PlayerOverlayHost(
+                    modifier = Modifier.fillMaxSize(),
+                    navController = navController,
+                    maxHeight = this@BoxWithConstraints.maxHeight,
+                    bottomInset = bottomInset,
+                    shouldShowNav = shouldShowNavigationBar,
+                    isYearInMusic = isYearInMusicScreen,
+                    useRail = useRail,
+                    hazeState = hazeState,
+                    pureBlack = pureBlack,
+                    playerViewModel = playerViewModel,
+                    homeViewModel = homeViewModel,
+                    playerConnection = playerConnection,
+                    database = database,
+                    systemBarController = systemBarController,
+                    window = activity.window,
+                    sheetState = playerBottomSheetState,
+                    aodModeLaunchRequestCount = aodModeLaunchRequestCount,
+                    onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
+                    useDarkTheme = useDarkTheme,
+                    shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
+                    navigationItems = navigationItems,
+                    navBackStackEntry = navBackStackEntry,
+                    handlePrimaryNavigationClick = handlePrimaryNavigationClick,
+                    onSearchItemDoubleClick = {
+                        searchSource = SearchSource.ONLINE
+                        openSearch()
+                    },
+                    disableAnimations = disableAnimations,
+                    navVisibleHeight = navVisibleHeight,
+                    floatingToolbarBottomPadding = floatingToolbarBottomPadding,
+                    onExpansionFraction = onExpansionFraction,
+                )
+
+                GlobalDialogsHost(
+                    navController = navController,
+                    playerConnection = playerConnection,
+                    bottomSheetPageState = bottomSheetPageState,
+                    menuState = menuState,
+                    networkBannerState = networkBannerState,
+                    pendingBackupRestoreUri = pendingBackupRestoreUri,
+                    onDismissBackupRestore = onClearPendingBackupRestoreUri,
+                    splashDone = splashDone,
+                    shouldShowTopBar = shouldShowTopBar,
+                    topInset = topInset,
+                    updateChannel = updateChannel,
+                    coroutineScope = coroutineScope,
+                )
+            }
         }
+    }
 
         LaunchedEffect(shouldShowSearchBar, openSearchImmediately) {
             if (shouldShowSearchBar && openSearchImmediately) {
@@ -1167,14 +1171,15 @@ fun ScaffoldShell(
             }
         }
 
-        val openSearchFromRoute =
+        val openSearchFromRoute by
             navBackStackEntry
                 ?.savedStateHandle
                 ?.getStateFlow("openSearch", false)
                 ?.collectAsStateWithLifecycle()
+                ?: remember { mutableStateOf(false) }
 
-        LaunchedEffect(openSearchFromRoute?.value) {
-            if (openSearchFromRoute?.value == true) {
+        LaunchedEffect(openSearchFromRoute) {
+            if (openSearchFromRoute) {
                 navBackStackEntry?.savedStateHandle?.set("openSearch", false)
                 openSearch()
             }
