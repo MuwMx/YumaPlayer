@@ -130,6 +130,9 @@ object SettingsDimensions {
     const val FullyExpandedThreshold = 0.95f
     const val GlassBorderTopAlpha = 0.20f
     const val GlassBorderBottomAlpha = 0.04f
+    const val BlurRadiusMin = 4f
+    const val BlurRadiusMax = 40f
+    const val BlurRadiusDefault = 24f
 
     // -- Bottom Sheet ------------------------------------------------------
     val BottomSheetHorizontalPadding = 16.dp

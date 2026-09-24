@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -113,6 +114,7 @@ fun FloatingNavigationToolbar(
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
     glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
+    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     showBorder: Boolean = true,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
@@ -128,12 +130,12 @@ fun FloatingNavigationToolbar(
 
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
-    val tintColor = remember(containerColor, glassAlpha) { containerColor.copy(alpha = glassAlpha) }
 
-    val hazeStyle = remember(tintColor) {
+    val hazeStyle = remember(containerColor, glassAlpha, blurRadius) {
         HazeDefaults.style(
-            backgroundColor = tintColor,
-            blurRadius = 24.dp,
+            backgroundColor = Color.Transparent,
+            tint = HazeTint(containerColor.copy(alpha = glassAlpha)),
+            blurRadius = blurRadius.dp,
             noiseFactor = 0f,
         )
     }

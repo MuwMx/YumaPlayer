@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassStroke
@@ -102,6 +103,7 @@ fun UnifiedPlayerSheetV2(
     hazeState: HazeState? = null,
     pureBlack: Boolean = false,
     glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
+    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     onExpansionFractionChanged: (Float) -> Unit = {},
     onLyricsClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
@@ -428,11 +430,11 @@ fun UnifiedPlayerSheetV2(
         )
 
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-        val tintColor = remember(containerColor, glassAlpha) { containerColor.copy(alpha = glassAlpha) }
-        val miniHazeStyle = remember(tintColor) {
+        val miniHazeStyle = remember(containerColor, glassAlpha, blurRadius) {
             HazeDefaults.style(
-                backgroundColor = tintColor,
-                blurRadius = 24.dp,
+                backgroundColor = Color.Transparent,
+                tint = HazeTint(containerColor.copy(alpha = glassAlpha)),
+                blurRadius = blurRadius.dp,
                 noiseFactor = 0f,
             )
         }

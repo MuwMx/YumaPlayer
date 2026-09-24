@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.Build
 import android.view.View
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -75,6 +76,8 @@ fun AppearanceThemeSection(
         onBlurNavBarChange = actions.onBlurNavBarChange,
         glassAlpha = state.glassAlpha,
         onGlassAlphaChange = actions.onGlassAlphaChange,
+        blurRadius = state.blurRadius,
+        onBlurRadiusChange = actions.onBlurRadiusChange,
         disableAnimations = state.disableAnimations,
         onDisableAnimationsChange = actions.onDisableAnimationsChange,
         splashOverlayEnabled = state.splashOverlayEnabled,
@@ -118,6 +121,8 @@ fun AppearanceThemeSection(
     onBlurNavBarChange: (Boolean) -> Unit,
     glassAlpha: Float,
     onGlassAlphaChange: (Float) -> Unit,
+    blurRadius: Float,
+    onBlurRadiusChange: (Float) -> Unit,
     disableAnimations: Boolean,
     onDisableAnimationsChange: (Boolean) -> Unit,
     splashOverlayEnabled: Boolean,
@@ -203,11 +208,22 @@ fun AppearanceThemeSection(
         }
 
         item {
-            GlassAlphaSliderItem(
-                value = glassAlpha,
-                onValueChangeFinished = onGlassAlphaChange,
-                isEnabled = blurNavBar,
-            )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = blurNavBar,
+                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap)) {
+                    GlassAlphaSliderItem(
+                        value = glassAlpha,
+                        onValueChangeFinished = onGlassAlphaChange,
+                    )
+                    BlurRadiusSliderItem(
+                        value = blurRadius,
+                        onValueChangeFinished = onBlurRadiusChange,
+                    )
+                }
+            }
         }
 
         item {
@@ -538,7 +554,6 @@ private tailrec fun Context.findActivity(): Activity? =
 private fun GlassAlphaSliderItem(
     value: Float,
     onValueChangeFinished: (Float) -> Unit,
-    isEnabled: Boolean,
 ) {
     var localValue by remember { mutableFloatStateOf(value) }
     LaunchedEffect(value) { localValue = value }
@@ -557,17 +572,52 @@ private fun GlassAlphaSliderItem(
     PreferenceEntry(
         title = { Text(stringResource(R.string.glass_alpha)) },
         description = "${stringResource(R.string.glass_alpha_desc)} (${(localValue * 100).roundToInt()}%)",
-        isEnabled = isEnabled,
         content = {
             Spacer(Modifier.height(4.dp))
             Slider(
                 state = sliderState,
-                enabled = isEnabled,
                 modifier = Modifier.fillMaxWidth(),
                 track = {
                     SliderDefaults.Track(
                         sliderState = sliderState,
-                        enabled = isEnabled,
+                        trackCornerSize = 12.dp,
+                    )
+                },
+            )
+        },
+    )
+}
+
+@Composable
+private fun BlurRadiusSliderItem(
+    value: Float,
+    onValueChangeFinished: (Float) -> Unit,
+) {
+    var localValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { localValue = value }
+
+    val steps = (SettingsDimensions.BlurRadiusMax - SettingsDimensions.BlurRadiusMin).roundToInt() - 1
+    val sliderState =
+        rememberSliderState(
+            value = localValue,
+            steps = steps,
+            valueRange = SettingsDimensions.BlurRadiusMin..SettingsDimensions.BlurRadiusMax,
+            onValueChangeFinished = { onValueChangeFinished(localValue.roundToInt().toFloat()) },
+        )
+    sliderState.onValueChange = { localValue = it.roundToInt().toFloat() }
+    sliderState.value = localValue
+
+    PreferenceEntry(
+        title = { Text(stringResource(R.string.blur_radius)) },
+        description = "${stringResource(R.string.blur_radius_desc)} (${localValue.roundToInt()} dp)",
+        content = {
+            Spacer(Modifier.height(4.dp))
+            Slider(
+                state = sliderState,
+                modifier = Modifier.fillMaxWidth(),
+                track = {
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
                         trackCornerSize = 12.dp,
                     )
                 },

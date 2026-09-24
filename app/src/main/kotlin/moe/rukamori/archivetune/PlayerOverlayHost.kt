@@ -195,6 +195,7 @@ fun PlayerOverlayHost(
     useRail: Boolean = false,
     hazeState: HazeState? = null,
     glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
+    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     pureBlack: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -512,6 +513,7 @@ fun PlayerOverlayHost(
             hazeState = hazeState,
             pureBlack = pureBlack,
             glassAlpha = glassAlpha,
+            blurRadius = blurRadius,
             onExpansionFractionChanged = { fraction ->
                 playerExpansionFraction = fraction
             },
@@ -559,6 +561,7 @@ fun PlayerOverlayHost(
                 pureBlack = pureBlack,
                 hazeState = hazeState,
                 glassAlpha = glassAlpha,
+                blurRadius = blurRadius,
                 showBorder = !isMiniPlayerActive || playerExpansionFraction >= SettingsDimensions.FullyExpandedThreshold,
                 modifier =
                     Modifier
@@ -701,6 +704,7 @@ private fun ScopedPlayerSheet(
     hazeState: HazeState?,
     pureBlack: Boolean,
     glassAlpha: Float,
+    blurRadius: Float,
     onExpansionFractionChanged: (Float) -> Unit,
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
@@ -742,6 +746,7 @@ private fun ScopedPlayerSheet(
         hazeState = hazeState,
         pureBlack = pureBlack,
         glassAlpha = glassAlpha,
+        blurRadius = blurRadius,
         onExpansionFractionChanged = onExpansionFractionChanged,
     )
 }
