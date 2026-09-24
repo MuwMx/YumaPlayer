@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +46,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.glassStroke
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalDatabase
@@ -92,6 +98,8 @@ fun UnifiedPlayerSheetV2(
     onSeekStarted: () -> Unit,
     progressMsProvider: () -> Long,
     bottomBarHeight: Dp = 0.dp,
+    hazeState: HazeState? = null,
+    pureBlack: Boolean = false,
     onExpansionFractionChanged: (Float) -> Unit = {},
     onLyricsClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
@@ -417,6 +425,16 @@ fun UnifiedPlayerSheetV2(
                 .background(Color.Black)
         )
 
+        val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+        val tintColor = remember(containerColor) { containerColor.copy(alpha = 0.65f) }
+        val miniHazeStyle = remember(tintColor) {
+            HazeDefaults.style(
+                backgroundColor = tintColor,
+                blurRadius = 24.dp,
+                noiseFactor = 0f,
+            )
+        }
+
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -449,7 +467,34 @@ fun UnifiedPlayerSheetV2(
                         shape = dynamicShape
                         clip = true
                     }
-                    .background(backgroundGradient)
+                    .then(
+                        if (hazeState != null) {
+                            Modifier.hazeEffect(
+                                state = hazeState,
+                                style = miniHazeStyle,
+                            )
+                        } else {
+                            Modifier.background(containerColor)
+                        }
+                    )
+                    .background(
+                        brush = backgroundGradient,
+                        alpha = (expansionFraction.value / 0.15f).coerceIn(0f, 1f)
+                    )
+                    .then(
+                        if (expansionFraction.value < 0.95f) {
+                            Modifier.glassStroke(
+                                shape = dynamicShape,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                                topAlpha = 0.20f * (1f - (expansionFraction.value / 0.15f)).coerceIn(0f, 1f),
+                                bottomAlpha = 0.04f * (1f - (expansionFraction.value / 0.15f)).coerceIn(0f, 1f),
+                                topColor = Color.White,
+                                bottomColor = Color.Black,
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
                 UnifiedPlayerSheetLayers(
                     state = state,

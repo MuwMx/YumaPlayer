@@ -65,7 +65,6 @@ internal fun MiniPlayerContentInternal(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
-            .background(animatedBgColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null

@@ -112,6 +112,7 @@ fun FloatingNavigationToolbar(
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
+    showBorder: Boolean = true,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
     shuffleContentDescription: String = "",
@@ -122,17 +123,15 @@ fun FloatingNavigationToolbar(
     onItemClick: (Screens, Boolean) -> Unit,
     onSearchItemDoubleClick: (() -> Unit)? = null,
 ) {
-    //три точки
-//    val hasOverflow = onShuffleClick != null && shuffleIconRes != null
-    // СТАЛО: Временно тушим оверфлоу-меню. Табы займут всё свободное место!
     val hasOverflow = false
 
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
+    val tintColor = remember(containerColor) { containerColor.copy(alpha = 0.65f) }
 
-    val hazeStyle = remember(containerColor) {
+    val hazeStyle = remember(tintColor) {
         HazeDefaults.style(
-            backgroundColor = containerColor,
+            backgroundColor = tintColor,
             blurRadius = 24.dp,
             noiseFactor = 0f,
         )
@@ -187,13 +186,19 @@ fun FloatingNavigationToolbar(
                     Modifier.background(containerColor)
                 },
             )
-            .glassStroke(
-                shape = capsuleShape,
-                strokeWidth = SettingsDimensions.GlassBorderThickness,
-                topAlpha = 0.20f,
-                bottomAlpha = 0.04f,
-                topColor = Color.White,
-                bottomColor = Color.Black,
+            .then(
+                if (showBorder) {
+                    Modifier.glassStroke(
+                        shape = capsuleShape,
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                        topAlpha = 0.20f,
+                        bottomAlpha = 0.04f,
+                        topColor = Color.White,
+                        bottomColor = Color.Black,
+                    )
+                } else {
+                    Modifier
+                },
             ),
         contentAlignment = Alignment.Center,
     ) {
