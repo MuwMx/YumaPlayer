@@ -112,6 +112,7 @@ fun FloatingNavigationToolbar(
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
+    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     showBorder: Boolean = true,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
@@ -127,7 +128,7 @@ fun FloatingNavigationToolbar(
 
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
-    val tintColor = remember(containerColor) { containerColor.copy(alpha = 0.65f) }
+    val tintColor = remember(containerColor, glassAlpha) { containerColor.copy(alpha = glassAlpha) }
 
     val hazeStyle = remember(tintColor) {
         HazeDefaults.style(
@@ -191,8 +192,8 @@ fun FloatingNavigationToolbar(
                     Modifier.glassStroke(
                         shape = capsuleShape,
                         strokeWidth = SettingsDimensions.GlassBorderThickness,
-                        topAlpha = 0.20f,
-                        bottomAlpha = 0.04f,
+                        topAlpha = SettingsDimensions.GlassBorderTopAlpha,
+                        bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha,
                         topColor = Color.White,
                         bottomColor = Color.Black,
                     )

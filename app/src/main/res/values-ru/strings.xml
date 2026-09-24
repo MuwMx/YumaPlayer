@@ -316,6 +316,8 @@
     <string name="disable_blur_desc">Убрать эффекты размытия во всем приложении</string>
     <string name="blur_nav_bar">Размытие панели навигации</string>
     <string name="blur_nav_bar_desc">Размывать контент под парящей панелью навигации</string>
+    <string name="glass_alpha">Прозрачность стекла</string>
+    <string name="glass_alpha_desc">Настройка плотности тонирования стекла парящих панелей</string>
     <string name="player">Плеер</string>
     <string name="player_slider_style">Стиль ползунка плеера</string>
     <string name="misc">Разное</string>

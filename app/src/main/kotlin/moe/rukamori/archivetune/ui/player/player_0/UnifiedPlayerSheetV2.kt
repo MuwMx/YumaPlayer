@@ -59,6 +59,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarBottomPadding
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
+import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.extensions.metadata
@@ -100,6 +101,7 @@ fun UnifiedPlayerSheetV2(
     bottomBarHeight: Dp = 0.dp,
     hazeState: HazeState? = null,
     pureBlack: Boolean = false,
+    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     onExpansionFractionChanged: (Float) -> Unit = {},
     onLyricsClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
@@ -275,7 +277,7 @@ fun UnifiedPlayerSheetV2(
 
         val sheetVisualState = rememberSheetVisualState(
             showPlayerContentArea = true,
-            collapsedStateHorizontalPadding = 12.dp,
+            collapsedStateHorizontalPadding = FloatingToolbarHorizontalPadding,
             predictiveBackCollapseProgress = predictiveBackProgress,
             currentSheetContentState = currentSheetState,
             playerContentExpansionFraction = expansionFraction,
@@ -426,7 +428,7 @@ fun UnifiedPlayerSheetV2(
         )
 
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-        val tintColor = remember(containerColor) { containerColor.copy(alpha = 0.65f) }
+        val tintColor = remember(containerColor, glassAlpha) { containerColor.copy(alpha = glassAlpha) }
         val miniHazeStyle = remember(tintColor) {
             HazeDefaults.style(
                 backgroundColor = tintColor,
@@ -474,20 +476,27 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             )
                         } else {
-                            Modifier.background(containerColor)
+                            Modifier.background(backgroundGradient)
                         }
                     )
-                    .background(
-                        brush = backgroundGradient,
-                        alpha = (expansionFraction.value / 0.15f).coerceIn(0f, 1f)
+                    .then(
+                        if (hazeState != null) {
+                            Modifier.background(
+                                brush = backgroundGradient,
+                                alpha = (expansionFraction.value / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)
+                            )
+                        } else {
+                            Modifier
+                        }
                     )
                     .then(
-                        if (expansionFraction.value < 0.95f) {
+                        if (expansionFraction.value < SettingsDimensions.FullyExpandedThreshold) {
+                            val borderFade = (1f - (expansionFraction.value / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
                             Modifier.glassStroke(
                                 shape = dynamicShape,
                                 strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                topAlpha = 0.20f * (1f - (expansionFraction.value / 0.15f)).coerceIn(0f, 1f),
-                                bottomAlpha = 0.04f * (1f - (expansionFraction.value / 0.15f)).coerceIn(0f, 1f),
+                                topAlpha = SettingsDimensions.GlassBorderTopAlpha * borderFade,
+                                bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha * borderFade,
                                 topColor = Color.White,
                                 bottomColor = Color.Black,
                             )

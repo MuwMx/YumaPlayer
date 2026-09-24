@@ -98,6 +98,7 @@ import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.state.PlayerEvent
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YdsInsets
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -193,6 +194,7 @@ fun PlayerOverlayHost(
     modifier: Modifier = Modifier,
     useRail: Boolean = false,
     hazeState: HazeState? = null,
+    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     pureBlack: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
@@ -509,6 +511,7 @@ fun PlayerOverlayHost(
             bottomNavigationBarHeight = bottomNavigationBarHeight,
             hazeState = hazeState,
             pureBlack = pureBlack,
+            glassAlpha = glassAlpha,
             onExpansionFractionChanged = { fraction ->
                 playerExpansionFraction = fraction
             },
@@ -555,7 +558,8 @@ fun PlayerOverlayHost(
                 items = navigationItems,
                 pureBlack = pureBlack,
                 hazeState = hazeState,
-                showBorder = !isMiniPlayerActive || playerExpansionFraction >= 0.95f,
+                glassAlpha = glassAlpha,
+                showBorder = !isMiniPlayerActive || playerExpansionFraction >= SettingsDimensions.FullyExpandedThreshold,
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
@@ -696,6 +700,7 @@ private fun ScopedPlayerSheet(
     bottomNavigationBarHeight: Dp,
     hazeState: HazeState?,
     pureBlack: Boolean,
+    glassAlpha: Float,
     onExpansionFractionChanged: (Float) -> Unit,
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
@@ -736,6 +741,7 @@ private fun ScopedPlayerSheet(
         bottomBarHeight = bottomNavigationBarHeight,
         hazeState = hazeState,
         pureBlack = pureBlack,
+        glassAlpha = glassAlpha,
         onExpansionFractionChanged = onExpansionFractionChanged,
     )
 }

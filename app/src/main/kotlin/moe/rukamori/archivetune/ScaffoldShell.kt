@@ -100,6 +100,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.BlurNavBarKey
+import moe.rukamori.archivetune.constants.GlassAlphaKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
@@ -137,6 +138,7 @@ import moe.rukamori.archivetune.ui.screens.search.OnlineSearchScreen
 import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.ui.theme.YdsInsets
 import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
@@ -247,6 +249,7 @@ fun ScaffoldShell(
         val defaultOpenTab by rememberEnumPreference(DefaultOpenTabKey, NavigationTab.HOME)
         val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
         val blurNavBar by rememberPreference(BlurNavBarKey, defaultValue = true)
+        val glassAlpha by rememberPreference(GlassAlphaKey, defaultValue = SettingsDimensions.DefaultGlassAlpha)
         val tabOpenedFromShortcut =
             remember {
                 when (activity.intent?.action) {
@@ -1119,6 +1122,7 @@ fun ScaffoldShell(
                     isYearInMusic = isYearInMusicScreen,
                     useRail = useRail,
                     hazeState = effectiveHazeState,
+                    glassAlpha = glassAlpha,
                     pureBlack = pureBlack,
                     playerViewModel = playerViewModel,
                     homeViewModel = homeViewModel,

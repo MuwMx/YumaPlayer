@@ -73,6 +73,8 @@ fun AppearanceThemeSection(
         onPureBlackChange = actions.onPureBlackChange,
         blurNavBar = state.blurNavBar,
         onBlurNavBarChange = actions.onBlurNavBarChange,
+        glassAlpha = state.glassAlpha,
+        onGlassAlphaChange = actions.onGlassAlphaChange,
         disableAnimations = state.disableAnimations,
         onDisableAnimationsChange = actions.onDisableAnimationsChange,
         splashOverlayEnabled = state.splashOverlayEnabled,
@@ -114,6 +116,8 @@ fun AppearanceThemeSection(
     onPureBlackChange: (Boolean) -> Unit,
     blurNavBar: Boolean,
     onBlurNavBarChange: (Boolean) -> Unit,
+    glassAlpha: Float,
+    onGlassAlphaChange: (Float) -> Unit,
     disableAnimations: Boolean,
     onDisableAnimationsChange: (Boolean) -> Unit,
     splashOverlayEnabled: Boolean,
@@ -195,6 +199,14 @@ fun AppearanceThemeSection(
                 icon = { Icon(painterResource(R.drawable.blur_on), null, modifier = Modifier.size(24.dp)) },
                 checked = blurNavBar,
                 onCheckedChange = onBlurNavBarChange,
+            )
+        }
+
+        item {
+            GlassAlphaSliderItem(
+                value = glassAlpha,
+                onValueChangeFinished = onGlassAlphaChange,
+                isEnabled = blurNavBar,
             )
         }
 
@@ -521,6 +533,48 @@ private tailrec fun Context.findActivity(): Activity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
+
+@Composable
+private fun GlassAlphaSliderItem(
+    value: Float,
+    onValueChangeFinished: (Float) -> Unit,
+    isEnabled: Boolean,
+) {
+    var localValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) { localValue = value }
+
+    val steps = ((SettingsDimensions.MaxGlassAlpha - SettingsDimensions.MinGlassAlpha) / 0.05f).roundToInt() - 1
+    val sliderState =
+        rememberSliderState(
+            value = localValue,
+            steps = steps,
+            valueRange = SettingsDimensions.MinGlassAlpha..SettingsDimensions.MaxGlassAlpha,
+            onValueChangeFinished = { onValueChangeFinished((localValue * 20).roundToInt() / 20f) },
+        )
+    sliderState.onValueChange = { localValue = (it * 20).roundToInt() / 20f }
+    sliderState.value = localValue
+
+    PreferenceEntry(
+        title = { Text(stringResource(R.string.glass_alpha)) },
+        description = "${stringResource(R.string.glass_alpha_desc)} (${(localValue * 100).roundToInt()}%)",
+        isEnabled = isEnabled,
+        content = {
+            Spacer(Modifier.height(4.dp))
+            Slider(
+                state = sliderState,
+                enabled = isEnabled,
+                modifier = Modifier.fillMaxWidth(),
+                track = {
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        enabled = isEnabled,
+                        trackCornerSize = 12.dp,
+                    )
+                },
+            )
+        },
+    )
+}
 
 @Composable
 private fun HomeBackgroundSliderItem(

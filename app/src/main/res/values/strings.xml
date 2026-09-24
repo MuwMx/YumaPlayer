@@ -462,6 +462,8 @@
     <string name="disable_blur_desc">Disable blur effects throughout the app</string>
     <string name="blur_nav_bar">Blur navigation bar</string>
     <string name="blur_nav_bar_desc">Apply real-time blur behind the floating navigation bar</string>
+    <string name="glass_alpha">Glass opacity</string>
+    <string name="glass_alpha_desc">Adjust the glass tint opacity of the floating panels</string>
     <string name="disable_animations">Disable animations</string>
     <string name="disable_animations_desc">Disable most app animations. Recommended for low-end devices</string>
     <string name="splash_overlay_enabled">Splash screen animation</string>

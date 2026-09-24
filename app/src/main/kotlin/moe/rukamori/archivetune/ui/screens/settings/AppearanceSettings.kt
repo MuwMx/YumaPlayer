@@ -40,6 +40,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.constants.BlurNavBarKey
+import moe.rukamori.archivetune.constants.GlassAlphaKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
@@ -64,6 +65,7 @@ import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
@@ -93,6 +95,11 @@ fun AppearanceSettings(navController: NavController) {
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
     val (blurNavBar, onBlurNavBarChange) = rememberPreference(BlurNavBarKey, defaultValue = true)
+    val (glassAlpha, onGlassAlphaChange) =
+        rememberPreference(
+            GlassAlphaKey,
+            defaultValue = SettingsDimensions.DefaultGlassAlpha,
+        )
     val (disableAnimations, onDisableAnimationsChange) =
         rememberPreference(
             DisableAnimationsKey,
@@ -220,6 +227,7 @@ fun AppearanceSettings(navController: NavController) {
             useDarkTheme = useDarkTheme,
             pureBlack = pureBlack,
             blurNavBar = blurNavBar,
+            glassAlpha = glassAlpha,
             disableAnimations = disableAnimations,
             splashOverlayEnabled = splashOverlayEnabled,
             archiveTuneCanvas = archiveTuneCanvas,
@@ -252,6 +260,7 @@ fun AppearanceSettings(navController: NavController) {
                 onDarkModeChange = onDarkModeChange,
                 onPureBlackChange = onPureBlackChange,
                 onBlurNavBarChange = onBlurNavBarChange,
+                onGlassAlphaChange = onGlassAlphaChange,
                 onDisableAnimationsChange = onDisableAnimationsChange,
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
                 onArchiveTuneCanvasChange = onArchiveTuneCanvasChange,
