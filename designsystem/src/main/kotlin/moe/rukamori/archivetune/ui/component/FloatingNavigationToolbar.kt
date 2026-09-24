@@ -1,4 +1,8 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@file:OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class,
+    dev.chrisbanes.haze.ExperimentalHazeApi::class,
+)
 
 package moe.rukamori.archivetune.ui.component
 
@@ -66,8 +70,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
@@ -131,15 +135,13 @@ fun FloatingNavigationToolbar(
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
 
-    val blurFraction = ((blurRadius - SettingsDimensions.BlurRadiusMin) / (SettingsDimensions.BlurRadiusMax - SettingsDimensions.BlurRadiusMin)).coerceIn(0f, 1f)
-    val dynamicGlassAlpha = lerp(0.20f, 0.75f, blurFraction)
-
-    val hazeStyle = remember(containerColor, blurRadius, dynamicGlassAlpha) {
+    val fixedTintAlpha = if (pureBlack) 0.65f else 0.55f
+    val hazeStyle = remember(containerColor, blurRadius, pureBlack) {
         HazeDefaults.style(
-            backgroundColor = Color.Transparent,
-            tint = HazeTint(containerColor.copy(alpha = dynamicGlassAlpha)),
+            backgroundColor = containerColor,
+            tint = HazeTint(containerColor.copy(alpha = fixedTintAlpha)),
             blurRadius = blurRadius.dp,
-            noiseFactor = 0f,
+            noiseFactor = 0.15f,
         )
     }
 
@@ -187,7 +189,9 @@ fun FloatingNavigationToolbar(
                     Modifier.hazeEffect(
                         state = hazeState,
                         style = hazeStyle,
-                    )
+                    ) {
+                        inputScale = HazeInputScale.Fixed(0.33f)
+                    }
                 } else {
                     Modifier.background(containerColor)
                 },
