@@ -216,6 +216,45 @@ fun ArtistScreen(
             }
         }
 
+        TopAppBar(
+            modifier = Modifier.align(Alignment.TopCenter),
+            colors = GlassDefaults.topAppBarColors(),
+            scrollBehavior = scrollBehavior,
+            title = {
+                val animatedAlpha by animateFloatAsState(
+                    targetValue = if (!transparentAppBar) 1f else 0f,
+                    animationSpec = tween(200),
+                    label = "titleAlpha",
+                )
+                Text(
+                    text = uiState.artistPage?.artist?.title ?: uiState.libraryArtist?.artist?.name ?: "",
+                    modifier = Modifier.alpha(animatedAlpha),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            navigationIcon = {
+                TopAppBarBackButton(navController = navController)
+            },
+            actions = {
+                IconButton(
+                    onClick = {
+                        showArtistOverflowMenu(
+                            menuState = menuState,
+                            uiState = uiState,
+                            onAction = viewModel::onAction,
+                        )
+                    },
+                    onLongClick = {},
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = stringResource(R.string.more_options),
+                    )
+                }
+            },
+        )
+
         HideOnScrollFAB(
             visible = uiState.librarySongs.isNotEmpty() && uiState.libraryArtist?.artist?.isLocal != true,
             lazyListState = lazyListState,
@@ -235,41 +274,4 @@ fun ArtistScreen(
                     .align(Alignment.BottomCenter),
         )
     }
-
-    TopAppBar(
-        title = {
-            val animatedAlpha by animateFloatAsState(
-                targetValue = if (!transparentAppBar) 1f else 0f,
-                animationSpec = tween(200),
-                label = "titleAlpha",
-            )
-            Text(
-                text = uiState.artistPage?.artist?.title ?: uiState.libraryArtist?.artist?.name ?: "",
-                modifier = Modifier.alpha(animatedAlpha),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        navigationIcon = {
-            TopAppBarBackButton(navController = navController)
-        },
-        actions = {
-            IconButton(
-                onClick = {
-                    showArtistOverflowMenu(
-                        menuState = menuState,
-                        uiState = uiState,
-                        onAction = viewModel::onAction,
-                    )
-                },
-                onLongClick = {},
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = stringResource(R.string.more_options),
-                )
-            }
-        },
-        colors = GlassDefaults.topAppBarColors(),
-    )
 }
