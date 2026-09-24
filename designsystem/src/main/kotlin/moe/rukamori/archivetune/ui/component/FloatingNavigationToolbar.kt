@@ -3,6 +3,8 @@
 package moe.rukamori.archivetune.ui.component
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,7 +41,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,6 +74,7 @@ import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassStroke
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
+import kotlin.math.abs
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 private val BarHeight = 68.dp
@@ -248,32 +254,52 @@ private fun FluidTabsContainer(
         val activeIndex = items.indexOfFirst { isSelected(it) }.coerceAtLeast(0)
 
         val density = LocalDensity.current
-        val pillOffsetPx = remember(tabWidth, activeIndex) {
-            with(density) { ((tabWidth * activeIndex) + ((tabWidth - PillWidth) / 2)).toPx() }
+
+        var previousIndex by remember { mutableIntStateOf(activeIndex) }
+        val movingRight = activeIndex > previousIndex
+        LaunchedEffect(activeIndex) {
+            previousIndex = activeIndex
         }
 
-        val animatedPillPx by animateFloatAsState(
-            targetValue = pillOffsetPx,
+        val targetLeftPx = remember(tabWidth, activeIndex) {
+            with(density) { (tabWidth * activeIndex + (tabWidth - PillWidth) / 2).toPx() }
+        }
+        val targetRightPx = remember(tabWidth, activeIndex) {
+            with(density) { (tabWidth * activeIndex + (tabWidth + PillWidth) / 2).toPx() }
+        }
+
+        val animatedLeftPx by animateFloatAsState(
+            targetValue = targetLeftPx,
             animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow
+                dampingRatio = if (movingRight) Spring.DampingRatioNoBouncy else Spring.DampingRatioLowBouncy,
+                stiffness = if (movingRight) Spring.StiffnessLow else Spring.StiffnessMediumLow
             ),
-            label = "FluidPillOffset"
+            label = "FluidPillLeft"
         )
 
+        val animatedRightPx by animateFloatAsState(
+            targetValue = targetRightPx,
+            animationSpec = spring(
+                dampingRatio = if (movingRight) Spring.DampingRatioLowBouncy else Spring.DampingRatioNoBouncy,
+                stiffness = if (movingRight) Spring.StiffnessMediumLow else Spring.StiffnessLow
+            ),
+            label = "FluidPillRight"
+        )
+
+        val pillWidthPx = (animatedRightPx - animatedLeftPx).coerceAtLeast(with(density) { PillHeight.toPx() })
 
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        translationX = animatedPillPx
+                        translationX = animatedLeftPx
                         translationY = 10.dp.toPx()
                     }
-                    .width(PillWidth)
+                    .width(with(density) { pillWidthPx.toDp() })
                     .height(PillHeight)
                     .background(
                         color = NavBarColors.pill(pureBlack),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     )
             )
 
@@ -294,6 +320,28 @@ private fun FluidTabsContainer(
                         label = "LabelTint_$index"
                     )
 
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.12f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "IconScale_$index"
+                    )
+
+                    val neighborOffset = remember { Animatable(0f) }
+                    LaunchedEffect(activeIndex) {
+                        val distance = index - activeIndex
+                        if (!selected && abs(distance) == 1) {
+                            val direction = if (distance > 0) 1f else -1f
+                            val nudgePx = with(density) { 2.dp.toPx() } * direction
+                            neighborOffset.animateTo(nudgePx, tween(120, easing = FastOutSlowInEasing))
+                            neighborOffset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                        } else {
+                            neighborOffset.snapTo(0f)
+                        }
+                    }
+
                     val onClickLambda = remember(screen, selected, onItemClick) {
                         { onItemClick(screen, selected) }
                     }
@@ -307,6 +355,9 @@ private fun FluidTabsContainer(
                             .width(tabWidth)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(18.dp))
+                            .graphicsLayer {
+                                translationX = neighborOffset.value
+                            }
                             .yumaCombinedClickable(
                                 pressedScale = 0.93f,
                                 onClick = onClickLambda,
@@ -320,7 +371,12 @@ private fun FluidTabsContainer(
                             painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
                             contentDescription = stringResource(screen.titleId),
                             tint = iconTint,
-                            modifier = Modifier.size(IconSize)
+                            modifier = Modifier
+                                .size(IconSize)
+                                .graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
                         )
 
                         Text(

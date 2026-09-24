@@ -7,15 +7,19 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +36,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -49,7 +61,9 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -98,7 +112,9 @@ import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.state.PlayerEvent
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YdsInsets
+import moe.rukamori.archivetune.ui.theme.glassStroke
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
@@ -495,7 +511,99 @@ fun PlayerOverlayHost(
         label = "",
     )
 
+    val isMiniPlayerActive by remember(playerViewModel) {
+        playerViewModel.uiState
+            .map { it.trackUrl.isNotEmpty() }
+            .distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
+
+    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val miniPlayerHazeStyle = remember(containerColor) {
+        HazeDefaults.style(
+            backgroundColor = containerColor,
+            blurRadius = 24.dp,
+            noiseFactor = 0f,
+        )
+    }
+
+    val miniPlayerCornerRadius = 18.dp
+    val miniPlayerShape = remember { RoundedCornerShape(miniPlayerCornerRadius) }
+    val density = LocalDensity.current
+    val shadowDyPx = remember(density) { with(density) { 0.85.dp.toPx() } }
+    val shadowBlurPx = remember(density) { with(density) { 2.67.dp.toPx() } }
+    val miniPlayerCornerRadiusPx = remember(density) { with(density) { miniPlayerCornerRadius.toPx() } }
+    val shadowPaint = remember(shadowDyPx, shadowBlurPx) {
+        Paint().apply {
+            nativePaint.apply {
+                isAntiAlias = true
+                color = android.graphics.Color.argb((0.15f * 255).toInt(), 0, 0, 0)
+                setShadowLayer(
+                    shadowBlurPx,
+                    0f,
+                    shadowDyPx,
+                    android.graphics.Color.argb((0.20f * 255).toInt(), 0, 0, 0),
+                )
+            }
+        }
+    }
+
+    val navPaddingProgress = if (navVisibleHeight > 0.dp) {
+        (bottomNavigationBarHeight / navVisibleHeight).coerceIn(0f, 1f)
+    } else 0f
+    val currentToolbarBottomPadding = floatingToolbarBottomPadding * navPaddingProgress
+    val miniPlayerBottomOffset = bottomNavigationBarHeight + currentToolbarBottomPadding + MiniPlayerBottomSpacing
+
     Box(modifier = modifier) {
+        if (isMiniPlayerActive && !useRail) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            start = 12.dp,
+                            end = 12.dp,
+                            bottom = miniPlayerBottomOffset,
+                        )
+                        .fillMaxWidth()
+                        .height(MiniPlayerHeight)
+                        .graphicsLayer {
+                            alpha = (1f - (playerExpansionFraction / 0.15f)).coerceIn(0f, 1f)
+                        }
+                        .drawBehind {
+                            drawIntoCanvas { canvas ->
+                                canvas.drawRoundRect(
+                                    left = 0f,
+                                    top = 0f,
+                                    right = size.width,
+                                    bottom = size.height,
+                                    radiusX = miniPlayerCornerRadiusPx,
+                                    radiusY = miniPlayerCornerRadiusPx,
+                                    paint = shadowPaint,
+                                )
+                            }
+                        }
+                        .clip(miniPlayerShape)
+                        .then(
+                            if (hazeState != null) {
+                                Modifier.hazeEffect(
+                                    state = hazeState,
+                                    style = miniPlayerHazeStyle,
+                                )
+                            } else {
+                                Modifier.background(containerColor)
+                            },
+                        )
+                        .glassStroke(
+                            shape = miniPlayerShape,
+                            strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            topAlpha = 0.20f,
+                            bottomAlpha = 0.04f,
+                            topColor = Color.White,
+                            bottomColor = Color.Black,
+                        ),
+            )
+        }
+
         ScopedPlayerSheet(
             playerViewModel = playerViewModel,
             playerConnection = playerConnection,
