@@ -332,6 +332,7 @@ import moe.rukamori.archivetune.viewmodels.OnlineSearchViewModel
 import moe.rukamori.archivetune.viewmodels.UpdateViewModel
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -936,7 +937,7 @@ class MainActivity : ComponentActivity() {
                                 val result =
                                     imageLoader.execute(
                                         ImageRequest
-                                            .Builder(this@MainActivity)
+                                            .Builder(applicationContext)
                                             .data(song.thumbnailUrl)
                                             .allowHardware(false)
                                             .build(),
@@ -954,6 +955,8 @@ class MainActivity : ComponentActivity() {
                                         themeColor = DefaultThemeColor
                                     }
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
                                     themeColor = DefaultThemeColor
