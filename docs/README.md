@@ -22,8 +22,8 @@ The codebase is organized into independent modules with clearly defined responsi
 - **`:designsystem`** — YDS tokens and Yuma UI Kit.
 - **`:database`** — Room persistence (v36).
 - **`:core` / `:core:innertube`** — Shared logic and InnerTube API client.
-- **`:lyrics:*`** — Isolated lyrics providers (`lrclib`, `kugou`, `paxsenix`, `simpmusic`, `betterlyrics`, `unison`, `youlyplus`).
-- **`:spotifycore` / `:shazamkit` / `:canvas` / `:lastfm` / `:flaccore`** — Dedicated third-party, recognition, visual, scrobbling, and lossless integrations (19 modules total, see `architecture/MODULES.md`).
+- **`:lyrics:*`** — Isolated lyrics providers (`lrclib`, `kugou`, `simpmusic`, `betterlyrics`, `unison`, `youlyplus`).
+- **`:spotifycore` / `:shazamkit` / `:canvas` / `:lastfm` / `:flaccore`** — Dedicated third-party, recognition, visual, scrobbling, and lossless integrations (18 modules total, see `architecture/MODULES.md`).
 
 ---
 

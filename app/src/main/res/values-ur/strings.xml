@@ -497,7 +497,6 @@
     <string name="enable_betterlyrics">BetterLyrics کو فاعل کریں</string>
     <string name="enable_unison_lyrics">Unison کے بول کو فاعل کریں</string>
     <string name="enable_simpmusic_lyrics">SimpMusic کے بول کو فاعل کریں</string>
-    <string name="enable_paxsenix_lyrics">Paxsenix کے بول کو فاعل کریں</string>
     <string name="source">مصدر</string>
     <string name="enable_youlyplus_lyrics">YouLyPlus کے بول کو فاعل کریں</string>
     <string name="audio_quality">معیار سامعہ</string>
@@ -591,15 +590,10 @@
     <string name="clear_song_cache">گیت کے کیش کو صاف کریں</string>
     <string name="clear_lyrics_cache">بول کے کیش کو صاف کریں</string>
     <string name="clear_lyrics_cache_confirm">کیا آپ سچ میں سارے بول کے کیش کو صاف کرنا چاہتے ہیں؟</string>
-    <string name="paxsenix_stats">Parsenix API کے اعداد و شمار</string>
     <string name="uptime">جاگتے ہوئے کا وقت</string>
     <string name="total_requests">کل درخواستیں</string>
     <string name="success_rate">کامیابی کا ریٹ</string>
     <string name="providers">مہیا کار</string>
-    <string name="paxsenix_status_operational">عملی</string>
-    <string name="paxsenix_status_degraded">گھٹ گیا</string>
-    <string name="paxsenix_status_down">بند</string>
-    <string name="paxsenix_stats_failed">API کے اعداد و شمار نکالنے میں ناکام</string>
     <string name="visit_website">ویبسائٹ پر جاٰئیں</string>
     <string name="recent_requests">حالیہ درخواستیں</string>
     <string name="size_used">%s استعمال شدہ</string>

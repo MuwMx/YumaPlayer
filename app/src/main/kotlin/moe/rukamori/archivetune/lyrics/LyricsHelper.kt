@@ -43,24 +43,17 @@ import moe.rukamori.archivetune.betterlyrics.BetterLyrics
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixAppleMusicLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixSpotifyLyricsKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
 import moe.rukamori.archivetune.constants.LyricsProviderOrderKey
-import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.paxsenix.PaxsenixLyrics
 import moe.rukamori.archivetune.utils.GlobalLog
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
-import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.reportException
 import okhttp3.Credentials
@@ -83,12 +76,6 @@ class LyricsHelper
             scope.launch {
                 val preferences = context.dataStore.data.first()
                 SharedLyricsEngine.update(preferences)
-                context.dataStore.data
-                    .map { it[PaxsenixApiKeyKey].orEmpty() }
-                    .distinctUntilChanged()
-                    .collect { apiKey ->
-                        PaxsenixLyrics.setApiKey(apiKey)
-                    }
             }
         }
 
@@ -100,9 +87,6 @@ class LyricsHelper
                 KuGouLyricsProvider,
                 SimpMusicLyricsProvider,
                 UnisonLyricsProvider,
-                PaxsenixAppleMusicLyricsProvider,
-                PaxsenixSpotifyLyricsProvider,
-                PaxsenixMusixmatchLyricsProvider,
                 YouTubeSubtitleLyricsProvider,
                 YouTubeLyricsProvider,
             )
@@ -115,16 +99,6 @@ class LyricsHelper
                 KuGouLyricsProvider to EnableKugouKey,
                 SimpMusicLyricsProvider to EnableSimpMusicLyricsKey,
                 UnisonLyricsProvider to EnableUnisonLyricsKey,
-                PaxsenixAppleMusicLyricsProvider to EnablePaxsenixAppleMusicLyricsKey,
-                PaxsenixSpotifyLyricsProvider to EnablePaxsenixSpotifyLyricsKey,
-                PaxsenixMusixmatchLyricsProvider to EnablePaxsenixMusixmatchLyricsKey,
-            )
-
-        private val paxsenixProviders =
-            setOf(
-                PaxsenixAppleMusicLyricsProvider,
-                PaxsenixSpotifyLyricsProvider,
-                PaxsenixMusixmatchLyricsProvider,
             )
 
         private val cacheLock = Any()
@@ -381,9 +355,7 @@ class LyricsHelper
                         },
                         onFailure = {
                             if (it is CancellationException) throw it
-                            if (it.message?.contains("Paxsenix API key is not configured", ignoreCase = true) != true) {
-                                reportException(it)
-                            }
+                            reportException(it)
                             null
                         },
                     )
@@ -417,8 +389,6 @@ class LyricsHelper
 
         internal suspend fun orderedProviders(): List<LyricsProvider> {
             val preferences = context.dataStore.data.first()
-            val apiKey = preferences[PaxsenixApiKeyKey].orEmpty()
-            PaxsenixLyrics.setApiKey(apiKey)
             val orderStr = preferences[LyricsProviderOrderKey]
             val orderedEnums = deserializeLyricsProviderOrder(orderStr)
             val providerMap: Map<PreferredLyricsProvider, LyricsProvider> =
@@ -428,27 +398,12 @@ class LyricsHelper
                     PreferredLyricsProvider.BETTER_LYRICS to BetterLyricsProvider,
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
-                    PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to PaxsenixAppleMusicLyricsProvider,
-                    PreferredLyricsProvider.PAXSENIX_SPOTIFY to PaxsenixSpotifyLyricsProvider,
-                    PreferredLyricsProvider.PAXSENIX_MUSIXMATCH to PaxsenixMusixmatchLyricsProvider,
                     PreferredLyricsProvider.UNISON to UnisonLyricsProvider,
                 )
             val userOrdered = orderedEnums.mapNotNull { providerMap[it] }
             val rest = baseProviders.filterNot { it in userOrdered }
-            val paxsenixEnabled = preferences[EnablePaxsenixLyricsKey] ?: false
-            val paxsenixApiKeyConfigured = !preferences[PaxsenixApiKeyKey].isNullOrBlank()
-            if (paxsenixEnabled && !paxsenixApiKeyConfigured) {
-                GlobalLog.append(
-                    Log.WARN,
-                    "LyricsHelper",
-                    "Paxsenix is enabled but API key is not configured; Paxsenix providers will fall through",
-                )
-            }
             return (userOrdered + rest).distinct().filter { provider ->
-                val providerEnabled = providerPreferenceKeys[provider]?.let { preferences[it] } ?: true
-                val paxsenixProviderEnabled =
-                    provider !in paxsenixProviders || paxsenixEnabled
-                providerEnabled && paxsenixProviderEnabled
+                providerPreferenceKeys[provider]?.let { preferences[it] } ?: true
             }
         }
 
@@ -528,10 +483,7 @@ object SharedLyricsEngine {
         private set
 
     init {
-        PaxsenixLyrics.setClient(httpClient)
         BetterLyrics.setClient(httpClient)
-        val apiKey = PreferenceStore.get(PaxsenixApiKeyKey).orEmpty()
-        PaxsenixLyrics.setApiKey(apiKey)
     }
 
     fun createOkHttpClient(): OkHttpClient =
@@ -588,10 +540,7 @@ object SharedLyricsEngine {
             okHttpClient = newOkHttp
             httpClient = newClient
 
-            PaxsenixLyrics.setClient(newClient)
             BetterLyrics.setClient(newClient)
-            val apiKey = preferences?.get(PaxsenixApiKeyKey) ?: PreferenceStore.get(PaxsenixApiKeyKey).orEmpty()
-            PaxsenixLyrics.setApiKey(apiKey)
 
             runCatching { oldClient.close() }
         }

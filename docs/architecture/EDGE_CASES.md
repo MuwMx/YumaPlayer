@@ -44,6 +44,6 @@
 ## 5. Empty and Degraded States
 
 - Empty playlist, history, or lyric result renders `UiState.Empty` with an explanation and a call to action, never a blank screen.
-- No lyric provider reachable (all 7+ sources down: LRCLIB, Kugou, Paxsenix, and others): show the plain unsynced text without karaoke highlighting; keep the failure in logs only.
+- No lyric provider reachable (all 6+ sources down: LRCLIB, Kugou, BetterLyrics, and others): show the plain unsynced text without karaoke highlighting; keep the failure in logs only.
 - AI translation unavailable: show the source text without blocking the player.
 - Last.fm / ListenBrainz scrobble unavailable: fire and forget, with no UI-thread retry.

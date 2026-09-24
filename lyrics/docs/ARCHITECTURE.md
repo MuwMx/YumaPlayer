@@ -60,7 +60,7 @@ private val client = HttpClient {
 
 Initialized once when the class loads. Simple and predictable.
 
-### 2. Lazy `by lazy` client (LrcLib, Paxsenix)
+### 2. Lazy `by lazy` client (LrcLib)
 
 ```kotlin
 private val client by lazy {

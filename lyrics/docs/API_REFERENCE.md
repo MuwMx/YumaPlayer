@@ -77,43 +77,6 @@ Batch variant — calls callback with each available variant.
 
 ---
 
-## Paxsenix
-
-**File:** `paxsenix/src/main/kotlin/moe/rukamori/archivetune/paxsenix/PaxsenixLyrics.kt`
-**Object:** `PaxsenixLyrics`
-
-### Methods
-
-#### `getLyrics(title, artist, duration)`
-
-Auto-select backend. Tries Apple Music → NetEase → Spotify → Musixmatch, returns the first success.
-
-#### `getAppleMusicLyrics(title, artist, duration)`
-
-Apple Music via Paxsenix proxy. Supports TTML + LRC formats.
-
-#### `getNeteaseLyrics(title, artist, duration)`
-
-NetEase Music via Paxsenix proxy. Karaoke word-by-word + LRC.
-
-#### `getSpotifyLyrics(title, artist, duration)`
-
-Spotify via Paxsenix proxy.
-
-#### `getMusixmatchLyrics(title, artist, duration)`
-
-Musixmatch via Paxsenix proxy. Word-by-word + default formats.
-
-#### `getYouTubeLyrics(title, artist, duration)`
-
-YouTube Music via Paxsenix proxy.
-
-#### `getStats()`
-
-Returns server health stats from the Paxsenix proxy.
-
----
-
 ## BetterLyrics
 
 **File:** `betterlyrics/src/main/kotlin/moe/rukamori/archivetune/betterlyrics/BetterLyrics.kt`

@@ -9,7 +9,6 @@ dependencyResolutionManagement {
 include(":kugou")
 include(":lrclib")
 include(":simpmusic")
-include(":paxsenix")
 include(":betterlyrics")
 include(":unison")
 include(":youlyplus")

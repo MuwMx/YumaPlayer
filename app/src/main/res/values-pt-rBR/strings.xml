@@ -511,7 +511,6 @@
     <string name="enable_betterlyrics">Ativar BetterLyrics</string>
     <string name="enable_unison_lyrics">Ativar letras do Unison</string>
     <string name="enable_simpmusic_lyrics">Ativar letras do SimpMusic</string>
-    <string name="enable_paxsenix_lyrics">Ativar letras do Paxsenix</string>
     <string name="player_and_audio">Player e áudio</string>
     <string name="audio_quality">Qualidade de áudio</string>
     <string name="audio_quality_auto">Automático</string>
@@ -588,15 +587,10 @@
     <string name="clear_song_cache">Limpar cache de músicas</string>
     <string name="clear_lyrics_cache">Limpar cache de letras</string>
     <string name="clear_lyrics_cache_confirm">Tem certeza de que deseja limpar todo o cache de letras?</string>
-    <string name="paxsenix_stats">Estatísticas da API Paxsenix</string>
     <string name="uptime">Tempo ativo</string>
     <string name="total_requests">Total de solicitações</string>
     <string name="success_rate">Taxa de sucesso</string>
     <string name="providers">Provedores</string>
-    <string name="paxsenix_status_operational">Operacional</string>
-    <string name="paxsenix_status_degraded">Degradado</string>
-    <string name="paxsenix_status_down">Inativo</string>
-    <string name="paxsenix_stats_failed">Falha ao carregar estatísticas da API</string>
     <string name="visit_website">Visitar site</string>
     <string name="recent_requests">Solicitações recentes</string>
     <string name="size_used">%s usado</string>

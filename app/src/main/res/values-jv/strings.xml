@@ -351,7 +351,6 @@
     <string name="enable_betterlyrics">Aktifkan BetterLyrics</string>
     <string name="enable_unison_lyrics">Aktifkan lirik Unison</string>
     <string name="enable_simpmusic_lyrics">Aktifkan lirik SimpMusic</string>
-    <string name="enable_paxsenix_lyrics">Aktifkan lirik Paxsenix</string>
     <string name="player_and_audio">Pemutar dan audio</string>
     <string name="audio_quality">Kualitas audio</string>
     <string name="audio_quality_auto">Otomatis</string>
@@ -425,15 +424,10 @@
     <string name="clear_song_cache">Busak cache lagu</string>
     <string name="clear_lyrics_cache">Busak cache lirik</string>
     <string name="clear_lyrics_cache_confirm">Apakah Kowe yakin ingin menghapus semua cache lirik?</string>
-    <string name="paxsenix_stats">Statistik API Paxsenix</string>
     <string name="uptime">Waktu aktif</string>
     <string name="total_requests">Jumlah Permintaan</string>
     <string name="success_rate">Tingkat Keberhasilan</string>
     <string name="providers">Penyedia</string>
-    <string name="paxsenix_status_operational">Operasional</string>
-    <string name="paxsenix_status_degraded">Terdegradasi</string>
-    <string name="paxsenix_status_down">Turun</string>
-    <string name="paxsenix_stats_failed">Gagal memuat statistik API</string>
     <string name="visit_website">Kunjungi Situs Web</string>
     <string name="recent_requests">Permintaan Terbaru</string>
     <string name="size_used">%s digunakan</string>

@@ -394,7 +394,6 @@
     <string name="player_background_style_v8_v9_desc">אינו זמין עם סגנונות נגן V8 וV9</string>
     <string name="slider_style_circular">מעוגל</string>
     <string name="song_artists">אמני שיר</string>
-    <string name="enable_paxsenix_lyrics">הפעלת Paxsenix lyrics</string>
     <string name="palette_lavender_dream">לוונדר</string>
     <string name="file_size">גודל קובץ</string>
     <string name="pin_to_speed_dial">הצמדה להפעלה מהירה</string>
@@ -538,15 +537,10 @@
     <string name="clear_song_cache">נקה את מטמון השירים</string>
     <string name="clear_lyrics_cache">נקה את מטמון המילים</string>
     <string name="clear_lyrics_cache_confirm">האם אתה בטוח שאתה רוצה לנקות את כל מטמון המילים?</string>
-    <string name="paxsenix_stats">סטטיסטיקות ה-API של Paxsenix</string>
     <string name="uptime">זמן פעולה</string>
     <string name="total_requests">סך כל הבקשות</string>
     <string name="success_rate">שיעור הצלחה</string>
     <string name="providers">ספקים</string>
-    <string name="paxsenix_status_operational">פעיל</string>
-    <string name="paxsenix_status_degraded">פגום</string>
-    <string name="paxsenix_status_down">מטה</string>
-    <string name="paxsenix_stats_failed">טעינת סטטיסטיקות ה-API נכשלה</string>
     <string name="visit_website">ביקור באתר</string>
     <string name="recent_requests">בקשות אחרונות</string>
     <string name="size_used">%s בשימוש</string>

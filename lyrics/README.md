@@ -37,7 +37,6 @@ This repository contains the standalone lyrics provider modules originally extra
 | `kugou` | KuGou Music | Fetches LRC lyrics from KuGou's mobile API (`mobileservice.kugou.com`). Searches by title+artist keyword, matches by duration tolerance, downloads base64-encoded LRC. |
 | `lrclib` | LRC Lib | Fetches synced + plain lyrics from `lrclib.net`. Uses Levenshtein distance for similarity matching. |
 | `simpmusic` | SimpMusic | Fetches crowd-sourced lyrics from `api-lyrics.simpmusic.org`. Indexed by YouTube video ID. |
-| `paxsenix` | Paxsenix | Multi-backend proxy client for `lyrics.paxsenix.org`. Wraps Apple Music, NetEase, Spotify, Musixmatch, and YouTube lyrics endpoints. |
 | `betterlyrics` | BetterLyrics | Fetches TTML (Apple Music format) lyrics from `lyrics-api.boidu.dev`. Includes a full XML DOM-based TTML parser with word-by-word timing, CJK support, and transliteration. |
 | `unison` | Unison | Fetches lyrics from `unison.boidu.dev`. Supports lookup by video ID or metadata (title, artist, album, duration). |
 
@@ -73,14 +72,6 @@ flowchart TB
         subgraph Simpmusic["simpmusic"]
             SM["SimpMusicLyrics.kt<br/>SimpMusic API"]
         end
-        subgraph Paxsenix["paxsenix"]
-            PX["PaxsenixLyrics.kt<br/>Multi-backend proxy"]
-            PXAM["Apple Music"]
-            PXNE["NetEase"]
-            PXSP["Spotify"]
-            PXMX["Musixmatch"]
-            PXYT["YouTube"]
-        end
         subgraph Betterlyrics["betterlyrics"]
             BL["BetterLyrics.kt<br/>TTML API"]
             TTP["TTMLParser.kt<br/>XML word-by-word parser"]
@@ -94,19 +85,16 @@ flowchart TB
         EXKG["mobileservice.kugou.com"]
         EXLL["lrclib.net"]
         EXSM["api-lyrics.simpmusic.org"]
-        EXPX["lyrics.paxsenix.org"]
         EXBL["lyrics-api.boidu.dev"]
         EXUN["unison.boidu.dev"]
     end
 
     UI --> VM --> LH
     LH --> LP
-    LP --> KG & LL & SM & PX & BL & UN
+    LP --> KG & LL & SM & BL & UN
     KG --> EXKG
     LL --> EXLL
     SM --> EXSM
-    PX --> EXPX
-    PXAM & PXNE & PXSP & PXMX & PXYT --> PX
     BL --> EXBL
     UN --> EXUN
 ```
@@ -129,8 +117,6 @@ com.muwmx.yuma/
 │   └── LrcLib.kt            — LRC Lib API client
 ├── simpmusic/               # simpmusic module
 │   └── SimpMusicLyrics.kt   — SimpMusic lyrics client
-├── paxsenix/                # paxsenix module
-│   └── PaxsenixLyrics.kt    — Multi-backend proxy client
 ├── betterlyrics/            # betterlyrics module
 │   ├── BetterLyrics.kt      — BetterLyrics API client
 │   └── TTMLParser.kt        — TTML XML parser
@@ -177,24 +163,6 @@ val lyrics = SimpMusicLyrics.getLyrics(
     videoId = "dQw4w9WgXcQ",
     duration = 213,
 )
-```
-
-### Paxsenix
-
-```kotlin
-// Auto-select (chains Apple Music -> NetEase -> Spotify -> Musixmatch)
-val lyrics = PaxsenixLyrics.getLyrics(
-    title = "Never Gonna Give You Up",
-    artist = "Rick Astley",
-    duration = 213,
-)
-
-// Specific backend
-val appleMusic = PaxsenixLyrics.getAppleMusicLyrics(title, artist, duration)
-val netease    = PaxsenixLyrics.getNeteaseLyrics(title, artist, duration)
-val spotify    = PaxsenixLyrics.getSpotifyLyrics(title, artist, duration)
-val musixmatch = PaxsenixLyrics.getMusixmatchLyrics(title, artist, duration)
-val youtube    = PaxsenixLyrics.getYouTubeLyrics(title, artist, duration)
 ```
 
 ### BetterLyrics

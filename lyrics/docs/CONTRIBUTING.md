@@ -26,7 +26,7 @@ This project follows the [Contributor Covenant](https://www.contributor-covenant
 
 | Convention | Example |
 |---|---|
-| Provider object | `KuGou`, `LrcLib`, `PaxsenixLyrics` |
+| Provider object | `KuGou`, `LrcLib`, `BetterLyrics` |
 | Source file | `KuGou.kt`, `LrcLib.kt` |
 | Package | `com.muwmx.yuma.<name>` |
 | Model files | `models/Track.kt`, `models/LyricsResponse.kt` |

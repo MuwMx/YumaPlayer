@@ -161,22 +161,7 @@ internal fun LyricsProvidersSection(
     onEnableUnisonLyricsChange: (Boolean) -> Unit,
     enableSimpMusicLyrics: Boolean,
     onEnableSimpMusicLyricsChange: (Boolean) -> Unit,
-    enablePaxsenixLyrics: Boolean,
-    onEnablePaxsenixLyricsChange: (Boolean) -> Unit,
-    paxsenixApiKey: String,
-    onOpenPaxsenixApiKeyDialog: () -> Unit,
-    enablePaxsenixAppleMusicLyrics: Boolean,
-    onEnablePaxsenixAppleMusicLyricsChange: (Boolean) -> Unit,
-    enablePaxsenixNeteaseLyrics: Boolean,
-    onEnablePaxsenixNeteaseLyricsChange: (Boolean) -> Unit,
-    enablePaxsenixSpotifyLyrics: Boolean,
-    onEnablePaxsenixSpotifyLyricsChange: (Boolean) -> Unit,
-    enablePaxsenixMusixmatchLyrics: Boolean,
-    onEnablePaxsenixMusixmatchLyricsChange: (Boolean) -> Unit,
-    enablePaxsenixYouTubeLyrics: Boolean,
-    onEnablePaxsenixYouTubeLyricsChange: (Boolean) -> Unit,
     providerOrder: List<PreferredLyricsProvider>,
-    onOpenPaxsenixStats: () -> Unit,
     onOpenProviderOrderDialog: () -> Unit,
 ) {
     PreferenceGroup(title = stringResource(R.string.providers)) {
@@ -231,82 +216,6 @@ internal fun LyricsProvidersSection(
                 icon = { Icon(painterResource(R.drawable.lyrics), null) },
                 checked = enableSimpMusicLyrics,
                 onCheckedChange = onEnableSimpMusicLyricsChange,
-            )
-        }
-
-        item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.enable_paxsenix_lyrics)) },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixLyrics,
-                onCheckedChange = onEnablePaxsenixLyricsChange,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            PreferenceEntry(
-                title = { Text(stringResource(R.string.paxsenix_api_key)) },
-                description =
-                    if (paxsenixApiKey.isBlank()) {
-                        stringResource(R.string.paxsenix_api_key_missing)
-                    } else {
-                        stringResource(R.string.paxsenix_api_key_configured)
-                    },
-                icon = { Icon(painterResource(R.drawable.token), null) },
-                onClick = onOpenPaxsenixApiKeyDialog,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            PreferenceEntry(
-                title = { Text(stringResource(R.string.paxsenix_stats)) },
-                icon = { Icon(painterResource(R.drawable.stats), null) },
-                onClick = onOpenPaxsenixStats,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            SwitchPreference(
-                title = { Text("Paxsenix: Apple Music") },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixAppleMusicLyrics,
-                onCheckedChange = onEnablePaxsenixAppleMusicLyricsChange,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            SwitchPreference(
-                title = { Text("Paxsenix: NetEase") },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixNeteaseLyrics,
-                onCheckedChange = onEnablePaxsenixNeteaseLyricsChange,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            SwitchPreference(
-                title = { Text("Paxsenix: Spotify") },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixSpotifyLyrics,
-                onCheckedChange = onEnablePaxsenixSpotifyLyricsChange,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            SwitchPreference(
-                title = { Text("Paxsenix: Musixmatch") },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixMusixmatchLyrics,
-                onCheckedChange = onEnablePaxsenixMusixmatchLyricsChange,
-            )
-        }
-
-        item(visible = enablePaxsenixLyrics) {
-            SwitchPreference(
-                title = { Text("Paxsenix: YouTube") },
-                icon = { Icon(painterResource(R.drawable.lyrics), null) },
-                checked = enablePaxsenixYouTubeLyrics,
-                onCheckedChange = onEnablePaxsenixYouTubeLyricsChange,
             )
         }
 

@@ -552,7 +552,6 @@
     <string name="proxy_connection_failed">Connessione al proxy non riuscita: %s</string>
     <string name="stream_bypass_proxy">Bypassa il prosy per lo stream</string>
     <string name="stream_bypass_proxy_desc">Usa il tuo IP diretto per la riproduzione stream per evitare IP mismatch</string>
-    <string name="enable_paxsenix_lyrics">Abilita testi Paxsenix</string>
     <string name="audio_offload">Offload audio</string>
     <string name="audio_offload_desc">Consenti ai dispositivi supportati di riprodurre l’audio utilizzando la decodifica hardware a basso consumo energetico. Alcune funzionalità di elaborazione audio sono disattivate.</string>
     <string name="pause_on_device_mute">Pausa quando il volume del dispositivo è 0</string>
@@ -700,15 +699,10 @@
     <string name="system_equalizer_not_found">Equalizzatore di sistema non rilevato sul dispositivo</string>
     <string name="clear_lyrics_cache">Cancella cache dei testi</string>
     <string name="clear_lyrics_cache_confirm">Vuoi davvero eliminare tutta la cache dei testi?</string>
-    <string name="paxsenix_stats">Paxsenix API Stats</string>
     <string name="uptime">Uptime</string>
     <string name="total_requests">Richieste Totali</string>
     <string name="success_rate">Tasso di successo</string>
     <string name="providers">Provider</string>
-    <string name="paxsenix_status_operational">Operativo</string>
-    <string name="paxsenix_status_degraded">Degradato</string>
-    <string name="paxsenix_status_down">Non funzionante</string>
-    <string name="paxsenix_stats_failed">Impossibile caricare API stats</string>
     <string name="visit_website">Visita il sito</string>
     <string name="recent_requests">Richieste Recenti</string>
     <string name="library_top_mixes_refresh">Aggiorna mix</string>

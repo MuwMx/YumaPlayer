@@ -458,7 +458,6 @@
     <string name="backdrop_blur_amount_value">%1$d%%</string>
     <string name="enable_unison_lyrics">Unison Songtexte aktivieren</string>
     <string name="enable_simpmusic_lyrics">SimpMusic Songtexte aktivieren</string>
-    <string name="enable_paxsenix_lyrics">Paxsenix Songtexte aktivieren</string>
     <string name="low_data_mode_title">Datensparmodus</string>
     <string name="low_data_mode_description">Reduziert den mobilen Datenverbrauch, indem in Netzwerken mit Datenvolumenbegrenzung Streams in niedriger Qualität verwendet und die Wiedergabecache-Funktion, Canvas sowie das Vorladen von Songtexten im Hintergrund deaktiviert werden</string>
     <string name="permanent_shuffle">Permanenter Shuffle-Modus</string>
@@ -598,12 +597,10 @@
     <string name="smart_trimmer_description">Der Smart Trimmer verwaltet den Bild- und Song-Cache dynamisch und löscht alte Einträge, um Speicherplatz zu sparen.</string>
     <string name="clear_lyrics_cache">Songtextcache leeren</string>
     <string name="clear_lyrics_cache_confirm">Möchtest du wirklich den gesamten Songtext-Cache löschen?</string>
-    <string name="paxsenix_stats">Paxsenix API Statistik</string>
     <string name="uptime">Verfügbarkeit</string>
     <string name="total_requests">Gesamte Anfragen</string>
     <string name="success_rate">Erfolgsrate</string>
     <string name="providers">Anbieter</string>
-    <string name="paxsenix_stats_failed">Laden der API-Statistiken fehlgeschlagen</string>
     <string name="visit_website">Website besuchen</string>
     <string name="recent_requests">Letzte Anfragen</string>
     <string name="preload_queue_lyrics">Songtexte in der Warteschlange laden</string>

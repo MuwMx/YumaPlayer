@@ -691,10 +691,8 @@
     <string name="testing_proxy_connection">Vérification de la connexion au proxy</string>
     <string name="proxy_connection_success">Connexion via le proxy établie !</string>
     <string name="proxy_connection_failed">Échec de la connexion au serveur proxy : %s</string>
-    <string name="enable_paxsenix_lyrics">Activer les paroles de Paxsenix</string>
     <string name="clear_lyrics_cache">Vider le cache des paroles</string>
     <string name="clear_lyrics_cache_confirm">Êtes-vous sûr de vouloir vider tout le cache des paroles ?</string>
-    <string name="paxsenix_stats">Statistiques de l\'API Paxsenix</string>
     <string name="uptime">Temps de fonctionnement</string>
     <string name="total_requests">Nombre total de demandes</string>
     <string name="success_rate">Taux de réussite</string>
@@ -736,7 +734,6 @@
     <string name="ip_rotation_loading">Chargement de la liste des proxys</string>
     <string name="more_label">Plus</string>
     <string name="all_songs">Tous les Titres</string>
-    <string name="paxsenix_status_down">Indisponible</string>
     <string name="visit_website">Visitez le site web</string>
     <string name="discord_activity_content">Contenu de l\'activité</string>
     <string name="discord_platform_ps5">PS5</string>
@@ -799,7 +796,6 @@
     <string name="discord_authorization_failed">Échec de l\'autorisation Discord</string>
     <string name="most_tracks">La plupart des titres</string>
     <string name="remove_account">Supprimer le compte</string>
-    <string name="paxsenix_status_degraded">Dégradé</string>
     <string name="featured_album_badge">ALBUM À L\'AFFICHE</string>
     <string name="recently_played_artists">Artistes récemment écoutés</string>
     <string name="discord_authorization_success">Compte Discord connecté</string>
@@ -841,7 +837,6 @@
     <string name="font_preference">Police</string>
     <string name="ip_rotation">Rotation des adresses IP</string>
     <string name="least_tracks">Le moins de titres</string>
-    <string name="paxsenix_status_operational">Opérationnel</string>
     <string name="ip_rotation_refreshing">Actualisation de l\'adresse IP</string>
     <string name="discord_presence_online">En ligne</string>
     <string name="longest_duration">Durée la plus longue</string>
@@ -850,7 +845,6 @@
     <string name="device_mute_recovery_volume_disabled">Désactivé</string>
     <string name="your_artists">Vos Artistes</string>
     <string name="custom_font_desc">Choisissez une police au format .ttf</string>
-    <string name="paxsenix_stats_failed">Échec du chargement des statistiques de l\'API</string>
     <string name="font_preference_system">Système</string>
     <string name="updates_nightly_hosting_description">Les versions de développement générées automatiquement sont disponibles à l\'issue d\'exécutions réussies de GitHub Actions.</string>
     <string name="lyrics_word_sync">Synchronisation des mots</string>

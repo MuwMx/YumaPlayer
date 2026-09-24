@@ -10,13 +10,6 @@ import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixAppleMusicLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixMusixmatchLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixNeteaseLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixSpotifyLyricsKey
-import moe.rukamori.archivetune.constants.EnablePaxsenixYouTubeLyricsKey
-import moe.rukamori.archivetune.constants.PaxsenixApiKeyKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
@@ -41,7 +34,6 @@ internal object LyricsContract {
     const val RESET_TEXT_SIZE = 24f
     const val RESET_LINE_SPACING = 1.3f
     const val DEFAULT_QUEUE_PRELOAD_COUNT = 1
-    const val PAXSENIX_WEBSITE_URL = "https://lyrics.paxsenix.org/"
 
     val ClickKey = LyricsClickKey
     val ScrollKey = LyricsScrollKey
@@ -53,13 +45,6 @@ internal object LyricsContract {
     val KugouKey = EnableKugouKey
     val UnisonKey = EnableUnisonLyricsKey
     val SimpMusicKey = EnableSimpMusicLyricsKey
-    val PaxsenixKey = EnablePaxsenixLyricsKey
-    val PaxsenixApiKey = PaxsenixApiKeyKey
-    val PaxsenixAppleMusicKey = EnablePaxsenixAppleMusicLyricsKey
-    val PaxsenixNeteaseKey = EnablePaxsenixNeteaseLyricsKey
-    val PaxsenixSpotifyKey = EnablePaxsenixSpotifyLyricsKey
-    val PaxsenixMusixmatchKey = EnablePaxsenixMusixmatchLyricsKey
-    val PaxsenixYouTubeKey = EnablePaxsenixYouTubeLyricsKey
     val ProviderOrderKey = LyricsProviderOrderKey
     val LineBlurKey = LyricsLineBlurKey
     val RomanizeJapaneseKey = LyricsRomanizeJapaneseKey
@@ -71,12 +56,6 @@ internal object LyricsContract {
     val QueueLyricsPreloadCount = QueueLyricsPreloadCountKey
 }
 
-internal enum class PaxsenixServerStatus {
-    Operational,
-    Degraded,
-    Down,
-}
-
 internal fun PreferredLyricsProvider.displayName(): String =
     when (this) {
         PreferredLyricsProvider.LRCLIB -> "LrcLib"
@@ -84,32 +63,8 @@ internal fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.BETTER_LYRICS -> "BetterLyrics"
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
-        PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC -> "Paxsenix: Apple Music"
-        PreferredLyricsProvider.PAXSENIX_NETEASE -> "Paxsenix: NetEase"
-        PreferredLyricsProvider.PAXSENIX_SPOTIFY -> "Paxsenix: Spotify"
-        PreferredLyricsProvider.PAXSENIX_MUSIXMATCH -> "Paxsenix: Musixmatch"
-        PreferredLyricsProvider.PAXSENIX_YOUTUBE -> "Paxsenix: YouTube"
         PreferredLyricsProvider.UNISON -> "Unison"
     }
-
-internal fun successRateToStatus(rate: Float): PaxsenixServerStatus =
-    when {
-        rate >= 90f -> PaxsenixServerStatus.Operational
-        rate >= 70f -> PaxsenixServerStatus.Degraded
-        else -> PaxsenixServerStatus.Down
-    }
-
-internal fun formatUptimeSeconds(seconds: Double): String {
-    val total = seconds.toLong()
-    val days = total / 86400L
-    val hours = (total % 86400L) / 3600L
-    val minutes = (total % 3600L) / 60L
-    return when {
-        days > 0L -> "${days}d ${hours}h ${minutes}m"
-        hours > 0L -> "${hours}h ${minutes}m"
-        else -> "${minutes}m"
-    }
-}
 
 @Immutable
 data class LyricsSettingsUiState(
@@ -124,13 +79,6 @@ data class LyricsSettingsUiState(
     val enableKugou: Boolean = true,
     val enableUnisonLyrics: Boolean = true,
     val enableSimpMusicLyrics: Boolean = true,
-    val enablePaxsenixLyrics: Boolean = false,
-    val paxsenixApiKey: String = "",
-    val enablePaxsenixAppleMusicLyrics: Boolean = true,
-    val enablePaxsenixNeteaseLyrics: Boolean = true,
-    val enablePaxsenixSpotifyLyrics: Boolean = true,
-    val enablePaxsenixMusixmatchLyrics: Boolean = true,
-    val enablePaxsenixYouTubeLyrics: Boolean = true,
     val providerOrder: List<PreferredLyricsProvider> = emptyList(),
     val lyricsRomanizeJapanese: Boolean = true,
     val lyricsRomanizeKorean: Boolean = true,
@@ -160,15 +108,6 @@ data class LyricsSettingsUiActions(
     val onEnableKugouChange: (Boolean) -> Unit = {},
     val onEnableUnisonLyricsChange: (Boolean) -> Unit = {},
     val onEnableSimpMusicLyricsChange: (Boolean) -> Unit = {},
-    val onEnablePaxsenixLyricsChange: (Boolean) -> Unit = {},
-    val onPaxsenixApiKeyChange: (String) -> Unit = {},
-    val onOpenPaxsenixApiKeyDialog: () -> Unit = {},
-    val onEnablePaxsenixAppleMusicLyricsChange: (Boolean) -> Unit = {},
-    val onEnablePaxsenixNeteaseLyricsChange: (Boolean) -> Unit = {},
-    val onEnablePaxsenixSpotifyLyricsChange: (Boolean) -> Unit = {},
-    val onEnablePaxsenixMusixmatchLyricsChange: (Boolean) -> Unit = {},
-    val onEnablePaxsenixYouTubeLyricsChange: (Boolean) -> Unit = {},
-    val onOpenPaxsenixStats: () -> Unit = {},
     val onOpenProviderOrderDialog: () -> Unit = {},
     val onLyricsRomanizeJapaneseChange: (Boolean) -> Unit = {},
     val onLyricsRomanizeKoreanChange: (Boolean) -> Unit = {},

@@ -44,7 +44,7 @@ YumaPlayer does not silently forward your data to unrelated services. It only co
 | Qobuz / Lossless Streaming | Track metadata search queries, playback stream requests, and user-provided API tokens | When lossless FLAC playback or downloading is active |
 | Spotify | Library sync requests, track matching queries, like/unlike calls, and OAuth tokens | When Spotify playlist sync, library sync, or Canvas features are enabled |
 | ShazamKit / Recognition | Audio fingerprint samples and acoustic hashes | When you use the in-app track recognition feature |
-| Lyrics providers (LRCLIB, Paxsenix, etc.) | Song title, artist name, duration, and album identifiers | When lyrics lookup or synchronization is requested |
+| Lyrics providers (LRCLIB, BetterLyrics, etc.) | Song title, artist name, duration, and album identifiers | When lyrics lookup or synchronization is requested |
 | Canvas Visualizer Service | Song and artist names, album ID, or album URL | When animated canvas or artwork visualizers are enabled |
 | Last.fm | Now playing and scrobble metadata, plus your Last.fm session information | When Last.fm scrobbling is enabled |
 | ListenBrainz | Playback history or scrobble metadata and your ListenBrainz token | When ListenBrainz sync is enabled |

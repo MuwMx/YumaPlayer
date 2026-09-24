@@ -679,11 +679,9 @@
     <string name="testing_proxy_connection">Перевірка з\'єднання з проксі-сервером…</string>
     <string name="proxy_connection_success">Підключення через проксі-сервер встановлено!</string>
     <string name="proxy_connection_failed">Помилка підключення через проксі-сервер: %s</string>
-    <string name="enable_paxsenix_lyrics">Увімкнути тексти пісень Paxsenix</string>
     <string name="tap_to_activate_equalizer">Натисніть, щоб увімкнути еквалайзер</string>
     <string name="clear_lyrics_cache">Очистити кеш текстів пісень</string>
     <string name="clear_lyrics_cache_confirm">Ви впевнені, що хочете очистити весь кеш текстів пісень?</string>
-    <string name="paxsenix_stats">Статистика API Paxsenix</string>
     <string name="uptime">Час безвідмовної роботи</string>
     <string name="total_requests">Загальна кількість запитів</string>
     <string name="success_rate">Відсоток успішності</string>

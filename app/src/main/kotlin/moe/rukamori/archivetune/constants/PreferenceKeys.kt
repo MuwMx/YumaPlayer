@@ -155,13 +155,6 @@ val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableYouLyPlusLyricsKey = booleanPreferencesKey("enableYouLyPlusLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
-val EnablePaxsenixLyricsKey = booleanPreferencesKey("enablePaxsenixLyrics")
-val EnablePaxsenixAppleMusicLyricsKey = booleanPreferencesKey("enablePaxsenixAppleMusicLyrics")
-val EnablePaxsenixNeteaseLyricsKey = booleanPreferencesKey("enablePaxsenixNeteaseLyrics")
-val EnablePaxsenixSpotifyLyricsKey = booleanPreferencesKey("enablePaxsenixSpotifyLyrics")
-val EnablePaxsenixMusixmatchLyricsKey = booleanPreferencesKey("enablePaxsenixMusixmatchLyrics")
-val EnablePaxsenixYouTubeLyricsKey = booleanPreferencesKey("enablePaxsenixYouTubeLyrics")
-val PaxsenixApiKeyKey = stringPreferencesKey("paxsenixApiKey")
 val EnableUnisonLyricsKey = booleanPreferencesKey("enableUnisonLyrics")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoKey = booleanPreferencesKey("hideVideo")
@@ -517,11 +510,6 @@ enum class PreferredLyricsProvider {
     KUGOU,
     SIMPMUSIC,
     UNISON,
-    PAXSENIX_APPLE_MUSIC,
-    PAXSENIX_NETEASE,
-    PAXSENIX_SPOTIFY,
-    PAXSENIX_MUSIXMATCH,
-    PAXSENIX_YOUTUBE,
 }
 
 val DefaultLyricsProviderOrder =
@@ -532,11 +520,6 @@ val DefaultLyricsProviderOrder =
         PreferredLyricsProvider.KUGOU,
         PreferredLyricsProvider.SIMPMUSIC,
         PreferredLyricsProvider.UNISON,
-        PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC,
-        PreferredLyricsProvider.PAXSENIX_NETEASE,
-        PreferredLyricsProvider.PAXSENIX_SPOTIFY,
-        PreferredLyricsProvider.PAXSENIX_MUSIXMATCH,
-        PreferredLyricsProvider.PAXSENIX_YOUTUBE,
     )
 
 fun deserializeLyricsProviderOrder(orderStr: String?): List<PreferredLyricsProvider> {

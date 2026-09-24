@@ -117,7 +117,7 @@ No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-p
 
 ### 🎤 Synchronized Lyrics & AI Translation
 * **3-Tier Synchronized Display:** Simultaneous live display of original lyrics (Kanji / Hangul), pronunciation guide (Romaji), and translated lines.
-* **Live Karaoke Scrolling:** Word-by-word and line-by-line sync pulled from 7+ providers (LRCLIB, Kugou, Paxsenix, BetterLyrics, SimpMusic, Unison, YouLyPlus).
+* **Live Karaoke Scrolling:** Word-by-word and line-by-line sync pulled from 6+ providers (LRCLIB, Kugou, BetterLyrics, SimpMusic, Unison, YouLyPlus).
 * **On-the-Fly AI Translation:** Instant translation of lyrics into your preferred language right inside the player.
 * **Lyrics Card Sharing:** Export and share formatted lyrics quote cards as clean images.
 
@@ -166,7 +166,7 @@ YumaPlayer is localized into multiple languages thanks to our amazing community 
 
 ## 🏛️ Architecture & Documentation
 
-YumaPlayer is structured into **19 independent Gradle modules** following Clean Architecture and Unidirectional Data Flow (UDF) principles:
+YumaPlayer is structured into **18 independent Gradle modules** following Clean Architecture and Unidirectional Data Flow (UDF) principles:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -188,7 +188,7 @@ YumaPlayer is structured into **19 independent Gradle modules** following Clean 
 ┌─────────────────────────────────────────────────────────────┐
 │ :morideobfuscator │ :moriextractor (stream extraction)      │
 ├─────────────────────────────────────────────────────────────┤
-│ Integrations: :lyrics:* (x7) │ :spotifycore │ :flaccore │   │
+│ Integrations: :lyrics:* (x6) │ :spotifycore │ :flaccore │   │
 │ :shazamkit │ :canvas │ :lastfm                              │
 └─────────────────────────────────────────────────────────────┘
 ```

@@ -63,7 +63,7 @@ YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.
   - **Rule:** Entities must not leak into Composables unmapped (known debt, see `LEGACY_WARNING.md` §B6).
 
 ### 🔌 Integrations & Extensions
-- **`:lyrics:*`** — 7 standalone providers: `:lyrics:lrclib`, `:lyrics:kugou`, `:lyrics:paxsenix`, `:lyrics:simpmusic`, `:lyrics:betterlyrics`, `:lyrics:unison`, `:lyrics:youlyplus`. Each implements the shared domain provider contract.
+- **`:lyrics:*`** — 6 standalone providers: `:lyrics:lrclib`, `:lyrics:kugou`, `:lyrics:simpmusic`, `:lyrics:betterlyrics`, `:lyrics:unison`, `:lyrics:youlyplus`. Each implements the shared domain provider contract.
 - **`:spotifycore`** — Spotify metadata, sync helpers, and video-loop asset pipeline inputs.
 - **`:shazamkit`** — Audio recognition engine integration.
 - **`:canvas`** — Video background rendering engine.

@@ -100,12 +100,6 @@ android {
                 ?: ""
         buildConfigField("String", "EXTRACTOR_BEARER", "\"$extractorBearer\"")
 
-        val paxsenixAmpToken =
-            localProperties.getProperty("PAXSENIX_AMP_TOKEN")
-                ?: System.getenv("PAXSENIX_AMP_TOKEN")
-                ?: "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ.eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3MTM5ODIsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ.4n8qYF4qa18sL1E0G9A3qX35cD8wQ-IJcS9Bh8ZT8JV_yLBtVq46B-9-2ZS3EvWHuw3yK9BYFYAhAdTaDm38vQ"
-        buildConfigField("String", "PAXSENIX_AMP_TOKEN", "\"$paxsenixAmpToken\"")
-
         val nightlyBuildHash =
             (
                 canaryDate
@@ -363,7 +357,6 @@ implementation(libs.androidx.foundation.layout)
     implementation(project(":lyrics:kugou"))
     implementation(project(":lyrics:lrclib"))
     implementation(project(":lyrics:simpmusic"))
-    implementation(project(":lyrics:paxsenix"))
     implementation(project(":lyrics:betterlyrics"))
     implementation(project(":lyrics:unison"))
     implementation(project(":lyrics:youlyplus"))
