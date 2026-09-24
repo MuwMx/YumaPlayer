@@ -66,8 +66,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
@@ -151,8 +149,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -176,11 +172,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.window.core.layout.WindowSizeClass
-import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
-import coil3.request.crossfade
 import coil3.toBitmap
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.AppFontPreference
@@ -196,7 +190,6 @@ import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.FontPreferenceKey
-import moe.rukamori.archivetune.constants.HasPressedStarKey
 import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
 import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
 import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
@@ -205,7 +198,6 @@ import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.home.effects.HomeBackgroundSettings
 import moe.rukamori.archivetune.home.effects.LocalHomeBackgroundStyle
 import moe.rukamori.archivetune.home.effects.ScreenBackground
-import moe.rukamori.archivetune.constants.LaunchCountKey
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
@@ -219,7 +211,6 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.PureBlackKey
-import moe.rukamori.archivetune.constants.RemindAfterKey
 import moe.rukamori.archivetune.constants.SYSTEM_DEFAULT
 import moe.rukamori.archivetune.constants.SearchSource
 import moe.rukamori.archivetune.constants.SearchSourceKey
@@ -252,8 +243,6 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.PlayerViewModel
-import moe.rukamori.archivetune.ui.component.BottomSheetMenu
-import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
@@ -261,18 +250,14 @@ import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MarkdownText
-import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.splash.SplashConfig
 import moe.rukamori.archivetune.ui.component.splash.SplashOverlay
 import moe.rukamori.archivetune.ui.component.splash.SplashSlots
 import moe.rukamori.archivetune.ui.component.splash.SplashVectorLoader
-import moe.rukamori.archivetune.ui.component.StarDialog
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
-import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -301,7 +286,6 @@ import moe.rukamori.archivetune.ui.utils.resetHeightOffset
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
-import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLowRamDevice
@@ -309,8 +293,6 @@ import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.setAppLocale
-import moe.rukamori.archivetune.viewmodels.BackupCategory
-import moe.rukamori.archivetune.viewmodels.BackupRestoreViewModel
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import moe.rukamori.archivetune.viewmodels.NetworkBannerViewModel
 import moe.rukamori.archivetune.viewmodels.NewsViewModel
@@ -381,10 +363,6 @@ class MainActivity : ComponentActivity() {
 
     private val playerConnection: PlayerConnection?
         get() = musicServiceBinding.playerConnection
-
-    private var latestVersionName by mutableStateOf(BuildConfig.VERSION_NAME)
-    private var latestUpdateChannel by mutableStateOf(defaultUpdateChannel)
-    private var latestImageUrl by mutableStateOf<String?>(null)
 
     private val systemBarController = SystemBarController(this)
     private var isOnboardingCompleted by mutableStateOf<Boolean?>(null)
@@ -557,127 +535,6 @@ class MainActivity : ComponentActivity() {
                     moe.rukamori.archivetune.ui.component
                         .MenuState()
                 }
-            val releaseNotesState = remember { mutableStateOf<String?>(null) }
-            val updateSheetContent: @Composable ColumnScope.() -> Unit = {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = "v$latestVersionName",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    moe.rukamori.archivetune.ui.component.SineWaveLine(
-                        modifier = Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 8.dp),
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f),
-                        alpha = 0.95f,
-                        strokeWidth = 4.dp,
-                        amplitude = 4.dp,
-                        waves = 7.6f,
-                        animate = true,
-                        animationDurationMillis = 2000,
-                        samples = 400,
-                    )
-                }
-                latestImageUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(url).crossfade(true).build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp).clip(RoundedCornerShape(16.dp)),
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                ) {
-                    val notes = releaseNotesState.value
-                    if (notes != null && notes.isNotBlank()) {
-                        moe.rukamori.archivetune.ui.component.MarkdownText(
-                            markdown = notes,
-                            modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.release_notes_unavailable),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-                androidx.compose.material3.Button(
-                    onClick = {
-                        bottomSheetPageState.dismiss()
-                        if (BuildConfig.DISTRIBUTION == "gms") {
-                            navController.navigate("settings/update?autostart=1") {
-                                launchSingleTop = true
-                            }
-                        } else {
-                            val releaseUrl =
-                                if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
-                                    Updater.getLatestCanaryDownloadUrl().ifBlank {
-                                        "https://github.com/MuwMx/YumaCanary/releases/latest"
-                                    }
-                                } else {
-                                    Updater.getLatestDownloadUrl().ifBlank {
-                                        "https://github.com/MuwMx/YumaPlayer/releases/latest"
-                                    }
-                                }
-                            try {
-                                uriHandler.openUri(releaseUrl)
-                            } catch (_: Exception) {
-                                navController.navigate("settings/update") {
-                                    launchSingleTop = true
-                                }
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(R.string.update_text))
-                }
-            }
-            LaunchedEffect(Unit) {
-                while (playerConnection == null) {
-                    delay(100)
-                }
-                delay(500)
-                if (
-                    BuildConfig.UPDATER_AVAILABLE &&
-                    System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
-                ) {
-                    val isCanary =
-                        BuildConfig.VERSION_NAME.startsWith("canary.") ||
-                            BuildConfig.NIGHTLY_BUILD_HASH.isNotBlank()
-                    val targetChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
-                    val versionResult =
-                        if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
-                            Updater.getLatestCanaryVersionName()
-                        } else {
-                            Updater.getLatestVersionName()
-                        }
-                    versionResult.onSuccess {
-                        if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
-                            latestUpdateChannel = targetChannel
-                            latestVersionName = it
-                            latestImageUrl =
-                                if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
-                                    Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
-                                } else {
-                                    Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
-                                }
-                        }
-                    }
-                }
-                moe.rukamori.archivetune.utils.UpdateNotificationManager.checkForUpdates(this@MainActivity)
-            }
 
             val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
             val customThemeColorValue by rememberPreference(CustomThemeColorKey, defaultValue = "default")
@@ -699,37 +556,6 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(contentVisible) {
                 if (contentVisible && (!splashEnabled || disableAnimations)) {
                     splashDone = true
-                }
-            }
-            LaunchedEffect(latestVersionName, latestUpdateChannel, updateChannel, splashDone) {
-                val isCanary =
-                    BuildConfig.VERSION_NAME.startsWith("canary.") ||
-                        BuildConfig.NIGHTLY_BUILD_HASH.isNotBlank()
-                val expectedChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
-                if (
-                    splashDone &&
-                    BuildConfig.UPDATER_AVAILABLE &&
-                    latestUpdateChannel == expectedChannel &&
-                    Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
-                ) {
-                    val releaseNotesResult =
-                        if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
-                            Updater.getLatestCanaryReleaseNotes()
-                        } else {
-                            Updater.getLatestReleaseNotes()
-                        }
-                    releaseNotesResult.onSuccess {
-                        releaseNotesState.value = it
-                    }.onFailure {
-                        releaseNotesState.value = null
-                    }
-                    latestImageUrl =
-                        if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
-                            Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
-                        } else {
-                            Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
-                        }
-                    bottomSheetPageState.show(updateSheetContent)
                 }
             }
             val contentAlpha by animateFloatAsState(
@@ -1416,10 +1242,6 @@ class MainActivity : ComponentActivity() {
                             navBackStackEntry?.destination?.route != "settings"
                     }
 
-                    var sharedSong: SongItem? by remember {
-                        mutableStateOf(null)
-                    }
-
                     LaunchedEffect(Unit) {
                         if (pendingIntent != null) {
                             handleIntent(pendingIntent, navController)
@@ -1427,75 +1249,6 @@ class MainActivity : ComponentActivity() {
                         } else {
                             handleIntent(intent, navController)
                         }
-                    }
-
-                    var showStarDialog by remember { mutableStateOf(false) }
-
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(3000)
-
-                        val (newCount, hasPressed, remindAfter) =
-                            withContext(Dispatchers.IO) {
-                                val current = dataStore[LaunchCountKey] ?: 0
-                                val updated = current + 1
-                                dataStore.edit { prefs ->
-                                    prefs[LaunchCountKey] = updated
-                                }
-                                val hp = dataStore[HasPressedStarKey] ?: false
-                                val ra = dataStore[RemindAfterKey] ?: 3
-                                Triple(updated, hp, ra)
-                            }
-
-                        if (!hasPressed && newCount >= remindAfter) {
-                            var waited = 0L
-                            val waitStep = 500L
-                            val maxWait = 30_000L
-                            while (bottomSheetPageState.isVisible && waited < maxWait) {
-                                delay(waitStep)
-                                waited += waitStep
-                            }
-                            showStarDialog = true
-                        }
-                    }
-
-                    if (showStarDialog) {
-                        val deferStarPrompt: () -> Unit = {
-                            coroutineScope.launch {
-                                try {
-                                    val launch = withContext(Dispatchers.IO) { dataStore[LaunchCountKey] ?: 0 }
-                                    withContext(Dispatchers.IO) {
-                                        dataStore.edit { prefs ->
-                                            prefs[RemindAfterKey] = launch + 20
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    reportException(e)
-                                } finally {
-                                    showStarDialog = false
-                                }
-                            }
-                        }
-
-                        StarDialog(
-                            onDismissRequest = deferStarPrompt,
-                            onSupport = {
-                                coroutineScope.launch {
-                                    try {
-                                        withContext(Dispatchers.IO) {
-                                            dataStore.edit { prefs ->
-                                                prefs[HasPressedStarKey] = true
-                                                prefs[RemindAfterKey] = Int.MAX_VALUE
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        reportException(e)
-                                    } finally {
-                                        showStarDialog = false
-                                    }
-                                }
-                            },
-                            onLater = deferStarPrompt,
-                        )
                     }
 
                     val currentTitleRes =
@@ -2482,57 +2235,20 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        BottomSheetMenu(
-                            state = LocalMenuState.current,
-                            modifier = Modifier.align(Alignment.BottomCenter),
+                        GlobalDialogsHost(
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            bottomSheetPageState = bottomSheetPageState,
+                            menuState = menuState,
+                            networkBannerState = networkBannerState,
+                            pendingBackupRestoreUri = pendingBackupRestoreUri,
+                            onDismissBackupRestore = { pendingBackupRestoreUri = null },
+                            splashDone = splashDone,
+                            shouldShowTopBar = shouldShowTopBar,
+                            topInset = topInset,
+                            updateChannel = updateChannel,
+                            coroutineScope = coroutineScope,
                         )
-
-                        BottomSheetPage(
-                            state = LocalBottomSheetPageState.current,
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                        )
-
-                        sharedSong?.let { song ->
-                            playerConnection?.let {
-                                Dialog(
-                                    onDismissRequest = { sharedSong = null },
-                                    properties = DialogProperties(usePlatformDefaultWidth = false),
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.padding(24.dp),
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = AlertDialogDefaults.containerColor,
-                                        tonalElevation = AlertDialogDefaults.TonalElevation,
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                        ) {
-                                            YouTubeSongMenu(
-                                                song = song,
-                                                navController = navController,
-                                                onDismiss = { sharedSong = null },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        NetworkStatusBanner(
-                            state = networkBannerState,
-                            modifier =
-                                Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(
-                                        top = if (shouldShowTopBar) topInset + AppBarHeight + 8.dp else topInset + 8.dp,
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                    ).zIndex(10f),
-                        )
-                    }
-
-                    pendingBackupRestoreUri?.let { uri ->
-                        BackupRestoreFromIntentDialog(uri = uri)
                     }
 
                     LaunchedEffect(shouldShowSearchBar, openSearchImmediately) {
@@ -2570,104 +2286,7 @@ class MainActivity : ComponentActivity() {
         intentRouter.handleIntent(intent, navController)
     }
 
-    @Composable
-    private fun BackupRestoreFromIntentDialog(
-        uri: Uri,
-        viewModel: BackupRestoreViewModel = hiltViewModel(),
-    ) {
-        var selected by remember { mutableStateOf(BackupCategory.entries.toSet()) }
-
-        AlertDialog(
-            onDismissRequest = { pendingBackupRestoreUri = null },
-            icon = { Icon(painterResource(R.drawable.restore), null) },
-            title = { Text(stringResource(R.string.restore_options_title)) },
-            text = {
-                Column {
-                    BackupCategory.entries.forEach { category ->
-                        val isChecked = category in selected
-                        val labelRes =
-                            when (category) {
-                                BackupCategory.LIBRARY -> R.string.backup_category_library
-                                BackupCategory.ACCOUNT -> R.string.backup_category_account
-                                BackupCategory.SETTINGS -> R.string.backup_category_settings
-                            }
-                        val descRes =
-                            when (category) {
-                                BackupCategory.LIBRARY -> R.string.backup_category_library_desc
-                                BackupCategory.ACCOUNT -> R.string.backup_category_account_desc
-                                BackupCategory.SETTINGS -> R.string.backup_category_settings_desc
-                            }
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            color = Color.Transparent,
-                            onClick = {
-                                selected = if (isChecked) selected - category else selected + category
-                            },
-                        ) {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(min = 72.dp)
-                                        .padding(horizontal = 4.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(labelRes),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        text = stringResource(descRes),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                androidx.compose.material3.Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { checked ->
-                                        selected = if (checked) selected + category else selected - category
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val uri = pendingBackupRestoreUri ?: return@TextButton
-                        pendingBackupRestoreUri = null
-                        viewModel.restore(this@MainActivity, uri, selected)
-                    },
-                    enabled = selected.isNotEmpty(),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(R.string.action_restore))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { pendingBackupRestoreUri = null },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(stringResource(android.R.string.cancel))
-                }
-            },
-        )
-    }
-
 }
-
 @Composable
 private fun ScopedPlayerSheet(
     playerViewModel: PlayerViewModel,
