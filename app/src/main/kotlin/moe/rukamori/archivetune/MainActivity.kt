@@ -640,6 +640,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            val navController = rememberNavController()
+            DisposableEffect(navController) {
+                this@MainActivity.navController = navController
+                onDispose {}
+            }
+
             var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
             val isPlayerLyricsVisible by remember(playerViewModel) {
                 playerViewModel.uiState
@@ -751,7 +757,7 @@ class MainActivity : ComponentActivity() {
                     onClick = {
                         bottomSheetPageState.dismiss()
                         if (BuildConfig.DISTRIBUTION == "gms") {
-                            this@MainActivity.navController.navigate("settings/update?autostart=1") {
+                            navController.navigate("settings/update?autostart=1") {
                                 launchSingleTop = true
                             }
                         } else {
@@ -768,7 +774,7 @@ class MainActivity : ComponentActivity() {
                             try {
                                 uriHandler.openUri(releaseUrl)
                             } catch (_: Exception) {
-                                this@MainActivity.navController.navigate("settings/update") {
+                                navController.navigate("settings/update") {
                                     launchSingleTop = true
                                 }
                             }
@@ -1021,12 +1027,6 @@ class MainActivity : ComponentActivity() {
                             currentWindowAdaptiveInfo()
                                 .windowSizeClass
                                 .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-
-                    val navController = rememberNavController()
-                    DisposableEffect(navController) {
-                        this@MainActivity.navController = navController
-                        onDispose {}
-                    }
 
                     val updateViewModel: UpdateViewModel = hiltViewModel()
                     LaunchedEffect(updateChannel) {
