@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
@@ -102,7 +103,6 @@ fun UnifiedPlayerSheetV2(
     bottomBarHeight: Dp = 0.dp,
     hazeState: HazeState? = null,
     pureBlack: Boolean = false,
-    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     onExpansionFractionChanged: (Float) -> Unit = {},
     onLyricsClick: () -> Unit = {},
@@ -430,10 +430,13 @@ fun UnifiedPlayerSheetV2(
         )
 
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-        val miniHazeStyle = remember(containerColor, glassAlpha, blurRadius) {
+        val blurFraction = ((blurRadius - SettingsDimensions.BlurRadiusMin) / (SettingsDimensions.BlurRadiusMax - SettingsDimensions.BlurRadiusMin)).coerceIn(0f, 1f)
+        val dynamicGlassAlpha = lerp(0.20f, 0.75f, blurFraction)
+
+        val miniHazeStyle = remember(containerColor, blurRadius, dynamicGlassAlpha) {
             HazeDefaults.style(
                 backgroundColor = Color.Transparent,
-                tint = HazeTint(containerColor.copy(alpha = glassAlpha)),
+                tint = HazeTint(containerColor.copy(alpha = dynamicGlassAlpha)),
                 blurRadius = blurRadius.dp,
                 noiseFactor = 0f,
             )
@@ -482,7 +485,7 @@ fun UnifiedPlayerSheetV2(
                         }
                     )
                     .then(
-                        if (hazeState != null) {
+                        if (hazeState != null && expansionFraction.value > 0f) {
                             Modifier.background(
                                 brush = backgroundGradient,
                                 alpha = (expansionFraction.value / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)

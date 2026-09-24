@@ -194,7 +194,6 @@ fun PlayerOverlayHost(
     modifier: Modifier = Modifier,
     useRail: Boolean = false,
     hazeState: HazeState? = null,
-    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     pureBlack: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
@@ -512,7 +511,6 @@ fun PlayerOverlayHost(
             bottomNavigationBarHeight = bottomNavigationBarHeight,
             hazeState = hazeState,
             pureBlack = pureBlack,
-            glassAlpha = glassAlpha,
             blurRadius = blurRadius,
             onExpansionFractionChanged = { fraction ->
                 playerExpansionFraction = fraction
@@ -560,7 +558,6 @@ fun PlayerOverlayHost(
                 items = navigationItems,
                 pureBlack = pureBlack,
                 hazeState = hazeState,
-                glassAlpha = glassAlpha,
                 blurRadius = blurRadius,
                 showBorder = !isMiniPlayerActive || playerExpansionFraction >= SettingsDimensions.FullyExpandedThreshold,
                 modifier =
@@ -703,7 +700,6 @@ private fun ScopedPlayerSheet(
     bottomNavigationBarHeight: Dp,
     hazeState: HazeState?,
     pureBlack: Boolean,
-    glassAlpha: Float,
     blurRadius: Float,
     onExpansionFractionChanged: (Float) -> Unit,
 ) {
@@ -745,7 +741,6 @@ private fun ScopedPlayerSheet(
         bottomBarHeight = bottomNavigationBarHeight,
         hazeState = hazeState,
         pureBlack = pureBlack,
-        glassAlpha = glassAlpha,
         blurRadius = blurRadius,
         onExpansionFractionChanged = onExpansionFractionChanged,
     )

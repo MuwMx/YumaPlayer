@@ -101,7 +101,6 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.constants.GlassAlphaKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
@@ -250,7 +249,6 @@ fun ScaffoldShell(
         val defaultOpenTab by rememberEnumPreference(DefaultOpenTabKey, NavigationTab.HOME)
         val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
         val blurNavBar by rememberPreference(BlurNavBarKey, defaultValue = true)
-        val glassAlpha by rememberPreference(GlassAlphaKey, defaultValue = SettingsDimensions.DefaultGlassAlpha)
         val blurRadius by rememberPreference(BlurRadiusKey, defaultValue = SettingsDimensions.BlurRadiusDefault)
         val tabOpenedFromShortcut =
             remember {
@@ -1124,7 +1122,6 @@ fun ScaffoldShell(
                     isYearInMusic = isYearInMusicScreen,
                     useRail = useRail,
                     hazeState = effectiveHazeState,
-                    glassAlpha = glassAlpha,
                     blurRadius = blurRadius,
                     pureBlack = pureBlack,
                     playerViewModel = playerViewModel,

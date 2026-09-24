@@ -41,7 +41,6 @@ import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.constants.GlassAlphaKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
@@ -96,11 +95,6 @@ fun AppearanceSettings(navController: NavController) {
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
     val (blurNavBar, onBlurNavBarChange) = rememberPreference(BlurNavBarKey, defaultValue = true)
-    val (glassAlpha, onGlassAlphaChange) =
-        rememberPreference(
-            GlassAlphaKey,
-            defaultValue = SettingsDimensions.DefaultGlassAlpha,
-        )
     val (blurRadius, onBlurRadiusChange) =
         rememberPreference(
             BlurRadiusKey,
@@ -233,7 +227,6 @@ fun AppearanceSettings(navController: NavController) {
             useDarkTheme = useDarkTheme,
             pureBlack = pureBlack,
             blurNavBar = blurNavBar,
-            glassAlpha = glassAlpha,
             blurRadius = blurRadius,
             disableAnimations = disableAnimations,
             splashOverlayEnabled = splashOverlayEnabled,
@@ -267,7 +260,6 @@ fun AppearanceSettings(navController: NavController) {
                 onDarkModeChange = onDarkModeChange,
                 onPureBlackChange = onPureBlackChange,
                 onBlurNavBarChange = onBlurNavBarChange,
-                onGlassAlphaChange = onGlassAlphaChange,
                 onBlurRadiusChange = onBlurRadiusChange,
                 onDisableAnimationsChange = onDisableAnimationsChange,
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,

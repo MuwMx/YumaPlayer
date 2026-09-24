@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
@@ -113,7 +114,6 @@ fun FloatingNavigationToolbar(
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
-    glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     showBorder: Boolean = true,
     onShuffleClick: (() -> Unit)? = null,
@@ -131,10 +131,13 @@ fun FloatingNavigationToolbar(
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
 
-    val hazeStyle = remember(containerColor, glassAlpha, blurRadius) {
+    val blurFraction = ((blurRadius - SettingsDimensions.BlurRadiusMin) / (SettingsDimensions.BlurRadiusMax - SettingsDimensions.BlurRadiusMin)).coerceIn(0f, 1f)
+    val dynamicGlassAlpha = lerp(0.20f, 0.75f, blurFraction)
+
+    val hazeStyle = remember(containerColor, blurRadius, dynamicGlassAlpha) {
         HazeDefaults.style(
             backgroundColor = Color.Transparent,
-            tint = HazeTint(containerColor.copy(alpha = glassAlpha)),
+            tint = HazeTint(containerColor.copy(alpha = dynamicGlassAlpha)),
             blurRadius = blurRadius.dp,
             noiseFactor = 0f,
         )

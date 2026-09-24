@@ -11,7 +11,6 @@ import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.constants.GlassAlphaKey
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
@@ -52,7 +51,6 @@ internal object AppearanceContract {
     val DarkModePref = DarkModeKey
     val PureBlack = PureBlackKey
     val BlurNavBar = BlurNavBarKey
-    val GlassAlpha = GlassAlphaKey
     val BlurRadius = BlurRadiusKey
     val DisableAnimations = DisableAnimationsKey
     val SplashOverlayEnabled = SplashOverlayEnabledKey
@@ -100,7 +98,6 @@ data class AppearanceSettingsUiState(
     val useDarkTheme: Boolean = false,
     val pureBlack: Boolean = false,
     val blurNavBar: Boolean = true,
-    val glassAlpha: Float = SettingsDimensions.DefaultGlassAlpha,
     val blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     val disableAnimations: Boolean = false,
     val splashOverlayEnabled: Boolean = true,
@@ -135,7 +132,6 @@ data class AppearanceSettingsUiActions(
     val onDarkModeChange: (DarkMode) -> Unit = {},
     val onPureBlackChange: (Boolean) -> Unit = {},
     val onBlurNavBarChange: (Boolean) -> Unit = {},
-    val onGlassAlphaChange: (Float) -> Unit = {},
     val onBlurRadiusChange: (Float) -> Unit = {},
     val onDisableAnimationsChange: (Boolean) -> Unit = {},
     val onSplashOverlayEnabledChange: (Boolean) -> Unit = {},
