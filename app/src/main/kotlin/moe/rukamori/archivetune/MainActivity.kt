@@ -257,6 +257,8 @@ import moe.rukamori.archivetune.playback.joinTogether
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.PlayerConnectionHolder
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
@@ -1796,6 +1798,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val hazeState = remember { HazeState() }
+
                             Scaffold(
                                 topBar = {
                                     if (shouldShowTopBar) {
@@ -2295,6 +2299,7 @@ class MainActivity : ComponentActivity() {
                                             FloatingNavigationToolbar(
                                                 items = navigationItems,
                                                 pureBlack = pureBlack,
+                                                hazeState = hazeState,
                                                 modifier =
                                                     Modifier
                                                         .align(Alignment.BottomCenter)
@@ -2526,6 +2531,8 @@ class MainActivity : ComponentActivity() {
                                         },
                                         modifier =
                                             Modifier
+                                                .fillMaxSize()
+                                                .hazeSource(hazeState)
                                                 .then(
                                                     if (isTvDevice) {
                                                         Modifier

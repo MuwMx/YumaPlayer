@@ -10,7 +10,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -47,9 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -58,8 +61,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.screens.Screens
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.glassStroke
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
@@ -97,6 +106,7 @@ fun FloatingNavigationToolbar(
     items: List<Screens>,
     pureBlack: Boolean,
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
     shuffleContentDescription: String = "",
@@ -112,24 +122,78 @@ fun FloatingNavigationToolbar(
     // СТАЛО: Временно тушим оверфлоу-меню. Табы займут всё свободное место!
     val hasOverflow = false
 
+    val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
+    val containerColor = NavBarColors.container(pureBlack)
+    val tintAlpha = if (pureBlack) 0.85f else 0.80f
+    val tintColor = containerColor.copy(alpha = tintAlpha)
+
+    val hazeStyle = remember(tintColor) {
+        HazeDefaults.style(
+            backgroundColor = tintColor,
+            tint = HazeTint(tintColor),
+            blurRadius = 24.dp,
+            noiseFactor = 0f,
+        )
+    }
+
+    val density = LocalDensity.current
+    val shadowDyPx = remember(density) { with(density) { 0.85.dp.toPx() } }
+    val shadowBlurPx = remember(density) { with(density) { 2.67.dp.toPx() } }
+    val cornerRadiusPx = remember(density) { with(density) { CornerRadius.toPx() } }
+    val shadowPaint = remember(shadowDyPx, shadowBlurPx) {
+        Paint().apply {
+            nativePaint.apply {
+                isAntiAlias = true
+                color = android.graphics.Color.argb((0.15f * 255).toInt(), 0, 0, 0)
+                setShadowLayer(
+                    shadowBlurPx,
+                    0f,
+                    shadowDyPx,
+                    android.graphics.Color.argb((0.20f * 255).toInt(), 0, 0, 0),
+                )
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .padding(horizontal = 16.dp)
             .widthIn(max = 460.dp)
             .fillMaxWidth()
             .height(BarHeight)
-            .clip(RoundedCornerShape(CornerRadius))
-            .border(
-                width = 1.dp,
-                color = if (pureBlack) {
-                    Color.White.copy(alpha = 0.12f) // Элегантный неоновый контур для OLED
+            .drawBehind {
+                drawIntoCanvas { canvas ->
+                    canvas.drawRoundRect(
+                        left = 0f,
+                        top = 0f,
+                        right = size.width,
+                        bottom = size.height,
+                        radiusX = cornerRadiusPx,
+                        radiusY = cornerRadiusPx,
+                        paint = shadowPaint,
+                    )
+                }
+            }
+            .clip(capsuleShape)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = hazeStyle,
+                    )
                 } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f) // Мягкая граница для обычной темы
+                    Modifier.background(tintColor)
                 },
-                shape = RoundedCornerShape(CornerRadius) // Форма должна строго совпадать!
             )
-            .background(NavBarColors.container(pureBlack)),
-        contentAlignment = Alignment.Center
+            .glassStroke(
+                shape = capsuleShape,
+                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                topAlpha = 0.20f,
+                bottomAlpha = 0.04f,
+                topColor = Color.White,
+                bottomColor = Color.Black,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Row(
             modifier = Modifier

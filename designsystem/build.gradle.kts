@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.compose.animation)
     implementation(libs.material3)
     implementation(libs.graphics.shapes)
+    implementation(libs.haze)
 
     implementation(libs.palette)
     implementation(libs.google.material)
