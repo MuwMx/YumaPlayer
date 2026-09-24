@@ -24,7 +24,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.EaseOut
@@ -35,11 +34,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -147,7 +142,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
-import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
@@ -165,12 +159,8 @@ import androidx.media3.common.Timeline
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import androidx.window.core.layout.WindowSizeClass
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -238,7 +228,6 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.PlayerConnectionHolder
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
@@ -261,7 +250,6 @@ import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
-import moe.rukamori.archivetune.ui.screens.navigationBuilder
 import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.search.LocalSearchScreen
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
@@ -271,8 +259,6 @@ import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
-import moe.rukamori.archivetune.ui.screens.settings.SettingsScreen
-import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
 import moe.rukamori.archivetune.ui.state.PlayerEvent
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
@@ -727,7 +713,6 @@ class MainActivity : ComponentActivity() {
                     val networkBannerState by networkBannerViewModel.bannerState.collectAsStateWithLifecycle()
                     val hasUnreadNews by newsViewModel.hasUnreadNews.collectAsStateWithLifecycle()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val (previousTab) = rememberSaveable { mutableStateOf("home") }
                     val currentRoute = navBackStackEntry?.destination?.route
                     val onlineSearchViewModel: OnlineSearchViewModel? =
                         if (currentRoute?.startsWith(OnlineSearchResultRoutePrefix) == true && navBackStackEntry != null) {
@@ -2054,172 +2039,26 @@ class MainActivity : ComponentActivity() {
                                 containerColor = Color.Transparent,
                                 modifier = Modifier.fillMaxSize(),
                             ) {
-                                var transitionDirection =
-                                    AnimatedContentTransitionScope.SlideDirection.Left
-
-                                if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route }) {
-                                    if (navigationItems.fastAny { it.route == previousTab }) {
-                                        val curIndex =
-                                            navigationItems.indexOf(
-                                                navigationItems.fastFirstOrNull {
-                                                    it.route == navBackStackEntry?.destination?.route
-                                                },
-                                            )
-
-                                        val prevIndex =
-                                            navigationItems.indexOf(
-                                                navigationItems.fastFirstOrNull {
-                                                    it.route == previousTab
-                                                },
-                                            )
-
-                                        if (prevIndex > curIndex) {
-                                            AnimatedContentTransitionScope.SlideDirection.Right.also {
-                                                transitionDirection = it
-                                            }
-                                        }
-                                    }
-                                }
-
-                                NavHost(
+                                NavigationHost(
                                     navController = navController,
-                                        startDestination =
-                                            if (launchMusicRecognitionFromShortcut) {
-                                                MusicRecognitionRoute
-                                            } else {
-                                                when (tabOpenedFromShortcut ?: defaultOpenTab) {
-                                                    NavigationTab.HOME -> Screens.Home.route
-                                                    NavigationTab.LIBRARY -> Screens.Library.route
-                                                    else -> Screens.Home.route
-                                                }
-                                            },
-                                        enterTransition = {
-                                            if (disableAnimations) {
-                                                fadeIn(tween(0))
-                                            } else if (initialState.destination.route in topLevelScreens &&
-                                                targetState.destination.route in topLevelScreens
-                                            ) {
-                                                fadeIn(tween(250))
-                                            } else {
-                                                fadeIn(tween(250)) + slideInHorizontally { it / 2 }
-                                            }
-                                        },
-                                        exitTransition = {
-                                            if (disableAnimations) {
-                                                fadeOut(tween(0))
-                                            } else if (initialState.destination.route in topLevelScreens &&
-                                                targetState.destination.route in topLevelScreens
-                                            ) {
-                                                fadeOut(tween(200))
-                                            } else {
-                                                fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
-                                            }
-                                        },
-                                        popEnterTransition = {
-                                            if (disableAnimations) {
-                                                fadeIn(tween(0))
-                                            } else if ((
-                                                    initialState.destination.route in topLevelScreens ||
-                                                        initialState.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true
-                                                ) &&
-                                                targetState.destination.route in topLevelScreens
-                                            ) {
-                                                fadeIn(tween(250))
-                                            } else {
-                                                fadeIn(tween(250)) + slideInHorizontally { -it }
-                                            }
-                                        },
-                                        popExitTransition = {
-                                            if (disableAnimations) {
-                                                fadeOut(tween(0))
-                                            } else if ((
-                                                    initialState.destination.route in topLevelScreens ||
-                                                        initialState.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true
-                                                ) &&
-                                                targetState.destination.route in topLevelScreens
-                                            ) {
-                                                fadeOut(tween(200))
-                                            } else {
-                                                fadeOut(tween(200)) + slideOutHorizontally { it }
-                                            }
-                                        },
-                                        modifier =
-                                            Modifier
-                                                .fillMaxSize()
-                                                .hazeSource(hazeState)
-                                                .then(
-                                                    if (isTvDevice) {
-                                                        Modifier
-                                                            .focusRequester(contentAreaFocusRequester)
-                                                            .focusGroup()
-                                                            .focusable()
-                                                    } else {
-                                                        Modifier
-                                                    },
-                                                ).nestedScroll(
-                                                    // Step 2b: the NavHost-level connection now serves
-                                                    // ONLY shell-driven sub-screens (Album/Artist/
-                                                    // Playlist/...). Home and Search attach their own
-                                                    // per-route connection inside their screen, so a
-                                                    // departing screen's fling can no longer reach the
-                                                    // incoming route's header state (fling carry-over is
-                                                    // severed structurally). Library is self-contained
-                                                    // and OnlineSearchResult is gated by canScroll=false,
-                                                    // so routing them through this shared arm is harmless.
-                                                    topAppBarScrollBehavior.nestedScrollConnection,
-                                                ),
-                                    ) {
-                                        if (BuildConfig.UPDATER_AVAILABLE) {
-                                            composable(
-                                                route = "settings/update?autostart={autostart}&download={download}",
-                                                arguments = listOf(
-                                                    navArgument("autostart") {
-                                                        type = NavType.StringType
-                                                        nullable = true
-                                                        defaultValue = null
-                                                    },
-                                                    navArgument("download") {
-                                                        type = NavType.StringType
-                                                        nullable = true
-                                                        defaultValue = null
-                                                    },
-                                                ),
-                                            ) { backStackEntry ->
-                                                val autostart = backStackEntry.arguments?.let { args ->
-                                                    val raw = args.getString("autostart") ?: args.getString("download")
-                                                    raw == "1" || raw.equals("true", ignoreCase = true)
-                                                } ?: false
-                                                val updateViewModel: UpdateViewModel = hiltViewModel()
-                                                val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
-
-                                                UpdateScreen(
-                                                    navController = navController,
-                                                    onUpToDate = { updateViewModel.dismissUpdate() },
-                                                    autostart = autostart,
-                                                )
-                                            }
-                                        }
-
-                                        composable("settings") {
-                                            SettingsScreen(
-                                                navController = navController,
-                                                updateState = updateState, // 👈 Добавлено
-                                                onClearUpdateBadge = { updateViewModel.dismissUpdate() }
-                                            )
-                                        }
-
-                                        navigationBuilder(
-                                            navController,
-                                            topAppBarScrollBehavior,
-                                            updateState,
-                                            disableAnimations,
-                                            onClearUpdateBadge = { updateViewModel.dismissUpdate() },
-                                            homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
-                                            searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
-                                        )
-                                    }
-                                }
+                                    topAppBarScrollBehavior = topAppBarScrollBehavior,
+                                    hazeState = hazeState,
+                                    updateState = updateState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
+                                    searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
+                                    onClearUpdateBadge = { updateViewModel.dismissUpdate() },
+                                    disableAnimations = disableAnimations,
+                                    isTvDevice = isTvDevice,
+                                    contentAreaFocusRequester = contentAreaFocusRequester,
+                                    launchMusicRecognitionFromShortcut = launchMusicRecognitionFromShortcut,
+                                    tabOpenedFromShortcut = tabOpenedFromShortcut,
+                                    defaultOpenTab = defaultOpenTab,
+                                    navigationItems = navigationItems,
+                                    updateChannel = updateChannel,
+                                )
                             }
+                        }
 
                         BackHandler(enabled = playerExpansionFraction > 0.5f) {
                             when {
