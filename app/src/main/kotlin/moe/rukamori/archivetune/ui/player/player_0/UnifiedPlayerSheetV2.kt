@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
@@ -432,13 +431,13 @@ fun UnifiedPlayerSheetV2(
         )
 
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-        val fixedTintAlpha = if (pureBlack) 0.65f else 0.55f
+        val fixedTintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
         val miniHazeStyle = remember(containerColor, blurRadius, pureBlack) {
             HazeDefaults.style(
                 backgroundColor = containerColor,
                 tint = HazeTint(containerColor.copy(alpha = fixedTintAlpha)),
                 blurRadius = blurRadius.dp,
-                noiseFactor = 0.15f,
+                noiseFactor = SettingsDimensions.HazeNoiseFactor,
             )
         }
 
@@ -480,7 +479,7 @@ fun UnifiedPlayerSheetV2(
                                 state = hazeState,
                                 style = miniHazeStyle,
                             ) {
-                                inputScale = HazeInputScale.Fixed(0.33f)
+                                inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
                             }
                         } else {
                             Modifier.background(backgroundGradient)

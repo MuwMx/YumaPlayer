@@ -135,13 +135,13 @@ fun FloatingNavigationToolbar(
     val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
 
-    val fixedTintAlpha = if (pureBlack) 0.65f else 0.55f
+    val fixedTintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
     val hazeStyle = remember(containerColor, blurRadius, pureBlack) {
         HazeDefaults.style(
             backgroundColor = containerColor,
             tint = HazeTint(containerColor.copy(alpha = fixedTintAlpha)),
             blurRadius = blurRadius.dp,
-            noiseFactor = 0.15f,
+            noiseFactor = SettingsDimensions.HazeNoiseFactor,
         )
     }
 
@@ -190,7 +190,7 @@ fun FloatingNavigationToolbar(
                         state = hazeState,
                         style = hazeStyle,
                     ) {
-                        inputScale = HazeInputScale.Fixed(0.33f)
+                        inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
                     }
                 } else {
                     Modifier.background(containerColor)
