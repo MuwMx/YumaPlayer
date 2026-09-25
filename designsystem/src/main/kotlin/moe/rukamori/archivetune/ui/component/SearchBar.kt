@@ -39,7 +39,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarColors
@@ -214,13 +213,7 @@ fun TopSearch(
                 ).toDp()
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(topInset + AppBarHeight)
-                    .background(color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
-        )
+        val borderFade = (1f - animationProgress).coerceIn(0f, 1f)
 
         Surface(
             shape = animatedShape,
@@ -249,12 +242,12 @@ fun TopSearch(
                         },
                     )
                     .then(
-                        if (showBorder) {
+                        if (showBorder && hazeState != null && borderFade > 0f) {
                             Modifier.glassStroke(
                                 shape = animatedShape,
                                 strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                topAlpha = SettingsDimensions.GlassBorderTopAlpha,
-                                bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha,
+                                topAlpha = SettingsDimensions.GlassBorderTopAlpha * borderFade,
+                                bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha * borderFade,
                                 topColor = Color.White,
                                 bottomColor = Color.Black,
                             )
@@ -293,7 +286,6 @@ fun TopSearch(
 
                 if (animationProgress > 0) {
                     Column(Modifier.alpha(animationProgress)) {
-                        HorizontalDivider(color = colors.dividerColor)
                         content()
                     }
                 }

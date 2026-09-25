@@ -314,8 +314,8 @@
     <string name="pure_black">Чистый чёрный</string>
     <string name="disable_blur">Убрать эффекты размытия</string>
     <string name="disable_blur_desc">Убрать эффекты размытия во всем приложении</string>
-    <string name="blur_nav_bar">Размытие панели навигации</string>
-    <string name="blur_nav_bar_desc">Размывать контент под парящей панелью навигации</string>
+    <string name="blur_nav_bar">Размытие интерфейса</string>
+    <string name="blur_nav_bar_desc">Размывать контент под панелью навигации, строкой поиска и панелями</string>
     <string name="blur_radius">Сила размытия</string>
     <string name="blur_radius_desc">Настройка силы размытия фона парящих панелей</string>
     <string name="player">Плеер</string>

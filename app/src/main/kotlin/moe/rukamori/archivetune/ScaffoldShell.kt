@@ -7,6 +7,7 @@ import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
@@ -14,6 +15,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -692,6 +696,7 @@ fun ScaffoldShell(
                 val hazeState = remember { HazeState() }
                 val effectiveHazeState = if (blurNavBar) hazeState else null
                 val searchHazeState = remember { HazeState() }
+                val effectiveSearchHazeState = if (blurNavBar) searchHazeState else null
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -942,151 +947,158 @@ fun ScaffoldShell(
                                             ),
                                     )
                                 },
-                                leadingIcon = {
-                                    IconButton(
-                                        onClick = {
-                                            when {
-                                                active -> {
-                                                    onActiveChange(false)
-                                                }
+                                 leadingIcon = {
+                                     val iconMotionDuration = if (disableAnimations) 0 else 300
+                                     IconButton(
+                                         onClick = {
+                                             if (active) {
+                                                 onActiveChange(false)
+                                             } else {
+                                                 onActiveChange(true)
+                                             }
+                                         },
+                                         onLongClick = {
+                                             when {
+                                                 active -> {}
 
-                                                !navigationItems.fastAny {
-                                                    it.route == navBackStackEntry?.destination?.route
-                                                } -> {
-                                                    navController.navigateUp()
-                                                }
+                                                 !navigationItems.fastAny {
+                                                     it.route == navBackStackEntry?.destination?.route
+                                                 } -> {
+                                                     navController.backToMain()
+                                                 }
 
-                                                else -> {
-                                                    onActiveChange(true)
-                                                }
-                                            }
-                                        },
-                                        onLongClick = {
-                                            when {
-                                                active -> {}
-
-                                                !navigationItems.fastAny {
-                                                    it.route == navBackStackEntry?.destination?.route
-                                                } -> {
-                                                    navController.backToMain()
-                                                }
-
-                                                else -> {}
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            painterResource(
-                                                if (active ||
-                                                    !navigationItems.fastAny {
-                                                        it.route == navBackStackEntry?.destination?.route
-                                                    }
-                                                ) {
-                                                    R.drawable.arrow_back
-                                                } else {
-                                                    R.drawable.ic_search
-                                                },
-                                            ),
-                                            contentDescription = null,
-                                        )
-                                    }
-                                },
-                                trailingIcon = {
-                                    Row {
-                                        if (active) {
-                                            if (query.text.isNotEmpty()) {
-                                                IconButton(
-                                                    onClick = {
-                                                        onQueryChange(
-                                                            TextFieldValue(
-                                                                "",
-                                                            ),
-                                                        )
-                                                    },
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.close),
-                                                        contentDescription = null,
-                                                    )
-                                                }
-                                            } else {
-                                                IconButton(
-                                                    onClick = {
-                                                        val intent =
-                                                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                                                putExtra(
-                                                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
-                                                                )
-                                                            }
-                                                        runCatching { voiceSearchLauncher.launch(intent) }
-                                                    },
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.mic),
-                                                        contentDescription = stringResource(R.string.voice_search),
-                                                    )
-                                                }
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    searchSource =
-                                                        if (searchSource ==
-                                                            SearchSource.ONLINE
-                                                        ) {
-                                                            SearchSource.LOCAL
-                                                        } else {
-                                                            SearchSource.ONLINE
-                                                        }
-                                                },
-                                            ) {
-                                                Icon(
-                                                    painter =
-                                                        painterResource(
-                                                            when (searchSource) {
-                                                                SearchSource.LOCAL -> R.drawable.library_music
-                                                                SearchSource.ONLINE -> R.drawable.language
-                                                            },
-                                                        ),
-                                                    contentDescription = null,
-                                                )
-                                            }
-                                        } else if (onlineSearchViewModel != null) {
-                                            OnlineSearchSortMenu(
-                                                selectedSort = onlineSearchSort,
-                                                onSortSelected = onlineSearchViewModel::updateSort,
-                                            )
-                                        }
-                                    }
-                                },
-                                modifier =
-                                    Modifier
-                                        .focusRequester(searchBarFocusRequester)
-                                        .let { with(this@BoxWithConstraints) { it.align(Alignment.TopCenter) } },
-                                focusRequester = searchBarFocusRequester,
-                                leftFocusRequester = tvRailFocusRequester,
-                                colors =
-                                    if (pureBlack && active) {
-                                        SearchBarDefaults.colors(
-                                            containerColor = Color.Black,
-                                            dividerColor = Color.DarkGray,
-                                            inputFieldColors =
-                                                TextFieldDefaults.colors(
-                                                    focusedTextColor = Color.White,
-                                                    unfocusedTextColor = Color.Gray,
-                                                    focusedContainerColor = Color.Transparent,
-                                                    unfocusedContainerColor = Color.Transparent,
-                                                    cursorColor = Color.White,
-                                                    focusedIndicatorColor = Color.Transparent,
-                                                    unfocusedIndicatorColor = Color.Transparent,
-                                                ),
-                                        )
-                                    } else {
-                                        SearchBarDefaults.colors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                        )
-                                    },
-                                hazeState = searchHazeState,
+                                                 else -> {}
+                                             }
+                                         },
+                                     ) {
+                                         AnimatedContent(
+                                             targetState = active,
+                                             transitionSpec = {
+                                                 (fadeIn(animationSpec = tween(iconMotionDuration)) + scaleIn(initialScale = 0.8f, animationSpec = tween(iconMotionDuration)))
+                                                     .togetherWith(fadeOut(animationSpec = tween(iconMotionDuration)) + scaleOut(targetScale = 0.8f, animationSpec = tween(iconMotionDuration)))
+                                             },
+                                             label = "LeadingIconMorph",
+                                         ) { isExpanded ->
+                                             Icon(
+                                                 painter =
+                                                     painterResource(
+                                                         if (isExpanded) {
+                                                             R.drawable.arrow_back
+                                                         } else {
+                                                             R.drawable.ic_search
+                                                         },
+                                                     ),
+                                                 contentDescription = null,
+                                             )
+                                         }
+                                     }
+                                 },
+                                 trailingIcon = {
+                                     val iconMotionDuration = if (disableAnimations) 0 else 300
+                                     AnimatedContent(
+                                         targetState = active,
+                                         transitionSpec = {
+                                             (fadeIn(animationSpec = tween(iconMotionDuration)) + scaleIn(initialScale = 0.85f, animationSpec = tween(iconMotionDuration)))
+                                                 .togetherWith(fadeOut(animationSpec = tween(iconMotionDuration)) + scaleOut(targetScale = 0.85f, animationSpec = tween(iconMotionDuration)))
+                                         },
+                                         label = "TrailingIconMorph",
+                                     ) { isExpanded ->
+                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                             if (isExpanded) {
+                                                 if (query.text.isNotEmpty()) {
+                                                     IconButton(
+                                                         onClick = {
+                                                             onQueryChange(
+                                                                 TextFieldValue(
+                                                                     "",
+                                                                 ),
+                                                             )
+                                                         },
+                                                     ) {
+                                                         Icon(
+                                                             painter = painterResource(R.drawable.close),
+                                                             contentDescription = null,
+                                                         )
+                                                     }
+                                                 } else {
+                                                     IconButton(
+                                                         onClick = {
+                                                             val intent =
+                                                                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                                     putExtra(
+                                                                         RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                                                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                                                     )
+                                                                 }
+                                                             runCatching { voiceSearchLauncher.launch(intent) }
+                                                         },
+                                                     ) {
+                                                         Icon(
+                                                             painter = painterResource(R.drawable.mic),
+                                                             contentDescription = stringResource(R.string.voice_search),
+                                                         )
+                                                     }
+                                                 }
+                                                 IconButton(
+                                                     onClick = {
+                                                         searchSource =
+                                                             if (searchSource ==
+                                                                 SearchSource.ONLINE
+                                                             ) {
+                                                                 SearchSource.LOCAL
+                                                             } else {
+                                                                 SearchSource.ONLINE
+                                                             }
+                                                     },
+                                                 ) {
+                                                     Icon(
+                                                         painter =
+                                                             painterResource(
+                                                                 when (searchSource) {
+                                                                     SearchSource.LOCAL -> R.drawable.library_music
+                                                                     SearchSource.ONLINE -> R.drawable.language
+                                                                 },
+                                                             ),
+                                                         contentDescription = null,
+                                                     )
+                                                 }
+                                             } else if (onlineSearchViewModel != null) {
+                                                 OnlineSearchSortMenu(
+                                                     selectedSort = onlineSearchSort,
+                                                     onSortSelected = onlineSearchViewModel::updateSort,
+                                                 )
+                                             }
+                                         }
+                                     }
+                                 },
+                                 modifier =
+                                     Modifier
+                                         .focusRequester(searchBarFocusRequester)
+                                         .let { with(this@BoxWithConstraints) { it.align(Alignment.TopCenter) } },
+                                 focusRequester = searchBarFocusRequester,
+                                 leftFocusRequester = tvRailFocusRequester,
+                                 colors =
+                                     if (pureBlack && active) {
+                                         SearchBarDefaults.colors(
+                                             containerColor = Color.Black,
+                                             dividerColor = Color.DarkGray,
+                                             inputFieldColors =
+                                                 TextFieldDefaults.colors(
+                                                     focusedTextColor = Color.White,
+                                                     unfocusedTextColor = Color.Gray,
+                                                     focusedContainerColor = Color.Transparent,
+                                                     unfocusedContainerColor = Color.Transparent,
+                                                     cursorColor = Color.White,
+                                                     focusedIndicatorColor = Color.Transparent,
+                                                     unfocusedIndicatorColor = Color.Transparent,
+                                                 ),
+                                         )
+                                     } else {
+                                         SearchBarDefaults.colors(
+                                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                         )
+                                     },
+                                 hazeState = effectiveSearchHazeState,
                                 pureBlack = pureBlack,
                                 blurRadius = blurRadius,
                             ) {
@@ -1137,7 +1149,16 @@ fun ScaffoldShell(
                         topAppBarScrollBehavior = topAppBarScrollBehavior,
                         hazeState = effectiveHazeState,
                         updateState = updateState,
-                        modifier = Modifier.fillMaxSize().hazeSource(searchHazeState),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (effectiveSearchHazeState != null) {
+                                        Modifier.hazeSource(effectiveSearchHazeState)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                         searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                         onClearUpdateBadge = { updateViewModel.dismissUpdate() },
