@@ -158,7 +158,7 @@ fun LibraryMixScreen(
                     playerConnection.playQueue(
                         ListQueue(items = album.tracks.map { it.toMediaItem() }),
                     )
-                }
+                } ?: Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
             }
         }
     val shuffleSpotlightAlbum: () -> Unit =
@@ -787,8 +787,10 @@ internal fun MostPlayedAlbumSpotlightCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val mostPlayedAlbum: MostPlayedAlbumUiModel? = album
                 Button(
                     onClick = onPlayAll,
+                    enabled = mostPlayedAlbum != null,
                     shape = CircleShape,
                     colors =
                         ButtonDefaults.buttonColors(

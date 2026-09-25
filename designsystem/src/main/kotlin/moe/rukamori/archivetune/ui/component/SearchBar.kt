@@ -219,7 +219,7 @@ fun TopSearch(
             shape = animatedShape,
             color = Color.Transparent,
             contentColor = contentColorFor(containerColor),
-            tonalElevation = if (hazeState != null) SettingsDimensions.CardElevation else tonalElevation,
+            tonalElevation = if (hazeState != null) 0.dp else tonalElevation,
             modifier =
                 Modifier
                     .padding(
