@@ -1266,6 +1266,8 @@ fun LocalPlaylistTopBar(
     onToggleSelectAll: () -> Unit,
     onOpenSelectionMenu: () -> Unit,
     navController: NavController,
+    onEdit: (() -> Unit)? = null,
+    isEditable: Boolean = false,
 ) {
     TopAppBar(
         colors =
@@ -1369,6 +1371,17 @@ fun LocalPlaylistTopBar(
                         contentDescription = null,
                     )
                 }
+                if (onEdit != null) {
+                    IconButton(
+                        onClick = onEdit,
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isEditable) R.drawable.edit else R.drawable.sync),
+                            contentDescription = stringResource(R.string.edit),
+                        )
+                    }
+                }
             }
         },
     )
@@ -1393,6 +1406,8 @@ fun LocalPlaylistTopBar(
     focusRequester: FocusRequester,
     menuState: MenuState,
     navController: NavController,
+    onEdit: (() -> Unit)? = null,
+    isEditable: Boolean = false,
 ) {
     LocalPlaylistTopBar(
         selection = selection,
@@ -1431,6 +1446,8 @@ fun LocalPlaylistTopBar(
             )
         },
         navController = navController,
+        onEdit = onEdit,
+        isEditable = isEditable,
     )
 }
 
@@ -1442,6 +1459,8 @@ fun LocalPlaylistTopBar(
     showTopBarTitle: Boolean,
     menuState: MenuState,
     navController: NavController,
+    onEdit: (() -> Unit)? = null,
+    isEditable: Boolean = false,
 ) {
     LocalPlaylistTopBar(
         isSearching = searchState.isSearching,
@@ -1461,6 +1480,8 @@ fun LocalPlaylistTopBar(
         focusRequester = searchState.focusRequester,
         menuState = menuState,
         navController = navController,
+        onEdit = onEdit,
+        isEditable = isEditable,
     )
 }
 

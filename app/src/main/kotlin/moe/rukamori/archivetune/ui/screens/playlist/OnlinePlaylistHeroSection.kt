@@ -22,8 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -191,7 +189,6 @@ fun OnlinePlaylistHeroSection(
             val radioLabel = stringResource(R.string.radio)
             val likeLabel = stringResource(R.string.liked)
             val downloadLabel = stringResource(R.string.download)
-            val menuLabel = stringResource(R.string.more)
 
             if (hasLike) {
                 Box(
@@ -229,6 +226,33 @@ fun OnlinePlaylistHeroSection(
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    )
+                }
+            } else if (playlist.radioEndpoint != null) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = actions.onRadio,
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = LocalYumaColors.current.glassBackground,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = radioLabel
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.radio),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
@@ -307,35 +331,6 @@ fun OnlinePlaylistHeroSection(
                 }
             }
 
-            playlist.radioEndpoint?.let {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .yumaClickable(
-                                pressedScale = SettingsAnimations.PressScale,
-                                onClick = actions.onRadio,
-                            )
-                            .yumaGlassCard(
-                                shape = CircleShape,
-                                backgroundColor = LocalYumaColors.current.glassBackground,
-                            )
-                            .clip(CircleShape)
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = radioLabel
-                                role = Role.Button
-                            },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.radio),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                    )
-                }
-            }
-
             Box(
                 modifier =
                     Modifier
@@ -378,57 +373,6 @@ fun OnlinePlaylistHeroSection(
                             modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
-                }
-            }
-
-            Box(
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .yumaClickable(
-                            pressedScale = SettingsAnimations.PressScale,
-                            onClick = actions.onMenu,
-                        )
-                        .yumaGlassCard(
-                            shape = CircleShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(CircleShape)
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = menuLabel
-                            role = Role.Button
-                        },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                )
-            }
-        }
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val mixEndpoint = playlist.shuffleEndpoint ?: playlist.radioEndpoint
-            if (mixEndpoint != null) {
-                Button(
-                    onClick = actions.onMix,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mix),
-                        contentDescription = stringResource(R.string.start_radio),
-                        modifier = Modifier.size(24.dp),
-                    )
                 }
             }
         }

@@ -28,12 +28,15 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -86,6 +89,7 @@ fun ArtistSongsScreen(
     val artist by viewModel.artist.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val lazyListState = rememberLazyListState()
+    val fabHazeState = remember { HazeState() }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -93,6 +97,7 @@ fun ArtistSongsScreen(
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            modifier = Modifier.hazeSource(fabHazeState),
         ) {
             item(
                 key = "header",
@@ -196,6 +201,7 @@ fun ArtistSongsScreen(
             lazyListState = lazyListState,
             icon = R.drawable.shuffle,
             label = context.getString(R.string.shuffle),
+            hazeState = fabHazeState,
             onClick = {
                 playerConnection.playQueue(
                     ListQueue(

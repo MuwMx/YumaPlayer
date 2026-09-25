@@ -23,8 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -597,66 +595,6 @@ fun LocalPlaylistHeroSection(
                         )
                     }
                 }
-            }
-
-            Box(
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .yumaClickable(
-                            pressedScale = SettingsAnimations.PressScale,
-                            onClick = {
-                                if (editable) {
-                                    actions.onEdit()
-                                } else {
-                                    actions.onSync()
-                                }
-                            },
-                        )
-                        .yumaGlassCard(
-                            shape = CircleShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(CircleShape)
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = editLabel
-                            role = Role.Button
-                        },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            if (editable) R.drawable.edit else R.drawable.sync,
-                        ),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                )
-            }
-        }
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Button(
-                onClick = actions.onMix,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.mix),
-                    contentDescription = "Start Mix",
-                    modifier = Modifier.size(28.dp),
-                )
             }
         }
 

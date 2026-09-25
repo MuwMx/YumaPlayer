@@ -260,6 +260,14 @@ fun LocalPlaylistScreen(
             showTopBarTitle = remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }.value,
             menuState = menuState,
             navController = navController,
+            onEdit = {
+                if (playlist?.playlist?.isEditable == true) {
+                    actions.onEdit()
+                } else {
+                    actions.onSync()
+                }
+            },
+            isEditable = playlist?.playlist?.isEditable == true,
         )
 
         LocalPlaylistDownloadProgressToolbar(

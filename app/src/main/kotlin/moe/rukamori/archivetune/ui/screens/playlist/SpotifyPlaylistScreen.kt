@@ -33,9 +33,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -45,8 +42,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -634,31 +629,6 @@ fun SpotifyPlaylistScreen(
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 20.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Button(
-                                    onClick = { playPlaylist(shuffled = true) },
-                                    enabled = tracks.isNotEmpty(),
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonDefaults.shapes(),
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.mix),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
                                     )
                                 }
                             }

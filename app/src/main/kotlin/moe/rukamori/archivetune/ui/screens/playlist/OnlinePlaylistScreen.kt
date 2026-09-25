@@ -214,6 +214,7 @@ fun OnlinePlaylistScreen(
             showTopBarTitle = remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }.value,
             menuState = menuState,
             navController = navController,
+            onMenu = actions.onMenu,
         )
 
         OnlinePlaylistDownloadProgressToolbar(

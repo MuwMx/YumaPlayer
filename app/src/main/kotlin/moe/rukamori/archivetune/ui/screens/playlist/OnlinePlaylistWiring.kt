@@ -647,6 +647,7 @@ fun OnlinePlaylistTopBar(
     showTopBarTitle: Boolean,
     menuState: MenuState,
     navController: NavController,
+    onMenu: (() -> Unit)? = null,
 ) {
     TopAppBar(
         colors =
@@ -776,6 +777,17 @@ fun OnlinePlaylistTopBar(
                         painter = painterResource(R.drawable.ic_search),
                         contentDescription = null,
                     )
+                }
+                if (onMenu != null) {
+                    IconButton(
+                        onClick = onMenu,
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more_vert),
+                            contentDescription = stringResource(R.string.more_options),
+                        )
+                    }
                 }
             }
         },

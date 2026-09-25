@@ -48,6 +48,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -138,6 +140,7 @@ fun ArtistScreen(
     }
 
     val collapseFraction by rememberCollapseFraction(lazyListState)
+    val fabHazeState = remember { HazeState() }
 
     Box(
         modifier =
@@ -160,7 +163,7 @@ fun ArtistScreen(
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(fabHazeState),
         ) {
             if (uiState.artistPage == null && !uiState.showLocal) {
                 artistShimmerItem(
@@ -265,6 +268,7 @@ fun ArtistScreen(
             lazyListState = lazyListState,
             icon = if (showLocal) R.drawable.language else R.drawable.library_music,
             label = if (showLocal) stringResource(R.string.together_online) else stringResource(R.string.filter_library),
+            hazeState = fabHazeState,
             onClick = {
                 showLocal = showLocal.not()
                 if (!showLocal && uiState.artistPage == null) viewModel.fetchArtistsFromYTM()

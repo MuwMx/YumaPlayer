@@ -97,6 +97,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HistorySource
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.db.entities.EventWithSong
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -158,6 +160,7 @@ fun HistoryScreen(
     val focusRequester = remember { FocusRequester() }
     val localListState = rememberLazyListState()
     val remoteListState = rememberLazyListState()
+    val fabHazeState = remember { HazeState() }
     val scrollBehavior =
         appBarScrollBehavior(
             canScroll = { !isSearching && selectedEventIds.isEmpty() },
@@ -527,6 +530,7 @@ fun HistoryScreen(
                 lazyListState = activeListState,
                 icon = R.drawable.shuffle,
                 label = stringResource(R.string.shuffle),
+                hazeState = fabHazeState,
                 onClick = {
                     if (historySource == HistorySource.REMOTE) {
                         if (remoteVisibleSongs.isNotEmpty()) {
@@ -549,7 +553,7 @@ fun HistoryScreen(
             )
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().hazeSource(fabHazeState)) {
             if (!showSearchBar) {
                 historyContent(innerPadding.calculateTopPadding())
             }

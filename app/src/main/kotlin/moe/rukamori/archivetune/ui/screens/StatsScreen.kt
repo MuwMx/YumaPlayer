@@ -87,6 +87,8 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.StatPeriod
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.db.entities.ListeningSummary
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
@@ -145,6 +147,7 @@ fun StatsScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    val fabHazeState = remember { HazeState() }
     val currentDate = remember { LocalDateTime.now() }
     var isYearPickerOpen by remember { mutableStateOf(false) }
 
@@ -228,7 +231,7 @@ fun StatsScreen(
             modifier =
                 Modifier.windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-                ),
+                ).hazeSource(fabHazeState),
         ) {
             item(contentType = "chips") {
                 ChoiceChipsRow(
@@ -555,6 +558,7 @@ fun StatsScreen(
                 lazyListState = lazyListState,
                 icon = R.drawable.shuffle,
                 label = stringResource(R.string.shuffle),
+                hazeState = fabHazeState,
                 onClick = {
                     playerConnection.playQueue(
                         ListQueue(

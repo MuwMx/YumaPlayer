@@ -117,50 +117,28 @@ fun AutoPlaylistHeaderHero(
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val chipShape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius)
-            Text(
+            MetadataChip(
+                icon = R.drawable.music_note,
                 text =
                     pluralStringResource(
                         R.plurals.n_song,
                         songs.size,
                         songs.size,
                     ),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier =
-                    Modifier
-                        .weight(1f, fill = false)
-                        .yumaGlassCard(
-                            shape = chipShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(chipShape)
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f, fill = false),
             )
 
-            Text(
+            MetadataChip(
+                icon = R.drawable.timer,
                 text = makeTimeString(likeLength * 1000L),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier =
-                    Modifier
-                        .weight(1f, fill = false)
-                        .yumaGlassCard(
-                            shape = chipShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(chipShape)
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
 
@@ -172,7 +150,10 @@ fun AutoPlaylistHeaderHero(
         val queueLabel = stringResource(R.string.add_to_queue)
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -182,34 +163,14 @@ fun AutoPlaylistHeaderHero(
                         .size(48.dp)
                         .yumaClickable(
                             pressedScale = SettingsAnimations.PressScale,
-                            onClick = onProgressNavigate,
-                        )
-                        .yumaGlassCard(
-                            shape = CircleShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(CircleShape)
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = downloadLabel
-                            role = Role.Button
-                        },
-                contentAlignment = Alignment.Center,
-            ) {
-                HeaderDownloadProgressIndicator(
-                    progress = globalProgress ?: 0f,
-                )
-            }
-
-            Box(
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .yumaClickable(
-                            pressedScale = SettingsAnimations.PressScale,
                             onClick = {
-                                when (downloadState) {
-                                    HeaderDownloadState.Completed -> onRemoveConfirm()
-                                    else -> onDownloadToggle()
+                                if (globalProgress != null && globalProgress > 0f && downloadState is HeaderDownloadState.Partial) {
+                                    onProgressNavigate()
+                                } else {
+                                    when (downloadState) {
+                                        HeaderDownloadState.Completed -> onRemoveConfirm()
+                                        else -> onDownloadToggle()
+                                    }
                                 }
                             },
                         )
@@ -224,33 +185,39 @@ fun AutoPlaylistHeaderHero(
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                when (val state = downloadState) {
-                    HeaderDownloadState.Completed -> {
-                        Icon(
-                            painter = painterResource(R.drawable.offline),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                        )
-                    }
+                if (globalProgress != null && globalProgress > 0f && downloadState is HeaderDownloadState.Partial) {
+                    HeaderDownloadProgressIndicator(
+                        progress = globalProgress,
+                    )
+                } else {
+                    when (val state = downloadState) {
+                        HeaderDownloadState.Completed -> {
+                            Icon(
+                                painter = painterResource(R.drawable.offline),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                            )
+                        }
 
-                    is HeaderDownloadState.Partial -> {
-                        CircularProgressIndicator(
-                            progress = { state.progress },
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            trackColor = MaterialTheme.colorScheme.outlineVariant,
-                            strokeWidth = 2.dp,
-                        )
-                    }
+                        is HeaderDownloadState.Partial -> {
+                            CircularProgressIndicator(
+                                progress = { state.progress },
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                strokeWidth = 2.dp,
+                            )
+                        }
 
-                    else -> {
-                        Icon(
-                            painter = painterResource(R.drawable.download),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                        )
+                        else -> {
+                            Icon(
+                                painter = painterResource(R.drawable.download),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                            )
+                        }
                     }
                 }
             }
