@@ -234,7 +234,7 @@ fun OnboardingScreen(
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { padding ->
         when (state) {
             OnboardingScreenState.Loading -> {
@@ -1117,11 +1117,11 @@ private fun CustomizationPage(
     val (visitorData, onVisitorDataChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.VisitorDataKey, "")
     val (dataSyncId, onDataSyncIdChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.DataSyncIdKey, "")
     val (savedAccountsJson, onSavedAccountsJsonChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.SavedAccountsKey, "")
-    
+
     val savedAccounts = remember(savedAccountsJson) {
         moe.rukamori.archivetune.utils.SavedAccountCollection(moe.rukamori.archivetune.utils.decodeSavedAccounts(savedAccountsJson))
     }
-    
+
     val isLoggedIn = remember(innerTubeCookie) {
         moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie(innerTubeCookie)
     }
@@ -1135,7 +1135,7 @@ private fun CustomizationPage(
 
     val (darkMode, onDarkModeChange) = moe.rukamori.archivetune.utils.rememberEnumPreference<DarkMode>(moe.rukamori.archivetune.constants.DarkModeKey, defaultValue = DarkMode.AUTO)
     val (homeBackgroundStyle, onHomeBackgroundStyleChange) = moe.rukamori.archivetune.utils.rememberEnumPreference<HomeBackgroundStyle>(moe.rukamori.archivetune.constants.HomeBackgroundStyleKey, defaultValue = HomeBackgroundStyle.TONAL)
-    
+
     val (useSpotifyHome, onUseSpotifyHomeChange) = moe.rukamori.archivetune.utils.rememberPreference(moe.rukamori.archivetune.constants.UseSpotifyHomeKey, false)
 
     val (playbackSource, onPlaybackSourceChange) = moe.rukamori.archivetune.utils.rememberEnumPreference<PlaybackSource>(

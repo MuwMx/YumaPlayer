@@ -45,10 +45,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -57,10 +56,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -74,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -126,6 +123,11 @@ import moe.rukamori.archivetune.viewmodels.HistoryViewModel
 import moe.rukamori.archivetune.viewmodels.RemoteHistoryUiState
 import java.time.format.DateTimeFormatter
 import moe.rukamori.archivetune.ui.component.IconButton as AppIconButton
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 
 @Composable
 fun HistoryScreen(
@@ -517,9 +519,9 @@ fun HistoryScreen(
                     },
                     scrollBehavior = scrollBehavior,
                     colors =
-                        TopAppBarDefaults.largeTopAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Transparent,
                         ),
                 )
             }
@@ -891,11 +893,15 @@ private fun HistoryOverviewCard(
     onSourceChange: (HistorySource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 2.dp,
+    val cardShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
+    Box(
+        modifier =
+            modifier
+                .yumaGlassCard(
+                    shape = cardShape,
+                    backgroundColor = LocalYumaColors.current.glassBackground,
+                )
+                .clip(cardShape),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -935,50 +941,70 @@ private fun HistorySourceSelector(
     onSourceChange: (HistorySource) -> Unit,
 ) {
     if (availableSources.size == 1) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        Box(
+            modifier =
+                Modifier
+                    .height(40.dp)
+                    .yumaGlassCard(
+                        shape = CircleShape,
+                        backgroundColor = LocalYumaColors.current.glassBackground,
+                    )
+                    .clip(CircleShape)
+                    .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = stringResource(R.string.local_history),
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         return
     }
 
     Row(
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        availableSources.forEachIndexed { index, source ->
+        availableSources.forEach { source ->
             val checked = source == currentSource
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = {
-                    if (!checked) {
-                        onSourceChange(source)
-                    }
-                },
+            val bg =
+                if (checked) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    LocalYumaColors.current.glassBackground
+                }
+            val fg =
+                if (checked) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .height(52.dp),
-                shapes =
-                    when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        availableSources.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    },
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
+                        .height(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                if (!checked) {
+                                    onSourceChange(source)
+                                }
+                            },
+                        )
+                        .then(
+                            if (checked) {
+                                Modifier.background(bg, CircleShape)
+                            } else {
+                                Modifier.yumaGlassCard(
+                                    shape = CircleShape,
+                                    backgroundColor = bg,
+                                )
+                            },
+                        )
+                        .clip(CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text =
@@ -989,6 +1015,9 @@ private fun HistorySourceSelector(
                                 R.string.remote_history
                             },
                         ),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = fg,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1006,11 +1035,16 @@ private fun HistoryStateCard(
     onActionClick: (() -> Unit)? = null,
     loading: Boolean = false,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 1.dp,
+    val cardShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .yumaGlassCard(
+                    shape = cardShape,
+                    backgroundColor = LocalYumaColors.current.glassBackground,
+                )
+                .clip(cardShape),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1038,11 +1072,28 @@ private fun HistoryStateCard(
             )
 
             if (actionLabel != null && onActionClick != null) {
-                ElevatedButton(
-                    onClick = onActionClick,
-                    shapes = ButtonDefaults.shapes(),
+                Box(
+                    modifier =
+                        Modifier
+                            .height(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = onActionClick,
+                            )
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape,
+                            )
+                            .clip(CircleShape)
+                            .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(text = actionLabel)
+                    Text(
+                        text = actionLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
                 }
             }
         }

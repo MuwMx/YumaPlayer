@@ -4,8 +4,6 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package moe.rukamori.archivetune.ui.screens
 
 import androidx.compose.foundation.background
@@ -19,23 +17,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -43,6 +39,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +60,11 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.AlbumWithSongs
 import moe.rukamori.archivetune.ui.component.HeaderType
 import moe.rukamori.archivetune.ui.component.YumaMorphingHeader
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -316,8 +323,8 @@ internal fun AlbumHeroHeader(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(vertical = 16.dp, horizontal = SettingsDimensions.ScreenHorizontalPadding),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Year
@@ -349,31 +356,56 @@ internal fun AlbumHeroHeader(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
         // Action Buttons Row
+        val isBookmarked = albumWithSongs.album.bookmarkedAt != null
+        val likeContentDescription =
+            stringResource(
+                if (isBookmarked) R.string.subscribed else R.string.subscribe,
+            )
+        val likeBg =
+            if (isBookmarked) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                LocalYumaColors.current.glassBackground
+            }
+        val likeFg =
+            if (isBookmarked) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        val isDownloaded = downloadState == HeaderDownloadState.Completed
+        val downloadContentDescription = stringResource(R.string.download)
+        val shuffleLabel = stringResource(R.string.shuffle)
+        val moreOptionsLabel = stringResource(R.string.more_options)
+
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val isBookmarked = albumWithSongs.album.bookmarkedAt != null
-
-            ToggleButton(
-                checked = isBookmarked,
-                onCheckedChange = { actions.onLike() },
-                modifier = Modifier.size(56.dp),
-                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.error,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { actions.onLike() },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = likeBg,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = likeContentDescription
+                            role = Role.Checkbox
+                            toggleableState = ToggleableState(isBookmarked)
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter =
@@ -381,76 +413,111 @@ internal fun AlbumHeroHeader(
                             if (isBookmarked) R.drawable.favorite else R.drawable.favorite_border,
                         ),
                     contentDescription = null,
-                    modifier = Modifier.size(28.dp),
+                    tint = likeFg,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { actions.onPlay() },
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .height(56.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .height(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { actions.onPlay() },
+                        )
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = stringResource(R.string.play),
-                    modifier = Modifier.size(28.dp),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.play),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { actions.onShuffle() },
+            Box(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { actions.onShuffle() },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = shuffleLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.shuffle),
-                    contentDescription = stringResource(R.string.shuffle),
-                    modifier = Modifier.size(28.dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
 
-            ToggleButton(
-                checked = downloadState == HeaderDownloadState.Completed,
-                onCheckedChange = { actions.onDownload() },
-                modifier = Modifier.size(56.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.primary,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { actions.onDownload() },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor =
+                                if (isDownloaded) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    LocalYumaColors.current.glassBackground
+                                },
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = downloadContentDescription
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                val state = downloadState
-                when (state) {
+                when (val state = downloadState) {
                     HeaderDownloadState.Completed -> {
                         Icon(
                             painter = painterResource(R.drawable.offline),
                             contentDescription = null,
-                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
 
@@ -462,34 +529,42 @@ internal fun AlbumHeroHeader(
                         Icon(
                             painter = painterResource(R.drawable.download),
                             contentDescription = null,
-                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
                 }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { actions.onMenu() },
-                modifier = Modifier.size(56.dp),
-                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = { actions.onMenu() },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = moreOptionsLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.more_vert),
                     contentDescription = null,
-                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -499,28 +574,31 @@ internal fun MetadataChip(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+    val chipShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
+    Row(
+        modifier =
+            modifier
+                .yumaGlassCard(
+                    shape = chipShape,
+                    backgroundColor = LocalYumaColors.current.glassBackground,
+                )
+                .clip(chipShape)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }

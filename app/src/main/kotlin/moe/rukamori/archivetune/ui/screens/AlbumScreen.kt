@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -41,7 +42,6 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.ui.component.GlassDefaults
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -178,7 +178,11 @@ fun AlbumScreen(
 
         TopAppBar(
             modifier = Modifier.align(Alignment.TopCenter),
-            colors = GlassDefaults.topAppBarColors(),
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
             scrollBehavior = scrollBehavior,
             title = {
                 AlbumTopBarTitle(

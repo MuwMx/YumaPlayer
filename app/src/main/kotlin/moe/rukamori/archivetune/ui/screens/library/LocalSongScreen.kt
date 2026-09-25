@@ -54,12 +54,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -92,6 +89,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -120,7 +121,9 @@ import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
@@ -417,9 +420,9 @@ fun LocalSongScreen(
                             }
                         },
                         colors =
-                            TopAppBarDefaults.largeTopAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
-                                scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                                scrolledContainerColor = Color.Transparent,
                             ),
                         scrollBehavior = scrollBehavior,
                     )
@@ -433,7 +436,7 @@ fun LocalSongScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
             contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
         ) {
             item(
@@ -515,15 +518,6 @@ fun LocalSongScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                                .animateItem()
-                                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
-                                .then(
-                                    if (isActive) {
-                                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                                    } else {
-                                        Modifier
-                                    }
-                                )
                                 .combinedClickable(
                                     onClick = {
                                         if (song.id == mediaMetadata?.id) {
@@ -553,8 +547,7 @@ fun LocalSongScreen(
                                             )
                                         }
                                     },
-                                )
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                ).animateItem(),
                     )
                 }
             }
@@ -596,13 +589,37 @@ private fun LocalSongControlsCard(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        IconButton(
-            onClick = onShuffleClick,
-            enabled = shuffleEnabled,
+        val shuffleLabel = stringResource(R.string.shuffle)
+        Box(
+            modifier =
+                Modifier
+                    .size(48.dp)
+                    .yumaClickable(
+                        enabled = shuffleEnabled,
+                        pressedScale = SettingsAnimations.PressScale,
+                        onClick = onShuffleClick,
+                    )
+                    .yumaGlassCard(
+                        shape = CircleShape,
+                        backgroundColor = LocalYumaColors.current.glassBackground,
+                    )
+                    .clip(CircleShape)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = shuffleLabel
+                        role = Role.Button
+                    },
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.shuffle),
-                contentDescription = stringResource(R.string.shuffle),
+                contentDescription = null,
+                tint =
+                    if (shuffleEnabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
+                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
             )
         }
 
@@ -893,10 +910,7 @@ private fun LocalSongScanSheet(
                             },
                         )
 
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                        )
+                        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
                         ScanSheetInfoRow(
                             iconRes = R.drawable.ic_about,
@@ -1042,29 +1056,41 @@ private fun LocalSongScanSheet(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
-                    onClick = onPrimaryAction,
-                    enabled = !scanState.isScanning,
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                if (hasStoragePermission) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.tertiary
-                                },
-                            contentColor =
-                                if (hasStoragePermission) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onTertiary
-                                },
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        ),
-                    shape = RoundedCornerShape(28.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                val scanButtonBg =
+                    if (scanState.isScanning) {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    } else if (hasStoragePermission) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.tertiary
+                    }
+                val scanButtonFg =
+                    if (scanState.isScanning) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    } else if (hasStoragePermission) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onTertiary
+                    }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .yumaClickable(
+                                enabled = !scanState.isScanning,
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = onPrimaryAction,
+                            )
+                            .background(
+                                color = scanButtonBg,
+                                shape = CircleShape,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
                 ) {
                     AnimatedContent(
                         targetState = scanState.isScanning,
@@ -1077,12 +1103,12 @@ private fun LocalSongScanSheet(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.padding(horizontal = 24.dp),
                         ) {
                             if (isScanning) {
                                 CircularWavyProgressIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    color = scanButtonFg,
                                 )
                             } else {
                                 Icon(
@@ -1091,6 +1117,7 @@ private fun LocalSongScanSheet(
                                             if (hasStoragePermission) R.drawable.sync else R.drawable.security,
                                         ),
                                     contentDescription = null,
+                                    tint = scanButtonFg,
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -1104,6 +1131,7 @@ private fun LocalSongScanSheet(
                                     },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
+                                color = scanButtonFg,
                             )
                         }
                     }
@@ -1198,13 +1226,21 @@ private fun LocalSongScanSettingCard(
                     )
 
                     if (actionLabel != null && onActionClick != null) {
-                        Surface(
-                            shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier
-                                .padding(top = 8.dp)
-                                .heightIn(min = 40.dp)
-                                .yumaClickable(onClick = onActionClick),
+                        Box(
+                            modifier =
+                                Modifier
+                                    .padding(top = 8.dp)
+                                    .heightIn(min = 40.dp)
+                                    .yumaClickable(
+                                        pressedScale = SettingsAnimations.PressScale,
+                                        onClick = onActionClick,
+                                    )
+                                    .yumaGlassCard(
+                                        shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
+                                        backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    )
+                                    .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius)),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

@@ -109,7 +109,7 @@ fun ViewNewsScreen(
             Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
@@ -134,9 +134,9 @@ fun ViewNewsScreen(
                     }
                 },
                 colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 scrollBehavior = scrollBehavior,
