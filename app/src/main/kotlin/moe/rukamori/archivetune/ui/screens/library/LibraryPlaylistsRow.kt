@@ -265,7 +265,7 @@ fun LazyListScope.playlistsRowSection(
                                     Modifier
                                         .size(56.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .background(MaterialTheme.colorScheme.surface),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(

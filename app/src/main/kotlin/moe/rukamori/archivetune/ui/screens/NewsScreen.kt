@@ -542,7 +542,7 @@ private fun NewsMetaRow(
 
         Surface(
             shape = RoundedCornerShape(SettingsDimensions.BadgeCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f, fill = false),
         ) {
@@ -711,13 +711,13 @@ private fun NewsAsyncImage(
         model = model,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
-        modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
     )
 }
 
 @Composable
 private fun NewsImageScrim(modifier: Modifier = Modifier) {
-    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surfaceColor = MaterialTheme.colorScheme.surface
     val brush =
         remember(surfaceColor) {
             Brush.verticalGradient(

@@ -998,7 +998,7 @@ private fun GlassCommunityRow(
             modifier = Modifier.size(SettingsDimensions.SegmentedIconBoxSize),
             shape = iconShape,
             color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.surface,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
@@ -1055,7 +1055,7 @@ private fun ExpressivePageHeader(
             modifier = Modifier.size(64.dp),
             shape = headerShape,
             color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.surface,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(

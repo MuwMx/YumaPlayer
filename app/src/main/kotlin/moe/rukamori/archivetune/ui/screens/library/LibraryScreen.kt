@@ -374,7 +374,7 @@ private fun PlaylistTagFilterChip(
             if (selected) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
             },
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "PlaylistTagFilterChipContainerColor",

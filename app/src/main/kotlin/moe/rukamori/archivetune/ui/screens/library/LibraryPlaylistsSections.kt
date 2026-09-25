@@ -483,7 +483,7 @@ fun triggerPlaylistMenu(
 @Composable
 fun rememberArtworkGradient(
     thumbnailUrl: String?,
-    fallbackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    fallbackColor: Color = MaterialTheme.colorScheme.surface,
 ): List<Color> {
     val context = LocalContext.current
     var colors by remember(thumbnailUrl) { mutableStateOf(listOf(fallbackColor, fallbackColor.copy(alpha = 0.5f))) }
@@ -534,7 +534,7 @@ fun rememberArtworkGradient(
 @Composable
 fun rememberArtworkCardColor(
     thumbnailUrl: String?,
-    fallbackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    fallbackColor: Color = MaterialTheme.colorScheme.surface,
 ): Color {
     val gradientColors =
         rememberArtworkGradient(
@@ -608,7 +608,7 @@ fun PlaylistListCard(
                 Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surface),
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -646,7 +646,7 @@ fun PlaylistListCard(
                         Modifier
                             .height(20.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .background(MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
