@@ -39,13 +39,19 @@
 
 </div>
 
+<p align="center">
+  <a href="https://trendshift.io/repositories/202305?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-202305" target="_blank" rel="noopener noreferrer">
+    <img src="https://trendshift.io/api/badge/trendshift/repositories/202305/daily?language=Kotlin" alt="MuwMx%2FYumaPlayer | Trendshift" width="250" height="55"/>
+  </a>
+</p>
+
 ---
 
 ## 🌟 About the Project
 
 **YumaPlayer** is an independent, open-source Android music player that unites the libraries and recommendation features of two leading streaming services alongside standalone local playback in Hi-Res quality.
 
-The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, YumaPlayer implements a modular 19-module architecture, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
+The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, YumaPlayer implements a modular 18-module architecture, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
 
 No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-party trackers. All credentials live exclusively on your device, encrypted with AES-256-GCM via Google Tink, and the codebase is completely open under the GNU General Public License v3.0.
 
@@ -164,42 +170,20 @@ YumaPlayer is localized into multiple languages thanks to our amazing community 
 
 ---
 
-## 🏛️ Architecture & Documentation
+## 🏛️ Architecture & Tech Stack
 
-YumaPlayer is structured into **18 independent Gradle modules** following Clean Architecture and Unidirectional Data Flow (UDF) principles:
+YumaPlayer is built as a multi-module Android project following Clean Architecture and Unidirectional Data Flow (UDF) principles:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   :app (Composition Root)                   │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       ▼                       ▼                       ▼
-┌──────────────┐       ┌──────────────┐       ┌────────────────┐
-│ :designsystem│       │  :database   │       │     :core      │
-│  (YDS 2.1)   │       │  (Room v36)  │       │ (Domain/Data)  │
-└──────────────┘       └──────────────┘       └───────┬────────┘
-                                                      ▼
-                                             ┌────────────────┐
-                                             │:core:innertube │
-                                             │(YouTube Music) │
-                                             └───────┬────────┘
-                                                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│ :morideobfuscator │ :moriextractor (stream extraction)      │
-├─────────────────────────────────────────────────────────────┤
-│ Integrations: :lyrics:* (x6) │ :spotifycore │ :flaccore │   │
-│ :shazamkit │ :canvas │ :lastfm                              │
-└─────────────────────────────────────────────────────────────┘
-```
+* **UI & Design:** Jetpack Compose, YDS 2.1 design tokens, Hardware-accelerated Haze overlays, fluid gesture physics.
+* **Audio Engine:** Media3 (ExoPlayer), standalone local audio pipeline, Qobuz/FLAC resolver backbone.
+* **Data & Storage:** Room ORM, encrypted secure preferences (AES-256-GCM via Google Tink).
+* **Network & Ingestion:** Ktor/Retrofit, InnerTube (YouTube Music engine), custom multi-source lyrics scrapers.
 
 📖 **Detailed Developer Documentation:**
-* [Architecture Overview](docs/architecture/ARCHITECTURE.md)
-* [Modules Directory & Dependency Graph](docs/architecture/MODULES.md)
+* [Architecture Overview & Module Graph](docs/architecture/ARCHITECTURE.md)
 * [Architectural Decision Records (ADRs)](docs/architecture/DECISIONS.md)
-* [Yuma Design System Specification (YDS 2.1)](docs/design/YDS.md) | [Russian Version](docs/design/YDS_ru.md)
-* [Coding Standards & Rules (Yuma Rules)](docs/development/YUMA_RULES.md)
-
+* [Yuma Design System Specification (YDS 2.1)](docs/design/YDS.md)
+* [Coding Standards & Rules](docs/development/YUMA_RULES.md)
 ---
 
 ## 📥 Download & Installation
@@ -290,6 +274,16 @@ YumaPlayer is free, open source, and has no ads or subscriptions. If you enjoy u
     <code>muwmix.coffee@gmail.com</code>
   </p>
 </div>
+
+---
+
+## 📈 Star History
+
+<p align="center">
+  <a href="https://star-history.com/#MuwMx/YumaPlayer&Date">
+    <img src="https://api.star-history.com/svg?repos=MuwMx/YumaPlayer&type=Date" alt="Star History Chart" width="100%" />
+  </a>
+</p>
 
 ---
 
