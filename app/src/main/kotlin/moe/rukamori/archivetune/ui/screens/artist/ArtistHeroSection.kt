@@ -9,6 +9,7 @@
 package moe.rukamori.archivetune.ui.screens.artist
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -53,6 +54,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -205,87 +208,48 @@ fun ArtistHeroContent(
         }
 
         // Action Buttons
+        val shuffleEnabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null
+        val shuffleLabel = stringResource(R.string.shuffle)
+
+        val playEndpoint = if (!showLocal) artistPage?.artist?.playEndpoint ?: artistPage?.artist?.shuffleEndpoint else null
+        val playEnabled = if (showLocal) librarySongs.isNotEmpty() else playEndpoint != null
+
+        val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
+        val subscribeContentDescription =
+            stringResource(
+                if (isSubscribed) R.string.subscribed else R.string.subscribe,
+            )
+        val subscribeBg =
+            if (isSubscribed) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                LocalYumaColors.current.glassBackground
+            }
+        val subscribeFg =
+            if (isSubscribed) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+
+        val radioEndpoint = artistPage?.artist?.radioEndpoint
+        val radioLabel = stringResource(R.string.radio)
+        val defaultArtistName = stringResource(R.string.unknown_artist)
+        val queueTitle = libraryArtist?.artist?.name ?: artistName ?: defaultArtistName
+
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp)
+                    .animateContentSize(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
-            val subscribeContentDescription =
-                stringResource(
-                    if (isSubscribed) R.string.subscribed else R.string.subscribe,
-                )
-            val subscribeBg =
-                if (isSubscribed) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    LocalYumaColors.current.glassBackground
-                }
-            val subscribeFg =
-                if (isSubscribed) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-
             Box(
                 modifier =
                     Modifier
                         .size(48.dp)
-                        .yumaClickable(
-                            pressedScale = SettingsAnimations.PressScale,
-                            onClick = {
-                                database.transaction {
-                                    val artist = libraryArtist?.artist
-                                    if (artist != null) {
-                                        update(artist.toggleLike())
-                                    } else {
-                                        artistPage?.artist?.let {
-                                            insert(
-                                                ArtistEntity(
-                                                    id = it.id,
-                                                    name = it.title,
-                                                    channelId = it.channelId,
-                                                    thumbnailUrl = it.thumbnail,
-                                                ).toggleLike(),
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                        )
-                        .yumaGlassCard(
-                            shape = CircleShape,
-                            backgroundColor = subscribeBg,
-                        )
-                        .clip(CircleShape)
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = subscribeContentDescription
-                            role = Role.Checkbox
-                        },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter =
-                        painterResource(
-                            if (isSubscribed) R.drawable.done else R.drawable.add,
-                        ),
-                    contentDescription = null,
-                    tint = subscribeFg,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            val shuffleEnabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null
-
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .height(48.dp)
                         .yumaClickable(
                             enabled = shuffleEnabled,
                             pressedScale = SettingsAnimations.PressScale,
@@ -298,8 +262,55 @@ fun ArtistHeroContent(
                                     val shuffledSongs = librarySongs.shuffled()
                                     playerConnection.playQueue(
                                         ListQueue(
-                                            title = libraryArtist?.artist?.name ?: "Unknown Artist",
+                                            title = queueTitle,
                                             items = shuffledSongs.map { it.toMediaItem() },
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = shuffleLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.shuffle),
+                    contentDescription = null,
+                    tint =
+                        if (shuffleEnabled) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        },
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                )
+            }
+
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .yumaClickable(
+                            enabled = playEnabled,
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                if (!showLocal) {
+                                    playEndpoint?.let {
+                                        playerConnection.playQueue(YouTubeQueue(it))
+                                    }
+                                } else if (librarySongs.isNotEmpty()) {
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = queueTitle,
+                                            items = librarySongs.map { it.toMediaItem() },
                                         ),
                                     )
                                 }
@@ -307,7 +318,7 @@ fun ArtistHeroContent(
                         )
                         .background(
                             color =
-                                if (shuffleEnabled) {
+                                if (playEnabled) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
@@ -323,26 +334,26 @@ fun ArtistHeroContent(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.shuffle),
+                        painter = painterResource(R.drawable.play),
                         contentDescription = null,
                         tint =
-                            if (shuffleEnabled) {
+                            if (playEnabled) {
                                 MaterialTheme.colorScheme.onPrimary
                             } else {
                                 MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
                             },
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = stringResource(R.string.shuffle),
+                        text = stringResource(R.string.play),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color =
-                            if (shuffleEnabled) {
+                            if (playEnabled) {
                                 MaterialTheme.colorScheme.onPrimary
                             } else {
                                 MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
@@ -353,8 +364,60 @@ fun ArtistHeroContent(
                 }
             }
 
-            val radioEndpoint = if (!showLocal) artistPage?.artist?.radioEndpoint else null
-            val radioLabel = stringResource(R.string.radio)
+            AnimatedVisibility(
+                visible = !showLocal,
+                enter = fadeIn(tween(150)) + expandHorizontally(tween(150)),
+                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(150)),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = {
+                                    database.transaction {
+                                        val artist = libraryArtist?.artist
+                                        if (artist != null) {
+                                            update(artist.toggleLike())
+                                        } else {
+                                            artistPage?.artist?.let {
+                                                insert(
+                                                    ArtistEntity(
+                                                        id = it.id,
+                                                        name = it.title,
+                                                        channelId = it.channelId,
+                                                        thumbnailUrl = it.thumbnail,
+                                                    ).toggleLike(),
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = subscribeBg,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = subscribeContentDescription
+                                role = Role.Checkbox
+                                toggleableState = ToggleableState(isSubscribed)
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter =
+                            painterResource(
+                                if (isSubscribed) R.drawable.done else R.drawable.add,
+                            ),
+                        contentDescription = null,
+                        tint = subscribeFg,
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    )
+                }
+            }
 
             AnimatedVisibility(
                 visible = radioEndpoint != null,
@@ -387,7 +450,7 @@ fun ArtistHeroContent(
                     Icon(
                         painter = painterResource(R.drawable.radio),
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
