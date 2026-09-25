@@ -48,7 +48,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import moe.rukamori.archivetune.ui.component.GlassDefaults
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -712,7 +712,11 @@ fun SpotifyPlaylistScreen(
         )
 
         TopAppBar(
-            colors = GlassDefaults.topAppBarColors(),
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
             title = {
                 if (isSearching) {
                     TextField(

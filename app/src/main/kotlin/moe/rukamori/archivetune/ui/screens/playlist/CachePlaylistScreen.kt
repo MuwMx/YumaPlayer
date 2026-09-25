@@ -46,7 +46,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import moe.rukamori.archivetune.ui.component.GlassDefaults
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -710,7 +710,11 @@ fun CachePlaylistScreen(
         )
 
         TopAppBar(
-            colors = GlassDefaults.topAppBarColors(),
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
             title = {
                 when {
                     selection -> {

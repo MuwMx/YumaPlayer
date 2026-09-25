@@ -15,16 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +33,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +49,11 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -109,88 +117,120 @@ fun AutoPlaylistHeaderHero(
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
-            ) {
-                Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.n_song,
-                            songs.size,
-                            songs.size,
-                        ),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
+            val chipShape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius)
+            Text(
+                text =
+                    pluralStringResource(
+                        R.plurals.n_song,
+                        songs.size,
+                        songs.size,
+                    ),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f, fill = false)
+                        .yumaGlassCard(
+                            shape = chipShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(chipShape)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
 
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
-            ) {
-                Text(
-                    text = makeTimeString(likeLength * 1000L),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
+            Text(
+                text = makeTimeString(likeLength * 1000L),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f, fill = false)
+                        .yumaGlassCard(
+                            shape = chipShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(chipShape)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        val playLabel = stringResource(R.string.play)
+        val shuffleLabel = stringResource(R.string.shuffle)
+        val downloadLabel = stringResource(R.string.download)
+        val queueLabel = stringResource(R.string.add_to_queue)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    onProgressNavigate()
-                },
-                modifier = Modifier.size(48.dp),
-                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = onProgressNavigate,
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = downloadLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 HeaderDownloadProgressIndicator(
                     progress = globalProgress ?: 0f,
                 )
             }
 
-            ToggleButton(
-                checked = downloadState == HeaderDownloadState.Completed,
-                onCheckedChange = {
-                    when (downloadState) {
-                        HeaderDownloadState.Completed -> onRemoveConfirm()
-                        else -> onDownloadToggle()
-                    }
-                },
-                modifier = Modifier.size(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.primary,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                when (downloadState) {
+                                    HeaderDownloadState.Completed -> onRemoveConfirm()
+                                    else -> onDownloadToggle()
+                                }
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = downloadLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 when (val state = downloadState) {
                     HeaderDownloadState.Completed -> {
                         Icon(
                             painter = painterResource(R.drawable.offline),
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
 
@@ -208,93 +248,124 @@ fun AutoPlaylistHeaderHero(
                         Icon(
                             painter = painterResource(R.drawable.download),
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
                 }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = playlist,
-                            items = songs.map { it.toMediaItem() },
-                        ),
-                    )
-                },
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .height(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .height(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                playerConnection.playQueue(
+                                    ListQueue(
+                                        title = playlist,
+                                        items = songs.map { it.toMediaItem() },
+                                    ),
+                                )
+                            },
+                        )
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = stringResource(R.string.play),
-                    modifier = Modifier.size(24.dp),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = playLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = playlist,
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                },
+            Box(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                playerConnection.playQueue(
+                                    ListQueue(
+                                        title = playlist,
+                                        items = songs.shuffled().map { it.toMediaItem() },
+                                    ),
+                                )
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = shuffleLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.shuffle),
-                    contentDescription = stringResource(R.string.shuffle),
-                    modifier = Modifier.size(24.dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    playerConnection.addToQueue(
-                        items = songs.map { it.toMediaItem() },
-                    )
-                },
-                modifier = Modifier.size(48.dp),
-                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                playerConnection.addToQueue(
+                                    items = songs.map { it.toMediaItem() },
+                                )
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = queueLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.queue_music),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
         }

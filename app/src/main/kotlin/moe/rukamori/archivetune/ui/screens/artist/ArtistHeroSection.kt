@@ -480,6 +480,7 @@ fun ArtistStatsButtonGroup(
             Row(
                 modifier =
                     Modifier
+                        .weight(1f, fill = false)
                         .yumaGlassCard(
                             shape = chipShape,
                             backgroundColor = LocalYumaColors.current.glassBackground,
@@ -504,6 +505,7 @@ fun ArtistStatsButtonGroup(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

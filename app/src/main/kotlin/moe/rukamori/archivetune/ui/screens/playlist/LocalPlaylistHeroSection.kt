@@ -18,22 +18,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -43,6 +43,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +58,11 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.db.entities.Playlist
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -64,29 +73,32 @@ private fun MetadataChip(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+    Row(
+        modifier =
+            modifier
+                .yumaGlassCard(
+                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
+                    backgroundColor = LocalYumaColors.current.glassBackground,
+                )
+                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -365,8 +377,8 @@ fun LocalPlaylistHeroSection(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 48.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val remoteSongCount = playlist.playlist.remoteSongCount
@@ -379,62 +391,82 @@ fun LocalPlaylistHeroSection(
             MetadataChip(
                 icon = R.drawable.music_note,
                 text = pluralStringResource(R.plurals.n_song, songCount, songCount),
+                modifier = Modifier.weight(1f, fill = false),
             )
 
             if (playlistLength > 0) {
                 MetadataChip(
                     icon = R.drawable.timer,
                     text = makeTimeString(playlistLength * 1000L),
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val playLabel = stringResource(R.string.play)
+        val shuffleLabel = stringResource(R.string.shuffle)
+        val deleteLabel = stringResource(R.string.delete)
+        val likeLabel = stringResource(R.string.liked)
+        val downloadLabel = stringResource(R.string.download)
+        val editLabel = stringResource(R.string.edit)
+
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (editable) {
-                ToggleButton(
-                    checked = false,
-                    onCheckedChange = { actions.onDelete() },
-                    modifier = Modifier.size(48.dp),
-                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                    colors =
-                        ToggleButtonDefaults.toggleButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.error,
-                            checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            checkedContentColor = MaterialTheme.colorScheme.error,
-                        ),
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = actions.onDelete,
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = LocalYumaColors.current.glassBackground,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = deleteLabel
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.delete),
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
             } else {
                 val liked = playlist.playlist.bookmarkedAt != null
-                ToggleButton(
-                    checked = liked,
-                    onCheckedChange = {
-                        actions.onToggleLike()
-                    },
-                    modifier = Modifier.size(48.dp),
-                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                    colors =
-                        ToggleButtonDefaults.toggleButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            checkedContentColor = MaterialTheme.colorScheme.error,
-                        ),
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = actions.onToggleLike,
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = LocalYumaColors.current.glassBackground,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = likeLabel
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter =
@@ -442,69 +474,104 @@ fun LocalPlaylistHeroSection(
                                 if (liked) R.drawable.favorite else R.drawable.favorite_border,
                             ),
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
+                        tint =
+                            if (liked) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { actions.onPlay() },
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .height(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .height(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = actions.onPlay,
+                        )
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.play),
-                    contentDescription = stringResource(R.string.play),
-                    modifier = Modifier.size(28.dp),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.play),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = playLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { actions.onShuffle() },
+            Box(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = actions.onShuffle,
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = shuffleLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.shuffle),
-                    contentDescription = stringResource(R.string.shuffle),
-                    modifier = Modifier.size(28.dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
 
-            ToggleButton(
-                checked = downloadState == HeaderDownloadState.Completed,
-                onCheckedChange = { actions.onDownload() },
-                modifier = Modifier.size(48.dp),
-                shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.primary,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = actions.onDownload,
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = downloadLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 val state = downloadState
                 when (state) {
@@ -512,7 +579,8 @@ fun LocalPlaylistHeroSection(
                         Icon(
                             painter = painterResource(R.drawable.offline),
                             contentDescription = null,
-                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
 
@@ -524,30 +592,37 @@ fun LocalPlaylistHeroSection(
                         Icon(
                             painter = painterResource(R.drawable.download),
                             contentDescription = null,
-                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
                 }
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    if (editable) {
-                        actions.onEdit()
-                    } else {
-                        actions.onSync()
-                    }
-                },
-                modifier = Modifier.size(48.dp),
-                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+            Box(
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                if (editable) {
+                                    actions.onEdit()
+                                } else {
+                                    actions.onSync()
+                                }
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = editLabel
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter =
@@ -555,7 +630,8 @@ fun LocalPlaylistHeroSection(
                             if (editable) R.drawable.edit else R.drawable.sync,
                         ),
                     contentDescription = null,
-                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
         }
