@@ -8,36 +8,36 @@
 
 package moe.rukamori.archivetune.ui.screens.artist
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,9 +46,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,6 +75,11 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.HeaderType
 import moe.rukamori.archivetune.ui.component.YumaMorphingHeader
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import java.util.Locale
 
@@ -203,47 +211,62 @@ fun ArtistHeroContent(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
+            val subscribeContentDescription =
+                stringResource(
+                    if (isSubscribed) R.string.subscribed else R.string.subscribe,
+                )
+            val subscribeBg =
+                if (isSubscribed) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    LocalYumaColors.current.glassBackground
+                }
+            val subscribeFg =
+                if (isSubscribed) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
 
-            ToggleButton(
-                checked = isSubscribed,
-                onCheckedChange = {
-                    database.transaction {
-                        val artist = libraryArtist?.artist
-                        if (artist != null) {
-                            update(artist.toggleLike())
-                        } else {
-                            artistPage?.artist?.let {
-                                insert(
-                                    ArtistEntity(
-                                        id = it.id,
-                                        name = it.title,
-                                        channelId = it.channelId,
-                                        thumbnailUrl = it.thumbnail,
-                                    ).toggleLike(),
-                                )
-                            }
-                        }
-                    }
-                },
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
+            Box(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                shapes =
-                    if (!showLocal && artistPage?.artist?.radioEndpoint != null) {
-                        ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    } else {
-                        ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    },
+                        .size(48.dp)
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                database.transaction {
+                                    val artist = libraryArtist?.artist
+                                    if (artist != null) {
+                                        update(artist.toggleLike())
+                                    } else {
+                                        artistPage?.artist?.let {
+                                            insert(
+                                                ArtistEntity(
+                                                    id = it.id,
+                                                    name = it.title,
+                                                    channelId = it.channelId,
+                                                    thumbnailUrl = it.thumbnail,
+                                                ).toggleLike(),
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                        .yumaGlassCard(
+                            shape = CircleShape,
+                            backgroundColor = subscribeBg,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = subscribeContentDescription
+                            role = Role.Checkbox
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter =
@@ -251,94 +274,122 @@ fun ArtistHeroContent(
                             if (isSubscribed) R.drawable.done else R.drawable.add,
                         ),
                     contentDescription = null,
+                    tint = subscribeFg,
                     modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text =
-                        stringResource(
-                            if (isSubscribed) R.string.subscribed else R.string.subscribe,
-                        ),
-                    maxLines = 1,
                 )
             }
 
-            ToggleButton(
-                checked = false,
-                onCheckedChange = {
-                    if (!showLocal) {
-                        artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
-                            playerConnection.playQueue(YouTubeQueue(shuffleEndpoint))
-                        }
-                    } else if (librarySongs.isNotEmpty()) {
-                        val shuffledSongs = librarySongs.shuffled()
-                        playerConnection.playQueue(
-                            ListQueue(
-                                title = libraryArtist?.artist?.name ?: "Unknown Artist",
-                                items = shuffledSongs.map { it.toMediaItem() },
-                            ),
-                        )
-                    }
-                },
-                enabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null,
+            val shuffleEnabled = if (showLocal) librarySongs.isNotEmpty() else artistPage?.artist?.shuffleEndpoint != null
+
+            Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .height(48.dp),
-                shapes =
-                    if (!showLocal && artistPage?.artist?.radioEndpoint != null) {
-                        ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    } else {
-                        ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    },
-                colors =
-                    ToggleButtonDefaults.toggleButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        .height(48.dp)
+                        .yumaClickable(
+                            enabled = shuffleEnabled,
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = {
+                                if (!showLocal) {
+                                    artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
+                                        playerConnection.playQueue(YouTubeQueue(shuffleEndpoint))
+                                    }
+                                } else if (librarySongs.isNotEmpty()) {
+                                    val shuffledSongs = librarySongs.shuffled()
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = libraryArtist?.artist?.name ?: "Unknown Artist",
+                                            items = shuffledSongs.map { it.toMediaItem() },
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+                        .background(
+                            color =
+                                if (shuffleEnabled) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                                },
+                            shape = CircleShape,
+                        )
+                        .clip(CircleShape)
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.shuffle),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.shuffle),
-                    maxLines = 1,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.shuffle),
+                        contentDescription = null,
+                        tint =
+                            if (shuffleEnabled) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                            },
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.shuffle),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color =
+                            if (shuffleEnabled) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                            },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
-            if (!showLocal) {
-                artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
-                    ToggleButton(
-                        checked = false,
-                        onCheckedChange = {
-                            playerConnection.playQueue(YouTubeQueue(radioEndpoint))
-                        },
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                        shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                        colors =
-                            ToggleButtonDefaults.toggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.radio),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = stringResource(R.string.radio))
-                    }
+            val radioEndpoint = if (!showLocal) artistPage?.artist?.radioEndpoint else null
+            val radioLabel = stringResource(R.string.radio)
+
+            AnimatedVisibility(
+                visible = radioEndpoint != null,
+                enter = fadeIn(tween(150)) + expandHorizontally(tween(150)),
+                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(150)),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = {
+                                    radioEndpoint?.let {
+                                        playerConnection.playQueue(YouTubeQueue(it))
+                                    }
+                                },
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = LocalYumaColors.current.glassBackground,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = radioLabel
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.radio),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }
@@ -347,45 +398,48 @@ fun ArtistHeroContent(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArtistStatsButtonGroup(
     stats: List<ArtistStatItemUiModel>,
     modifier: Modifier = Modifier,
 ) {
-    val buttonShapes = ButtonDefaults.shapes()
+    val chipShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
 
-    FlowRow(
+    Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp, horizontal = 24.dp),
+                .padding(vertical = 16.dp, horizontal = SettingsDimensions.ScreenHorizontalPadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         stats.fastForEach { stat ->
-            FilledTonalButton(
-                onClick = NoOpStatButtonClick,
-                shapes = buttonShapes,
-                contentPadding = PaddingValues(horizontal = 14.dp),
+            Row(
                 modifier =
                     Modifier
-                        .heightIn(min = 48.dp)
-                        .widthIn(min = 72.dp)
+                        .yumaGlassCard(
+                            shape = chipShape,
+                            backgroundColor = LocalYumaColors.current.glassBackground,
+                        )
+                        .clip(chipShape)
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
                         .semantics(mergeDescendants = true) {
                             contentDescription = stat.contentDescription
                         },
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = stat.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = stat.value,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
             }
@@ -438,6 +492,26 @@ fun buildArtistStats(
     val hasMoreAlbums = !showLocal && albumSections?.any { it.moreEndpoint != null } == true
 
     return buildList {
+        artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
+            add(
+                ArtistStatItemUiModel(
+                    icon = Icons.Outlined.Hearing,
+                    value = value,
+                    contentDescription = "$monthlyListenersLabel $value",
+                ),
+            )
+        }
+
+        artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
+            add(
+                ArtistStatItemUiModel(
+                    icon = Icons.Outlined.PersonAdd,
+                    value = value,
+                    contentDescription = "$subscribersLabel $value",
+                ),
+            )
+        }
+
         if (songCount > 0) {
             val value = compactCountText(songCount, hasMoreSongs)
             add(
@@ -459,26 +533,6 @@ fun buildArtistStats(
                 ),
             )
         }
-
-        artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.Hearing,
-                    value = value,
-                    contentDescription = "$monthlyListenersLabel $value",
-                ),
-            )
-        }
-
-        artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.PersonAdd,
-                    value = value,
-                    contentDescription = "$subscribersLabel $value",
-                ),
-            )
-        }
     }
 }
 
@@ -492,7 +546,6 @@ fun compactCountText(
 
 private val CompactArtistCountPattern = Regex("""\d+(?:[.,]\d+)?\s*[KMB]""", RegexOption.IGNORE_CASE)
 private val ArtistCountPattern = Regex("""\d+(?:[.,]\d+)*""")
-private val NoOpStatButtonClick: () -> Unit = {}
 
 fun String.toArtistCompactCountText(): String? {
     val compactText = CompactArtistCountPattern.find(this)?.value

@@ -26,6 +26,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -50,23 +51,31 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideExplicitKey
-import moe.rukamori.archivetune.ui.component.GlassDefaults
+import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.ui.component.HeaderType
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ArtistViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeApi::class)
 @Composable
 fun ArtistScreen(
     navController: NavController,
@@ -88,6 +97,19 @@ fun ArtistScreen(
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
     val blockState by viewModel.blockState.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val pureBlack by rememberPreference(key = PureBlackKey, defaultValue = false)
+    val artistHazeState = remember { HazeState() }
+    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface
+    val tintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
+    val topBarHazeStyle =
+        remember(containerColor, pureBlack) {
+            HazeDefaults.style(
+                backgroundColor = Color.Transparent,
+                tint = HazeTint(containerColor.copy(alpha = tintAlpha)),
+                blurRadius = SettingsDimensions.BlurRadiusDefault.dp,
+                noiseFactor = SettingsDimensions.HazeNoiseFactor,
+            )
+        }
 
     val lazyListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -160,6 +182,10 @@ fun ArtistScreen(
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .hazeSource(artistHazeState),
         ) {
             if (uiState.artistPage == null && !uiState.showLocal) {
                 artistShimmerItem(
@@ -217,8 +243,20 @@ fun ArtistScreen(
         }
 
         TopAppBar(
-            modifier = Modifier.align(Alignment.TopCenter),
-            colors = GlassDefaults.topAppBarColors(),
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .hazeEffect(
+                        state = artistHazeState,
+                        style = topBarHazeStyle,
+                    ) {
+                        inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+                    },
+            colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                ),
             scrollBehavior = scrollBehavior,
             title = {
                 val animatedAlpha by animateFloatAsState(
