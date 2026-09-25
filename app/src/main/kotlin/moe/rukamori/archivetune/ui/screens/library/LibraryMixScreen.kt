@@ -690,10 +690,6 @@ internal fun MostPlayedAlbumSpotlightCard(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                .yumaClickable(
-                    pressedScale = SettingsAnimations.PressScale,
-                    onClick = onOpenAlbum,
-                )
                 .yumaGlassCard(
                     shape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge),
                     position = YumaSegmentPosition.Single,
@@ -702,7 +698,13 @@ internal fun MostPlayedAlbumSpotlightCard(
     ) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .yumaClickable(
+                            pressedScale = SettingsAnimations.PressScale,
+                            onClick = onOpenAlbum,
+                        ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(

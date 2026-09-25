@@ -263,6 +263,7 @@ fun OnlineSearchResult(
                     .fillMaxWidth(),
         ) {
             ChipsRow(
+                containerColor = Color.Transparent,
                 chips =
                     listOf(
                         null to stringResource(R.string.filter_all),

@@ -812,6 +812,12 @@ class HomeViewModel
                                             )
                                         },
                                 )
+                            _allYtItems.value =
+                                similarRecommendations.value?.flatMap { it.items }.orEmpty() +
+                                    homePage.value
+                                        ?.sections
+                                        ?.flatMap { it.items }
+                                        .orEmpty()
                         }
                         .onFailure {
                             reportException(it)

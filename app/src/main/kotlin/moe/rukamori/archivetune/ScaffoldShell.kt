@@ -1093,11 +1093,11 @@ fun ScaffoldShell(
                                                      unfocusedIndicatorColor = Color.Transparent,
                                                  ),
                                          )
-                                     } else {
-                                         SearchBarDefaults.colors(
-                                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                         )
-                                     },
+                                      } else {
+                                          SearchBarDefaults.colors(
+                                              containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                          )
+                                      },
                                  hazeState = effectiveSearchHazeState,
                                 pureBlack = pureBlack,
                                 blurRadius = blurRadius,
