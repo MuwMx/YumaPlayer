@@ -111,6 +111,7 @@ fun NewReleaseScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = Color.Transparent,
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.new_releases)) },

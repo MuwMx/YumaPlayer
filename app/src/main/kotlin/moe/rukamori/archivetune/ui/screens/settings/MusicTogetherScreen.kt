@@ -189,13 +189,13 @@ fun MusicTogetherScreen(
                 colors =
                     TopAppBarDefaults.largeTopAppBarColors(
                         containerColor = Color.Transparent,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        scrolledContainerColor = Color.Transparent,
                     ),
                 scrollBehavior = scrollBehavior,
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.Transparent,
         modifier =
             Modifier
                 .fillMaxSize()

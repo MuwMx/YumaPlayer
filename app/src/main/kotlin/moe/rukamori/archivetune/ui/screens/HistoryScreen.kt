@@ -464,7 +464,7 @@ fun HistoryScreen(
             Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (!showSearchBar) {
@@ -703,10 +703,7 @@ private fun LocalHistoryFeed(
                 stickyHeader(key = "header_$dateAgo") {
                     NavigationTitle(
                         title = dateAgoToString(dateAgo),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
@@ -840,10 +837,7 @@ private fun RemoteHistoryFeed(
                         stickyHeader(key = "header_${section.title}") {
                             NavigationTitle(
                                 title = section.title,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.surface),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
 

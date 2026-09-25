@@ -1,8 +1,12 @@
 package moe.rukamori.archivetune
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
@@ -94,6 +98,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.window.core.layout.WindowSizeClass
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -305,6 +310,18 @@ fun ScaffoldShell(
                 playerViewModel.addSearchHistory(queryText)
             }
         }
+
+        val voiceSearchLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val spokenText =
+                        result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+                    if (!spokenText.isNullOrBlank()) {
+                        onQueryChange(TextFieldValue(spokenText, TextRange(spokenText.length)))
+                        onSearch(spokenText)
+                    }
+                }
+            }
 
         var openSearchImmediately: Boolean by remember {
             mutableStateOf(activity.intent?.action == ACTION_SEARCH)
@@ -674,6 +691,7 @@ fun ScaffoldShell(
 
                 val hazeState = remember { HazeState() }
                 val effectiveHazeState = if (blurNavBar) hazeState else null
+                val searchHazeState = remember { HazeState() }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -991,6 +1009,24 @@ fun ScaffoldShell(
                                                         contentDescription = null,
                                                     )
                                                 }
+                                            } else {
+                                                IconButton(
+                                                    onClick = {
+                                                        val intent =
+                                                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                                                putExtra(
+                                                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                                                )
+                                                            }
+                                                        runCatching { voiceSearchLauncher.launch(intent) }
+                                                    },
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.mic),
+                                                        contentDescription = stringResource(R.string.voice_search),
+                                                    )
+                                                }
                                             }
                                             IconButton(
                                                 onClick = {
@@ -1050,6 +1086,9 @@ fun ScaffoldShell(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                         )
                                     },
+                                hazeState = searchHazeState,
+                                pureBlack = pureBlack,
+                                blurRadius = blurRadius,
                             ) {
                                 Crossfade(
                                     targetState = searchSource,
@@ -1098,7 +1137,7 @@ fun ScaffoldShell(
                         topAppBarScrollBehavior = topAppBarScrollBehavior,
                         hazeState = effectiveHazeState,
                         updateState = updateState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().hazeSource(searchHazeState),
                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                         searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                         onClearUpdateBadge = { updateViewModel.dismissUpdate() },

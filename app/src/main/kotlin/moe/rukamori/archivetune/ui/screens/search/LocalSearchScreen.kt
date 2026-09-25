@@ -70,15 +70,12 @@ fun LocalSearchScreen(
     }
 
     Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize(),
     ) {
         Surface(
-            color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface,
-            tonalElevation = if (pureBlack) 0.dp else 0.dp,
-            shadowElevation = if (pureBlack) 0.dp else 1.dp,
+            color = Color.Transparent,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
             ChipsRow(
                 chips = LOCAL_SEARCH_FILTER_CHIPS.map { it.first to stringResource(it.second) },

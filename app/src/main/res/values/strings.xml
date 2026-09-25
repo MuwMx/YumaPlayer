@@ -1202,4 +1202,5 @@
     <string name="action_translate">TRANSLATE</string>
     <string name="action_reset">RESET</string>
     <string name="action_apply">APPLY</string>
+    <string name="voice_search">Voice search</string>
 </resources>

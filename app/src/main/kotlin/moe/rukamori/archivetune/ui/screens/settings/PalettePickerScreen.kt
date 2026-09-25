@@ -58,6 +58,7 @@ fun PalettePickerScreen(navController: NavController) {
     )
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.color_palette)) },

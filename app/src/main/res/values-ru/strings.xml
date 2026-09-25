@@ -767,4 +767,5 @@
     <string name="cast_no_play_services_desc">Для поиска устройств Cast требуются сервисы Google Play.</string>
     <string name="cast_no_network">Нет подключения к сети</string>
     <string name="cast_no_network_desc">Подключитесь к Wi-Fi для поиска устройств Cast в локальной сети.</string>
+    <string name="voice_search">Голосовой поиск</string>
 </resources>

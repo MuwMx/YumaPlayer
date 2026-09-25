@@ -82,14 +82,10 @@ fun OnlineSearchScreen(
         viewModel.updateQuery(query)
     }
 
-    val backgroundColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
     val distinctResultItems = remember(viewState.items) { viewState.items.distinctBy { it.id } }
 
     Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(backgroundColor),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter,
     ) {
         LazyColumn(

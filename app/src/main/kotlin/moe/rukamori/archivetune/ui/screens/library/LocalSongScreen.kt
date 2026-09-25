@@ -329,7 +329,7 @@ fun LocalSongScreen(
             Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.Transparent,
         topBar = {
             AnimatedContent(
                 targetState = isSearchActive,
