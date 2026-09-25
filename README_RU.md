@@ -282,7 +282,7 @@ YumaPlayer распространяется бесплатно, не содер�
 
 <p align="center">
   <a href="https://star-history.com/#MuwMx/YumaPlayer&Date">
-    <img src="https://api.star-history.com/svg?repos=MuwMx/YumaPlayer&type=Date" alt="Star History Chart" width="100%" />
+    <img src="https://api.star-history.com/svg?repos=MuwMx/YumaPlayer&type=Date&theme=dark" alt="Star History Chart" width="100%" />
   </a>
 </p>
 
