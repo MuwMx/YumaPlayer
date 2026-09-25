@@ -441,7 +441,7 @@ fun SuggestionItem(
         if (pureBlack) {
             Color.White.copy(alpha = 0.08f)
         } else {
-            MaterialTheme.colorScheme.surface
+            MaterialTheme.colorScheme.surfaceContainerHighest
         }
 
     val iconTint =

@@ -147,7 +147,7 @@ fun LazyListScope.artistsRowSection(
                                     Modifier
                                         .size(72.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surface),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(

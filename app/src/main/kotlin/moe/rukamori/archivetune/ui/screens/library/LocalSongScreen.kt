@@ -1058,7 +1058,7 @@ private fun LocalSongScanSheet(
 
                 val scanButtonBg =
                     if (scanState.isScanning) {
-                        MaterialTheme.colorScheme.surface
+                        MaterialTheme.colorScheme.surfaceContainerHighest
                     } else if (hasStoragePermission) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -1145,7 +1145,7 @@ private fun LocalSongScanSheet(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -1184,7 +1184,7 @@ private fun LocalSongScanSettingCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -1197,7 +1197,7 @@ private fun LocalSongScanSettingCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(SettingsDimensions.LibrarySmallRadius),
-                    color = MaterialTheme.colorScheme.surface,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     modifier = Modifier.size(44.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {

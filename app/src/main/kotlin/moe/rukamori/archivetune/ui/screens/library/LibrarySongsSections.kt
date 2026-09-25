@@ -407,7 +407,7 @@ fun LazyItemScope.SongRow(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = if (isActive) 0.5f else 0.8f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isActive) 0.5f else 0.8f))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(

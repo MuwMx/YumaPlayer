@@ -449,7 +449,7 @@ fun ArtistGridCard(
                 Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
         )
 
         Spacer(modifier = Modifier.width(10.dp))

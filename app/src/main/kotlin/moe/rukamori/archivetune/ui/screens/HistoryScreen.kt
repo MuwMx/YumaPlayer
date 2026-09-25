@@ -1141,7 +1141,7 @@ private fun BoxScope.HistorySelectionToolbar(
             },
             colors =
                 FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surface,
+                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
         ) {
             HistoryToolbarAction(
