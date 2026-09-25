@@ -68,7 +68,7 @@ import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
 
 @Composable
-private fun MetadataChip(
+internal fun MetadataChip(
     icon: Int,
     text: String,
     modifier: Modifier = Modifier,

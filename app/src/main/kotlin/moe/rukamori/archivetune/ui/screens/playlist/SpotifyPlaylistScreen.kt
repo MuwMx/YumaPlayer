@@ -26,9 +26,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -60,6 +62,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -73,6 +76,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -109,7 +116,12 @@ import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -478,20 +490,22 @@ fun SpotifyPlaylistScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 48.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val trackCount = currentPlaylist.tracks?.total ?: tracks.size
                                 MetadataChip(
                                     icon = R.drawable.music_note,
                                     text = pluralStringResource(R.plurals.n_song, trackCount, trackCount),
+                                    modifier = Modifier.weight(1f, fill = false),
                                 )
 
                                 if (loadedDurationMs > 0L) {
                                     MetadataChip(
                                         icon = R.drawable.timer,
                                         text = makeTimeString(loadedDurationMs),
+                                        modifier = Modifier.weight(1f, fill = false),
                                     )
                                 }
                             }
@@ -513,79 +527,113 @@ fun SpotifyPlaylistScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
+                            val syncLabel = stringResource(R.string.spotify_reload_playlist)
+                            val playLabel = stringResource(R.string.play)
+                            val shuffleLabel = stringResource(R.string.shuffle)
+
                             Row(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 24.dp),
+                                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { viewModel.reload() },
-                                    modifier = Modifier.size(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            checkedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            checkedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        ),
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .size(48.dp)
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
+                                                onClick = { viewModel.reload() },
+                                            )
+                                            .yumaGlassCard(
+                                                shape = CircleShape,
+                                                backgroundColor = LocalYumaColors.current.glassBackground,
+                                            )
+                                            .clip(CircleShape)
+                                            .semantics(mergeDescendants = true) {
+                                                contentDescription = syncLabel
+                                                role = Role.Button
+                                            },
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.sync),
-                                        contentDescription = stringResource(R.string.spotify_reload_playlist),
-                                        modifier = Modifier.size(24.dp),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                                     )
                                 }
 
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { playPlaylist() },
-                                    enabled = tracks.isNotEmpty(),
+                                Box(
                                     modifier =
                                         Modifier
                                             .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
+                                            .height(48.dp)
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
+                                                enabled = tracks.isNotEmpty(),
+                                                onClick = { playPlaylist() },
+                                            )
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = CircleShape,
+                                            )
+                                            .clip(CircleShape)
+                                            .semantics(mergeDescendants = true) {
+                                                role = Role.Button
+                                            },
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.play),
-                                        contentDescription = stringResource(R.string.play),
-                                        modifier = Modifier.size(24.dp),
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.play),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = playLabel,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
 
-                                ToggleButton(
-                                    checked = false,
-                                    onCheckedChange = { playPlaylist(shuffled = true) },
-                                    enabled = tracks.isNotEmpty(),
+                                Box(
                                     modifier =
                                         Modifier
-                                            .weight(1f)
-                                            .height(48.dp),
-                                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                                    colors =
-                                        ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        ),
+                                            .size(48.dp)
+                                            .yumaClickable(
+                                                pressedScale = SettingsAnimations.PressScale,
+                                                enabled = tracks.isNotEmpty(),
+                                                onClick = { playPlaylist(shuffled = true) },
+                                            )
+                                            .yumaGlassCard(
+                                                shape = CircleShape,
+                                                backgroundColor = LocalYumaColors.current.glassBackground,
+                                            )
+                                            .clip(CircleShape)
+                                            .semantics(mergeDescendants = true) {
+                                                contentDescription = shuffleLabel
+                                                role = Role.Button
+                                            },
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.shuffle),
-                                        contentDescription = stringResource(R.string.shuffle),
-                                        modifier = Modifier.size(24.dp),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                                     )
                                 }
                             }
@@ -825,36 +873,4 @@ private fun SpotifyTrack.isResolvedAs(mediaMetadata: MediaMetadata?): Boolean {
         } ?: true
 
     return titleMatches && durationMatches && albumMatches && artistMatches && thumbnailMatches
-}
-
-@Composable
-private fun MetadataChip(
-    icon: Int,
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
 }

@@ -436,38 +436,3 @@ fun OnlinePlaylistHeroSection(
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
-
-@Composable
-private fun MetadataChip(
-    icon: Int,
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier
-                .yumaGlassCard(
-                    shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
-                    backgroundColor = LocalYumaColors.current.glassBackground,
-                )
-                .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}

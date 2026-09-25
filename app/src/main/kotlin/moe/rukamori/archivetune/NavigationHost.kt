@@ -11,7 +11,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +32,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
-import moe.rukamori.archivetune.ui.component.LocalFabHazeState
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.navigationBuilder
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
@@ -97,9 +95,8 @@ fun NavigationHost(
         navigationItems.map(Screens::route) + "settings"
     }
 
-    CompositionLocalProvider(LocalFabHazeState provides hazeState) {
-        NavHost(
-            navController = navController,
+    NavHost(
+        navController = navController,
         startDestination =
             if (launchMusicRecognitionFromShortcut) {
                 MusicRecognitionRoute
@@ -222,6 +219,5 @@ fun NavigationHost(
             homeScrollConnection = homeScrollConnection,
             searchScrollConnection = searchScrollConnection,
         )
-        }
     }
 }

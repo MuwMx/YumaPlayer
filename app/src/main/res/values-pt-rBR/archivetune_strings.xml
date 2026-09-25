@@ -515,7 +515,6 @@
     <string name="import_m3u_format">Playlist de áudio M3U</string>
     <string name="import_csv_format">Arquivo de playlist CSV</string>
     <string name="spotify_connect">Conectar Spotify</string>
-    <string name="home_screen_provider">Home screen</string>
     <string name="home_screen_provider_desc">YouTube Music / Spotify</string>
     <string name="home_provider_youtube_music">YouTube Music</string>
     <string name="home_provider_spotify">Spotify</string>
