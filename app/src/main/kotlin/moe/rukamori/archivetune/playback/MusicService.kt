@@ -1228,7 +1228,7 @@ class MusicService :
                         .roundToLong()
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
-                if (crossfadeEnabled && crossfadeDurationMs > 0L) {
+                if (crossfadeEnabled && !shouldUseLegacyPath(crossfadeDurationMs)) {
                     scheduleCrossfade()
                 } else {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
