@@ -10,12 +10,7 @@ package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,29 +18,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -57,28 +45,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -86,7 +64,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
-import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -97,7 +74,6 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -110,16 +86,11 @@ import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
-import moe.rukamori.archivetune.ui.settings.SettingsAnimations
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.screens.playlist.spotify.SpotifyPlaylistHeader
+import moe.rukamori.archivetune.ui.screens.playlist.spotify.spotifyPlaylistTrackRows
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.ui.theme.yumaClickable
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resize
-import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.abs
 
@@ -405,236 +376,18 @@ fun SpotifyPlaylistScreen(
             if (!isSearching) {
                 playlist?.let { currentPlaylist ->
                     item(key = "header") {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = systemBarsTopPadding + AppBarHeight),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .padding(top = 8.dp, bottom = 20.dp),
-                            ) {
-                                Surface(
-                                    modifier =
-                                        Modifier
-                                            .size(240.dp)
-                                            .shadow(
-                                                elevation = 24.dp,
-                                                shape = RoundedCornerShape(16.dp),
-                                                spotColor =
-                                                    gradientColors.getOrNull(0)?.copy(alpha = 0.5f)
-                                                        ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                            ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                ) {
-                                    if (thumbnailUrl != null) {
-                                        AsyncImage(
-                                            model = thumbnailUrl,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.queue_music),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(80.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Text(
-                                text = currentPlaylist.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 32.dp),
-                            )
-
-                            currentPlaylist.owner?.displayName?.takeIf(String::isNotBlank)?.let { owner ->
-                                Text(
-                                    text = owner,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier =
-                                        Modifier
-                                            .padding(top = 8.dp)
-                                            .padding(horizontal = 32.dp),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                val trackCount = currentPlaylist.tracks?.total ?: tracks.size
-                                MetadataChip(
-                                    icon = R.drawable.music_note,
-                                    text = pluralStringResource(R.plurals.n_song, trackCount, trackCount),
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-
-                                if (loadedDurationMs > 0L) {
-                                    MetadataChip(
-                                        icon = R.drawable.timer,
-                                        text = makeTimeString(loadedDurationMs),
-                                        modifier = Modifier.weight(1f, fill = false),
-                                    )
-                                }
-                            }
-
-                            currentPlaylist.description?.takeIf(String::isNotBlank)?.let { description ->
-                                Text(
-                                    text = description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier =
-                                        Modifier
-                                            .padding(top = 16.dp)
-                                            .padding(horizontal = 32.dp),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            val syncLabel = stringResource(R.string.spotify_reload_playlist)
-                            val playLabel = stringResource(R.string.play)
-                            val shuffleLabel = stringResource(R.string.shuffle)
-
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(48.dp)
-                                            .yumaClickable(
-                                                pressedScale = SettingsAnimations.PressScale,
-                                                onClick = { viewModel.reload() },
-                                            )
-                                            .yumaGlassCard(
-                                                shape = CircleShape,
-                                                backgroundColor = LocalYumaColors.current.glassBackground,
-                                            )
-                                            .clip(CircleShape)
-                                            .semantics(mergeDescendants = true) {
-                                                contentDescription = syncLabel
-                                                role = Role.Button
-                                            },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.sync),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                    )
-                                }
-
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .height(48.dp)
-                                            .yumaClickable(
-                                                pressedScale = SettingsAnimations.PressScale,
-                                                enabled = tracks.isNotEmpty(),
-                                                onClick = { playPlaylist() },
-                                            )
-                                            .background(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                shape = CircleShape,
-                                            )
-                                            .clip(CircleShape)
-                                            .semantics(mergeDescendants = true) {
-                                                role = Role.Button
-                                            },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.play),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = playLabel,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(48.dp)
-                                            .yumaClickable(
-                                                pressedScale = SettingsAnimations.PressScale,
-                                                enabled = tracks.isNotEmpty(),
-                                                onClick = { playPlaylist(shuffled = true) },
-                                            )
-                                            .yumaGlassCard(
-                                                shape = CircleShape,
-                                                backgroundColor = LocalYumaColors.current.glassBackground,
-                                            )
-                                            .clip(CircleShape)
-                                            .semantics(mergeDescendants = true) {
-                                                contentDescription = shuffleLabel
-                                                role = Role.Button
-                                            },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.shuffle),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(24.dp))
-                        }
+                        SpotifyPlaylistHeader(
+                            playlist = currentPlaylist,
+                            tracksCount = tracks.size,
+                            loadedDurationMs = loadedDurationMs,
+                            thumbnailUrl = thumbnailUrl,
+                            gradientColors = gradientColors,
+                            systemBarsTopPadding = systemBarsTopPadding,
+                            hasTracks = tracks.isNotEmpty(),
+                            onReload = { viewModel.reload() },
+                            onPlay = { playPlaylist() },
+                            onShuffle = { playPlaylist(shuffled = true) },
+                        )
                     }
                 }
             }
@@ -680,43 +433,24 @@ fun SpotifyPlaylistScreen(
                 }
             }
 
-            itemsIndexed(
-                items = filteredTracks,
-                key = { index, track -> "spotify_track_${track.id}_$index" },
-                contentType = { _, _ -> "spotify_track" },
-            ) { index, track ->
-                val trackIsActive =
-                    remember(track, mediaMetadata) {
-                        track.isResolvedAs(mediaMetadata)
+            spotifyPlaylistTrackRows(
+                filteredTracks = filteredTracks,
+                mediaMetadata = mediaMetadata,
+                resolvingTrackId = resolvingTrackId,
+                isPlaying = isPlaying,
+                onTrackClick = { track, index, trackIsActive ->
+                    if (trackIsActive) {
+                        playerConnection?.player?.togglePlayPause()
+                    } else {
+                        val startIndex =
+                            tracks
+                                .indexOfFirst { item -> item.id == track.id }
+                                .takeIf { itemIndex -> itemIndex >= 0 }
+                                ?: index
+                        playPlaylist(startIndex = startIndex)
                     }
-                val trackIsResolving = resolvingTrackId == track.id
-
-                SpotifyTrackListItem(
-                    track = track,
-                    isActive = trackIsActive || trackIsResolving,
-                    isPlaying = isPlaying && !trackIsResolving,
-                    trailingContent = {
-                        if (trackIsResolving) {
-                            CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = resolvingTrackId == null || trackIsActive) {
-                                if (trackIsActive) {
-                                    playerConnection?.player?.togglePlayPause()
-                                } else {
-                                    val startIndex =
-                                        tracks
-                                            .indexOfFirst { item -> item.id == track.id }
-                                            .takeIf { itemIndex -> itemIndex >= 0 }
-                                            ?: index
-                                    playPlaylist(startIndex = startIndex)
-                                }
-                            },
-                )
-            }
+                },
+            )
         }
 
         DraggableScrollbar(
@@ -811,7 +545,7 @@ fun SpotifyPlaylistScreen(
     }
 }
 
-private fun SpotifyTrack.isResolvedAs(mediaMetadata: MediaMetadata?): Boolean {
+internal fun SpotifyTrack.isResolvedAs(mediaMetadata: MediaMetadata?): Boolean {
     if (mediaMetadata == null) return false
 
     mediaMetadata.spotifyTrackId?.let { spotifyTrackId ->
