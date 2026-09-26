@@ -13,20 +13,12 @@ internal class DualForwardingPlayer(
     var activePlayer: Player = playerA
         private set
 
-    fun flipToB(playerB: Player) {
-        if (activePlayer === playerB) return
+    fun attachPlayer(newPlayer: Player) {
+        if (activePlayer === newPlayer) return
         val previous = activePlayer
-        migrateListeners(from = previous, to = playerB)
-        setWrappedPlayer(playerB)
-        activePlayer = playerB
-    }
-
-    fun flipToA(playerA: Player = this.playerA) {
-        if (activePlayer === playerA) return
-        val previous = activePlayer
-        migrateListeners(from = previous, to = playerA)
-        setWrappedPlayer(playerA)
-        activePlayer = playerA
+        migrateListeners(from = previous, to = newPlayer)
+        setWrappedPlayer(newPlayer)
+        activePlayer = newPlayer
     }
 
     private fun setWrappedPlayer(newPlayer: Player) {

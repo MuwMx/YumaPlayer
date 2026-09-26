@@ -241,7 +241,7 @@ internal suspend fun MusicService.finishCrossfade(
         crossfadeHandoffInProgress = true
 
         incomingPlayer.volume = currentEffectivePlayerVolumeForMediaId(target.mediaId).coerceIn(0f, maxSafeGainFactor)
-        dualForwardingPlayer.flipToB(incomingPlayer)
+        dualForwardingPlayer.attachPlayer(incomingPlayer)
 
         val playerA = localPlayer
         transferAudioEffects(incomingPlayer)
@@ -264,7 +264,7 @@ internal suspend fun MusicService.finishCrossfade(
             crossfadeProgress = 0f
             crossfadePlaybackRequested = false
             secondaryCrossfadePlayer?.stop()
-            dualForwardingPlayer.flipToA(localPlayer)
+            dualForwardingPlayer.attachPlayer(localPlayer)
             dualPlayerRoleHolder.reset()
             releaseSecondaryCrossfadePlayer()
             applyEffectiveVolumeImmediately()
@@ -376,7 +376,7 @@ internal fun MusicService.cancelCrossfade(
     crossfadePlaybackRequested = false
     secondaryCrossfadePlayer?.stop()
     if (isPlayerInitialized()) {
-        dualForwardingPlayer.flipToA(localPlayer)
+        dualForwardingPlayer.attachPlayer(localPlayer)
     }
     dualPlayerRoleHolder.reset()
     if (isPlayerInitialized() && resetPauseAtEnd) {
