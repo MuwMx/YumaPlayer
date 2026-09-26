@@ -99,34 +99,8 @@ internal fun MusicService.resolveCrossfadeTarget(): MusicService.CrossfadeTarget
     )
 }
 
-internal fun MusicService.prepareSecondaryCrossfadePlayer(target: MusicService.CrossfadeTarget): ExoPlayer? {
-    val existingPlayer = secondaryCrossfadePlayer
-    if (existingPlayer != null && secondaryCrossfadeTarget == target) {
-        return existingPlayer
-    }
-
-    releaseSecondaryCrossfadePlayer()
-
-    val targetItem =
-        runCatching { player.getMediaItemAt(target.index) }
-            .getOrNull()
-            ?.takeIf { it.mediaId == target.mediaId }
-            ?: return null
-
-    return runCatching {
-        createSecondaryCrossfadePlayer().also { secondaryPlayer ->
-            secondaryCrossfadePlayer = secondaryPlayer
-            secondaryCrossfadeTarget = target
-            secondaryPlayer.setMediaItem(targetItem)
-            secondaryPlayer.playbackParameters = player.playbackParameters
-            secondaryPlayer.volume = 0f
-            secondaryPlayer.prepare()
-        }
-    }.onFailure { error ->
-        Timber.tag(MusicService.TAG).w(error, "Failed to prepare crossfade player")
-        releaseSecondaryCrossfadePlayer()
-    }.getOrNull()
-}
+internal fun MusicService.prepareSecondaryCrossfadePlayer(target: MusicService.CrossfadeTarget): ExoPlayer? =
+    prepareNext(target)
 
 internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
     ExoPlayer
