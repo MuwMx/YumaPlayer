@@ -102,9 +102,9 @@ internal fun MusicService.resolvePlaybackDataSpec(
     val lowDataEnabled = isLowDataEnabled
     val isMeteredConnection = connectivityManager.isActiveNetworkMetered ||
         (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
-    val shouldBypassFlac = lowDataEnabled && isMeteredConnection
+    val shouldBypassFlac = shouldBypassFlac(lowData = lowDataEnabled, metered = isMeteredConnection)
     val currentSource = currentPlaybackSource
-    val effectiveSource = if (shouldBypassFlac) PlaybackSource.YT_MUSIC else currentSource
+    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac)
     val cacheKey = "${mediaId}_${effectiveSource.name}"
     if (preferredStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
         return resolveArchiveTuneExtractorDataSpec(
