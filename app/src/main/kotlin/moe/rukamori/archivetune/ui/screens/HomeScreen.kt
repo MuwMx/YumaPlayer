@@ -60,6 +60,14 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MenuState
+import moe.rukamori.archivetune.ui.screens.home.AccountPlaylistsSection
+import moe.rukamori.archivetune.ui.screens.home.AccountPlaylistsTitle
+import moe.rukamori.archivetune.ui.screens.home.ForgottenFavoritesSection
+import moe.rukamori.archivetune.ui.screens.home.HomePageSectionContent
+import moe.rukamori.archivetune.ui.screens.home.HomePageSectionTitle
+import moe.rukamori.archivetune.ui.screens.home.KeepListeningSection
+import moe.rukamori.archivetune.ui.screens.home.SimilarRecommendationsSection
+import moe.rukamori.archivetune.ui.screens.home.SimilarRecommendationsTitle
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
