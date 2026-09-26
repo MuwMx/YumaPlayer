@@ -29,12 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Album
-import androidx.compose.material.icons.outlined.Hearing
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +55,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.R
@@ -70,8 +63,6 @@ import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
@@ -83,8 +74,6 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.ui.utils.formatCompactCount
-import java.util.Locale
 
 @Composable
 fun ArtistMorphingHeader(
@@ -459,175 +448,4 @@ fun ArtistHeroContent(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
-
-@Composable
-fun ArtistStatsButtonGroup(
-    stats: List<ArtistStatItemUiModel>,
-    modifier: Modifier = Modifier,
-) {
-    val chipShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
-
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp, horizontal = SettingsDimensions.ScreenHorizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        stats.fastForEach { stat ->
-            Row(
-                modifier =
-                    Modifier
-                        .weight(1f, fill = false)
-                        .yumaGlassCard(
-                            shape = chipShape,
-                            backgroundColor = LocalYumaColors.current.glassBackground,
-                        )
-                        .clip(chipShape)
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = stat.contentDescription
-                        },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = stat.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = stat.value,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-fun buildArtistStats(
-    showLocal: Boolean,
-    artistPage: ArtistPage?,
-    librarySongCount: Int,
-    libraryAlbumCount: Int,
-    songsLabel: String,
-    albumsLabel: String,
-    monthlyListenersLabel: String,
-    subscribersLabel: String,
-): List<ArtistStatItemUiModel> {
-    val songSections =
-        artistPage?.sections?.filter { section ->
-            section.items.any { it is SongItem }
-        }
-    val songCount =
-        if (showLocal) {
-            librarySongCount
-        } else {
-            songSections
-                ?.asSequence()
-                ?.flatMap { it.items.asSequence() }
-                ?.filterIsInstance<SongItem>()
-                ?.distinctBy { it.id }
-                ?.count() ?: librarySongCount
-        }
-    val hasMoreSongs = !showLocal && songSections?.any { it.moreEndpoint != null } == true
-
-    val albumSections =
-        artistPage?.sections?.filter { section ->
-            section.items.any { it is AlbumItem }
-        }
-    val albumCount =
-        if (showLocal) {
-            libraryAlbumCount
-        } else {
-            albumSections
-                ?.asSequence()
-                ?.flatMap { it.items.asSequence() }
-                ?.filterIsInstance<AlbumItem>()
-                ?.distinctBy { it.id }
-                ?.count() ?: libraryAlbumCount
-        }
-    val hasMoreAlbums = !showLocal && albumSections?.any { it.moreEndpoint != null } == true
-
-    return buildList {
-        artistPage?.artist?.monthlyListenerCountText?.toArtistCompactCountText()?.let { value ->
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.Hearing,
-                    value = value,
-                    contentDescription = "$monthlyListenersLabel $value",
-                ),
-            )
-        }
-
-        artistPage?.artist?.subscriberCountText?.toArtistCompactCountText()?.let { value ->
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.PersonAdd,
-                    value = value,
-                    contentDescription = "$subscribersLabel $value",
-                ),
-            )
-        }
-
-        if (songCount > 0) {
-            val value = compactCountText(songCount, hasMoreSongs)
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.MusicNote,
-                    value = value,
-                    contentDescription = "$songsLabel $value",
-                ),
-            )
-        }
-
-        if (albumCount > 0) {
-            val value = compactCountText(albumCount, hasMoreAlbums)
-            add(
-                ArtistStatItemUiModel(
-                    icon = Icons.Outlined.Album,
-                    value = value,
-                    contentDescription = "$albumsLabel $value",
-                ),
-            )
-        }
-    }
-}
-
-fun compactCountText(
-    count: Int,
-    hasMore: Boolean,
-): String {
-    val value = formatCompactCount(count.toLong())
-    return if (hasMore) "$value+" else value
-}
-
-private val CompactArtistCountPattern = Regex("""\d+(?:[.,]\d+)?\s*[KMB]""", RegexOption.IGNORE_CASE)
-private val ArtistCountPattern = Regex("""\d+(?:[.,]\d+)*""")
-
-fun String.toArtistCompactCountText(): String? {
-    val compactText = CompactArtistCountPattern.find(this)?.value
-    if (compactText != null) {
-        return compactText
-            .filterNot { it.isWhitespace() }
-            .replace(',', '.')
-            .uppercase(Locale.US)
-    }
-
-    val count =
-        ArtistCountPattern
-            .find(this)
-            ?.value
-            ?.filter { it.isDigit() }
-            ?.toLongOrNull()
-            ?: return null
-
-    return formatCompactCount(count)
 }
