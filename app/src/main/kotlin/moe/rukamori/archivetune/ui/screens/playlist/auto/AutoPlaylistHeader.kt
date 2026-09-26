@@ -1,7 +1,14 @@
+/*
+ * YumaPlayer (2026) | Modified work by MuwMix
+ * ArchiveTune (2026) | Original work by © Rukamori
+ * GPL-3.0 License | Contributors: see git history
+ */
+
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
-package moe.rukamori.archivetune.ui.screens.playlist
+package moe.rukamori.archivetune.ui.screens.playlist.auto
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +55,7 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.ui.screens.playlist.MetadataChip
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -59,7 +66,7 @@ import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
 
 @Composable
-fun AutoPlaylistHeaderHero(
+internal fun AutoPlaylistHeader(
     playlist: String,
     songs: List<Song>,
     downloadState: HeaderDownloadState,
@@ -340,3 +347,30 @@ fun AutoPlaylistHeaderHero(
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
+@Composable
+internal fun AutoPlaylistHeaderHero(
+    playlist: String,
+    songs: List<Song>,
+    downloadState: HeaderDownloadState,
+    globalProgress: Float?,
+    onDownloadToggle: () -> Unit,
+    onRemoveConfirm: () -> Unit,
+    onProgressNavigate: () -> Unit,
+    playerConnection: PlayerConnection,
+    modifier: Modifier = Modifier,
+    systemBarsTopPadding: Dp = WindowInsets.systemBars.asPaddingValues().calculateTopPadding(),
+    likeLength: Int = songs.fastSumBy { it.song.duration },
+) = AutoPlaylistHeader(
+    playlist = playlist,
+    songs = songs,
+    downloadState = downloadState,
+    globalProgress = globalProgress,
+    onDownloadToggle = onDownloadToggle,
+    onRemoveConfirm = onRemoveConfirm,
+    onProgressNavigate = onProgressNavigate,
+    playerConnection = playerConnection,
+    modifier = modifier,
+    systemBarsTopPadding = systemBarsTopPadding,
+    likeLength = likeLength,
+)

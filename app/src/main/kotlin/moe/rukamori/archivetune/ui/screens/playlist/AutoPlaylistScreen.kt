@@ -69,6 +69,11 @@ import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
+import moe.rukamori.archivetune.ui.screens.playlist.auto.AutoPlaylistHeader
+import moe.rukamori.archivetune.ui.screens.playlist.auto.autoPlaylistEmptyState
+import moe.rukamori.archivetune.ui.screens.playlist.auto.autoPlaylistRuleCards
+import moe.rukamori.archivetune.ui.screens.playlist.auto.autoPlaylistTrackRows
+import moe.rukamori.archivetune.ui.screens.playlist.auto.playlistScrollbar
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
@@ -496,7 +501,7 @@ fun AutoPlaylistScreen(
                     key = "header",
                     contentType = CONTENT_TYPE_HEADER,
                 ) {
-                    AutoPlaylistHeaderHero(
+                    AutoPlaylistHeader(
                         playlist = playlist,
                         songs = songs,
                         downloadState = downloadState,
@@ -527,27 +532,32 @@ fun AutoPlaylistScreen(
                 }
             }
 
-            songListSection(
-                songs = songs,
-                filteredSongs = filteredSongs,
-                wrappedSongs = wrappedSongs,
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                selection = selection,
-                selectedCount = selectedCount,
-                onSelectionChange = { selection = it },
-                playlist = playlist,
-                playerConnection = playerConnection,
-                navController = navController,
-                menuState = menuState,
-                haptics = haptics,
-                downloads = downloads,
-                onSongClick = onSongClick,
-            )
+            if (songs.isEmpty()) {
+                autoPlaylistEmptyState()
+            } else {
+                autoPlaylistRuleCards(
+                    sortType = sortType,
+                    sortDescending = sortDescending,
+                    onSortTypeChange = onSortTypeChange,
+                    onSortDescendingChange = onSortDescendingChange,
+                )
+
+                autoPlaylistTrackRows(
+                    filteredSongs = filteredSongs,
+                    wrappedSongs = wrappedSongs,
+                    mediaMetadata = mediaMetadata,
+                    isPlaying = isPlaying,
+                    selection = selection,
+                    selectedCount = selectedCount,
+                    onSelectionChange = { selection = it },
+                    playerConnection = playerConnection,
+                    navController = navController,
+                    menuState = menuState,
+                    haptics = haptics,
+                    downloads = downloads,
+                    onSongClick = onSongClick,
+                )
+            }
         }
 
         playlistScrollbar(
