@@ -3680,10 +3680,10 @@ class MusicService :
         DefaultLoadControl
             .Builder()
             .setBufferDurationsMs(
-                PRIMARY_MIN_BUFFER_MS,
-                PRIMARY_MAX_BUFFER_MS,
-                PRIMARY_BUFFER_FOR_PLAYBACK_MS,
-                PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                PlaybackConstants.PRIMARY_MIN_BUFFER_MS,
+                PlaybackConstants.PRIMARY_MAX_BUFFER_MS,
+                PlaybackConstants.PRIMARY_BUFFER_FOR_PLAYBACK_MS,
+                PlaybackConstants.PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
             ).setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
@@ -3691,10 +3691,10 @@ class MusicService :
         DefaultLoadControl
             .Builder()
             .setBufferDurationsMs(
-                CROSSFADE_MIN_BUFFER_MS,
-                CROSSFADE_MAX_BUFFER_MS,
-                CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
-                CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
+                PlaybackConstants.CROSSFADE_MIN_BUFFER_MS,
+                PlaybackConstants.CROSSFADE_MAX_BUFFER_MS,
+                PlaybackConstants.CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
+                PlaybackConstants.CROSSFADE_MIN_BUFFER_BEFORE_START_MS.toInt(),
             ).setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
@@ -4202,7 +4202,7 @@ class MusicService :
 
             val isPlaybackInactive = player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0
 
-            if (shouldStopServiceOnTaskRemoved(stopMusicOnTaskClearEnabled, isHostSessionActive, isPlaybackInactive)) {
+            if (PlaybackConstants.shouldStopServiceOnTaskRemoved(stopMusicOnTaskClearEnabled, isHostSessionActive, isPlaybackInactive)) {
                 if (stopMusicOnTaskClearEnabled) {
                     discordServiceStopping = true
                     requestDiscordSync(
@@ -4336,7 +4336,11 @@ class MusicService :
             stopMusicOnTaskClearEnabled: Boolean,
             isHostSessionActive: Boolean,
             isPlaybackInactive: Boolean,
-        ): Boolean = (isHostSessionActive && isPlaybackInactive) || stopMusicOnTaskClearEnabled
+        ): Boolean = PlaybackConstants.shouldStopServiceOnTaskRemoved(
+            stopMusicOnTaskClearEnabled,
+            isHostSessionActive,
+            isPlaybackInactive,
+        )
 
         const val ROOT = "root"
         const val HOME = "home"
@@ -4369,7 +4373,7 @@ class MusicService :
         private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
         private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
         const val ERROR_CODE_NO_STREAM = 1000001
-        const val CHUNK_LENGTH = 8 * 1024 * 1024L
+        const val CHUNK_LENGTH = PlaybackConstants.CHUNK_LENGTH
         val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
@@ -4387,22 +4391,22 @@ class MusicService :
         const val EFFECTIVE_VOLUME_RAMP_UP_MS = 350L
         const val EFFECTIVE_VOLUME_RAMP_DOWN_MS = 180L
         const val EFFECTIVE_VOLUME_RAMP_MIN_DELTA = 0.015f
-        const val MIN_CROSSFADE_DURATION_MS = 500L
-        const val CROSSFADE_END_GUARD_MS = 150L
-        const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
-        const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
-        const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L
-        const val CROSSFADE_HANDOFF_BUFFER_MS = 5_000L
-        const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
-        const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
-        const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = 12_500L
-        const val PRIMARY_MIN_BUFFER_MS = 20_000
-        const val PRIMARY_MAX_BUFFER_MS = 60_000
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 750
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_500
-        const val CROSSFADE_MIN_BUFFER_MS = 15_000
-        const val CROSSFADE_MAX_BUFFER_MS = 45_000
-        const val CROSSFADE_FRAME_MS = 32L
+        const val MIN_CROSSFADE_DURATION_MS = PlaybackConstants.MIN_CROSSFADE_DURATION_MS
+        const val CROSSFADE_END_GUARD_MS = PlaybackConstants.CROSSFADE_END_GUARD_MS
+        const val CROSSFADE_PREPARE_AHEAD_MS = PlaybackConstants.CROSSFADE_PREPARE_AHEAD_MS
+        const val CROSSFADE_READY_TIMEOUT_MS = PlaybackConstants.CROSSFADE_READY_TIMEOUT_MS
+        const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = PlaybackConstants.CROSSFADE_HANDOFF_READY_TIMEOUT_MS
+        const val CROSSFADE_HANDOFF_BUFFER_MS = PlaybackConstants.CROSSFADE_HANDOFF_BUFFER_MS
+        const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = PlaybackConstants.CROSSFADE_HANDOFF_SEEK_GUARD_MS
+        const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = PlaybackConstants.CROSSFADE_MIN_BUFFER_BEFORE_START_MS
+        const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = PlaybackConstants.CROSSFADE_MAX_BUFFER_BEFORE_START_MS
+        const val PRIMARY_MIN_BUFFER_MS = PlaybackConstants.PRIMARY_MIN_BUFFER_MS
+        const val PRIMARY_MAX_BUFFER_MS = PlaybackConstants.PRIMARY_MAX_BUFFER_MS
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = PlaybackConstants.PRIMARY_BUFFER_FOR_PLAYBACK_MS
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = PlaybackConstants.PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+        const val CROSSFADE_MIN_BUFFER_MS = PlaybackConstants.CROSSFADE_MIN_BUFFER_MS
+        const val CROSSFADE_MAX_BUFFER_MS = PlaybackConstants.CROSSFADE_MAX_BUFFER_MS
+        const val CROSSFADE_FRAME_MS = PlaybackConstants.CROSSFADE_FRAME_MS
         const val MIN_AUDIBLE_EFFECTIVE_VOLUME = 0.01f
         const val STUCK_MUTED_VOLUME_EPSILON = 0.001f
         const val AUDIBLE_PLAYBACK_VOLUME_CHECK_MS = 2_000L
