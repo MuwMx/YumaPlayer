@@ -533,6 +533,7 @@ class MusicService :
     internal var crossfadeJob: Job? = null
     internal var secondaryCrossfadePlayer: ExoPlayer? = null
     internal var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    internal var reserveCrossfadePlayer: ExoPlayer? = null
     internal var isCrossfading = false
     internal var crossfadeHandoffInProgress = false
     internal var crossfadeBaseVolume = 1f
@@ -664,6 +665,12 @@ class MusicService :
         internal set
     lateinit var player: Player
         internal set
+    internal lateinit var dualForwardingPlayer: DualForwardingPlayer
+
+    internal fun transferAudioEffects(to: ExoPlayer) {
+        localPlayer.removeListener(audioEffectPlayerListener)
+        to.addListener(audioEffectPlayerListener)
+    }
     private lateinit var castPlaybackRepository: CastPlaybackRepository
     private lateinit var mediaSession: MediaLibrarySession
 
@@ -1005,17 +1012,20 @@ class MusicService :
                     setOffloadEnabled(false)
                 }
         castPlaybackRepository = CastPlaybackRepositoryLocator.get(this)
-        player =
+        val basePlayer =
             castPlaybackRepository
                 .createPlayer(
                     context = this,
                     localPlayer = localPlayer,
                     mediaItemResolver = CastMediaItemResolver(::resolveMediaItemForCast),
-                ).apply {
-                    addListener(this@MusicService)
-                    sleepTimer = AdvancedSleepTimer(scope, this)
-                    addListener(sleepTimer)
-                }
+                )
+        dualForwardingPlayer = DualForwardingPlayer(basePlayer)
+        player =
+            dualForwardingPlayer.apply {
+                addListener(this@MusicService)
+                sleepTimer = AdvancedSleepTimer(scope, this)
+                addListener(sleepTimer)
+            }
         playerInitialized.value = true
         widgetUpdater =
             MusicServiceWidgetUpdater(
@@ -4068,6 +4078,10 @@ class MusicService :
         } catch (_: Exception) {
         }
         try {
+            reserveCrossfadePlayer?.release()
+            reserveCrossfadePlayer = null
+            secondaryCrossfadePlayer?.release()
+            secondaryCrossfadePlayer = null
             localPlayer.removeListener(audioEffectPlayerListener)
             player.removeListener(this)
             player.removeListener(sleepTimer)
