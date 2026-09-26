@@ -99,46 +99,6 @@ internal fun MusicService.resolveCrossfadeTarget(): MusicService.CrossfadeTarget
     )
 }
 
-internal fun MusicService.effectiveCrossfadeDuration(duration: Long): Long? {
-    if (duration == C.TIME_UNSET || duration <= 0L) return null
-    val maxDuration = duration - MusicService.CROSSFADE_END_GUARD_MS
-    if (maxDuration < MusicService.MIN_CROSSFADE_DURATION_MS) return null
-    return crossfadeDurationMs
-        .coerceAtLeast(MusicService.MIN_CROSSFADE_DURATION_MS)
-        .coerceAtMost(maxDuration)
-}
-
-internal fun MusicService.isGaplessAlbumTransition(
-    currentItem: MediaItem,
-    targetItem: MediaItem,
-): Boolean {
-    val currentAlbum =
-        currentItem.metadata
-            ?.album
-            ?.id
-            ?.takeIf { it.isNotBlank() }
-            ?: currentItem.metadata
-                ?.album
-                ?.title
-                ?.takeIf { it.isNotBlank() }
-            ?: currentItem.mediaMetadata.albumTitle
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-    val targetAlbum =
-        targetItem.metadata
-            ?.album
-            ?.id
-            ?.takeIf { it.isNotBlank() }
-            ?: targetItem.metadata
-                ?.album
-                ?.title
-                ?.takeIf { it.isNotBlank() }
-            ?: targetItem.mediaMetadata.albumTitle
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-    return currentAlbum != null && currentAlbum == targetAlbum
-}
-
 internal fun MusicService.prepareSecondaryCrossfadePlayer(target: MusicService.CrossfadeTarget): ExoPlayer? {
     val existingPlayer = secondaryCrossfadePlayer
     if (existingPlayer != null && secondaryCrossfadeTarget == target) {
@@ -367,11 +327,6 @@ internal fun MusicService.canHandoffWithoutRebuffer(incomingPlayer: ExoPlayer): 
     }
     return false
 }
-
-internal fun MusicService.requiredCrossfadeStartBufferMs(durationMs: Long): Long =
-    (durationMs + MusicService.CROSSFADE_HANDOFF_BUFFER_MS)
-        .coerceAtLeast(MusicService.CROSSFADE_MIN_BUFFER_BEFORE_START_MS)
-        .coerceAtMost(MusicService.CROSSFADE_MAX_BUFFER_BEFORE_START_MS)
 
 internal fun MusicService.hasBufferedForSmoothStart(
     targetPlayer: ExoPlayer,
