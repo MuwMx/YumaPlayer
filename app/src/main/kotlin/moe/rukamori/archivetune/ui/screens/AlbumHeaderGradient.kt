@@ -58,7 +58,7 @@ internal fun AlbumGradientBackground(
             modifier =
                 modifier
                     .fillMaxWidth()
-                    .fillMaxSize(0.55f)
+                    .fillMaxSize()
                     .zIndex(-1f)
                     .drawBehind {
                         val width = size.width
