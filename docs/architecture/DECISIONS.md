@@ -19,6 +19,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-010](#adr-010-120fps-gesture-kinematics--player-sheet-layer-architecture)** — 120fps Gesture Kinematics & Player Sheet Layer Architecture
 - **[ADR-011](#adr-011-spotify-sync-architecture)** — Spotify Sync Architecture
 - **[ADR-012](#adr-012-room-persistence-extracted-into-database-module)** — Room Persistence Extracted into `:database` Module
+- **[ADR-013](#adr-013-dual-player-crossfade-engine)** — Dual-Player Crossfade Engine
 
 ---
 
@@ -166,3 +167,19 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Library storage builds and versions independently of UI/playback; schema snapshots are pinned per Room version via KSP.
   - *Negative:* `fallbackToDestructiveMigration` and `UniversalMigration` reconciliation now span a module boundary, so schema mistakes surface as cross-module migration failures (see `LEGACY_WARNING.md` §B2).
+
+---
+
+## ADR-013: Dual-Player Crossfade Engine
+
+- **Status:** Accepted
+- **Context:** Single-player crossfade mechanisms in ExoPlayer face inherent limitations including track transition stutter, buffer starvation, seeking race conditions, and inability to decode two streams concurrently. Seamless overlap transitions require two distinct player pipelines without breaking MediaSession continuity, PlayerConnection contracts, or audio focus.
+- **Decision:**
+  1. **Dual Engine Roles (`MASTER` / `STANDBY`):** Introduce `DualPlayerRoleHolder` managing `MASTER` and `STANDBY` player roles. The master player maintains active `MediaSession` integration and UI bindings, while the standby player pre-warms the next media item at zero volume (`volume = 0f`, `pauseAtEndOfMediaItems = true`).
+  2. **Equal-Power Volume Ramping:** Execute smooth volume transitions between outgoing and incoming players using calculated ramps, maintaining acoustic power consistency without distortion or clipping.
+  3. **Atomic Handoff & Role Swap:** At the handoff boundary, verify buffer readiness via `canHandoffWithoutRebuffer` and `awaitPrimaryCrossfadeHandoffReady`. Handoff state atomically, swap roles (`dualPlayerRoleHolder.swap()`), and release the secondary player (`releaseSecondaryCrossfadePlayer()`) without session re-instantiation.
+  4. **Contract Isolation & Legacy Fallback:** Maintain the exact public API surface of `PlayerConnection`. Crossfade durations `<= 0L` safely route through `shouldUseLegacyPath`, bypassing dual-engine allocation.
+- **Consequences:**
+  - *Positive:* Perfectly smooth, gapless crossfade transitions with zero audio artifacts, uninterrupted MediaSession lifetime, and complete UI contract preservation.
+  - *Negative:* Temporary dual-decoder memory and CPU overhead during active crossfade ramp intervals.
+
