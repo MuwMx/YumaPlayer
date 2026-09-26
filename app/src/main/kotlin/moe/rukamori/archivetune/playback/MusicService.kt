@@ -539,6 +539,7 @@ class MusicService :
     internal var crossfadeIncomingBaseVolume = 1f
     internal var crossfadeProgress = 0f
     internal var crossfadePlaybackRequested = false
+    internal val dualPlayerRoleHolder = DualPlayerRoleHolder()
     private var lyricsPreloadManager: LyricsPreloadManager? = null
 
     internal val secondaryCrossfadeListener =

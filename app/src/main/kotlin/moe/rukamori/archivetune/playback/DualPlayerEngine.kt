@@ -11,7 +11,13 @@ internal enum class PlayerRole {
 internal data class DualPlayerRoleHolder(
     var playerA: PlayerRole = PlayerRole.MASTER,
     var playerB: PlayerRole = PlayerRole.STANDBY,
-)
+) {
+    fun swap() {
+        val temp = playerA
+        playerA = playerB
+        playerB = temp
+    }
+}
 
 internal fun shouldUseLegacyPath(durationMs: Long): Boolean = durationMs <= 0L
 

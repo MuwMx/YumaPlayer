@@ -265,6 +265,7 @@ internal suspend fun MusicService.finishCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
+    dualPlayerRoleHolder.swap()
     releaseSecondaryCrossfadePlayer()
     applyEffectiveVolumeImmediately()
     updateAudiblePlaybackRecovery()
