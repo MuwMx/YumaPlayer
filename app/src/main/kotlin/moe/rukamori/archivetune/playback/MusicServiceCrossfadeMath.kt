@@ -22,10 +22,10 @@ internal val FALL: (Float) -> Float = { p -> cos(p.coerceIn(0f, 1f) * PI.toFloat
 
 internal fun MusicService.effectiveCrossfadeDuration(duration: Long): Long? {
     if (duration == C.TIME_UNSET || duration <= 0L) return null
-    val maxDuration = duration - MusicService.CROSSFADE_END_GUARD_MS
-    if (maxDuration < MusicService.MIN_CROSSFADE_DURATION_MS) return null
+    val maxDuration = duration - GUARD_WINDOW_MS
+    if (maxDuration < MIN_FADE_MS) return null
     return crossfadeDurationMs
-        .coerceAtLeast(MusicService.MIN_CROSSFADE_DURATION_MS)
+        .coerceAtLeast(MIN_FADE_MS)
         .coerceAtMost(maxDuration)
 }
 

@@ -16,10 +16,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 
 internal inline fun <T> MusicService.readAudioEffectValue(
     operation: String,
@@ -471,10 +468,8 @@ internal fun MusicService.updateAudiblePlaybackRecovery() {
 }
 
 internal fun MusicService.applyCrossfadeVolumes(progress: Float, outgoingBaseVolume: Float, incomingBaseVolume: Float, outgoingPlayer: ExoPlayer, incomingPlayer: ExoPlayer) {
-    val clampedProgress = progress.coerceIn(0f, 1f)
-    val radians = clampedProgress.toDouble() * (PI / 2.0)
-    outgoingPlayer.volume = (outgoingBaseVolume * cos(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
-    incomingPlayer.volume = (incomingBaseVolume * sin(radians).toFloat()).coerceIn(0f, maxSafeGainFactor)
+    outgoingPlayer.volume = (outgoingBaseVolume * FALL(progress)).coerceIn(0f, maxSafeGainFactor)
+    incomingPlayer.volume = (incomingBaseVolume * RISE(progress)).coerceIn(0f, maxSafeGainFactor)
 }
 
 internal fun MusicService.onAudioOutputDeviceChanged() {
