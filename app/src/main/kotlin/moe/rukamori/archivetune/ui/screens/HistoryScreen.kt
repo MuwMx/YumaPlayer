@@ -5,7 +5,6 @@
  */
 
 @file:OptIn(
-    ExperimentalFoundationApi::class,
     ExperimentalMaterial3Api::class,
     ExperimentalMaterial3ExpressiveApi::class,
 )
@@ -18,43 +17,16 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -66,9 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -77,25 +47,23 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.LocalAnimationsDisabled
-import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HistorySource
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.db.entities.EventWithSong
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -106,28 +74,23 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
+import moe.rukamori.archivetune.ui.component.IconButton as AppIconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.NavigationTitle
-import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.TopSearch
-import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionMediaMetadataMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.screens.history.HistoryOverviewCard
+import moe.rukamori.archivetune.ui.screens.history.HistorySelectionToolbar
+import moe.rukamori.archivetune.ui.screens.history.LocalHistoryFeed
+import moe.rukamori.archivetune.ui.screens.history.RemoteHistoryFeed
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.DateAgo
 import moe.rukamori.archivetune.viewmodels.HistoryViewModel
 import moe.rukamori.archivetune.viewmodels.RemoteHistoryUiState
-import java.time.format.DateTimeFormatter
-import moe.rukamori.archivetune.ui.component.IconButton as AppIconButton
-import moe.rukamori.archivetune.ui.settings.SettingsAnimations
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
-import moe.rukamori.archivetune.ui.theme.yumaClickable
-import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 
 @Composable
 fun HistoryScreen(
@@ -641,538 +604,6 @@ fun HistoryScreen(
                 },
             )
         }
-    }
-}
-
-@Composable
-private fun LocalHistoryFeed(
-    listState: LazyListState,
-    topPadding: Dp,
-    headerContent: @Composable () -> Unit,
-    filteredEvents: Map<DateAgo, List<EventWithSong>>,
-    visibleEvents: List<EventWithSong>,
-    isSearchActive: Boolean,
-    selectedEventIds: Set<Long>,
-    isPlaying: Boolean,
-    activeMediaId: String?,
-    dateAgoToString: (DateAgo) -> String,
-    navController: NavController,
-    onToggleSelection: (Long) -> Unit,
-    onStartSelection: (Long) -> Unit,
-    onSongMenu: (EventWithSong) -> Unit,
-    onSongClick: (DateAgo, List<EventWithSong>, Int, EventWithSong) -> Unit,
-) {
-    val isSelectionMode = selectedEventIds.isNotEmpty()
-
-    LazyColumn(
-        state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ),
-        contentPadding = PaddingValues(bottom = 112.dp),
-    ) {
-        item("history_header_spacer") {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        item("history_overview") {
-            headerContent()
-        }
-
-        if (visibleEvents.isEmpty()) {
-            item("local_history_empty") {
-                HistoryStateCard(
-                    title =
-                        stringResource(
-                            if (isSearchActive) R.string.history_no_results_title else R.string.history_local_empty_title,
-                        ),
-                    description =
-                        stringResource(
-                            if (isSearchActive) R.string.history_no_results_desc else R.string.history_local_empty_desc,
-                        ),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
-        } else {
-            filteredEvents.forEach { (dateAgo, songsForDate) ->
-                stickyHeader(key = "header_$dateAgo") {
-                    NavigationTitle(
-                        title = dateAgoToString(dateAgo),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                itemsIndexed(
-                    items = songsForDate,
-                    key = { index, event -> "${event.event.id}_$index" },
-                    contentType = { _, _ -> "local_history_song" },
-                ) { index, event ->
-                    SongListItem(
-                        song = event.song,
-                        isActive = event.song.id == activeMediaId,
-                        isPlaying = isPlaying,
-                        showInLibraryIcon = true,
-                        isSelected = event.event.id in selectedEventIds,
-                        trailingContent = {
-                            androidx.compose.material3.IconButton(
-                                onClick = {
-                                    if (!isSelectionMode) {
-                                        onSongMenu(event)
-                                    }
-                                },
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_vert),
-                                    contentDescription = null,
-                                )
-                            }
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
-                                .combinedClickable(
-                                    onClick = {
-                                        if (isSelectionMode) {
-                                            onToggleSelection(event.event.id)
-                                        } else {
-                                            onSongClick(dateAgo, songsForDate, index, event)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        onStartSelection(event.event.id)
-                                    },
-                                ).animateItem(),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RemoteHistoryFeed(
-    listState: LazyListState,
-    topPadding: Dp,
-    headerContent: @Composable () -> Unit,
-    remoteHistoryState: RemoteHistoryUiState,
-    filteredSections: List<HistoryPage.HistorySection>,
-    isPlaying: Boolean,
-    activeMediaId: String?,
-    navController: NavController,
-    onRetry: () -> Unit,
-    onSongMenu: (moe.rukamori.archivetune.innertube.models.SongItem) -> Unit,
-    onSongClick: (moe.rukamori.archivetune.innertube.models.SongItem) -> Unit,
-) {
-    LazyColumn(
-        state = listState,
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ),
-        contentPadding = PaddingValues(bottom = 112.dp),
-    ) {
-        item("history_header_spacer") {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        item("history_overview") {
-            headerContent()
-        }
-
-        when (remoteHistoryState) {
-            RemoteHistoryUiState.Loading -> {
-                item("remote_history_loading") {
-                    HistoryStateCard(
-                        title = stringResource(R.string.history_remote_loading),
-                        description = stringResource(R.string.history_remote_summary),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        loading = true,
-                    )
-                }
-            }
-
-            RemoteHistoryUiState.Empty -> {
-                item("remote_history_empty") {
-                    HistoryStateCard(
-                        title = stringResource(R.string.history_remote_empty_title),
-                        description = stringResource(R.string.history_remote_empty_desc),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-            }
-
-            RemoteHistoryUiState.Error -> {
-                item("remote_history_error") {
-                    HistoryStateCard(
-                        title = stringResource(R.string.history_remote_error_title),
-                        description = stringResource(R.string.history_remote_error_desc),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        actionLabel = stringResource(R.string.retry),
-                        onActionClick = onRetry,
-                    )
-                }
-            }
-
-            is RemoteHistoryUiState.Success -> {
-                if (filteredSections.isEmpty()) {
-                    item("remote_history_search_empty") {
-                        HistoryStateCard(
-                            title = stringResource(R.string.history_no_results_title),
-                            description = stringResource(R.string.history_no_results_desc),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
-                    }
-                } else {
-                    filteredSections.forEach { section ->
-                        stickyHeader(key = "header_${section.title}") {
-                            NavigationTitle(
-                                title = section.title,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-
-                        itemsIndexed(
-                            items = section.songs,
-                            key = { index, song -> "${section.title}_${song.id}_$index" },
-                            contentType = { _, _ -> "remote_history_song" },
-                        ) { index, song ->
-                            YouTubeListItem(
-                                item = song,
-                                isActive = song.id == activeMediaId,
-                                isPlaying = isPlaying,
-                                trailingContent = {
-                                    androidx.compose.material3.IconButton(
-                                        onClick = { onSongMenu(song) },
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
-                                        )
-                                    }
-                                },
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp)
-                                        .combinedClickable(
-                                            onClick = { onSongClick(song) },
-                                            onLongClick = { onSongMenu(song) },
-                                        ).animateItem(),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistoryOverviewCard(
-    title: String,
-    subtitle: String,
-    visibleSongCount: Int,
-    availableSources: List<HistorySource>,
-    currentSource: HistorySource,
-    onSourceChange: (HistorySource) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cardShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
-    Box(
-        modifier =
-            modifier
-                .yumaGlassCard(
-                    shape = cardShape,
-                    backgroundColor = LocalYumaColors.current.glassBackground,
-                )
-                .clip(cardShape),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = pluralStringResource(R.plurals.n_song, visibleSongCount, visibleSongCount),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            HistorySourceSelector(
-                currentSource = currentSource,
-                availableSources = availableSources,
-                onSourceChange = onSourceChange,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistorySourceSelector(
-    currentSource: HistorySource,
-    availableSources: List<HistorySource>,
-    onSourceChange: (HistorySource) -> Unit,
-) {
-    if (availableSources.size == 1) {
-        Box(
-            modifier =
-                Modifier
-                    .height(40.dp)
-                    .yumaGlassCard(
-                        shape = CircleShape,
-                        backgroundColor = LocalYumaColors.current.glassBackground,
-                    )
-                    .clip(CircleShape)
-                    .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.local_history),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        return
-    }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        availableSources.forEach { source ->
-            val checked = source == currentSource
-            val bg =
-                if (checked) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    LocalYumaColors.current.glassBackground
-                }
-            val fg =
-                if (checked) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .yumaClickable(
-                            pressedScale = SettingsAnimations.PressScale,
-                            onClick = {
-                                if (!checked) {
-                                    onSourceChange(source)
-                                }
-                            },
-                        )
-                        .then(
-                            if (checked) {
-                                Modifier.background(bg, CircleShape)
-                            } else {
-                                Modifier.yumaGlassCard(
-                                    shape = CircleShape,
-                                    backgroundColor = bg,
-                                )
-                            },
-                        )
-                        .clip(CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text =
-                        stringResource(
-                            if (source == HistorySource.LOCAL) {
-                                R.string.local_history
-                            } else {
-                                R.string.remote_history
-                            },
-                        ),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = fg,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistoryStateCard(
-    title: String,
-    description: String,
-    modifier: Modifier = Modifier,
-    actionLabel: String? = null,
-    onActionClick: (() -> Unit)? = null,
-    loading: Boolean = false,
-) {
-    val cardShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .yumaGlassCard(
-                    shape = cardShape,
-                    backgroundColor = LocalYumaColors.current.glassBackground,
-                )
-                .clip(cardShape),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.Start,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-        ) {
-            if (loading) {
-                CircularWavyProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (actionLabel != null && onActionClick != null) {
-                Box(
-                    modifier =
-                        Modifier
-                            .height(48.dp)
-                            .yumaClickable(
-                                pressedScale = SettingsAnimations.PressScale,
-                                onClick = onActionClick,
-                            )
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = CircleShape,
-                            )
-                            .clip(CircleShape)
-                            .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = actionLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.HistorySelectionToolbar(
-    visible: Boolean,
-    allVisibleSelected: Boolean,
-    onToggleAll: () -> Unit,
-    onMoreClick: () -> Unit,
-) {
-    val animationsDisabled = LocalAnimationsDisabled.current
-    AnimatedVisibility(
-        visible = visible,
-        enter =
-            fadeIn(tween(if (animationsDisabled) 0 else 220)) +
-                slideInVertically(animationSpec = tween(if (animationsDisabled) 0 else 220)) { it / 2 },
-        exit =
-            fadeOut(tween(if (animationsDisabled) 0 else 220)) +
-                slideOutVertically(animationSpec = tween(if (animationsDisabled) 0 else 220)) { it / 2 },
-        modifier =
-            Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ).padding(16.dp),
-    ) {
-        HorizontalFloatingToolbar(
-            expanded = true,
-            floatingActionButton = {
-                FloatingToolbarDefaults.VibrantFloatingActionButton(
-                    onClick = onMoreClick,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = stringResource(R.string.more_options),
-                    )
-                }
-            },
-            colors =
-                FloatingToolbarDefaults.standardFloatingToolbarColors(
-                    toolbarContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
-        ) {
-            HistoryToolbarAction(
-                icon = if (allVisibleSelected) R.drawable.deselect else R.drawable.select_all,
-                label = stringResource(if (allVisibleSelected) R.string.clear_selection else R.string.select),
-                onClick = onToggleAll,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistoryToolbarAction(
-    icon: Int,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier =
-            Modifier
-                .clip(MaterialTheme.shapes.large)
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
