@@ -496,12 +496,6 @@ private fun String?.normalizeExtractorRequestValue(): String? {
 
 private fun String.toYouTubeWatchUrl(): String = "https://music.youtube.com/watch?v=$this"
 
-private fun MusicService.isExtractorPlaybackUri(uri: Uri): Boolean {
-    val url = uri.toString()
-    return extractorPlaybackUrlCache.values.any { it.url == url } ||
-        uri.path?.startsWith("/api/play/") == true
-}
-
 private fun Uri.shouldBypassPlayerCache(): Boolean {
     val normalizedScheme = scheme?.lowercase(Locale.US)
     return normalizedScheme == "content" ||

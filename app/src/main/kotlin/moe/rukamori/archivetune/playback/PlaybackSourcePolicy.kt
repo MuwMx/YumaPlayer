@@ -11,12 +11,3 @@ internal fun effectiveSource(
     source: PlaybackSource,
     shouldBypassFlac: Boolean,
 ): PlaybackSource = if (shouldBypassFlac) PlaybackSource.YT_MUSIC else source
-
-internal fun effectiveSource(
-    source: PlaybackSource,
-    lowData: Boolean,
-    metered: Boolean,
-): PlaybackSource = effectiveSource(
-    source = source,
-    shouldBypassFlac = shouldBypassFlac(lowData = lowData, metered = metered),
-)
