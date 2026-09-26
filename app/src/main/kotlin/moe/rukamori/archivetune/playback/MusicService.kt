@@ -65,15 +65,10 @@ import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
-import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
 import androidx.media3.datasource.cache.ContentMetadata
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -82,10 +77,8 @@ import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
@@ -261,7 +254,6 @@ import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.isLocalMediaId
-import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.preference
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
@@ -399,7 +391,7 @@ class MusicService :
             bearerToken = moe.rukamori.archivetune.BuildConfig.EXTRACTOR_BEARER,
         )
     }
-    private val mediaOkHttpClient: OkHttpClient by lazy {
+    internal val mediaOkHttpClient: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
             .proxy(YouTube.streamOkHttpProxy)
@@ -430,7 +422,7 @@ class MusicService :
                 )
             }.build()
     }
-    private val extractorMediaOkHttpClient: OkHttpClient by lazy {
+    internal val extractorMediaOkHttpClient: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
             .proxy(Proxy.NO_PROXY)
@@ -3421,76 +3413,6 @@ class MusicService :
         }
     }
 
-    private fun createPlayerCacheDataSourceFactory(cacheWriteEnabled: Boolean): CacheDataSource.Factory =
-        CacheDataSource
-            .Factory()
-            .setCache(playerCache)
-            .setUpstreamDataSourceFactory(createResolvedUpstreamDataSourceFactory())
-            .apply {
-                if (!cacheWriteEnabled) {
-                    setCacheWriteDataSinkFactory(null)
-                }
-            }.setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
-
-    private fun createCacheDataSource(): CacheDataSource.Factory =
-        CacheDataSource
-            .Factory()
-            .setCache(downloadCache)
-            .setUpstreamDataSourceFactory(
-                DataSource.Factory {
-                    createPlayerCacheDataSourceFactory(
-                        cacheWriteEnabled = !isLowDataModeActive(),
-                    ).createDataSource()
-                },
-            ).setCacheWriteDataSinkFactory(null)
-            .setFlags(FLAG_IGNORE_CACHE_ON_ERROR)
-
-    private fun createDataSourceFactory(): DataSource.Factory {
-        val cachedFactory =
-            ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
-                resolvePlaybackDataSpec(
-                    dataSpec = dataSpec,
-                    allowCacheShortCircuit = true,
-                )
-            }
-        val directFactory = createResolvedUpstreamDataSourceFactory()
-
-        return DataSource.Factory {
-            SchemeRoutingDataSource(
-                cachedFactory = cachedFactory,
-                directFactory = directFactory,
-            )
-        }
-    }
-
-    private fun createResolvedUpstreamDataSourceFactory(): DataSource.Factory {
-        val youtubeMediaFactory =
-            DefaultDataSource.Factory(
-                this,
-                OkHttpDataSource.Factory(mediaOkHttpClient),
-            )
-        val extractorMediaFactory =
-            DefaultDataSource.Factory(
-                this,
-                OkHttpDataSource.Factory(extractorMediaOkHttpClient),
-            )
-        val routingFactory =
-            DataSource.Factory {
-                ResolvedUrlRoutingDataSource(
-                    defaultFactory = youtubeMediaFactory,
-                    extractorFactory = extractorMediaFactory,
-                    shouldUseExtractorFactory = ::isExtractorPlaybackUri,
-                )
-            }
-
-        return ResolvingDataSource.Factory(routingFactory) { dataSpec ->
-            resolvePlaybackDataSpec(
-                dataSpec = dataSpec,
-                allowCacheShortCircuit = false,
-            )
-        }
-    }
-
     private fun resolveMediaItemForCast(mediaItem: MediaItem): MediaItem {
         val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
         if (uri.shouldBypassYouTubeResolver()) return mediaItem
@@ -3516,7 +3438,7 @@ class MusicService :
     }
 
 
-    private fun isExtractorPlaybackUri(uri: Uri): Boolean {
+    internal fun isExtractorPlaybackUri(uri: Uri): Boolean {
         val url = uri.toString()
         return extractorPlaybackUrlCache.values.any { it.url == url } ||
             uri.path?.startsWith("/api/play/") == true
@@ -3546,13 +3468,7 @@ class MusicService :
             }
         }.getOrDefault(false)
 
-    internal fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
-            createDataSourceFactory(),
-            DefaultExtractorsFactory(),
-        )
-
-    private class SchemeRoutingDataSource(
+    internal class SchemeRoutingDataSource(
         private val cachedFactory: DataSource.Factory,
         private val directFactory: DataSource.Factory,
     ) : DataSource {
@@ -3598,7 +3514,7 @@ class MusicService :
         }
     }
 
-    private class ResolvedUrlRoutingDataSource(
+    internal class ResolvedUrlRoutingDataSource(
         private val defaultFactory: DataSource.Factory,
         private val extractorFactory: DataSource.Factory,
         private val shouldUseExtractorFactory: (Uri) -> Boolean,
