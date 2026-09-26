@@ -12,22 +12,16 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -105,84 +99,15 @@ fun OnlineSearchScreen(
                     .widthIn(max = SearchContentMaxWidth)
                     .fillMaxSize(),
         ) {
-            if (viewState.history.isNotEmpty()) {
-                item(
-                    key = "history_header",
-                    contentType = "section_header",
-                ) {
-                    SearchSectionHeader(
-                        title = stringResource(R.string.search_history),
-                        pureBlack = pureBlack,
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-
-                itemsIndexed(
-                    items = viewState.history,
-                    key = { _, history -> "history_${history.query}" },
-                    contentType = { _, _ -> "history" },
-                ) { index, history ->
-                    val itemShape =
-                        remember(index, viewState.history.size) {
-                            segmentedSearchItemShape(index, viewState.history.size)
-                        }
-                    SuggestionItem(
-                        query = history.query,
-                        online = false,
-                        onClick = {
-                            onSearch(history.query)
-                            onDismiss()
-                        },
-                        onDelete = {
-                            viewModel.deleteHistory(history)
-                        },
-                        onFillTextField = {
-                            onQueryChange(TextFieldValue(history.query, TextRange(history.query.length)))
-                        },
-                        shape = itemShape,
-                        modifier = Modifier.animateItem(),
-                        pureBlack = pureBlack,
-                    )
-                }
-            }
-
-            if (viewState.suggestions.isNotEmpty()) {
-                item(
-                    key = "suggestions_header",
-                    contentType = "section_header",
-                ) {
-                    SearchSectionHeader(
-                        title = stringResource(R.string.suggestions),
-                        pureBlack = pureBlack,
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-
-                itemsIndexed(
-                    items = viewState.suggestions,
-                    key = { _, suggestion -> "suggestion_$suggestion" },
-                    contentType = { _, _ -> "suggestion" },
-                ) { index, suggestion ->
-                    val itemShape =
-                        remember(index, viewState.suggestions.size) {
-                            segmentedSearchItemShape(index, viewState.suggestions.size)
-                        }
-                    SuggestionItem(
-                        query = suggestion,
-                        online = true,
-                        onClick = {
-                            onSearch(suggestion)
-                            onDismiss()
-                        },
-                        onFillTextField = {
-                            onQueryChange(TextFieldValue(suggestion, TextRange(suggestion.length)))
-                        },
-                        shape = itemShape,
-                        modifier = Modifier.animateItem(),
-                        pureBlack = pureBlack,
-                    )
-                }
-            }
+            onlineSearchSuggestions(
+                history = viewState.history,
+                suggestions = viewState.suggestions,
+                pureBlack = pureBlack,
+                onSearch = onSearch,
+                onDismiss = onDismiss,
+                onDeleteHistory = viewModel::deleteHistory,
+                onQueryChange = onQueryChange,
+            )
 
             if (viewState.items.isNotEmpty()) {
                 item(
@@ -356,179 +281,5 @@ fun OnlineSearchScreen(
     }
 }
 
-@Composable
-private fun SearchSectionHeader(
-    title: String,
-    pureBlack: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color =
-            if (pureBlack) {
-                Color.White.copy(alpha = 0.72f)
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(
-                    start = SearchHorizontalPadding + 4.dp,
-                    top = 16.dp,
-                    end = SearchHorizontalPadding + 4.dp,
-                    bottom = 6.dp,
-                ),
-    )
-}
-
-private fun segmentedSearchItemShape(
-    index: Int,
-    count: Int,
-): Shape =
-    when {
-        count <= 1 -> {
-            RoundedCornerShape(SearchGroupOuterCorner)
-        }
-
-        index == 0 -> {
-            RoundedCornerShape(
-                topStart = SearchGroupOuterCorner,
-                topEnd = SearchGroupOuterCorner,
-                bottomEnd = SearchGroupInnerCorner,
-                bottomStart = SearchGroupInnerCorner,
-            )
-        }
-
-        index == count - 1 -> {
-            RoundedCornerShape(
-                topStart = SearchGroupInnerCorner,
-                topEnd = SearchGroupInnerCorner,
-                bottomEnd = SearchGroupOuterCorner,
-                bottomStart = SearchGroupOuterCorner,
-            )
-        }
-
-        else -> {
-            RoundedCornerShape(SearchGroupInnerCorner)
-        }
-    }
-
-@Composable
-fun SuggestionItem(
-    modifier: Modifier = Modifier,
-    query: String,
-    online: Boolean,
-    onClick: () -> Unit,
-    onDelete: () -> Unit = {},
-    onFillTextField: () -> Unit,
-    pureBlack: Boolean,
-    shape: Shape = MaterialTheme.shapes.large,
-) {
-    val containerColor =
-        if (pureBlack) {
-            Color.White.copy(alpha = 0.08f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        }
-
-    val iconContainerColor =
-        if (pureBlack) {
-            Color.White.copy(alpha = 0.08f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        }
-
-    val iconTint =
-        if (pureBlack) {
-            Color.White.copy(alpha = 0.78f)
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
-
-    Surface(
-        onClick = onClick,
-        shape = shape,
-        color = containerColor,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = SearchHorizontalPadding),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = SearchRowMinHeight)
-                    .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .size(40.dp)
-                        .background(
-                            color = iconContainerColor,
-                            shape = MaterialTheme.shapes.medium,
-                        ),
-            ) {
-                Icon(
-                    painterResource(if (online) R.drawable.ic_search else R.drawable.history),
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Text(
-                text = query,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (pureBlack) Color.White.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-
-            if (!online) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = stringResource(R.string.remove_from_history),
-                        tint =
-                            if (pureBlack) {
-                                Color.White.copy(alpha = 0.62f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-
-            IconButton(onClick = onFillTextField) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_top_left),
-                    contentDescription = stringResource(R.string.search),
-                    tint =
-                        if (pureBlack) {
-                            Color.White.copy(alpha = 0.62f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-    }
-}
-
 private val SearchContentMaxWidth = 720.dp
-private val SearchHorizontalPadding = 12.dp
-private val SearchRowMinHeight = 64.dp
 private val SearchRowSpacing = 2.dp
-private val SearchGroupOuterCorner = 24.dp
-private val SearchGroupInnerCorner = 6.dp
