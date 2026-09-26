@@ -2831,6 +2831,7 @@ class MusicService :
         } else if (!playWhenReady && !isCrossfading) {
             crossfadeTriggerJob?.cancel()
             crossfadeTriggerJob = null
+            isCrossfading = false
             localPlayer.pauseAtEndOfMediaItems = false
             releaseSecondaryCrossfadePlayer()
         }
