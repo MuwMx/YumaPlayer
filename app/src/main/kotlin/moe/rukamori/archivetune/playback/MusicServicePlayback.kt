@@ -548,23 +548,23 @@ private fun MusicService.resolveArchiveTuneExtractorDataSpec(
     return dataSpec.withUri(streamUrl.toUri())
 }
 
-private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
+internal fun PlaybackAuthState.resolveExtractorPoToken(): String? =
     resolveExtractorGvsToken()
         ?: poTokenPlayer.normalizeExtractorRequestValue()
 
-private fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
+internal fun PlaybackAuthState.resolveExtractorGvsToken(): String? =
     resolveGvsPoToken().normalizeExtractorRequestValue()
         ?: poTokenGvs.normalizeExtractorRequestValue()
         ?: poToken.normalizeExtractorRequestValue()
 
-private fun PlaybackAuthState.resolveExtractorCookies(): String? = cookie.normalizeExtractorRequestValue()
+internal fun PlaybackAuthState.resolveExtractorCookies(): String? = cookie.normalizeExtractorRequestValue()
 
-private fun String?.normalizeExtractorRequestValue(): String? {
+internal fun String?.normalizeExtractorRequestValue(): String? {
     val trimmed = this?.trim()
     return trimmed?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 }
 
-private fun String.toYouTubeWatchUrl(): String = "https://music.youtube.com/watch?v=$this"
+internal fun String.toYouTubeWatchUrl(): String = "https://music.youtube.com/watch?v=$this"
 
 private fun Uri.shouldBypassPlayerCache(): Boolean {
     val normalizedScheme = scheme?.lowercase(Locale.US)
