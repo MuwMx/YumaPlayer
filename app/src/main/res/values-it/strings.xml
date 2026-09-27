@@ -1210,10 +1210,11 @@
     <string name="cast_no_play_services_desc">Per castare è necessario che Google Play Services possa connettersi ai dispositivi.</string>
     <string name="cast_no_network">Connessione non trovata</string>
     <string name="cast_no_network_desc">Connetti al Wi-Fi per castare sulla tua rete locale.</string>
-    <string name="blur_nav_bar">Sfocatura barra di navigazione</string>
-    <string name="blur_nav_bar_desc">Applica sfocatura dietro alla barra di navigazione</string>
+    <string name="blur_nav_bar">Sfocatura interfaccia</string>
+    <string name="blur_nav_bar_desc">Applica sfocatura dietro alla barra di navigazione, ricerca e pannelli</string>
     <string name="blur_radius">Intensità sfocatura</string>
     <string name="blur_radius_desc">Modifica l\'intensità della sfocatura sui pannelli flottanti</string>
     <string name="unlink_cookie_and_enable">Scollega cookie e abilita</string>
     <string name="continue_with_visitor_data">Continua coi dati dei visitatori</string>
+    <string name="voice_search">Ricerca vocale</string>
 </resources>
