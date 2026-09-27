@@ -110,6 +110,7 @@ fun LoginScreen(
                     .padding(innerPadding),
                 factory = { context ->
                     WebView(context).apply {
+                        setBackgroundColor(0)
                         val cookieManager = CookieManager.getInstance()
                         webViewClient =
                             object : WebViewClient() {
