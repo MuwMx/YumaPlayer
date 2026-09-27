@@ -45,8 +45,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.di.CanvasCache
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
@@ -64,8 +63,8 @@ private const val CanvasMaxVideoHeight = 1_920
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 internal interface CanvasArtworkPlayerEntryPoint {
-    @PlayerCache
-    fun playerCache(): Cache
+    @CanvasCache
+    fun canvasCache(): Cache
 }
 
 @Composable
@@ -78,16 +77,14 @@ internal fun CanvasArtworkPlayer(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val playerConnection = LocalPlayerConnection.current
-    val playerCache =
-        remember(context, playerConnection) {
-            playerConnection?.service?.playerCache
-                ?: runCatching {
-                    EntryPointAccessors.fromApplication(
-                        context.applicationContext,
-                        CanvasArtworkPlayerEntryPoint::class.java,
-                    ).playerCache()
-                }.getOrNull()
+    val canvasCache =
+        remember(context) {
+            runCatching {
+                EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    CanvasArtworkPlayerEntryPoint::class.java,
+                ).canvasCache()
+            }.getOrNull()
         }
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
     val fallback = fallbackUrl?.takeIf { it.isNotBlank() }
@@ -156,13 +153,13 @@ internal fun CanvasArtworkPlayer(
                 }.build()
         }
     val mediaSourceFactory =
-        remember(context, okHttpClient, playerCache) {
+        remember(context, okHttpClient, canvasCache) {
             val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             val upstreamFactory =
-                if (playerCache != null) {
+                if (canvasCache != null) {
                     CacheDataSource
                         .Factory()
-                        .setCache(playerCache)
+                        .setCache(canvasCache)
                         .setCacheKeyFactory { dataSpec ->
                             dataSpec.key ?: dataSpec.uri.buildUpon().clearQuery().build().toString()
                         }

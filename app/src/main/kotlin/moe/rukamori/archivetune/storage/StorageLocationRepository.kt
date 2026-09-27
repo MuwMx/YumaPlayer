@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.constants.StorageFolderDisplayNameKey
 import moe.rukamori.archivetune.constants.StorageFolderIdKey
 import moe.rukamori.archivetune.constants.StorageFolderPathKey
 import moe.rukamori.archivetune.constants.StorageFolderTreeUriKey
+import moe.rukamori.archivetune.di.CanvasCache
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.playback.DownloadUtil
@@ -184,6 +185,7 @@ class StorageLocationRepository
         @ApplicationContext private val context: Context,
         @PlayerCache private val playerCache: Cache,
         @DownloadCache private val downloadCache: Cache,
+        @CanvasCache private val canvasCache: Cache,
         private val downloadUtil: DownloadUtil,
     ) {
         val selection: Flow<StorageFolderSelection> =
@@ -361,6 +363,7 @@ class StorageLocationRepository
         private fun releaseCachesForMigration() {
             runCatching { playerCache.release() }
             runCatching { downloadCache.release() }
+            runCatching { canvasCache.release() }
         }
 
         private suspend fun clearMediaCache(
@@ -405,7 +408,17 @@ class StorageLocationRepository
 
         private suspend fun clearCanvasCache(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean {
             val memoryAndIndexCleared = CanvasArtworkPlaybackCache.clearAndPersist()
-            return memoryAndIndexCleared && clearCacheDirectory(StorageFolderKind.CANVAS_CACHE, onProgress)
+            val spansCleared =
+                runCatching {
+                    canvasCache.keys.toList().forEach { key ->
+                        currentCoroutineContext().ensureActive()
+                        canvasCache.removeResource(key)
+                    }
+                    canvasCache.release()
+                    true
+                }.getOrDefault(false)
+            val directoryCleared = clearCacheDirectory(StorageFolderKind.CANVAS_CACHE, onProgress)
+            return memoryAndIndexCleared && spansCleared && directoryCleared
         }
 
         private suspend fun clearImageCache(onProgress: suspend (StorageCacheClearProgress) -> Unit): Boolean {

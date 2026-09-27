@@ -14,6 +14,8 @@ import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 
 object CanvasArtworkPlaybackCache {
+    const val DEFAULT_MAX_SIZE_MEGABYTES = 256
+
     private val index = CanvasCacheIndex()
     private val downloader = CanvasVideoDownloader(index)
 

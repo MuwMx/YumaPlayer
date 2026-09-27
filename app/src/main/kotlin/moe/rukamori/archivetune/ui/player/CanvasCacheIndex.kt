@@ -23,7 +23,7 @@ import java.util.LinkedHashMap
 
 internal class CanvasCacheIndex {
     companion object {
-        private const val DEFAULT_MAX_SIZE_MEGABYTES = 256
+        const val DEFAULT_MAX_SIZE_MEGABYTES = CanvasArtworkPlaybackCache.DEFAULT_MAX_SIZE_MEGABYTES
         private const val PERSIST_FILE = "canvas_artwork_cache.json"
         private const val PERSIST_DEBOUNCE_MS = 2_000L
         private const val CACHE_SIZE_BYTES_PER_MEGABYTE = 1024L * 1024L

@@ -21,6 +21,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
 import moe.rukamori.archivetune.data.repository.UpdateRepositoryImpl
 import moe.rukamori.archivetune.db.InternalDatabase
@@ -28,6 +29,7 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.domain.repository.UpdateRepository
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import java.io.File
@@ -43,6 +45,10 @@ annotation class PlayerCache
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class DownloadCache
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class CanvasCache
 
 private class LazyCache(
     private val create: () -> SimpleCache,
@@ -185,6 +191,27 @@ object AppModule {
             SimpleCache(
                 StorageLocationRepository.cacheDirectory(context, StorageFolderKind.DOWNLOADS),
                 NoOpCacheEvictor(),
+                databaseProvider,
+            )
+        }
+
+    @Singleton
+    @Provides
+    @CanvasCache
+    fun provideCanvasCache(
+        @ApplicationContext context: Context,
+        databaseProvider: DatabaseProvider,
+    ): Cache =
+        LazyCache {
+            val cacheSize = context.dataStore.get(MaxCanvasCacheSizeKey, CanvasArtworkPlaybackCache.DEFAULT_MAX_SIZE_MEGABYTES)
+            val evictor =
+                when (cacheSize) {
+                    -1 -> NoOpCacheEvictor()
+                    else -> LeastRecentlyUsedCacheEvictor(cacheSizeMegabytesToBytes(cacheSize))
+                }
+            SimpleCache(
+                StorageLocationRepository.cacheDirectory(context, StorageFolderKind.CANVAS_CACHE),
+                evictor,
                 databaseProvider,
             )
         }

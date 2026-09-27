@@ -71,9 +71,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.datasource.cache.Cache
 import androidx.navigation.NavController
 import coil3.annotation.ExperimentalCoilApi
 import coil3.imageLoader
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -85,6 +90,7 @@ import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxImageCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
 import moe.rukamori.archivetune.constants.SmartTrimmerKey
+import moe.rukamori.archivetune.di.CanvasCache
 import moe.rukamori.archivetune.extensions.directorySizeBytes
 import moe.rukamori.archivetune.extensions.tryOrNull
 import moe.rukamori.archivetune.storage.StorageFolderKind
@@ -111,6 +117,13 @@ import moe.rukamori.archivetune.viewmodels.StorageSettingsScreenState
 import moe.rukamori.archivetune.viewmodels.StorageSettingsViewModel
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface StorageSettingsEntryPoint {
+    @CanvasCache
+    fun canvasCache(): Cache
+}
+
 @OptIn(ExperimentalCoilApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun StorageSettings(
@@ -121,6 +134,15 @@ fun StorageSettings(
     val imageDiskCache = context.imageLoader.diskCache ?: return
     val playerCache = LocalPlayerConnection.current?.service?.playerCache ?: return
     val downloadCache = LocalPlayerConnection.current?.service?.downloadCache ?: return
+    val canvasCache =
+        remember(context) {
+            runCatching {
+                EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    StorageSettingsEntryPoint::class.java,
+                ).canvasCache()
+            }.getOrNull()
+        }
     val screenState by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val storagePickerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -146,6 +168,10 @@ fun StorageSettings(
     val playerCacheDir =
         remember(context) {
             StorageLocationRepository.cacheDirectory(context, StorageFolderKind.SONG_CACHE)
+        }
+    val canvasCacheDir =
+        remember(context) {
+            StorageLocationRepository.cacheDirectory(context, StorageFolderKind.CANVAS_CACHE)
         }
     val cacheSizeValues =
         remember {
@@ -178,7 +204,7 @@ fun StorageSettings(
     val (maxCanvasCacheSize, onMaxCanvasCacheSizeChange) =
         rememberPreference(
             key = MaxCanvasCacheSizeKey,
-            defaultValue = 256,
+            defaultValue = CanvasArtworkPlaybackCache.DEFAULT_MAX_SIZE_MEGABYTES,
         )
     var clearCacheDialog by remember { mutableStateOf(false) }
     var clearDownloads by remember { mutableStateOf(false) }
@@ -286,12 +312,13 @@ fun StorageSettings(
             delay(StorageRefreshIntervalMillis)
         }
     }
-    LaunchedEffect(isCacheClearInProgress) {
+    LaunchedEffect(canvasCache, canvasCacheDir, isCacheClearInProgress) {
         if (isCacheClearInProgress) return@LaunchedEffect
         while (isActive) {
             canvasCacheBytes =
                 withContext(Dispatchers.IO) {
-                    CanvasArtworkPlaybackCache.byteSize()
+                    val cacheSpace = tryOrNull { canvasCache?.cacheSpace } ?: 0L
+                    if (cacheSpace == 0L) canvasCacheDir.directorySizeBytes() else cacheSpace
                 }
             delay(StorageRefreshIntervalMillis)
         }
