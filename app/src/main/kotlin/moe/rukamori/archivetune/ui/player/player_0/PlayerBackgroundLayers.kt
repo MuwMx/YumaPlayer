@@ -347,30 +347,7 @@ fun PlayerBackgroundLayers(
                         .fillMaxWidth()
                         .aspectRatio(0.75f)
                         .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            alpha = immersiveTransitionAlpha
-                            compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
-                                CompositingStrategy.Offscreen
-                            } else {
-                                CompositingStrategy.Auto
-                            }
-                        }
-                        .drawWithCache {
-                            val maskBrush = Brush.verticalGradient(
-                                0.0f to Color.Black,
-                                0.80f to Color.Black,
-                                1.0f to Color.Transparent,
-                                startY = 0f,
-                                endY = size.height
-                            )
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(
-                                    brush = maskBrush,
-                                    blendMode = BlendMode.DstIn
-                                )
-                            }
-                        },
+                        .artworkBottomFade(immersiveTransitionAlpha),
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.TopCenter
                 )
@@ -387,30 +364,7 @@ fun PlayerBackgroundLayers(
                         .fillMaxWidth()
                         .aspectRatio(0.75f)
                         .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            alpha = immersiveTransitionAlpha
-                            compositingStrategy = if (immersiveTransitionAlpha >= 0.99f) {
-                                CompositingStrategy.Offscreen
-                            } else {
-                                CompositingStrategy.Auto
-                            }
-                        }
-                        .drawWithCache {
-                            val maskBrush = Brush.verticalGradient(
-                                0.0f to Color.Black,
-                                0.80f to Color.Black,
-                                1.0f to Color.Transparent,
-                                startY = 0f,
-                                endY = size.height
-                            )
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(
-                                    brush = maskBrush,
-                                    blendMode = BlendMode.DstIn
-                                )
-                            }
-                        },
+                        .artworkBottomFade(immersiveTransitionAlpha),
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 )
             }
@@ -443,3 +397,26 @@ fun PlayerBackgroundLayers(
 
 private val CanvasArtwork.fallbackUrl: String?
     get() = videoUrl.takeIf { it != preferredAnimationUrl }
+
+private fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
+    .graphicsLayer {
+        this.alpha = alpha
+        this.compositingStrategy = CompositingStrategy.Offscreen
+    }
+    .drawWithCache {
+        val maskBrush = Brush.verticalGradient(
+            0.0f to Color.Black,
+            0.45f to Color.Black,
+            0.75f to Color.Black.copy(alpha = 0.4f),
+            1.0f to Color.Transparent,
+            startY = 0f,
+            endY = size.height
+        )
+        onDrawWithContent {
+            drawContent()
+            drawRect(
+                brush = maskBrush,
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }
