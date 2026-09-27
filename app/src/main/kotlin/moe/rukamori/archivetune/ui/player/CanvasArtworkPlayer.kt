@@ -33,6 +33,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -93,6 +94,7 @@ internal fun CanvasArtworkPlayer(
     val initial = primary ?: fallback ?: return
     var currentUrl by remember(initial) { mutableStateOf(initial) }
     var isVideoReady by remember(initial) { mutableStateOf(false) }
+    var hasPlaybackFailed by remember(initial) { mutableStateOf(false) }
     val shouldPlay by rememberUpdatedState(isPlaying)
 
     LaunchedEffect(primary, fallback) {
@@ -100,6 +102,7 @@ internal fun CanvasArtworkPlayer(
         if (target != null && target != currentUrl) {
             currentUrl = target
             isVideoReady = false
+            hasPlaybackFailed = false
         }
     }
 
@@ -174,8 +177,11 @@ internal fun CanvasArtworkPlayer(
         }
     val exoPlayer =
         remember(initial, mediaSourceFactory) {
+            val renderersFactory =
+                DefaultRenderersFactory(context)
+                    .setEnableDecoderFallback(true)
             ExoPlayer
-                .Builder(context)
+                .Builder(context, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build()
                 .apply {
@@ -192,16 +198,21 @@ internal fun CanvasArtworkPlayer(
         }
 
     LaunchedEffect(isPlaying) {
-        exoPlayer.setCanvasPlayback(isPlaying)
+        if (!hasPlaybackFailed) {
+            exoPlayer.setCanvasPlayback(
+                isPlaying = isPlaying,
+                isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+            )
+        }
     }
 
     LaunchedEffect(currentUrl, isPlaying, primary, fallback, exoPlayer) {
-        if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary) return@LaunchedEffect
+        if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary || hasPlaybackFailed) return@LaunchedEffect
 
         var lastPosition = exoPlayer.currentPosition
         var stalledForMs = 0L
 
-        while (isActive && isPlaying && currentUrl == primary) {
+        while (isActive && isPlaying && currentUrl == primary && !hasPlaybackFailed) {
             delay(CanvasPlaybackStallCheckIntervalMs)
 
             val currentPosition = exoPlayer.currentPosition
@@ -222,6 +233,7 @@ internal fun CanvasArtworkPlayer(
             if (stalledForMs >= CanvasPlaybackStallTimeoutMs) {
                 currentUrl = fallback
                 isVideoReady = false
+                hasPlaybackFailed = false
                 return@LaunchedEffect
             }
 
@@ -229,13 +241,26 @@ internal fun CanvasArtworkPlayer(
         }
     }
 
-    DisposableEffect(exoPlayer, lifecycleOwner) {
+    DisposableEffect(exoPlayer, lifecycleOwner, okHttpClient) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
-                    exoPlayer.setCanvasPlayback(shouldPlay)
-                } else if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
-                    exoPlayer.setCanvasPlayback(false)
+                when (event) {
+                    Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME -> {
+                        if (!hasPlaybackFailed) {
+                            exoPlayer.setCanvasPlayback(
+                                isPlaying = shouldPlay,
+                                isStarted = true,
+                            )
+                        }
+                    }
+                    Lifecycle.Event.ON_PAUSE -> {
+                        exoPlayer.setCanvasPlayback(false)
+                    }
+                    Lifecycle.Event.ON_STOP -> {
+                        exoPlayer.stop()
+                        okHttpClient.dispatcher.cancelAll()
+                    }
+                    else -> Unit
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -257,33 +282,49 @@ internal fun CanvasArtworkPlayer(
                     if (!next.isNullOrBlank()) {
                         currentUrl = next
                         isVideoReady = false
+                        hasPlaybackFailed = false
+                    } else {
+                        hasPlaybackFailed = true
+                        exoPlayer.stop()
                     }
                 }
 
                 override fun onRenderedFirstFrame() {
                     isVideoReady = true
-                    if (shouldPlay) {
-                        exoPlayer.setCanvasPlayback(isPlaying = true)
+                    if (shouldPlay && !hasPlaybackFailed) {
+                        exoPlayer.setCanvasPlayback(
+                            isPlaying = true,
+                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                        )
                     }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (!shouldPlay) return
-                    exoPlayer.setCanvasPlayback(isPlaying = true)
+                    if (!shouldPlay || hasPlaybackFailed) return
+                    exoPlayer.setCanvasPlayback(
+                        isPlaying = true,
+                        isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                    )
                 }
 
                 override fun onPlayWhenReadyChanged(
                     playWhenReady: Boolean,
                     reason: Int,
                 ) {
-                    if (shouldPlay && !playWhenReady) {
-                        exoPlayer.setCanvasPlayback(isPlaying = true)
+                    if (shouldPlay && !playWhenReady && !hasPlaybackFailed) {
+                        exoPlayer.setCanvasPlayback(
+                            isPlaying = true,
+                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                        )
                     }
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (shouldPlay && !isPlaying) {
-                        exoPlayer.setCanvasPlayback(isPlaying = true)
+                    if (shouldPlay && !isPlaying && !hasPlaybackFailed) {
+                        exoPlayer.setCanvasPlayback(
+                            isPlaying = true,
+                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                        )
                     }
                 }
             }
@@ -292,6 +333,7 @@ internal fun CanvasArtworkPlayer(
     }
 
     LaunchedEffect(currentUrl, exoPlayer) {
+        hasPlaybackFailed = false
         val normalized = currentUrl.trim()
         isVideoReady = false
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
@@ -313,8 +355,10 @@ internal fun CanvasArtworkPlayer(
 
         exoPlayer.stop()
         exoPlayer.setMediaItem(mediaItem)
-        exoPlayer.prepare()
-        exoPlayer.setCanvasPlayback(isPlaying)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            exoPlayer.prepare()
+            exoPlayer.setCanvasPlayback(isPlaying, isStarted = true)
+        }
     }
 
     DisposableEffect(exoPlayer) {
@@ -353,11 +397,14 @@ private fun Int.toContentScale(): ContentScale =
         else -> ContentScale.Fit
     }
 
-private fun ExoPlayer.setCanvasPlayback(isPlaying: Boolean) {
+private fun ExoPlayer.setCanvasPlayback(
+    isPlaying: Boolean,
+    isStarted: Boolean = true,
+) {
     if (isPlaying) {
         if (playbackState == Player.STATE_ENDED) seekTo(0)
-        if (playbackState == Player.STATE_IDLE && mediaItemCount > 0) prepare()
-        play()
+        if (isStarted && playbackState == Player.STATE_IDLE && mediaItemCount > 0) prepare()
+        if (isStarted) play()
     } else {
         pause()
     }
