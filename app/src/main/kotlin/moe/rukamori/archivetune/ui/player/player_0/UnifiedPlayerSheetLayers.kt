@@ -148,22 +148,30 @@ internal fun UnifiedPlayerSheetLayers(
 
 
     Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = expansionFractionProvider()
-                }
-        ) {
-            moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
-                state = state,
-                expansionFractionProvider = expansionFractionProvider,
-                lyricsFractionProvider = lyricsFractionProvider,
-                queueFractionProvider = queueFractionProvider,
-                onColorsExtracted = { vibrant, darkMuted, gradient ->
-                    onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
-                },
-            )
+        val isBackgroundVisible by remember {
+            derivedStateOf {
+                queueFractionProvider() < 0.99f && lyricsFractionProvider() < 0.99f
+            }
+        }
+
+        if (isBackgroundVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = expansionFractionProvider()
+                    }
+            ) {
+                moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
+                    state = state,
+                    expansionFractionProvider = expansionFractionProvider,
+                    lyricsFractionProvider = lyricsFractionProvider,
+                    queueFractionProvider = queueFractionProvider,
+                    onColorsExtracted = { vibrant, darkMuted, gradient ->
+                        onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
+                    },
+                )
+            }
         }
 
         val isMiniPlayerVisible by remember {
