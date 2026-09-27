@@ -18,6 +18,7 @@ import moe.rukamori.archivetune.innertube.models.MusicShelfRenderer
 import moe.rukamori.archivetune.innertube.models.SectionListRenderer
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.getContinuation
+import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 import moe.rukamori.archivetune.innertube.pages.LibraryPage
 
 internal fun parseAccountChannel(renderer: JsonObject): AccountChannel? {
@@ -30,7 +31,7 @@ internal fun parseAccountChannel(renderer: JsonObject): AccountChannel? {
     val name = renderer["accountName"].textValue() ?: return null
     val byline = renderer["accountByline"].textValue()
     val channelHandle = renderer["channelHandle"].textValue()
-    val thumbnailUrl = renderer["accountPhoto"].thumbnailUrl()
+    val thumbnailUrl = renderer["accountPhoto"].thumbnailUrl()?.withHighResAvatar()
 
     return AccountChannel(
         name = name,

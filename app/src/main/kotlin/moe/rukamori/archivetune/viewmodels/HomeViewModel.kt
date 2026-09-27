@@ -51,6 +51,7 @@ import moe.rukamori.archivetune.innertube.models.AccountChannel
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.innertube.pages.HomePage
@@ -679,7 +680,7 @@ class HomeViewModel
                     .accountInfo()
                     .onSuccess { info ->
                         _accountName.value = info.name
-                        _accountImageUrl.value = info.thumbnailUrl
+                        _accountImageUrl.value = info.thumbnailUrl?.withHighResAvatar()
                     }.onFailure { error ->
                         Timber.w(error, "Failed to fetch account info")
                     }

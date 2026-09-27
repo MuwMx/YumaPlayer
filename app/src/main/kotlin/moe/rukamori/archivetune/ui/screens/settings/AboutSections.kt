@@ -97,6 +97,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.request.crossfade
 import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -1124,13 +1125,23 @@ internal fun TeamMemberListItem(
                         ),
                 contentAlignment = Alignment.Center,
             ) {
+                val avatarImageRequest =
+                    remember(member.avatarUrl, context) {
+                        ImageRequest.Builder(context)
+                            .data(member.avatarUrl)
+                            .diskCacheKey(member.avatarUrl)
+                            .memoryCacheKey(member.avatarUrl)
+                            .crossfade(true)
+                            .allowHardware(false)
+                            .build()
+                    }
+
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(member.avatarUrl)
-                        .size(128, 128)
-                        .allowHardware(false)
-                        .build(),
-                    contentDescription = member.name,
+                    model = avatarImageRequest,
+                    placeholder = painterResource(R.drawable.person),
+                    error = painterResource(R.drawable.person),
+                    fallback = painterResource(R.drawable.person),
+                    contentDescription = null,
                     onSuccess = { success ->
                         if (onAvatarPixelsReady != null) {
                             val bmp = success.result.image.toBitmap()
@@ -1364,6 +1375,16 @@ private fun ContributorListItem(
                 Modifier.clickable { onOpenProfile(profileUrl) }
             }
         }
+    val context = LocalContext.current
+    val imageRequest =
+        remember(avatarUrl, context) {
+            ImageRequest.Builder(context)
+                .data(avatarUrl)
+                .diskCacheKey(avatarUrl)
+                .memoryCacheKey(avatarUrl)
+                .crossfade(true)
+                .build()
+        }
 
     ListItem(
         modifier =
@@ -1377,8 +1398,12 @@ private fun ContributorListItem(
             ),
         leadingContent = {
             AsyncImage(
-                model = avatarUrl,
-                contentDescription = login,
+                model = imageRequest,
+                placeholder = painterResource(R.drawable.person),
+                error = painterResource(R.drawable.person),
+                fallback = painterResource(R.drawable.person),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier =
                     Modifier
                         .size(44.dp)

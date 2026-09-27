@@ -99,10 +99,12 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.request.crossfade
 import coil3.toBitmap
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.spotify.SpotifyAccountUiState
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -297,13 +299,28 @@ fun ProfileIdentityCard(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (isLoggedIn && !accountImageUrl.isNullOrBlank()) {
+                    val avatarImageRequest =
+                        remember(accountImageUrl, context) {
+                            val url = accountImageUrl?.withHighResAvatar()
+                            if (url.isNullOrBlank()) {
+                                null
+                            } else {
+                                ImageRequest.Builder(context)
+                                    .data(url)
+                                    .memoryCacheKey(url)
+                                    .diskCacheKey(url)
+                                    .crossfade(true)
+                                    .allowHardware(false)
+                                    .build()
+                            }
+                        }
+
+                    if (isLoggedIn && avatarImageRequest != null) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(accountImageUrl)
-                                .size(64, 64)
-                                .allowHardware(false)
-                                .build(),
+                            model = avatarImageRequest,
+                            placeholder = painterResource(R.drawable.person),
+                            error = painterResource(R.drawable.person),
+                            fallback = painterResource(R.drawable.person),
                             contentDescription = null,
                             onSuccess = { success ->
                                 val bmp = success.result.image.toBitmap()

@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import moe.rukamori.archivetune.innertube.models.AccountInfo
 import moe.rukamori.archivetune.innertube.models.Runs
 import moe.rukamori.archivetune.innertube.models.Thumbnails
+import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 
 @Serializable
 data class AccountMenuResponse(
@@ -48,7 +49,7 @@ data class AccountMenuResponse(
                                     name = name,
                                     email = email?.runs?.firstOrNull()?.text,
                                     channelHandle = channelHandle?.runs?.firstOrNull()?.text,
-                                    thumbnailUrl = accountPhoto.thumbnails.lastOrNull()?.normalizedUrl,
+                                    thumbnailUrl = accountPhoto.thumbnails.lastOrNull()?.normalizedUrl?.withHighResAvatar(),
                                 )
                             }
                         }
