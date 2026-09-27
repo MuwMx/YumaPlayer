@@ -187,11 +187,10 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .padding(top = innerPadding.calculateTopPadding())
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     )
                     .verticalScroll(scrollState)
+                    .playerAwareBottomPadding()
                     .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
             if (hasUpdate && !isUpdateDismissed) {

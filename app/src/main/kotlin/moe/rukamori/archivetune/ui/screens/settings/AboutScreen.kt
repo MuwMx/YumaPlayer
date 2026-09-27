@@ -214,14 +214,12 @@ internal fun AboutScreenContent(
                             Modifier
                                 .fillMaxSize()
                                 .windowInsetsPadding(
-                                    LocalPlayerAwareWindowInsets.current.only(
-                                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                                    ),
+                                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                                 ),
                         contentPadding =
                             PaddingValues(
                                 top = innerPadding.calculateTopPadding() + 8.dp,
-                                bottom = SettingsDimensions.ScreenBottomPadding,
+                                bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                             ),
                         listState = listState,
                     )

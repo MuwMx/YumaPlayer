@@ -124,9 +124,7 @@ fun ChangelogScreen(
                     .fillMaxSize()
                     .padding(top = paddingValues.calculateTopPadding())
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     ),
         ) {
             when {
@@ -191,7 +189,7 @@ fun ChangelogScreen(
                             ReleaseCard(release = release)
                         }
 
-                        item { Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding)) }
+                        item { Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset())) }
                     }
                 }
             }

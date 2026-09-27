@@ -380,10 +380,9 @@ fun PoTokenScreen(
             Modifier
                 .padding(top = topPadding)
                 .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
+                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                 ).verticalScroll(rememberScrollState())
+                .playerAwareBottomPadding()
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding)
                 .animateContentSize(
                     animationSpec = spring(stiffness = Spring.StiffnessMediumLow),

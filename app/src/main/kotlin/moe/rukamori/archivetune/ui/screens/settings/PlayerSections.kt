@@ -378,6 +378,7 @@ internal fun PlayerSettingsContent(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
+            .playerAwareBottomPadding()
             .padding(bottom = SettingsDimensions.ScreenBottomPadding),
     ) {
         PlayerLosslessSection(state = state, actions = actions)

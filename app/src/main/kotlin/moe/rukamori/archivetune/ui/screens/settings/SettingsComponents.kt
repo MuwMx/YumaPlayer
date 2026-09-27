@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -78,6 +79,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -627,6 +629,16 @@ fun SettingsScreenBackground(
     }
 }
 
+/** Bottom player-aware inset; apply inside the scroll container so content can pass behind the mini player. */
+@Composable
+fun Modifier.playerAwareBottomPadding(): Modifier =
+    windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom))
+
+/** Bottom player-aware inset for a lazy list's content padding. */
+@Composable
+fun playerAwareBottomInset(): Dp =
+    LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
+
 @Composable
 fun YumaSettingsScaffold(
     title: @Composable () -> Unit,
@@ -672,9 +684,7 @@ fun YumaSettingsScaffold(
             val baseModifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
+                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                 )
                 .padding(top = innerPadding.calculateTopPadding())
 
@@ -682,12 +692,14 @@ fun YumaSettingsScaffold(
                 Column(
                     modifier = baseModifier
                         .verticalScroll(rememberScrollState())
+                        .playerAwareBottomPadding()
                         .padding(bottom = SettingsDimensions.ScreenBottomPadding),
                     content = content,
                 )
             } else {
+                // Non-scrollable content (e.g. a LazyColumn) applies the bottom inset itself.
                 Column(
-                    modifier = baseModifier.padding(bottom = SettingsDimensions.ScreenBottomPadding),
+                    modifier = baseModifier,
                     content = content,
                 )
             }

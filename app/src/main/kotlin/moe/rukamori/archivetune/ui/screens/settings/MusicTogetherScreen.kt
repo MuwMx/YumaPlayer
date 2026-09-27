@@ -207,9 +207,7 @@ fun MusicTogetherScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     ),
         ) {
             when (val state = screenState) {
@@ -248,6 +246,7 @@ private fun MusicTogetherContent(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .playerAwareBottomPadding()
                     .padding(horizontal = MusicTogetherSpacing.md, vertical = MusicTogetherSpacing.sm),
             horizontalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.md),
         ) {
@@ -323,7 +322,7 @@ private fun MusicTogetherContent(
                     start = MusicTogetherSpacing.sm,
                     top = MusicTogetherSpacing.xs,
                     end = MusicTogetherSpacing.sm,
-                    bottom = SettingsDimensions.ScreenBottomPadding,
+                    bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                 ),
             verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
         ) {

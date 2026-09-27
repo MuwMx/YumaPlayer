@@ -405,14 +405,12 @@ fun AccountSettings(
                 Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     ),
             contentPadding =
                 PaddingValues(
                     top = innerPadding.calculateTopPadding() + 4.dp,
-                    bottom = SettingsDimensions.ScreenBottomPadding,
+                    bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                 ),
             verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
         ) {
