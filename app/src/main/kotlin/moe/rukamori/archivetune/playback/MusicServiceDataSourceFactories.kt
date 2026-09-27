@@ -58,7 +58,10 @@ internal fun MusicService.createResolvedUpstreamDataSourceFactory(): DataSource.
     val youtubeMediaFactory =
         DefaultDataSource.Factory(
             this,
-            OkHttpDataSource.Factory(mediaOkHttpClient),
+            ChunkedDataSource.Factory(
+                upstream = OkHttpDataSource.Factory(mediaOkHttpClient),
+                chunkBytes = STREAM_CHUNK_BYTES,
+            ),
         )
     val extractorMediaFactory =
         DefaultDataSource.Factory(
