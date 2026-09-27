@@ -11,12 +11,21 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 object TrackAnalyzer {
     private val analyzerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val memoryCache = ConcurrentHashMap<String, TrackAnalysisResult>()
     private val inFlight = ConcurrentHashMap<String, Deferred<TrackAnalysisResult?>>()
+    private val _analysisEvents = MutableSharedFlow<Pair<String, TrackAnalysisResult>>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val analysisEvents: SharedFlow<Pair<String, TrackAnalysisResult>> = _analysisEvents.asSharedFlow()
 
     fun getCached(trackId: String): TrackAnalysisResult? = memoryCache[trackId]
 
@@ -111,6 +120,7 @@ object TrackAnalyzer {
 
                 val result = TrackFeatures.analyze(samples, duration) ?: return@async null
                 memoryCache[trackId] = result
+                _analysisEvents.tryEmit(trackId to result)
                 result
             } finally {
                 inFlight.remove(trackId)

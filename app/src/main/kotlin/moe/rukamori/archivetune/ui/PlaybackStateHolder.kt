@@ -4,10 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
@@ -103,27 +100,15 @@ class PlaybackStateHolder(
         }
 
         coroutineScope.launch {
-            connectionFlow
-                .filterNotNull()
-                .flatMapLatest { connection -> connection.mediaMetadata }
-                .collectLatest { metadata ->
-                    val mediaId = metadata?.id ?: return@collectLatest
-                    if (mediaId.isBlank()) return@collectLatest
-                    while (isActive) {
-                        val cached = TrackAnalyzer.getCached(mediaId)
-                        if (cached != null) {
-                            updateUiState { current ->
-                                if (current.trackUrl == mediaId) {
-                                    current.copy(trackAnalysis = cached)
-                                } else {
-                                    current
-                                }
-                            }
-                            break
-                        }
-                        delay(500)
+            TrackAnalyzer.analysisEvents.collect { (mediaId, analysis) ->
+                updateUiState { current ->
+                    if (current.trackUrl == mediaId) {
+                        current.copy(trackAnalysis = analysis)
+                    } else {
+                        current
                     }
                 }
+            }
         }
 
         coroutineScope.launch {
