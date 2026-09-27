@@ -69,7 +69,9 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.datasource.cache.ContentMetadata
+import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -675,6 +677,29 @@ class MusicService :
     @DownloadCache
     lateinit var downloadCache: Cache
 
+    internal val registeredCacheKeys = ConcurrentHashMap.newKeySet<String>()
+    internal val automixCacheListener: Cache.Listener =
+        object : Cache.Listener {
+            override fun onSpanAdded(cache: Cache, span: CacheSpan) {
+                val key = span.key
+                if (isFullyCached(cache, key)) {
+                    val mediaId =
+                        if (key.startsWith(FLAC_CACHE_KEY_PREFIX)) {
+                            key.removePrefix(FLAC_CACHE_KEY_PREFIX)
+                        } else {
+                            key
+                        }
+                    if (mediaId.isNotBlank() && !TrackAnalyzer.hasCached(mediaId)) {
+                        kickOffTrackAnalysis(mediaId)
+                    }
+                }
+            }
+
+            override fun onSpanRemoved(cache: Cache, span: CacheSpan) {}
+
+            override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) {}
+        }
+
     lateinit var localPlayer: ExoPlayer
         internal set
     lateinit var player: Player
@@ -1041,6 +1066,10 @@ class MusicService :
                 addListener(sleepTimer)
             }
         playerInitialized.value = true
+        ioScope.launch {
+            runCatching { playerCache.keys }.getOrNull()?.forEach { key -> registerCacheListenerForKey(key) }
+            runCatching { downloadCache.keys }.getOrNull()?.forEach { key -> registerCacheListenerForKey(key) }
+        }
         widgetUpdater =
             MusicServiceWidgetUpdater(
                 service = this,
@@ -2959,6 +2988,11 @@ class MusicService :
         prefetchNextTrack(currentIndex)
         kickOffUpcomingTrackAnalysis(currentIndex)
         kickOffTrackAnalysis(mediaItem)
+        registerCacheListenersForMediaItem(mediaItem)
+        val nextIdx = player.nextMediaItemIndex
+        if (nextIdx != C.INDEX_UNSET && nextIdx in 0 until player.mediaItemCount) {
+            registerCacheListenersForMediaItem(runCatching { player.getMediaItemAt(nextIdx) }.getOrNull())
+        }
 
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&
@@ -3126,6 +3160,7 @@ class MusicService :
             }
         } else if (playbackState == Player.STATE_READY) {
             scheduleCrossfade()
+            recheckCacheReadinessForCurrentAndNext()
         }
 
         widgetUpdater.update()
@@ -4430,6 +4465,7 @@ class MusicService :
             player.removeListener(this)
             player.removeListener(sleepTimer)
             player.release()
+            unregisterAllCacheListeners()
         } catch (_: Exception) {
         }
         scopeJob.cancel()

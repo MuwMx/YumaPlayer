@@ -548,15 +548,79 @@ internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
     kickOffTrackAnalysis(nextMediaItem)
 }
 
-private fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
+internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
     val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
     contentLength > 0L && cache.isCached(key, 0L, contentLength)
 }.getOrDefault(false)
 
-internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
+internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
+    if (mediaId.isBlank()) return false
+    val flacKey = flacCacheKey(mediaId)
+    return isFullyCached(downloadCache, flacKey) ||
+        isFullyCached(downloadCache, mediaId) ||
+        isFullyCached(playerCache, mediaId)
+}
+
+internal fun MusicService.registerCacheListenerForKey(key: String) {
+    if (key.isBlank()) return
+    if (registeredCacheKeys.add(key)) {
+        runCatching { playerCache.addListener(key, automixCacheListener) }
+        runCatching { downloadCache.addListener(key, automixCacheListener) }
+    }
+}
+
+internal fun MusicService.registerCacheListenersForMediaItem(mediaItem: MediaItem?) {
+    if (mediaItem == null) return
+    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
+    if (mediaId.isBlank()) return
+    registerCacheListenerForKey(mediaId)
+    registerCacheListenerForKey(flacCacheKey(mediaId))
+}
+
+internal fun MusicService.checkTrackCacheReadiness(mediaItem: MediaItem?) {
     if (mediaItem == null || !automixEnabled) return
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
     if (mediaId.isBlank() || TrackAnalyzer.hasCached(mediaId)) return
+
+    if (isTrackFullyCached(mediaId)) {
+        kickOffTrackAnalysis(mediaItem)
+    }
+}
+
+internal fun MusicService.recheckCacheReadinessForCurrentAndNext() {
+    if (!isPlayerInitialized() || !automixEnabled) return
+    val currentItem = player.currentMediaItem
+    registerCacheListenersForMediaItem(currentItem)
+    checkTrackCacheReadiness(currentItem)
+
+    val nextIndex = player.nextMediaItemIndex
+    if (nextIndex != C.INDEX_UNSET &&
+        nextIndex in 0 until player.mediaItemCount &&
+        player.repeatMode != Player.REPEAT_MODE_ONE &&
+        nextIndex != player.currentMediaItemIndex
+    ) {
+        val nextItem = runCatching { player.getMediaItemAt(nextIndex) }.getOrNull()
+        registerCacheListenersForMediaItem(nextItem)
+        checkTrackCacheReadiness(nextItem)
+    }
+}
+
+internal fun MusicService.unregisterAllCacheListeners() {
+    for (key in registeredCacheKeys) {
+        runCatching { playerCache.removeListener(key, automixCacheListener) }
+        runCatching { downloadCache.removeListener(key, automixCacheListener) }
+    }
+    registeredCacheKeys.clear()
+}
+
+internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
+    if (mediaItem == null || !automixEnabled) return
+    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
+    kickOffTrackAnalysis(mediaId, mediaItem)
+}
+
+internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
+    if (mediaId.isBlank() || !automixEnabled || TrackAnalyzer.hasCached(mediaId)) return
 
     val service = this
     ioScope.launch {
@@ -580,7 +644,7 @@ internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
             }
 
             if (mediaId.isLocalMediaId()) {
-                val uri = mediaItem.localConfiguration?.uri ?: mediaId.toUri()
+                val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()
                 TrackAnalyzer.analyze(mediaId, service, uri)
                 return@launch
             }
@@ -593,7 +657,7 @@ internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
                 }
             }
 
-            val directUri = mediaItem.localConfiguration?.uri
+            val directUri = mediaItem?.localConfiguration?.uri
             if (directUri != null && (directUri.scheme == "http" || directUri.scheme == "https" || directUri.scheme == "content" || directUri.scheme == "file")) {
                 TrackAnalyzer.analyze(mediaId, service, directUri)
                 return@launch
