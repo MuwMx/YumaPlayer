@@ -2732,8 +2732,9 @@ class MusicService :
         cancelPrefetch()
         val targetGeneration = prefetchTimelineGeneration.get()
 
-        val nextIndex = currentIndex + 1
-        if (nextIndex < 0 || nextIndex >= player.mediaItemCount) return
+        val nextIndex = player.nextMediaItemIndex
+        if (nextIndex == C.INDEX_UNSET || nextIndex < 0 || nextIndex >= player.mediaItemCount) return
+        if (player.repeatMode == REPEAT_MODE_ONE || nextIndex == currentIndex) return
 
         val nextMediaItem = player.getMediaItemAt(nextIndex)
         val mediaId = nextMediaItem.mediaId.ifBlank { nextMediaItem.metadata?.id.orEmpty() }
@@ -2890,9 +2891,7 @@ class MusicService :
                                 expiresAtMs = trackingExpiryMs,
                                 authFingerprint = nonNullPlayback.authFingerprint,
                             )
-                            if (!bypassFlac) {
-                                playbackUrlCache[cacheKey] = cacheValue
-                            }
+                            playbackUrlCache[cacheKey] = cacheValue
                             playbackUrlCache[mediaId] = cacheValue
                         }
                     }
@@ -3529,7 +3528,9 @@ class MusicService :
         reason: Int,
     ) {
         super.onTimelineChanged(timeline, reason)
-        cancelPrefetch()
+        if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+            cancelPrefetch()
+        }
     }
 
     override fun onPlayerError(error: PlaybackException) {
