@@ -8,10 +8,8 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import androidx.media3.datasource.cache.Cache
-import androidx.media3.datasource.cache.ContentMetadata
 import java.io.File
 import java.io.FileDescriptor
-import java.io.RandomAccessFile
 import java.nio.ByteOrder
 
 object AudioDecoder {
@@ -43,11 +41,24 @@ object AudioDecoder {
         uri: Uri,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): FloatArray? = decodeInternal(
-        setDataSource = { it.setDataSource(context, uri, null) },
-        startMs = startMs,
-        endMs = endMs,
-    )
+    ): FloatArray? {
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "http" || scheme == "https") return null
+        if (scheme == "file" || scheme == null) {
+            val path = uri.path
+            if (path != null) {
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    return decode(file, startMs, endMs)
+                }
+            }
+        }
+        return runCatching {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                decode(pfd.fileDescriptor, 0L, Long.MAX_VALUE, startMs, endMs)
+            }
+        }.getOrNull()
+    }
 
     fun decode(
         fd: FileDescriptor,
@@ -345,68 +356,5 @@ object AudioDecoder {
             collector.add(mono)
         }
         return false
-    }
-
-    private class FloatChunkList(private val chunkSize: Int = 65536) {
-        private val chunks = ArrayList<FloatArray>()
-        private var currentChunk = FloatArray(chunkSize)
-        private var currentPos = 0
-        var totalCount: Int = 0
-            private set
-
-        fun add(value: Float) {
-            if (currentPos >= chunkSize) {
-                chunks.add(currentChunk)
-                currentChunk = FloatArray(chunkSize)
-                currentPos = 0
-            }
-            currentChunk[currentPos++] = value
-            totalCount++
-        }
-
-        fun toFloatArray(): FloatArray {
-            val result = FloatArray(totalCount)
-            var destPos = 0
-            for (chunk in chunks) {
-                System.arraycopy(chunk, 0, result, destPos, chunk.size)
-                destPos += chunk.size
-            }
-            if (currentPos > 0) {
-                System.arraycopy(currentChunk, 0, result, destPos, currentPos)
-            }
-            return result
-        }
-    }
-
-    private class CacheMediaDataSource(
-        private val cache: Cache,
-        private val cacheKey: String,
-    ) : MediaDataSource() {
-        override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
-            if (size <= 0) return 0
-            if (position < 0L) return -1
-            val spans = cache.getCachedSpans(cacheKey)
-            val span = spans.firstOrNull { it.position <= position && position < (it.position + it.length) }
-                ?: return -1
-            val file = span.file ?: return -1
-            val fileOffset = position - span.position
-            val bytesAvailable = span.length - fileOffset
-            val bytesToRead = minOf(size.toLong(), bytesAvailable).toInt()
-            if (bytesToRead <= 0) return -1
-            return RandomAccessFile(file, "r").use { raf ->
-                raf.seek(fileOffset)
-                raf.read(buffer, offset, bytesToRead)
-            }
-        }
-
-        override fun getSize(): Long {
-            val length = cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-            if (length > 0L) return length
-            val spans = cache.getCachedSpans(cacheKey)
-            if (spans.isEmpty()) return -1L
-            return spans.maxOf { it.position + it.length }
-        }
-
-        override fun close() {}
     }
 }
