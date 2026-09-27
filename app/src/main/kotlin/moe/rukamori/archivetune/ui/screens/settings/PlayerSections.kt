@@ -243,48 +243,51 @@ internal fun PlayerCrossfadeSection(
                 onCheckedChange = actions.onCrossfadeEnabledChange,
             )
         }
-        item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.automix_title)) },
-                description = stringResource(R.string.automix_description),
-                icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                checked = state.automixEnabled,
-                onCheckedChange = actions.onAutomixEnabledChange,
-                isEnabled = state.crossfadeEnabled,
-            )
+        if (state.crossfadeEnabled) {
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.automix_title)) },
+                    description = stringResource(R.string.automix_description),
+                    icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                    checked = state.automixEnabled,
+                    onCheckedChange = actions.onAutomixEnabledChange,
+                )
+            }
         }
-        item {
-            EnumListPreference(
-                title = { Text(stringResource(R.string.automix_transition_style)) },
-                icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
-                selectedValue = state.automixAggressiveness,
-                onValueSelected = actions.onAutomixAggressivenessChange,
-                valueText = { aggr ->
-                    when (aggr) {
-                        AutomixAggressiveness.SOFT -> stringResource(R.string.automix_style_soft)
-                        AutomixAggressiveness.STANDARD -> stringResource(R.string.automix_style_standard)
-                        AutomixAggressiveness.CLUB -> stringResource(R.string.automix_style_club)
-                    }
-                },
-                isEnabled = state.crossfadeEnabled && state.automixEnabled,
-            )
+        if (state.crossfadeEnabled && state.automixEnabled) {
+            item {
+                EnumListPreference(
+                    title = { Text(stringResource(R.string.automix_transition_style)) },
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    selectedValue = state.automixAggressiveness,
+                    onValueSelected = actions.onAutomixAggressivenessChange,
+                    valueText = { aggr ->
+                        when (aggr) {
+                            AutomixAggressiveness.SOFT -> stringResource(R.string.automix_style_soft)
+                            AutomixAggressiveness.STANDARD -> stringResource(R.string.automix_style_standard)
+                            AutomixAggressiveness.CLUB -> stringResource(R.string.automix_style_club)
+                        }
+                    },
+                )
+            }
         }
-        item {
-            EnumListPreference(
-                title = { Text(stringResource(R.string.automix_transition_length)) },
-                icon = { Icon(painterResource(R.drawable.speed), null) },
-                selectedValue = state.automixTransitionDuration,
-                onValueSelected = actions.onAutomixTransitionDurationChange,
-                valueText = { duration ->
-                    when (duration) {
-                        AutomixTransitionDuration.AUTO -> stringResource(R.string.automix_duration_auto)
-                        AutomixTransitionDuration.S4 -> stringResource(R.string.automix_duration_4s)
-                        AutomixTransitionDuration.S8 -> stringResource(R.string.automix_duration_8s)
-                        AutomixTransitionDuration.S12 -> stringResource(R.string.automix_duration_12s)
-                    }
-                },
-                isEnabled = state.crossfadeEnabled && state.automixEnabled,
-            )
+        if (state.crossfadeEnabled && state.automixEnabled) {
+            item {
+                EnumListPreference(
+                    title = { Text(stringResource(R.string.automix_transition_length)) },
+                    icon = { Icon(painterResource(R.drawable.speed), null) },
+                    selectedValue = state.automixTransitionDuration,
+                    onValueSelected = actions.onAutomixTransitionDurationChange,
+                    valueText = { duration ->
+                        when (duration) {
+                            AutomixTransitionDuration.AUTO -> stringResource(R.string.automix_duration_auto)
+                            AutomixTransitionDuration.S4 -> stringResource(R.string.automix_duration_4s)
+                            AutomixTransitionDuration.S8 -> stringResource(R.string.automix_duration_8s)
+                            AutomixTransitionDuration.S12 -> stringResource(R.string.automix_duration_12s)
+                        }
+                    },
+                )
+            }
         }
         item {
             CrossfadeSliderPreference(
