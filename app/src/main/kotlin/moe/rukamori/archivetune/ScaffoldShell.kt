@@ -693,10 +693,7 @@ fun ScaffoldShell(
                     }
                 }
 
-                val hazeState = remember { HazeState() }
-                val effectiveHazeState = if (blurNavBar) hazeState else null
-                val searchHazeState = remember { HazeState() }
-                val effectiveSearchHazeState = if (blurNavBar) searchHazeState else null
+                val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = blurNavBar)
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -1098,7 +1095,7 @@ fun ScaffoldShell(
                                               containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                           )
                                       },
-                                 hazeState = effectiveSearchHazeState,
+                                  hazeState = scaffoldHazeState.effectiveSearchHazeState,
                                 pureBlack = pureBlack,
                                 blurRadius = blurRadius,
                             ) {
@@ -1147,14 +1144,14 @@ fun ScaffoldShell(
                     NavigationHost(
                         navController = navController,
                         topAppBarScrollBehavior = topAppBarScrollBehavior,
-                        hazeState = effectiveHazeState,
+                        hazeState = scaffoldHazeState.effectiveHazeState,
                         updateState = updateState,
                         modifier =
                             Modifier
                                 .fillMaxSize()
                                 .then(
-                                    if (effectiveSearchHazeState != null) {
-                                        Modifier.hazeSource(effectiveSearchHazeState)
+                                    if (scaffoldHazeState.effectiveSearchHazeState != null) {
+                                        Modifier.hazeSource(scaffoldHazeState.effectiveSearchHazeState)
                                     } else {
                                         Modifier
                                     },
@@ -1181,7 +1178,7 @@ fun ScaffoldShell(
                     shouldShowNav = shouldShowNavigationBar,
                     isYearInMusic = isYearInMusicScreen,
                     useRail = useRail,
-                    hazeState = effectiveHazeState,
+                    hazeState = scaffoldHazeState.effectiveHazeState,
                     blurRadius = blurRadius,
                     pureBlack = pureBlack,
                     playerViewModel = playerViewModel,
