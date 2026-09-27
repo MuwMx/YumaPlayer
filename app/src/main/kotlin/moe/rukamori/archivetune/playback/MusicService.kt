@@ -2743,6 +2743,21 @@ class MusicService :
         val metadata = nextMediaItem.metadata
         if (!resolvingPrefetchMediaIds.add(mediaId)) return
 
+        val flacKey = flacCacheKey(mediaId)
+        val hasFlacDiskEntry = runCatching {
+            downloadCache.getCachedSpans(flacKey).isNotEmpty() ||
+                playerCache.getCachedSpans(flacKey).isNotEmpty()
+        }.getOrDefault(false)
+        val hasMediaDiskEntry = runCatching {
+            downloadCache.getCachedSpans(mediaId).isNotEmpty() ||
+                playerCache.getCachedSpans(mediaId).isNotEmpty()
+        }.getOrDefault(false)
+
+        if (hasMediaDiskEntry || hasFlacDiskEntry) {
+            resolvingPrefetchMediaIds.remove(mediaId)
+            return
+        }
+
         if (connectivityManager.activeNetwork == null) {
             resolvingPrefetchMediaIds.remove(mediaId)
             return
@@ -2753,7 +2768,7 @@ class MusicService :
             connectivityManager.isActiveNetworkMetered ||
                 (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
         }.getOrDefault(false)
-        val bypassFlac = shouldBypassFlac(lowData = lowData, metered = isMetered)
+        val bypassFlac = shouldBypassFlac(lowData = lowData, metered = isMetered) && !hasFlacDiskEntry
         val currentSource = currentPlaybackSource
         val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = bypassFlac)
         val cacheKey = "${mediaId}_${effectiveSource.name}"
@@ -3561,9 +3576,14 @@ class MusicService :
                 ((error.cause?.cause is PlaybackException) &&
                     (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED)
 
-        if (!isLocalMedia && !isFullyCachedMedia && (!isNetworkConnected.value || isConnectionError)) {
-            waitOnNetworkError()
-            return
+        if (!isLocalMedia && !isFullyCachedMedia) {
+            if (!isNetworkConnected.value) {
+                waitOnNetworkError()
+                return
+            } else if (isConnectionError) {
+                forceRevivePlayback()
+                return
+            }
         }
 
         if (error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND) {

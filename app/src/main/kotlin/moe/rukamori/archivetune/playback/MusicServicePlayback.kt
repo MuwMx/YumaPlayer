@@ -427,14 +427,12 @@ internal fun MusicService.resolvePlaybackDataSpec(
 
     val trackingExpiryMs = System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
 
-    if (!shouldBypassFlac) {
-        playbackUrlCache[networkCacheKey] =
-            AuthScopedCacheValue(
-                url = streamUrl,
-                expiresAtMs = trackingExpiryMs,
-                authFingerprint = nonNullPlayback.authFingerprint,
-            )
-    }
+    playbackUrlCache[networkCacheKey] =
+        AuthScopedCacheValue(
+            url = streamUrl,
+            expiresAtMs = trackingExpiryMs,
+            authFingerprint = nonNullPlayback.authFingerprint,
+        )
     val specWithMediaId = if (dataSpec.key != mediaId) dataSpec.buildUpon().setKey(mediaId).build() else dataSpec
     val resolvedDataSpec = specWithMediaId.withUri(streamUrl.toUri())
     val length =
