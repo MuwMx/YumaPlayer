@@ -36,6 +36,7 @@ import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Binder
@@ -351,6 +352,10 @@ class MusicService :
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
     private val isNetworkConnected = MutableStateFlow(false)
+    private var networkRecoveryGeneration: Long = 0L
+    private var lastRevivedNetworkGeneration: Long = -1L
+    private var lastActiveNetwork: Network? = null
+    private var networkStallRecoveryJob: Job? = null
 
     internal val audioQuality by enumPreference(
         this,
@@ -1088,13 +1093,46 @@ class MusicService :
         scope.launch {
             connectivityObserver.networkStatus.collect { isConnected ->
                 isNetworkConnected.value = isConnected
-                if (isConnected && waitingForNetworkConnection.value) {
+                val currentNetwork = runCatching { connectivityManager.activeNetwork }.getOrNull()
+
+                if (!isConnected || currentNetwork == null) {
+                    networkStallRecoveryJob?.cancel()
+                    networkStallRecoveryJob = null
+                    lastActiveNetwork = null
+                    networkRecoveryGeneration++
+                    return@collect
+                }
+
+                val isNewNetwork = currentNetwork != lastActiveNetwork
+                if (isNewNetwork) {
+                    lastActiveNetwork = currentNetwork
+                    networkRecoveryGeneration++
+                }
+
+                val currentGen = networkRecoveryGeneration
+
+                if (waitingForNetworkConnection.value) {
                     waitingForNetworkConnection.value = false
                     if (player.currentMediaItem != null && player.playWhenReady &&
                         player.playbackState == Player.STATE_IDLE
                     ) {
+                        lastRevivedNetworkGeneration = currentGen
+                        evictMediaConnectionPools()
                         player.prepare()
                         player.play()
+                        return@collect
+                    }
+                }
+
+                if (currentGen == lastRevivedNetworkGeneration) {
+                    return@collect
+                }
+
+                val currentItem = player.currentMediaItem
+                if (currentItem != null && player.playWhenReady && !currentItem.mediaId.isLocalMediaId()) {
+                    val state = player.playbackState
+                    if (state == Player.STATE_BUFFERING || state == Player.STATE_READY) {
+                        scheduleNetworkStallRecovery(currentGen)
                     }
                 }
             }
@@ -1746,7 +1784,61 @@ class MusicService :
     }
 
     private fun waitOnNetworkError() {
+        networkStallRecoveryJob?.cancel()
+        networkStallRecoveryJob = null
         waitingForNetworkConnection.value = true
+    }
+
+    private fun scheduleNetworkStallRecovery(gen: Long) {
+        networkStallRecoveryJob?.cancel()
+        val initialPos = player.currentPosition
+        val initialIndex = player.currentMediaItemIndex
+        val initialMediaId = player.currentMediaItem?.mediaId ?: return
+
+        networkStallRecoveryJob =
+            scope.launch {
+                delay(NETWORK_STALL_WINDOW_MS)
+                if (gen != networkRecoveryGeneration || gen == lastRevivedNetworkGeneration) return@launch
+                if (!isNetworkConnected.value) return@launch
+                if (!player.playWhenReady) return@launch
+                if (player.currentMediaItemIndex != initialIndex || player.currentMediaItem?.mediaId != initialMediaId) return@launch
+
+                val currentState = player.playbackState
+                val currentPos = player.currentPosition
+                val isStalled =
+                    when (currentState) {
+                        Player.STATE_BUFFERING -> true
+                        Player.STATE_READY -> currentPos <= initialPos && !player.isPlaying
+                        else -> false
+                    }
+
+                if (isStalled) {
+                    revivePlaybackFromStall(gen)
+                }
+            }
+    }
+
+    internal fun revivePlaybackFromStall(gen: Long = networkRecoveryGeneration) {
+        lastRevivedNetworkGeneration = gen
+        if (player.currentMediaItem == null) return
+        if (isCrossfading) {
+            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        }
+        evictMediaConnectionPools()
+        val mediaItemIndex = player.currentMediaItemIndex
+        val resumePosition = player.currentPosition.coerceAtLeast(0L)
+        player.prepare()
+        if (mediaItemIndex != C.INDEX_UNSET && mediaItemIndex >= 0) {
+            player.seekTo(mediaItemIndex, resumePosition)
+        } else {
+            player.seekTo(resumePosition)
+        }
+        player.play()
+    }
+
+    internal fun evictMediaConnectionPools() {
+        runCatching { mediaOkHttpClient.connectionPool.evictAll() }
+        runCatching { extractorMediaOkHttpClient.connectionPool.evictAll() }
     }
 
     private fun skipOnError() {
@@ -2391,6 +2483,8 @@ class MusicService :
         clearAutomix()
         currentQueue = EmptyQueue
         queueTitle = null
+        networkStallRecoveryJob?.cancel()
+        networkStallRecoveryJob = null
         waitingForNetworkConnection.value = false
         currentMediaMetadata.value = null
         player.playWhenReady = false
@@ -3247,8 +3341,10 @@ class MusicService :
                 }.getOrDefault(false)
 
         val isConnectionError =
-            (error.cause?.cause is PlaybackException) &&
-                (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                ((error.cause?.cause is PlaybackException) &&
+                    (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED)
 
         if (!isLocalMedia && !isFullyCachedMedia && (!isNetworkConnected.value || isConnectionError)) {
             waitOnNetworkError()
@@ -4328,6 +4424,7 @@ class MusicService :
         const val MIN_AUDIBLE_EFFECTIVE_VOLUME = 0.01f
         const val STUCK_MUTED_VOLUME_EPSILON = 0.001f
         const val AUDIBLE_PLAYBACK_VOLUME_CHECK_MS = 2_000L
+        const val NETWORK_STALL_WINDOW_MS = 1_500L
         internal const val ArchiveTuneExtractorCacheFingerprintPrefix = "archivetune_extractor:"
         internal const val ArchiveTuneExtractorCacheTtlMs = 5 * 60 * 1000L
     }
