@@ -4,6 +4,8 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import java.io.File
@@ -546,6 +548,11 @@ internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
     kickOffTrackAnalysis(nextMediaItem)
 }
 
+private fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
+    val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+    contentLength > 0L && cache.isCached(key, 0L, contentLength)
+}.getOrDefault(false)
+
 internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
     if (mediaItem == null || !automixEnabled) return
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
@@ -557,20 +564,17 @@ internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
             if (TrackAnalyzer.hasCached(mediaId)) return@launch
 
             val flacKey = flacCacheKey(mediaId)
-            val hasFlacCache = runCatching { downloadCache.getCachedSpans(flacKey).isNotEmpty() }.getOrDefault(false)
-            if (hasFlacCache) {
+            if (isFullyCached(downloadCache, flacKey)) {
                 TrackAnalyzer.analyze(mediaId, downloadCache, flacKey)
                 return@launch
             }
 
-            val hasDownloadCache = runCatching { downloadCache.getCachedSpans(mediaId).isNotEmpty() }.getOrDefault(false)
-            if (hasDownloadCache) {
+            if (isFullyCached(downloadCache, mediaId)) {
                 TrackAnalyzer.analyze(mediaId, downloadCache, mediaId)
                 return@launch
             }
 
-            val hasPlayerCache = runCatching { playerCache.getCachedSpans(mediaId).isNotEmpty() }.getOrDefault(false)
-            if (hasPlayerCache) {
+            if (isFullyCached(playerCache, mediaId)) {
                 TrackAnalyzer.analyze(mediaId, playerCache, mediaId)
                 return@launch
             }
