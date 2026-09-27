@@ -104,7 +104,6 @@ import coil3.toBitmap
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.spotify.SpotifyAccountUiState
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -301,7 +300,7 @@ fun ProfileIdentityCard(
                 ) {
                     val avatarImageRequest =
                         remember(accountImageUrl, context) {
-                            val url = accountImageUrl?.withHighResAvatar()
+                            val url = accountImageUrl
                             if (url.isNullOrBlank()) {
                                 null
                             } else {

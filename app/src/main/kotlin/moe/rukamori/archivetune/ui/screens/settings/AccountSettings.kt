@@ -145,7 +145,6 @@ import moe.rukamori.archivetune.constants.UseLoginForBrowse
 import moe.rukamori.archivetune.constants.VisitorDataKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.innertube.models.withHighResAvatar
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
@@ -427,7 +426,7 @@ fun AccountSettings(
                     accountName = displayName,
                     accountEmail = accountEmail,
                     accountHandle = accountChannelHandle,
-                    accountImageUrl = remember(accountImageUrl) { accountImageUrl?.withHighResAvatar() },
+                    accountImageUrl = accountImageUrl,
                     savedAccounts = savedAccounts,
                     activeInnerTubeCookie = innerTubeCookie,
                     activeDataSyncId = dataSyncId,

@@ -56,12 +56,13 @@ data class YouTubeClient(
 
     fun requestOrigin(): String =
         when (clientName.uppercase(Locale.US)) {
-            "TVHTML5", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "TVHTML5_SIMPLY" -> ORIGIN_YOUTUBE
+            "WEB", "TVHTML5", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "TVHTML5_SIMPLY" -> ORIGIN_YOUTUBE
             else -> ORIGIN_YOUTUBE_MUSIC
         }
 
     fun requestReferer(): String =
         when (clientName.uppercase(Locale.US)) {
+            "WEB" -> REFERER_YOUTUBE
             "TVHTML5", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "TVHTML5_SIMPLY" -> REFERER_YOUTUBE_TV
             else -> REFERER_YOUTUBE_MUSIC
         }
@@ -77,6 +78,7 @@ data class YouTubeClient(
         const val API_URL_YOUTUBE_MUSIC = "$ORIGIN_YOUTUBE_MUSIC/youtubei/v1/"
 
         const val ORIGIN_YOUTUBE = "https://www.youtube.com"
+        const val REFERER_YOUTUBE = "$ORIGIN_YOUTUBE/"
         const val REFERER_YOUTUBE_TV = "$ORIGIN_YOUTUBE/tv"
 
         val WEB =

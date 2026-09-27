@@ -73,6 +73,8 @@ class InnerTube {
         set(value) {
             authState = authState.copy(dataSyncId = value).normalized()
         }
+    val delegatedSessionId: String?
+        get() = authState.delegatedSessionId
     var poToken: String?
         get() = authState.poToken
         set(value) {
@@ -548,8 +550,16 @@ class InnerTube {
 
     suspend fun accountChannels(client: YouTubeClient) =
         withRetry {
-            httpClient.post("account/accounts_list") {
+            val delegatedId = authState.delegatedSessionId
+            val requestUrl = client.requestApiUrl("account/accounts_list")
+            httpClient.post(requestUrl) {
                 ytClient(client, setLogin = true)
+                headers {
+                    append("X-Goog-AuthUser", "0")
+                    if (!delegatedId.isNullOrBlank()) {
+                        append("X-Goog-PageId", delegatedId)
+                    }
+                }
                 setBody(AccountsListBody(client.toContext(locale, visitorData, dataSyncId)))
             }
         }

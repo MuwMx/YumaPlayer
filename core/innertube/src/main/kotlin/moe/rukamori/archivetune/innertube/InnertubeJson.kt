@@ -44,8 +44,8 @@ internal fun parseAccountChannel(renderer: JsonObject): AccountChannel? {
 }
 
 internal fun JsonObject.parseAccountChannelDataSyncId(): String? =
-    this["serviceEndpoint"]
-        ?.findDelegationValue()
+    (this["dataSyncId"]?.jsonPrimitiveOrNull()?.contentOrNull
+        ?: this["serviceEndpoint"]?.findDelegationValue())
         ?.normalizeAccountChannelDataSyncId()
 
 internal fun JsonElement.findMainAppWebDataSyncId(): String? =
@@ -114,11 +114,14 @@ internal fun JsonElement?.thumbnailUrl(): String? {
 internal fun JsonElement.findDelegationValue(): String? {
     val directKeys =
         setOf(
+            "datasyncIdToken",
+            "dataSyncId",
+            "delegatedSessionId",
+            "pageId",
             "onBehalfOfUser",
             "obfuscatedSelectedGaiaId",
             "obfuscatedGaiaId",
             "accountId",
-            "delegatedSessionId",
         )
     val fallbackKeys =
         setOf(
@@ -157,19 +160,8 @@ internal fun JsonElement?.jsonArrayOrNull(): JsonArray? = this as? JsonArray
 
 internal fun JsonElement?.jsonPrimitiveOrNull(): JsonPrimitive? = this as? JsonPrimitive
 
-internal fun String.normalizeAccountChannelDataSyncId(): String? {
-    val normalized =
-        trim()
-            .takeIf(String::isNotBlank)
-            ?.let { value ->
-                value
-                    .takeIf { !it.contains("||") }
-                    ?: value.takeIf { it.endsWith("||") }?.substringBefore("||")
-                    ?: value.substringAfter("||")
-            }?.trim()
-            ?.takeIf(String::isNotBlank)
-    return normalized
-}
+internal fun String.normalizeAccountChannelDataSyncId(): String? =
+    PlaybackAuthState(dataSyncId = this).normalized().dataSyncId
 
 internal fun SectionListRenderer.Content.libraryItems(): List<YTItem> =
     buildList {

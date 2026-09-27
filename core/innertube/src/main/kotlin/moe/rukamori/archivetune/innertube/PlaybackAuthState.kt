@@ -26,6 +26,13 @@ data class PlaybackAuthState(
     val hasPlaybackLoginContext: Boolean
         get() = hasLoginCookie && !dataSyncId.isNullOrBlank()
 
+    val delegatedSessionId: String?
+        get() = dataSyncId
+            ?.takeIf { it.contains("||") }
+            ?.substringBefore("||")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
     val sessionId: String?
         get() = if (hasPlaybackLoginContext) dataSyncId else visitorData
 
@@ -93,10 +100,13 @@ private fun String?.normalizeAuthValue(): String? {
 }
 
 private fun String?.normalizeDataSyncId(): String? {
-    val normalized = this.normalizeAuthValue()?.decodePercentEscapes() ?: return null
-    return normalized.takeIf { !it.contains("||") }
-        ?: normalized.takeIf { it.endsWith("||") }?.substringBefore("||")
-        ?: normalized.substringAfter("||")
+    val normalized = this.normalizeAuthValue()?.decodePercentEscapes()?.trim() ?: return null
+    if (normalized.isBlank() || normalized == "||") return null
+    return if (normalized.endsWith("||")) {
+        normalized.substringBefore("||").trim().takeIf(String::isNotBlank)
+    } else {
+        normalized
+    }
 }
 
 private fun String.decodePercentEscapes(): String {

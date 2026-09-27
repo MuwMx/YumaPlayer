@@ -22,7 +22,7 @@ data class Thumbnail(
     val normalizedUrl: String get() = if (url.startsWith("//")) "https:$url" else url
 }
 
-private val AVATAR_SIZE_REGEX = Regex("=s\\d+[^?&#]*")
+private val AVATAR_SIZE_REGEX = Regex("""=s\d+""")
 
 fun String.withHighResAvatar(size: Int = 512): String =
-    replace(AVATAR_SIZE_REGEX, "=s${size.coerceAtLeast(1)}")
+    replace(AVATAR_SIZE_REGEX, "=s$size")
