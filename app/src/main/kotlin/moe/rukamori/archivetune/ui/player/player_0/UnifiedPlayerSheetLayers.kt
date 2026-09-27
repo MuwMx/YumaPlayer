@@ -152,7 +152,10 @@ internal fun UnifiedPlayerSheetLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    alpha = expansionFractionProvider()
+                    val expansion = expansionFractionProvider()
+                    val isTranslucent = state.isBlurBackgroundEnabled || state.isImmersiveEnabled
+                    val overlayFraction = if (isTranslucent) 0f else maxOf(lyricsFractionProvider(), queueFractionProvider())
+                    alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
                 }
         ) {
             moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
@@ -553,7 +556,10 @@ private fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
         )
     }
 
-    val cardShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    val cardShape = remember { RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) }
+    val blurBackgroundBrush = remember {
+        Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.2f)))
+    }
 
     return this
         .glassBorder(
@@ -565,7 +571,7 @@ private fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
         .clip(cardShape)
         .background(
             if (state.isBlurBackgroundEnabled || state.isImmersiveEnabled) {
-                Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.2f)))
+                blurBackgroundBrush
             } else {
                 cardBackgroundBrush
             }
