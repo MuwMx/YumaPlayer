@@ -768,4 +768,8 @@
     <string name="cast_no_network">Нет подключения к сети</string>
     <string name="cast_no_network_desc">Подключитесь к Wi-Fi для поиска устройств Cast в локальной сети.</string>
     <string name="voice_search">Голосовой поиск</string>
+    <string name="smart_automix_title">Умный Автомикс</string>
+    <string name="smart_automix_desc">Гармоничные переходы по темпу и тактам</string>
+    <string name="automix_ready">Готов</string>
+    <string name="automix_analyzing">Анализ…</string>
 </resources>

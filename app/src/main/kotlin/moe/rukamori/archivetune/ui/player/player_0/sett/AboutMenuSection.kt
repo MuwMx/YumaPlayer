@@ -20,7 +20,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
+import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -38,6 +40,7 @@ import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
 import moe.rukamori.archivetune.utils.toggleSpeedDialPin
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsMenuContent(
@@ -141,8 +144,41 @@ fun SettingsMenuContent(
 
         val castAction = rememberCastPlayerMenuAction()
         val hasCast = castAction != null
-        val totalRowCount = 8 + (if (hasCast) 1 else 0)
+        val totalRowCount = 9 + (if (hasCast) 1 else 0)
         var currentRow = 0
+
+        val (automixEnabled, onAutomixEnabledChange) = rememberPreference(
+            AutomixEnabledKey,
+            defaultValue = false,
+        )
+        val trackAnalysis = state.trackAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
+        val isAnalysisReady = trackAnalysis != null
+        val currentBpm = trackAnalysis?.bpm ?: 0.0
+
+        val automixSubtitle = if (automixEnabled) {
+            when {
+                isAnalysisReady && currentBpm > 0.0 -> "${currentBpm.roundToInt()} BPM • ${stringResource(R.string.automix_ready)}"
+                isAnalysisReady -> stringResource(R.string.automix_ready)
+                else -> stringResource(R.string.automix_analyzing)
+            }
+        } else {
+            stringResource(R.string.smart_automix_desc)
+        }
+
+        CompactMenuRow(
+            title = stringResource(R.string.smart_automix_title),
+            subtitle = automixSubtitle,
+            iconResId = R.drawable.auto_awesome,
+            isActive = automixEnabled,
+            activeIconTint = Color(state.vibrantColor),
+            onClick = {
+                onAutomixEnabledChange(!automixEnabled)
+            },
+            index = currentRow++,
+            count = totalRowCount,
+        )
+
+        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         CompactMenuRow(
             title = stringResource(R.string.interface_and_visuals),

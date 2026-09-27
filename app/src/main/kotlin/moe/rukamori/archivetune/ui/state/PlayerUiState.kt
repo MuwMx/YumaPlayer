@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.graphics.drawable.Drawable
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 import androidx.compose.runtime.Immutable
 /**
  * Единый источник правды (State) для всего интерфейса Spot.
@@ -68,5 +69,6 @@ data class PlayerUiState(
     val codecInfo: String = "",
     val coverDrawable: android.graphics.drawable.Drawable? = null,
     val isSheetCollapseRequested: Boolean = false,
+    val trackAnalysis: TrackAnalysisResult? = null,
 )
 

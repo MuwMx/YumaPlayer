@@ -21,12 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
+import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
@@ -49,17 +52,20 @@ fun PlayerSeekBar(
     onSeek: (Float) -> Unit,
     onSeekStarted: () -> Unit,
     isVisible: Boolean = true,
+    trackAnalysis: TrackAnalysisResult? = state.trackAnalysis,
 ) {
     var progressMs by remember { mutableLongStateOf(progressProvider()) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var localSeekTarget by remember { mutableStateOf<Float?>(null) }
+    var dynamicAnalysis by remember(state.trackUrl) { mutableStateOf(trackAnalysis ?: state.trackAnalysis) }
 
     LaunchedEffect(state.trackUrl) {
         progressMs = 0L
         sliderPosition = 0f
         localSeekTarget = null
         isDragging = false
+        dynamicAnalysis = trackAnalysis ?: state.trackAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
     }
 
     LaunchedEffect(isVisible, state.trackUrl) {
@@ -71,6 +77,12 @@ fun PlayerSeekBar(
             val current = progressProvider()
             if (progressMs != current) {
                 progressMs = current
+            }
+            if (dynamicAnalysis == null && state.trackUrl.isNotEmpty()) {
+                val cached = TrackAnalyzer.getCached(state.trackUrl)
+                if (cached != null) {
+                    dynamicAnalysis = cached
+                }
             }
             delay(250)
         }
@@ -148,6 +160,23 @@ fun PlayerSeekBar(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f))
                         .drawBehind {
+                            val analysis = trackAnalysis ?: state.trackAnalysis ?: dynamicAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
+                            val mixOutSec = analysis?.mixOutTime ?: 0.0
+                            if (mixOutSec > 0.0 && durationMs > 0L) {
+                                val mixOutMs = (mixOutSec * 1000.0).toFloat()
+                                val mixOutFraction = (mixOutMs / maxRange).coerceIn(0f, 1f)
+                                if (mixOutFraction < 1f) {
+                                    val startX = size.width * mixOutFraction
+                                    val tailWidth = size.width - startX
+                                    drawRoundRect(
+                                        color = animatedAccentColor.copy(alpha = 0.45f),
+                                        topLeft = Offset(startX, 0f),
+                                        size = Size(tailWidth, size.height),
+                                        cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+                                    )
+                                }
+                            }
+
                             val fraction = progressFractionProvider()
                             val fillWidth = size.width * fraction
                             drawRoundRect(

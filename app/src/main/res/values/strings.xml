@@ -1203,4 +1203,8 @@
     <string name="action_reset">RESET</string>
     <string name="action_apply">APPLY</string>
     <string name="voice_search">Voice search</string>
+    <string name="smart_automix_title">Smart AutoMix</string>
+    <string name="smart_automix_desc">Harmonic beat-matched transitions</string>
+    <string name="automix_ready">Ready</string>
+    <string name="automix_analyzing">Analyzing…</string>
 </resources>
