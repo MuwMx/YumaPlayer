@@ -46,7 +46,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
     if (dataSpec.uri.shouldBypassYouTubeResolver()) {
         return dataSpec
     }
-    val mediaId = dataSpec.key ?: return dataSpec
+    val mediaId = (dataSpec.key ?: return dataSpec).removePrefix(FLAC_CACHE_KEY_PREFIX)
     val storedFormat =
         runBlocking(Dispatchers.IO) {
             database.format(mediaId).first()
@@ -54,25 +54,42 @@ internal fun MusicService.resolvePlaybackDataSpec(
     storedFormat?.let { format ->
         audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(format, normalizeAudio = true)
     }
-    val knownContentLength =
-        contentLengthCache[mediaId] ?: storedFormat?.contentLength?.takeIf { it > 0L } ?: runCatching {
-            downloadCache
-                .getContentMetadata(mediaId)
-                .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-        }.getOrNull()?.takeIf { it > 0L } ?: runCatching {
-            playerCache
-                .getContentMetadata(mediaId)
-                .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-        }.getOrNull()?.takeIf { it > 0L } ?: runCatching {
-            downloadCache.getCachedSpans(mediaId).takeIf { it.isNotEmpty() }?.sumOf { it.length }
-        }.getOrNull()?.takeIf { it > 0L }
 
-    knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+    val lowDataEnabled = isLowDataEnabled
+    val isMeteredConnection = connectivityManager.isActiveNetworkMetered ||
+        (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
+    val shouldBypassFlac = shouldBypassFlac(lowData = lowDataEnabled, metered = isMeteredConnection)
+    val currentSource = currentPlaybackSource
+    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac)
+    val cacheKey = "${mediaId}_${effectiveSource.name}"
+    val dataSpecCacheKey = if (effectiveSource == PlaybackSource.FLAC) flacCacheKey(mediaId) else mediaId
+
+    val knownContentLength =
+        contentLengthCache[dataSpecCacheKey]
+            ?: (if (dataSpecCacheKey == mediaId) storedFormat?.contentLength?.takeIf { it > 0L } else null)
+            ?: runCatching {
+                downloadCache
+                    .getContentMetadata(dataSpecCacheKey)
+                    .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+            }.getOrNull()?.takeIf { it > 0L }
+            ?: runCatching {
+                playerCache
+                    .getContentMetadata(dataSpecCacheKey)
+                    .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+            }.getOrNull()?.takeIf { it > 0L }
+            ?: runCatching {
+                downloadCache.getCachedSpans(dataSpecCacheKey).takeIf { it.isNotEmpty() }?.sumOf { it.length }
+            }.getOrNull()?.takeIf { it > 0L }
+            ?: runCatching {
+                playerCache.getCachedSpans(dataSpecCacheKey).takeIf { it.isNotEmpty() }?.sumOf { it.length }
+            }.getOrNull()?.takeIf { it > 0L }
+
+    knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[dataSpecCacheKey] = it }
 
     if (allowCacheShortCircuit) {
         resolveCachedDataSpec(
             dataSpec = dataSpec,
-            mediaId = mediaId,
+            cacheKey = dataSpecCacheKey,
             knownContentLength = knownContentLength,
         )?.let { cachedDataSpec ->
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
@@ -91,21 +108,74 @@ internal fun MusicService.resolvePlaybackDataSpec(
 
     if (allowCacheShortCircuit && requiredCachedLength != null) {
         val isFullyCached =
-            downloadCache.isCached(mediaId, dataSpec.position, requiredCachedLength) ||
-                playerCache.isCached(mediaId, dataSpec.position, requiredCachedLength)
+            downloadCache.isCached(dataSpecCacheKey, dataSpec.position, requiredCachedLength) ||
+                playerCache.isCached(dataSpecCacheKey, dataSpec.position, requiredCachedLength)
         if (isFullyCached) {
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-            return dataSpec
+            val specWithKey =
+                if (dataSpec.key != dataSpecCacheKey) {
+                    dataSpec.buildUpon().setKey(dataSpecCacheKey).build()
+                } else {
+                    dataSpec
+                }
+            return specWithKey
         }
     }
 
-    val lowDataEnabled = isLowDataEnabled
-    val isMeteredConnection = connectivityManager.isActiveNetworkMetered ||
-        (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
-    val shouldBypassFlac = shouldBypassFlac(lowData = lowDataEnabled, metered = isMeteredConnection)
-    val currentSource = currentPlaybackSource
-    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac)
-    val cacheKey = "${mediaId}_${effectiveSource.name}"
+    val shouldCheckMediaIdFallback =
+        dataSpecCacheKey != mediaId &&
+            (connectivityManager.activeNetwork == null ||
+                runCatching { downloadCache.getCachedSpans(mediaId).isNotEmpty() }.getOrDefault(false))
+
+    if (allowCacheShortCircuit && shouldCheckMediaIdFallback) {
+        val fallbackContentLength =
+            contentLengthCache[mediaId]
+                ?: storedFormat?.contentLength?.takeIf { it > 0L }
+                ?: runCatching {
+                    downloadCache.getContentMetadata(mediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                }.getOrNull()?.takeIf { it > 0L }
+                ?: runCatching {
+                    playerCache.getContentMetadata(mediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                }.getOrNull()?.takeIf { it > 0L }
+                ?: runCatching {
+                    downloadCache.getCachedSpans(mediaId).takeIf { it.isNotEmpty() }?.sumOf { it.length }
+                }.getOrNull()?.takeIf { it > 0L }
+                ?: runCatching {
+                    playerCache.getCachedSpans(mediaId).takeIf { it.isNotEmpty() }?.sumOf { it.length }
+                }.getOrNull()?.takeIf { it > 0L }
+
+        fallbackContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+
+        resolveCachedDataSpec(
+            dataSpec = dataSpec,
+            cacheKey = mediaId,
+            knownContentLength = fallbackContentLength,
+        )?.let { cachedDataSpec ->
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+            return cachedDataSpec
+        }
+
+        val fallbackRequiredLength =
+            if (dataSpec.length >= 0) {
+                dataSpec.length
+            } else {
+                fallbackContentLength?.let { (it - dataSpec.position).takeIf { len -> len > 0L } }
+            }
+
+        if (fallbackRequiredLength != null) {
+            val isFallbackFullyCached =
+                downloadCache.isCached(mediaId, dataSpec.position, fallbackRequiredLength) ||
+                    playerCache.isCached(mediaId, dataSpec.position, fallbackRequiredLength)
+            if (isFallbackFullyCached) {
+                scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+                return if (dataSpec.key != mediaId) {
+                    dataSpec.buildUpon().setKey(mediaId).build()
+                } else {
+                    dataSpec
+                }
+            }
+        }
+    }
     if (preferredStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
         return resolveArchiveTuneExtractorDataSpec(
             dataSpec = dataSpec,
@@ -222,7 +292,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
         database.query { upsert(flacFormat) }
 
         val resolvedDataSpec = dataSpec.buildUpon()
-            .setKey("flac_$mediaId")
+            .setKey(flacCacheKey(mediaId))
             .setUri(losslessResult.url.toUri())
             .setHttpRequestHeaders(headers)
             .build()

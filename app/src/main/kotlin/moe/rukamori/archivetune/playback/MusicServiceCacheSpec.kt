@@ -4,9 +4,13 @@ import android.net.Uri
 import androidx.media3.datasource.DataSpec
 import java.util.Locale
 
+internal const val FLAC_CACHE_KEY_PREFIX = "flac_"
+
+internal fun flacCacheKey(mediaId: String): String = "$FLAC_CACHE_KEY_PREFIX$mediaId"
+
 internal fun MusicService.resolveCachedDataSpec(
     dataSpec: DataSpec,
-    mediaId: String,
+    cacheKey: String,
     knownContentLength: Long?,
 ): DataSpec? {
     val requestedLength =
@@ -26,18 +30,25 @@ internal fun MusicService.resolveCachedDataSpec(
 
     val cachedLength =
         getContinuousCachedLength(
-            mediaId = mediaId,
+            cacheKey = cacheKey,
             position = dataSpec.position,
             requestedLength = requestedLength,
         )
 
     if (cachedLength < requestedLength) return null
 
-    return dataSpec.subrange(0L, requestedLength)
+    val specWithKey =
+        if (dataSpec.key != cacheKey) {
+            dataSpec.buildUpon().setKey(cacheKey).build()
+        } else {
+            dataSpec
+        }
+
+    return specWithKey.subrange(0L, requestedLength)
 }
 
 internal fun MusicService.getContinuousCachedLength(
-    mediaId: String,
+    cacheKey: String,
     position: Long,
     requestedLength: Long,
 ): Long {
@@ -45,8 +56,8 @@ internal fun MusicService.getContinuousCachedLength(
     var cursor = position
     val spans =
         (
-            runCatching { downloadCache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty() +
-                runCatching { playerCache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty()
+            runCatching { downloadCache.getCachedSpans(cacheKey).toList() }.getOrNull().orEmpty() +
+                runCatching { playerCache.getCachedSpans(cacheKey).toList() }.getOrNull().orEmpty()
             ).asSequence()
             .filter { span -> span.position.saturatingAdd(span.length) > position }
             .sortedBy { span -> span.position }
