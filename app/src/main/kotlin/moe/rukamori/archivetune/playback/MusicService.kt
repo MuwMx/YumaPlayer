@@ -354,6 +354,7 @@ class MusicService :
     private val isNetworkConnected = MutableStateFlow(false)
     private var networkRecoveryGeneration: Long = 0L
     private var lastRevivedNetworkGeneration: Long = -1L
+    private var lastForceReviveTimeMs: Long = 0L
     private var lastActiveNetwork: Network? = null
     private var networkStallRecoveryJob: Job? = null
 
@@ -1110,6 +1111,7 @@ class MusicService :
                 if (isNewNetwork) {
                     lastActiveNetwork = currentNetwork
                     networkRecoveryGeneration++
+                    evictMediaConnectionPools()
                 }
 
                 val currentGen = networkRecoveryGeneration
@@ -1811,7 +1813,8 @@ class MusicService :
                 val isStalled =
                     when (currentState) {
                         Player.STATE_BUFFERING -> true
-                        Player.STATE_READY -> currentPos <= initialPos && !player.isPlaying
+                        Player.STATE_READY -> currentPos <= initialPos && !player.isPlaying &&
+                            player.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE
                         else -> false
                     }
 
@@ -1822,7 +1825,10 @@ class MusicService :
     }
 
     internal fun forceRevivePlayback() {
-        if (networkRecoveryGeneration == lastRevivedNetworkGeneration) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastForceReviveTimeMs < FORCE_REVIVE_DEBOUNCE_MS) return
+        lastForceReviveTimeMs = now
+        networkRecoveryGeneration++
         networkStallRecoveryJob?.cancel()
         networkStallRecoveryJob = null
         revivePlaybackFromStall()
@@ -1837,12 +1843,14 @@ class MusicService :
         evictMediaConnectionPools()
         val mediaItemIndex = player.currentMediaItemIndex
         val resumePosition = player.currentPosition.coerceAtLeast(0L)
+        player.stop()
         player.prepare()
         if (mediaItemIndex != C.INDEX_UNSET && mediaItemIndex >= 0) {
             player.seekTo(mediaItemIndex, resumePosition)
         } else {
             player.seekTo(resumePosition)
         }
+        evictMediaConnectionPools()
         player.play()
     }
 
@@ -4631,7 +4639,8 @@ class MusicService :
         const val MIN_AUDIBLE_EFFECTIVE_VOLUME = 0.01f
         const val STUCK_MUTED_VOLUME_EPSILON = 0.001f
         const val AUDIBLE_PLAYBACK_VOLUME_CHECK_MS = 2_000L
-        const val NETWORK_STALL_WINDOW_MS = 1_500L
+        const val NETWORK_STALL_WINDOW_MS = 3_000L
+        private const val FORCE_REVIVE_DEBOUNCE_MS = 2_000L
         internal const val ArchiveTuneExtractorCacheFingerprintPrefix = "archivetune_extractor:"
         internal const val ArchiveTuneExtractorCacheTtlMs = 5 * 60 * 1000L
     }

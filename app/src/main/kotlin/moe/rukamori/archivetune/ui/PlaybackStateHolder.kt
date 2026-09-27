@@ -197,7 +197,11 @@ class PlaybackStateHolder(
         if (player.playbackState == Player.STATE_ENDED) {
             player.seekTo(0)
         } else if (player.playbackState == Player.STATE_BUFFERING) {
-            playerConnectionProvider()?.service?.forceRevivePlayback()
+            if (player.playWhenReady) {
+                player.pause()
+            } else {
+                playerConnectionProvider()?.service?.forceRevivePlayback()
+            }
             return
         }
         if (player.playWhenReady) player.pause() else player.play()
