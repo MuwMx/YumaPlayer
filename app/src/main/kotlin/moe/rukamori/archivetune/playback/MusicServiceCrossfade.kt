@@ -158,6 +158,9 @@ internal fun MusicService.startCrossfade(
                 incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
                 standbyPlayer.playbackParameters = player.playbackParameters
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
+                if (standbyPlayer.currentPosition > 0L) {
+                    standbyPlayer.seekTo(target.index, 0L)
+                }
                 if (crossfadePlaybackRequested) {
                     standbyPlayer.play()
                 }
@@ -269,6 +272,8 @@ internal suspend fun MusicService.finishCrossfade(
         val playerA = localPlayer
         transferAudioEffects(incomingPlayer)
         incomingPlayer.setShuffleOrder(playerA.shuffleOrder)
+        playerA.playWhenReady = false
+        playerA.volume = 0f
         playerA.stop()
         playerA.clearMediaItems()
         reserveCrossfadePlayer = playerA
@@ -286,7 +291,12 @@ internal suspend fun MusicService.finishCrossfade(
             isCrossfading = false
             crossfadeProgress = 0f
             crossfadePlaybackRequested = false
-            secondaryCrossfadePlayer?.stop()
+            secondaryCrossfadePlayer?.apply {
+                playWhenReady = false
+                volume = 0f
+                stop()
+                clearMediaItems()
+            }
             dualForwardingPlayer.attachPlayer(localPlayer)
             dualPlayerRoleHolder.reset()
             releaseSecondaryCrossfadePlayer()
@@ -397,7 +407,12 @@ internal fun MusicService.cancelCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
-    secondaryCrossfadePlayer?.stop()
+    secondaryCrossfadePlayer?.apply {
+        playWhenReady = false
+        volume = 0f
+        stop()
+        clearMediaItems()
+    }
     if (isPlayerInitialized()) {
         dualForwardingPlayer.attachPlayer(localPlayer)
     }
@@ -416,6 +431,8 @@ internal fun MusicService.releaseSecondaryCrossfadePlayer() {
     secondaryCrossfadePlayer = null
     secondaryCrossfadeTarget = null
     runCatching { playerToRelease.removeListener(secondaryCrossfadeListener) }
+    runCatching { playerToRelease.playWhenReady = false }
+    runCatching { playerToRelease.volume = 0f }
     runCatching { playerToRelease.stop() }
     runCatching { playerToRelease.clearMediaItems() }
     runCatching { playerToRelease.release() }

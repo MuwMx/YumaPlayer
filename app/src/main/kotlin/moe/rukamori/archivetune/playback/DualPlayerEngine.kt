@@ -79,6 +79,8 @@ internal fun shouldUseLegacyPath(durationMs: Long): Boolean = durationMs <= 0L
 internal fun MusicService.prepareNext(target: MusicService.CrossfadeTarget): ExoPlayer? {
     val existingPlayer = secondaryCrossfadePlayer
     if (existingPlayer != null && secondaryCrossfadeTarget == target) {
+        existingPlayer.playWhenReady = false
+        existingPlayer.seekTo(target.index, 0L)
         return existingPlayer
     }
 
@@ -108,6 +110,7 @@ internal fun MusicService.prepareNext(target: MusicService.CrossfadeTarget): Exo
             it.setMediaItems(queueItems, target.index.coerceIn(0, (queueItems.size - 1).coerceAtLeast(0)), 0L)
             it.playbackParameters = player.playbackParameters
             it.volume = 0f
+            it.playWhenReady = false
             it.pauseAtEndOfMediaItems = true
             it.prepare()
         }
