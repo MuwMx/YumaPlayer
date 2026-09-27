@@ -52,6 +52,7 @@ import moe.rukamori.archivetune.db.entities.SortedSongAlbumMap
 import moe.rukamori.archivetune.db.entities.SortedSongArtistMap
 import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.db.entities.TagEntity
+import moe.rukamori.archivetune.db.entities.TrackAnalysisEntity
 import moe.rukamori.archivetune.extensions.toSQLiteQuery
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.AlbumPage
@@ -65,7 +66,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 36
+private const val CURRENT_VERSION = 37
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -77,9 +78,12 @@ class MusicDatabase(
     ArtistDao by delegate.artistDao,
     AlbumDao by delegate.albumDao,
     PlaylistDao by delegate.playlistDao,
-    SongDao by delegate.songDao {
+    SongDao by delegate.songDao,
+    TrackAnalysisDao by delegate.trackAnalysisDao() {
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
+
+    fun trackAnalysisDao(): TrackAnalysisDao = delegate.trackAnalysisDao()
 
     fun query(block: MusicDatabase.() -> Unit) =
         with(delegate) {
@@ -358,6 +362,7 @@ class MusicDatabase(
         LibraryTopMixEntity::class,
         LibraryTopMixSongMap::class,
         SpotifyMatchEntity::class,
+        TrackAnalysisEntity::class,
     ],
     views = [
         SortedSongArtistMap::class,
@@ -400,6 +405,7 @@ abstract class InternalDatabase : RoomDatabase() {
     abstract val albumDao: AlbumDao
     abstract val playlistDao: PlaylistDao
     abstract val songDao: SongDao
+    abstract fun trackAnalysisDao(): TrackAnalysisDao
 
     companion object {
         const val DB_NAME = "song.db"
