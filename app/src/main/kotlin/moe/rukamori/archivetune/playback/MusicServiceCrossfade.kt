@@ -57,18 +57,22 @@ internal fun MusicService.scheduleCrossfade() {
 
     var outgoingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(currentMediaId) else null
     var incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
+    val automixAggr = automixAggressiveness
+    val resolvedPreferred = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration)
 
     var automixPlan = if (automixEnabled && outgoingAnalysis != null) {
         TransitionPlanner.planSmartTransition(
             outgoingAnalysis = outgoingAnalysis,
             incomingAnalysis = incomingAnalysis,
             currentDurationMs = duration,
-            preferredDurationMs = effectiveDuration,
+            preferredDurationMs = resolvedPreferred,
+            aggressiveness = automixAggr,
         ).also { activeAutomixPlan = it }
     } else if (automixEnabled) {
         TransitionPlanner.planTransition(
             currentDurationMs = duration,
-            preferredDurationMs = effectiveDuration,
+            preferredDurationMs = resolvedPreferred,
+            aggressiveness = automixAggr,
         ).also { activeAutomixPlan = it }
     } else {
         activeAutomixPlan = null
@@ -106,7 +110,8 @@ internal fun MusicService.scheduleCrossfade() {
                             outgoingAnalysis = latestOutgoing,
                             incomingAnalysis = latestIncoming,
                             currentDurationMs = duration,
-                            preferredDurationMs = effectiveDuration,
+                            preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                            aggressiveness = automixAggressiveness,
                         )
                         automixPlan = newPlan
                         activeAutomixPlan = newPlan
@@ -122,7 +127,8 @@ internal fun MusicService.scheduleCrossfade() {
                                 outgoingAnalysis = currentOutgoing,
                                 incomingAnalysis = latestIncoming,
                                 currentDurationMs = duration,
-                                preferredDurationMs = effectiveDuration,
+                                preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                                aggressiveness = automixAggressiveness,
                             )
                             automixPlan = newPlan
                             activeAutomixPlan = newPlan
@@ -162,7 +168,8 @@ internal fun MusicService.scheduleCrossfade() {
                                 outgoingAnalysis = fastAnalysis,
                                 incomingAnalysis = incomingAnalysis,
                                 currentDurationMs = duration,
-                                preferredDurationMs = effectiveDuration,
+                                preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                                aggressiveness = automixAggressiveness,
                             )
                             automixPlan = newPlan
                             activeAutomixPlan = newPlan
@@ -687,23 +694,46 @@ internal fun MusicService.unregisterAllCacheListeners() {
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
-    if (mediaItem == null || !automixEnabled) return
+    if (mediaItem == null) {
+        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: mediaItem=null")
+        return
+    }
+    if (!automixEnabled) {
+        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: automix disabled")
+        return
+    }
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
     kickOffTrackAnalysis(mediaId, mediaItem)
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
-    if (mediaId.isBlank() || !automixEnabled || TrackAnalyzer.hasCached(mediaId)) return
+    if (mediaId.isBlank()) {
+        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: blank mediaId")
+        return
+    }
+    if (!automixEnabled) {
+        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: automix disabled mediaId=$mediaId")
+        return
+    }
+    if (TrackAnalyzer.hasCached(mediaId)) {
+        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: already cached mediaId=$mediaId")
+        return
+    }
 
     val service = this
     ioScope.launch {
         try {
-            if (TrackAnalyzer.hasCached(mediaId)) return@launch
+            if (TrackAnalyzer.hasCached(mediaId)) {
+                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip late: already cached mediaId=$mediaId")
+                return@launch
+            }
 
             if (isTrackFullyCached(mediaId)) {
+                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis start: fully cached mediaId=$mediaId")
                 analyzeCachedTrack(mediaId)
                 return@launch
             }
+            Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis: not fully cached mediaId=$mediaId, probing direct sources")
 
             if (mediaId.isLocalMediaId()) {
                 val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()

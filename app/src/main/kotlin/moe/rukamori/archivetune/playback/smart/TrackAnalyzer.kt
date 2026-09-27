@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.App
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.TrackAnalysisEntity
 import org.json.JSONObject
+import timber.log.Timber
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -74,7 +75,7 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyze(trackId, durationSeconds) {
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "filePath") {
         AudioDecoder.decode(filePath, startMs, endMs)
     }
 
@@ -84,7 +85,7 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyze(trackId, durationSeconds) {
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "file") {
         AudioDecoder.decode(file, startMs, endMs)
     }
 
@@ -95,7 +96,7 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyze(trackId, durationSeconds) {
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "uri:$uri") {
         AudioDecoder.decode(context, uri, startMs, endMs)
     }
 
@@ -106,7 +107,7 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyze(trackId, durationSeconds) {
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "cache:$cacheKey") {
         AudioDecoder.decode(cache, cacheKey, startMs, endMs)
     }
 
@@ -116,7 +117,7 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyze(trackId, durationSeconds) {
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "dataSource") {
         AudioDecoder.decode(mediaDataSource, startMs, endMs)
     }
 
@@ -124,7 +125,15 @@ object TrackAnalyzer {
         trackId: String,
         durationSeconds: Double? = null,
         decodeSamples: () -> FloatArray?,
+    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "unknown", decodeSamples)
+
+    suspend fun analyzeWithSource(
+        trackId: String,
+        durationSeconds: Double? = null,
+        source: String = "unknown",
+        decodeSamples: () -> FloatArray?,
     ): TrackAnalysisResult? = withContext(Dispatchers.Default) {
+        Timber.tag("TrackAnalyzer").d("Start analysis trackId=$trackId source=$source")
         memoryCache[trackId]?.let { return@withContext it }
 
         val activeDeferred = inFlight[trackId]
@@ -142,13 +151,21 @@ object TrackAnalyzer {
 
                 if (cachedDb != null) {
                     val result = toResult(cachedDb)
+                    Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
                     memoryCache[trackId] = result
                     _analysisEvents.tryEmit(trackId to result)
                     return@async result
                 }
 
-                val samples = decodeSamples() ?: return@async null
-                if (samples.isEmpty()) return@async null
+                val samples = runCatching { decodeSamples() }.getOrNull()
+                if (samples == null || samples.isEmpty()) {
+                    Timber.tag("TrackAnalyzer").w("Decode yielded no samples trackId=$trackId source=$source; caching empty result to unblock UI")
+                    val empty = TrackAnalysisResult()
+                    memoryCache[trackId] = empty
+                    _analysisEvents.tryEmit(trackId to empty)
+                    return@async empty
+                }
+                Timber.tag("TrackAnalyzer").d("Decode done trackId=$trackId samples=${samples.size} source=$source")
 
                 val targetSampleRate = runCatching { TrackFeatures.sampleRate() }
                     .getOrDefault(AudioDecoder.TARGET_SAMPLE_RATE)
@@ -160,7 +177,15 @@ object TrackAnalyzer {
                     0.0
                 }
 
-                val result = TrackFeatures.analyze(samples, duration) ?: return@async null
+                val result = runCatching { TrackFeatures.analyze(samples, duration) }.getOrNull()
+                if (result == null) {
+                    Timber.tag("TrackAnalyzer").w("Native analyze returned null/crashed trackId=$trackId samples=${samples.size}; caching empty result to unblock UI")
+                    val empty = TrackAnalysisResult()
+                    memoryCache[trackId] = empty
+                    _analysisEvents.tryEmit(trackId to empty)
+                    return@async empty
+                }
+                Timber.tag("TrackAnalyzer").d("Native analyze done trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
                 memoryCache[trackId] = result
                 _analysisEvents.tryEmit(trackId to result)
                 analyzerScope.launch(Dispatchers.IO) {
@@ -169,6 +194,12 @@ object TrackAnalyzer {
                     }
                 }
                 result
+            } catch (e: Exception) {
+                Timber.tag("TrackAnalyzer").e(e, "Analysis crashed trackId=$trackId source=$source; caching empty result to unblock UI")
+                val empty = TrackAnalysisResult()
+                memoryCache[trackId] = empty
+                _analysisEvents.tryEmit(trackId to empty)
+                empty
             } finally {
                 inFlight.remove(trackId)
             }

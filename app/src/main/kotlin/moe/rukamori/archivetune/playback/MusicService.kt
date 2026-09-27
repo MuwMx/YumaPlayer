@@ -134,7 +134,9 @@ import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
+import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -538,6 +540,8 @@ class MusicService :
     internal var effectiveVolumeRampJob: Job? = null
     internal var crossfadeEnabled = false
     internal var automixEnabled = false
+    internal var automixAggressiveness = "standard"
+    internal var automixTransitionPreset = "auto"
     internal var activeAutomixPlan: AutomixPlan? = null
     internal var crossfadeDurationMs = 0L
     internal var crossfadeGapless = false
@@ -574,6 +578,8 @@ class MusicService :
         val durationSeconds: Float,
         val gapless: Boolean,
         val automix: Boolean = false,
+        val automixAggressiveness: String = "standard",
+        val automixTransitionPreset: String = "auto",
     )
 
     internal data class DiscordSyncRequest(
@@ -682,6 +688,7 @@ class MusicService :
         object : Cache.Listener {
             override fun onSpanAdded(cache: Cache, span: CacheSpan) {
                 val key = span.key
+                Timber.tag(TAG).d("Automix cache onSpanAdded key=$key length=${span.length} cached=${cache.isCached(key, span.position, span.length)}")
                 if (isFullyCached(cache, key)) {
                     val mediaId =
                         if (key.startsWith(FLAC_CACHE_KEY_PREFIX)) {
@@ -1304,11 +1311,15 @@ class MusicService :
             val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
             val gapless = prefs[CrossfadeGaplessKey] ?: true
             val automix = prefs[AutomixEnabledKey] ?: false
+            val automixAggressiveness = prefs[AutomixAggressivenessKey] ?: "standard"
+            val automixTransitionPreset = prefs[AutomixTransitionDurationKey] ?: "auto"
             CrossfadeConfig(
                 enabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle,
                 durationSeconds = durationSeconds,
                 gapless = gapless,
                 automix = automix,
+                automixAggressiveness = automixAggressiveness,
+                automixTransitionPreset = automixTransitionPreset,
             )
         }.distinctUntilChanged()
             .collectLatest(scope) { config ->
@@ -1319,6 +1330,8 @@ class MusicService :
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
                 automixEnabled = config.automix
+                automixAggressiveness = config.automixAggressiveness
+                automixTransitionPreset = config.automixTransitionPreset
                 if (crossfadeEnabled && !shouldUseLegacyPath(crossfadeDurationMs)) {
                     scheduleCrossfade()
                 } else {

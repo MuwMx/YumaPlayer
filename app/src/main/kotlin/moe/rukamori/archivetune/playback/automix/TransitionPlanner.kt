@@ -10,6 +10,11 @@ object TransitionPlanner {
     const val AUTO_MAX_SECONDS = 12.0
     const val AUTO_FALLBACK_SECONDS = 8.0
 
+    const val SOFT_MIN_SECONDS = 6.0
+    const val SOFT_MAX_SECONDS = 14.0
+    const val CLUB_MIN_SECONDS = 3.0
+    const val CLUB_MAX_SECONDS = 8.0
+
     const val FAST_TRACK_BPM_THRESHOLD = 140.0
     const val OCTAVE_UPPER_BOUND = 1.5
     const val OCTAVE_LOWER_BOUND = 0.67
@@ -22,6 +27,34 @@ object TransitionPlanner {
 
     const val BEATMATCHED_THRESHOLD = 0.05
     const val DJ_ASSISTED_THRESHOLD = 0.15
+
+    fun minSecondsFor(aggressiveness: String): Double = when (aggressiveness.lowercase()) {
+        "soft" -> SOFT_MIN_SECONDS
+        "club" -> CLUB_MIN_SECONDS
+        else -> AUTO_MIN_SECONDS
+    }
+
+    fun maxSecondsFor(aggressiveness: String): Double = when (aggressiveness.lowercase()) {
+        "soft" -> SOFT_MAX_SECONDS
+        "club" -> CLUB_MAX_SECONDS
+        else -> AUTO_MAX_SECONDS
+    }
+
+    fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when (aggressiveness.lowercase()) {
+        "soft" -> false
+        "club" -> true
+        else -> style != TransitionStyle.PLAIN_CROSSFADE
+    }
+
+    fun resolveForcedDurationMs(preset: String): Long? = when (preset.lowercase()) {
+        "4" -> 4L * MS_PER_SECOND
+        "8" -> 8L * MS_PER_SECOND
+        "12" -> 12L * MS_PER_SECOND
+        else -> null
+    }
+
+    fun resolvePreferredDurationMs(preset: String, fallbackMs: Long?): Long? =
+        resolveForcedDurationMs(preset) ?: fallbackMs
 
     fun normalizedTempoRatio(currentBpm: Double, nextBpm: Double): Double {
         if (currentBpm <= 0.0 || nextBpm <= 0.0) return 1.0
@@ -39,12 +72,15 @@ object TransitionPlanner {
         currentBpm: Double?,
         nextBpm: Double?,
         fallbackSeconds: Double? = null,
+        aggressiveness: String = "standard",
     ): Double {
+        val minSeconds = minSecondsFor(aggressiveness)
+        val maxSeconds = maxSecondsFor(aggressiveness)
         val cur = currentBpm ?: 0.0
         val next = nextBpm ?: 0.0
         if (cur <= 0.0 || next <= 0.0) {
             val fallback = fallbackSeconds ?: AUTO_FALLBACK_SECONDS
-            return fallback.coerceIn(AUTO_MIN_SECONDS, AUTO_MAX_SECONDS)
+            return fallback.coerceIn(minSeconds, maxSeconds)
         }
 
         val ratio = normalizedTempoRatio(cur, next)
@@ -55,21 +91,22 @@ object TransitionPlanner {
         }
         val beatSeconds = SECONDS_PER_MINUTE / cur
         val minimumOverlap = if (cur >= FAST_TRACK_BPM_THRESHOLD) {
-            AUTO_FAST_TRACK_MIN_SECONDS
+            maxOf(AUTO_FAST_TRACK_MIN_SECONDS, minSeconds)
         } else {
-            AUTO_MIN_SECONDS
+            minSeconds
         }
 
-        return (transitionBeats * beatSeconds).coerceIn(minimumOverlap, AUTO_MAX_SECONDS)
+        return (transitionBeats * beatSeconds).coerceIn(minimumOverlap, maxSeconds)
     }
 
     fun calculateAdaptiveDurationMs(
         currentBpm: Double?,
         nextBpm: Double?,
         fallbackDurationMs: Long? = null,
+        aggressiveness: String = "standard",
     ): Long {
         val fallbackSec = fallbackDurationMs?.let { it.toDouble() / MS_PER_SECOND }
-        val seconds = calculateAdaptiveDurationSeconds(currentBpm, nextBpm, fallbackSec)
+        val seconds = calculateAdaptiveDurationSeconds(currentBpm, nextBpm, fallbackSec, aggressiveness)
         return (seconds * MS_PER_SECOND).roundToLong()
     }
 
@@ -97,11 +134,12 @@ object TransitionPlanner {
         nextBpm: Double? = null,
         preferredDurationMs: Long? = null,
         incomingStartMs: Long = 0L,
+        aggressiveness: String = "standard",
     ): AutomixPlan {
-        val durationMs = calculateAdaptiveDurationMs(currentBpm, nextBpm, preferredDurationMs)
+        val durationMs = calculateAdaptiveDurationMs(currentBpm, nextBpm, preferredDurationMs, aggressiveness)
             .coerceAtMost(maxOf(0L, currentDurationMs))
         val style = resolveTransitionStyle(currentBpm, nextBpm)
-        val enableBassSwap = style != TransitionStyle.PLAIN_CROSSFADE
+        val enableBassSwap = resolveBassSwap(style, aggressiveness)
 
         return AutomixPlan(
             triggerOffsetMs = durationMs,
@@ -116,14 +154,17 @@ object TransitionPlanner {
         incomingAnalysis: TrackAnalysisResult?,
         currentDurationMs: Long,
         preferredDurationMs: Long? = null,
+        aggressiveness: String = "standard",
     ): AutomixPlan {
+        val minMs = (minSecondsFor(aggressiveness) * MS_PER_SECOND).roundToLong()
+        val maxMs = (maxSecondsFor(aggressiveness) * MS_PER_SECOND).roundToLong()
         val outgoingBpm = outgoingAnalysis.bpm.takeIf { it > 0.0 }
         val nextBpm = incomingAnalysis?.bpm?.takeIf { it > 0.0 }
-        val bpmAdjustedDurationMs = calculateAdaptiveDurationMs(outgoingBpm, nextBpm, preferredDurationMs)
+        val bpmAdjustedDurationMs = calculateAdaptiveDurationMs(outgoingBpm, nextBpm, preferredDurationMs, aggressiveness)
             .coerceAtMost(maxOf(0L, currentDurationMs))
 
         val style = resolveTransitionStyle(outgoingBpm, nextBpm)
-        val enableBassSwap = style != TransitionStyle.PLAIN_CROSSFADE
+        val enableBassSwap = resolveBassSwap(style, aggressiveness)
 
         val incomingStartMs = (incomingAnalysis?.mixInTime?.takeIf { it > 0.0 }
             ?.let { it * MS_PER_SECOND }?.roundToLong() ?: 0L)
@@ -145,10 +186,7 @@ object TransitionPlanner {
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
             val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(1000L)
-            val fade = naturalFade.coerceIn(
-                AUTO_MIN_SECONDS.toLong() * MS_PER_SECOND,
-                AUTO_MAX_SECONDS.toLong() * MS_PER_SECOND
-            ).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
+            val fade = naturalFade.coerceIn(minMs, maxMs).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
             Pair(rawMixOutMs, fade)
         } else {
             val fade = bpmAdjustedDurationMs.coerceAtMost(contentEndMs)

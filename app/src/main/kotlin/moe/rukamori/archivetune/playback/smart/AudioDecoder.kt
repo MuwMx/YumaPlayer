@@ -11,6 +11,7 @@ import androidx.media3.datasource.cache.Cache
 import java.io.File
 import java.io.FileDescriptor
 import java.nio.ByteOrder
+import timber.log.Timber
 
 object AudioDecoder {
     private const val TIMEOUT_US = 10_000L
@@ -164,8 +165,15 @@ object AudioDecoder {
             var sawOutputEOS = false
             var consecutiveTimeouts = 0
             val collector = FloatChunkList()
+            val decodeStartMs = android.os.SystemClock.elapsedRealtime()
+            var wallClockAborted = false
 
             while (!sawOutputEOS) {
+                if (android.os.SystemClock.elapsedRealtime() - decodeStartMs > 8000L) {
+                    Timber.tag("AudioDecoder").e("Decode wall-clock guard tripped after 8s; aborting to avoid stuck analysis")
+                    wallClockAborted = true
+                    break
+                }
                 if (!sawInputEOS) {
                     val inputIndex = codec.dequeueInputBuffer(TIMEOUT_US)
                     if (inputIndex >= 0) {
@@ -189,7 +197,8 @@ object AudioDecoder {
                                 val isPastEnd = endUs != Long.MAX_VALUE && sampleTime > endUs
                                 val flags = if (isPastEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
                                 codec.queueInputBuffer(inputIndex, 0, sampleSize, sampleTime, flags)
-                                if (isPastEnd || !extractor.advance()) {
+                                val advanced = runCatching { extractor.advance() }.getOrDefault(false)
+                                if (isPastEnd || !advanced) {
                                     sawInputEOS = true
                                 }
                             }
@@ -254,6 +263,10 @@ object AudioDecoder {
             }
 
             val monoSamples = collector.toFloatArray()
+            if (wallClockAborted) {
+                Timber.tag("AudioDecoder").e("Decode aborted by wall-clock guard; discarding ${monoSamples.size} partial samples")
+                return null
+            }
             if (monoSamples.isEmpty()) return null
 
             val targetRate = runCatching { TrackFeatures.sampleRate() }.getOrDefault(TARGET_SAMPLE_RATE)
@@ -265,7 +278,8 @@ object AudioDecoder {
                 }.getOrNull()
                 resampled ?: monoSamples
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Timber.tag("AudioDecoder").e(e, "Decode failed")
             null
         } finally {
             runCatching { codec?.stop() }
