@@ -109,11 +109,22 @@ fun PlayerSeekBar(
         else -> progressMs.toFloat()
     }
 
+    val shouldSnap = isDragging || baseProgress <= 500f
+    val animatedProgress by animateFloatAsState(
+        targetValue = baseProgress.coerceIn(0f, maxRange),
+        animationSpec = if (shouldSnap) snap() else tween(durationMillis = 250, easing = LinearEasing),
+        label = "SliderLineFluidAnimation"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
+        val progressFractionProvider = {
+            (animatedProgress / maxRange).coerceIn(0f, 1f)
+        }
+
         Slider(
             value = baseProgress.coerceIn(0f, maxRange),
             onValueChange = {
@@ -137,7 +148,7 @@ fun PlayerSeekBar(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f))
                         .drawBehind {
-                            val fraction = (baseProgress / maxRange).coerceIn(0f, 1f)
+                            val fraction = progressFractionProvider()
                             val fillWidth = size.width * fraction
                             drawRoundRect(
                                 color = if (isInteracting) animatedAccentColor else Color.White,
