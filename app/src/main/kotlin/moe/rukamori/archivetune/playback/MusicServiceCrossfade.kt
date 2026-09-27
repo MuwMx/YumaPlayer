@@ -1,17 +1,22 @@
 package moe.rukamori.archivetune.playback
 
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.playback.automix.TransitionPlanner
+import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
+import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 
 internal fun MusicService.scheduleCrossfade() {
@@ -36,7 +41,25 @@ internal fun MusicService.scheduleCrossfade() {
         return
     }
 
-    val automixPlan = if (automixEnabled) {
+    val currentMediaId = player.currentMediaItem?.mediaId ?: return
+    val currentIndex = player.currentMediaItemIndex
+
+    if (automixEnabled) {
+        kickOffTrackAnalysis(player.currentMediaItem)
+        kickOffTrackAnalysis(runCatching { player.getMediaItemAt(target.index) }.getOrNull())
+    }
+
+    var outgoingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(currentMediaId) else null
+    var incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
+
+    var automixPlan = if (automixEnabled && outgoingAnalysis != null) {
+        TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoingAnalysis,
+            incomingAnalysis = incomingAnalysis,
+            currentDurationMs = duration,
+            preferredDurationMs = effectiveDuration,
+        ).also { activeAutomixPlan = it }
+    } else if (automixEnabled) {
         TransitionPlanner.planTransition(
             currentDurationMs = duration,
             preferredDurationMs = effectiveDuration,
@@ -46,12 +69,10 @@ internal fun MusicService.scheduleCrossfade() {
         null
     }
 
-    val plannedDuration = automixPlan?.durationMs ?: effectiveDuration
-    val triggerOffset = automixPlan?.triggerOffsetMs ?: effectiveDuration
-
-    val currentMediaId = player.currentMediaItem?.mediaId ?: return
-    val currentIndex = player.currentMediaItemIndex
-    val triggerAt = duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS
+    var plannedDuration = automixPlan?.durationMs ?: effectiveDuration
+    var triggerOffset = automixPlan?.triggerOffsetMs ?: effectiveDuration
+    var triggerAt = automixPlan?.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+    var prepareAhead = automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
     crossfadeTriggerJob =
         scope.launch {
@@ -65,17 +86,62 @@ internal fun MusicService.scheduleCrossfade() {
                     return@launch
                 }
 
+                if (automixEnabled && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
+                    val latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
+                    val latestIncoming = TrackAnalyzer.getCached(target.mediaId)
+                    if (latestOutgoing != null && latestOutgoing != outgoingAnalysis) {
+                        outgoingAnalysis = latestOutgoing
+                        incomingAnalysis = latestIncoming
+                        val newPlan = TransitionPlanner.planSmartTransition(
+                            outgoingAnalysis = latestOutgoing,
+                            incomingAnalysis = latestIncoming,
+                            currentDurationMs = duration,
+                            preferredDurationMs = effectiveDuration,
+                        )
+                        automixPlan = newPlan
+                        activeAutomixPlan = newPlan
+                        plannedDuration = newPlan.durationMs
+                        triggerOffset = newPlan.triggerOffsetMs
+                        triggerAt = newPlan.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+                        prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                    } else {
+                        val currentOutgoing = outgoingAnalysis
+                        if (latestIncoming != null && latestIncoming != incomingAnalysis && currentOutgoing != null) {
+                            incomingAnalysis = latestIncoming
+                            val newPlan = TransitionPlanner.planSmartTransition(
+                                outgoingAnalysis = currentOutgoing,
+                                incomingAnalysis = latestIncoming,
+                                currentDurationMs = duration,
+                                preferredDurationMs = effectiveDuration,
+                            )
+                            automixPlan = newPlan
+                            activeAutomixPlan = newPlan
+                            plannedDuration = newPlan.durationMs
+                            triggerOffset = newPlan.triggerOffsetMs
+                            triggerAt = newPlan.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                        }
+                    }
+                }
+
                 val remainingToTrigger = triggerAt - player.currentPosition
-                if (!hasPreparedSecondaryPlayer && remainingToTrigger <= MusicService.CROSSFADE_PREPARE_AHEAD_MS) {
-                    prepareSecondaryCrossfadePlayer(target)
+                val incomingStartMs = automixPlan?.incomingStartMs ?: 0L
+                if (!hasPreparedSecondaryPlayer && remainingToTrigger <= prepareAhead) {
+                    prepareSecondaryCrossfadePlayer(target, incomingStartMs)
                     hasPreparedSecondaryPlayer = true
                 }
                 if (remainingToTrigger <= 0L) {
+                    val currentOutgoing = outgoingAnalysis
+                    val endLimit = if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
+                        (currentOutgoing.contentEndTime * 1000.0).roundToLong()
+                    } else {
+                        duration
+                    }
                     val adjustedDuration =
-                        (duration - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
+                        (endLimit - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
                             .coerceAtMost(plannedDuration)
                     if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                        startCrossfade(target, adjustedDuration, automixPlan?.incomingStartMs ?: 0L)
+                        startCrossfade(target, adjustedDuration, incomingStartMs)
                     }
                     return@launch
                 }
@@ -114,8 +180,16 @@ internal fun MusicService.resolveCrossfadeTarget(): MusicService.CrossfadeTarget
     )
 }
 
-internal fun MusicService.prepareSecondaryCrossfadePlayer(target: MusicService.CrossfadeTarget): ExoPlayer? =
-    prepareNext(target)
+internal fun MusicService.prepareSecondaryCrossfadePlayer(
+    target: MusicService.CrossfadeTarget,
+    startPositionMs: Long = 0L,
+): ExoPlayer? {
+    val player = prepareNext(target)
+    if (player != null && startPositionMs > 0L && player.currentPosition != startPositionMs) {
+        player.seekTo(target.index, startPositionMs)
+    }
+    return player
+}
 
 internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
     ExoPlayer
@@ -143,7 +217,7 @@ internal fun MusicService.startCrossfade(
 ) {
     if (isCrossfading || !crossfadeEnabled) return
 
-    val incomingPlayer = prepareSecondaryCrossfadePlayer(target) ?: return
+    val incomingPlayer = prepareSecondaryCrossfadePlayer(target, incomingStartMs) ?: return
     val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
 
     crossfadeTriggerJob?.cancel()
@@ -158,6 +232,9 @@ internal fun MusicService.startCrossfade(
             crossfadePlaybackRequested = player.playWhenReady
 
             try {
+                if (incomingStartMs > 0L && incomingPlayer.currentPosition != incomingStartMs) {
+                    incomingPlayer.seekTo(target.index, incomingStartMs)
+                }
                 val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
                 if (!awaitCrossfadePlayerReady(incomingPlayer, MusicService.CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -175,7 +252,9 @@ internal fun MusicService.startCrossfade(
                 standbyPlayer.playbackParameters = player.playbackParameters
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
                 if (incomingStartMs > 0L) {
-                    standbyPlayer.seekTo(target.index, incomingStartMs)
+                    if (standbyPlayer.currentPosition != incomingStartMs) {
+                        standbyPlayer.seekTo(target.index, incomingStartMs)
+                    }
                 } else if (standbyPlayer.currentPosition > 0L) {
                     standbyPlayer.seekTo(target.index, 0L)
                 }
@@ -456,4 +535,74 @@ internal fun MusicService.releaseSecondaryCrossfadePlayer() {
     runCatching { playerToRelease.stop() }
     runCatching { playerToRelease.clearMediaItems() }
     runCatching { playerToRelease.release() }
+}
+
+internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
+    if (!automixEnabled) return
+    val nextIndex = player.nextMediaItemIndex
+    if (nextIndex == C.INDEX_UNSET || nextIndex !in 0 until player.mediaItemCount) return
+    if (player.repeatMode == Player.REPEAT_MODE_ONE || nextIndex == currentIndex) return
+    val nextMediaItem = runCatching { player.getMediaItemAt(nextIndex) }.getOrNull() ?: return
+    kickOffTrackAnalysis(nextMediaItem)
+}
+
+internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
+    if (mediaItem == null || !automixEnabled) return
+    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
+    if (mediaId.isBlank() || TrackAnalyzer.hasCached(mediaId)) return
+
+    val service = this
+    ioScope.launch {
+        try {
+            if (TrackAnalyzer.hasCached(mediaId)) return@launch
+
+            val flacKey = flacCacheKey(mediaId)
+            val hasFlacCache = runCatching { downloadCache.getCachedSpans(flacKey).isNotEmpty() }.getOrDefault(false)
+            if (hasFlacCache) {
+                TrackAnalyzer.analyze(mediaId, downloadCache, flacKey)
+                return@launch
+            }
+
+            val hasDownloadCache = runCatching { downloadCache.getCachedSpans(mediaId).isNotEmpty() }.getOrDefault(false)
+            if (hasDownloadCache) {
+                TrackAnalyzer.analyze(mediaId, downloadCache, mediaId)
+                return@launch
+            }
+
+            val hasPlayerCache = runCatching { playerCache.getCachedSpans(mediaId).isNotEmpty() }.getOrDefault(false)
+            if (hasPlayerCache) {
+                TrackAnalyzer.analyze(mediaId, playerCache, mediaId)
+                return@launch
+            }
+
+            if (mediaId.isLocalMediaId()) {
+                val uri = mediaItem.localConfiguration?.uri ?: mediaId.toUri()
+                TrackAnalyzer.analyze(mediaId, service, uri)
+                return@launch
+            }
+
+            if (mediaId.startsWith("/")) {
+                val file = File(mediaId)
+                if (file.exists() && file.canRead()) {
+                    TrackAnalyzer.analyze(mediaId, file)
+                    return@launch
+                }
+            }
+
+            val directUri = mediaItem.localConfiguration?.uri
+            if (directUri != null && (directUri.scheme == "http" || directUri.scheme == "https" || directUri.scheme == "content" || directUri.scheme == "file")) {
+                TrackAnalyzer.analyze(mediaId, service, directUri)
+                return@launch
+            }
+
+            val cachedPlaybackUrl = playbackUrlCache.entries.firstOrNull { it.key.startsWith(mediaId) }?.value?.url
+                ?: extractorPlaybackUrlCache[mediaId]?.url
+            if (!cachedPlaybackUrl.isNullOrBlank()) {
+                TrackAnalyzer.analyze(mediaId, service, cachedPlaybackUrl.toUri())
+                return@launch
+            }
+        } catch (e: Exception) {
+            Timber.tag(MusicService.TAG).v(e, "Background TrackAnalyzer failed for mediaId=$mediaId")
+        }
+    }
 }

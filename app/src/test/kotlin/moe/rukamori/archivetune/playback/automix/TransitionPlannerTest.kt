@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 
 class TransitionPlannerTest {
 
@@ -80,5 +81,77 @@ class TransitionPlannerTest {
 
         assertEquals(2_000L, plan.durationMs)
         assertEquals(2_000L, plan.triggerOffsetMs)
+    }
+
+    @Test
+    fun planSmartTransition_interiorCliff_triggersAtMixOut() {
+        val outgoing = TrackAnalysisResult(
+            bpm = 120.0,
+            mixInTime = 2.0,
+            mixOutTime = 180.0,
+            contentEndTime = 190.0,
+        )
+        val incoming = TrackAnalysisResult(
+            bpm = 122.0,
+            mixInTime = 3.5,
+            mixOutTime = 150.0,
+            contentEndTime = 160.0,
+        )
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = incoming,
+            currentDurationMs = 200_000L,
+        )
+
+        assertEquals(180_000L, plan.triggerAtMs)
+        assertEquals(10_000L, plan.durationMs)
+        assertEquals(3_500L, plan.incomingStartMs)
+        assertTrue(plan.prepareAheadMs!! >= 4_000L)
+    }
+
+    @Test
+    fun planSmartTransition_terminalContentEnd_adjustsStartBackward() {
+        val outgoing = TrackAnalysisResult(
+            bpm = 120.0,
+            mixInTime = 1.0,
+            mixOutTime = 190.0,
+            contentEndTime = 190.0,
+        )
+        val incoming = TrackAnalysisResult(
+            bpm = 120.0,
+            mixInTime = 4.0,
+            mixOutTime = 140.0,
+            contentEndTime = 145.0,
+        )
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = incoming,
+            currentDurationMs = 200_000L,
+        )
+
+        assertTrue(plan.durationMs in 4_000L..12_000L)
+        assertEquals(190_000L - plan.durationMs, plan.triggerAtMs)
+        assertEquals(4_000L, plan.incomingStartMs)
+    }
+
+    @Test
+    fun planSmartTransition_noIncoming_fallsBackToZeroStart() {
+        val outgoing = TrackAnalysisResult(
+            bpm = 120.0,
+            mixOutTime = 170.0,
+            contentEndTime = 178.0,
+        )
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = null,
+            currentDurationMs = 180_000L,
+        )
+
+        assertEquals(0L, plan.incomingStartMs)
+        assertEquals(170_000L, plan.triggerAtMs)
+        assertEquals(8_000L, plan.durationMs)
     }
 }

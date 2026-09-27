@@ -2837,6 +2837,7 @@ class MusicService :
                         expiresAtMs = System.currentTimeMillis() + ArchiveTuneExtractorCacheTtlMs,
                         authFingerprint = authFingerprint,
                     )
+                    kickOffTrackAnalysis(nextMediaItem)
                 } else {
                     var resolvedFlac = false
                     if (!bypassFlac && effectiveSource == PlaybackSource.FLAC) {
@@ -2867,6 +2868,7 @@ class MusicService :
                                 )
                                 database.query { upsert(flacFormat) }
                                 resolvedFlac = true
+                                kickOffTrackAnalysis(nextMediaItem)
                             }
                         }
                     }
@@ -2925,6 +2927,7 @@ class MusicService :
                             )
                             playbackUrlCache[cacheKey] = cacheValue
                             playbackUrlCache[mediaId] = cacheValue
+                            kickOffTrackAnalysis(nextMediaItem)
                         }
                     }
                 }
@@ -2954,6 +2957,8 @@ class MusicService :
             lyricsPreloadManager?.onSongChanged(currentIndex, queue)
         }
         prefetchNextTrack(currentIndex)
+        kickOffUpcomingTrackAnalysis(currentIndex)
+        kickOffTrackAnalysis(mediaItem)
 
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&

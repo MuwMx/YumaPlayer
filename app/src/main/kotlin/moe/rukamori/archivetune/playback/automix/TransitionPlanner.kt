@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.playback.automix
 
 import kotlin.math.abs
 import kotlin.math.roundToLong
+import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 
 object TransitionPlanner {
     const val AUTO_MIN_SECONDS = 4.0
@@ -107,6 +108,63 @@ object TransitionPlanner {
             durationMs = durationMs,
             incomingStartMs = incomingStartMs,
             enableBassSwap = enableBassSwap,
+        )
+    }
+
+    fun planSmartTransition(
+        outgoingAnalysis: TrackAnalysisResult,
+        incomingAnalysis: TrackAnalysisResult?,
+        currentDurationMs: Long,
+        preferredDurationMs: Long? = null,
+    ): AutomixPlan {
+        val outgoingBpm = outgoingAnalysis.bpm.takeIf { it > 0.0 }
+        val nextBpm = incomingAnalysis?.bpm?.takeIf { it > 0.0 }
+        val bpmAdjustedDurationMs = calculateAdaptiveDurationMs(outgoingBpm, nextBpm, preferredDurationMs)
+            .coerceAtMost(maxOf(0L, currentDurationMs))
+
+        val style = resolveTransitionStyle(outgoingBpm, nextBpm)
+        val enableBassSwap = style != TransitionStyle.PLAIN_CROSSFADE
+
+        val incomingStartMs = (incomingAnalysis?.mixInTime?.takeIf { it > 0.0 }
+            ?.let { it * MS_PER_SECOND }?.roundToLong() ?: 0L)
+            .coerceAtLeast(0L)
+
+        val contentEndMs = if (outgoingAnalysis.contentEndTime > 0.0) {
+            (outgoingAnalysis.contentEndTime * MS_PER_SECOND).roundToLong()
+        } else {
+            currentDurationMs
+        }.coerceIn(0L, currentDurationMs)
+
+        val rawMixOutMs = if (outgoingAnalysis.mixOutTime > 0.0) {
+            (outgoingAnalysis.mixOutTime * MS_PER_SECOND).roundToLong()
+        } else {
+            contentEndMs
+        }.coerceIn(0L, contentEndMs)
+
+        val isInteriorCliff = rawMixOutMs < contentEndMs - 1000L
+
+        val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
+            val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(1000L)
+            val fade = naturalFade.coerceIn(
+                AUTO_MIN_SECONDS.toLong() * MS_PER_SECOND,
+                AUTO_MAX_SECONDS.toLong() * MS_PER_SECOND
+            ).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
+            Pair(rawMixOutMs, fade)
+        } else {
+            val fade = bpmAdjustedDurationMs.coerceAtMost(contentEndMs)
+            val start = (contentEndMs - fade).coerceAtLeast(0L)
+            Pair(start, fade)
+        }
+
+        val prepareAheadMs = maxOf(bpmAdjustedDurationMs, 7000L)
+
+        return AutomixPlan(
+            triggerOffsetMs = currentDurationMs - startAtMs,
+            durationMs = fadeDurationMs,
+            incomingStartMs = incomingStartMs,
+            enableBassSwap = enableBassSwap,
+            triggerAtMs = startAtMs,
+            prepareAheadMs = prepareAheadMs,
         )
     }
 }
