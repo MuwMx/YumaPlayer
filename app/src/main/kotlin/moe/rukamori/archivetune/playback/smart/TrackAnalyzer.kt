@@ -159,11 +159,8 @@ object TrackAnalyzer {
 
                 val samples = runCatching { decodeSamples() }.getOrNull()
                 if (samples == null || samples.isEmpty()) {
-                    Timber.tag("TrackAnalyzer").w("Decode yielded no samples trackId=$trackId source=$source; caching empty result to unblock UI")
-                    val empty = TrackAnalysisResult()
-                    memoryCache[trackId] = empty
-                    _analysisEvents.tryEmit(trackId to empty)
-                    return@async empty
+                    Timber.tag("TrackAnalyzer").w("Decode yielded no samples trackId=$trackId source=$source")
+                    return@async null
                 }
                 Timber.tag("TrackAnalyzer").d("Decode done trackId=$trackId samples=${samples.size} source=$source")
 
@@ -179,11 +176,8 @@ object TrackAnalyzer {
 
                 val result = runCatching { TrackFeatures.analyze(samples, duration) }.getOrNull()
                 if (result == null) {
-                    Timber.tag("TrackAnalyzer").w("Native analyze returned null/crashed trackId=$trackId samples=${samples.size}; caching empty result to unblock UI")
-                    val empty = TrackAnalysisResult()
-                    memoryCache[trackId] = empty
-                    _analysisEvents.tryEmit(trackId to empty)
-                    return@async empty
+                    Timber.tag("TrackAnalyzer").w("Native analyze returned null/crashed trackId=$trackId samples=${samples.size}")
+                    return@async null
                 }
                 Timber.tag("TrackAnalyzer").d("Native analyze done trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
                 memoryCache[trackId] = result
@@ -195,11 +189,8 @@ object TrackAnalyzer {
                 }
                 result
             } catch (e: Exception) {
-                Timber.tag("TrackAnalyzer").e(e, "Analysis crashed trackId=$trackId source=$source; caching empty result to unblock UI")
-                val empty = TrackAnalysisResult()
-                memoryCache[trackId] = empty
-                _analysisEvents.tryEmit(trackId to empty)
-                empty
+                Timber.tag("TrackAnalyzer").e(e, "Analysis crashed trackId=$trackId source=$source")
+                null
             } finally {
                 inFlight.remove(trackId)
             }

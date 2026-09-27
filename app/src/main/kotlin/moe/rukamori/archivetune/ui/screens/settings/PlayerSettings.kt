@@ -40,7 +40,11 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixAggressiveness
+import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
+import moe.rukamori.archivetune.constants.AutomixTransitionDuration
+import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -138,6 +142,22 @@ fun PlayerSettings(navController: NavController) {
         AutomixEnabledKey,
         defaultValue = false,
     )
+    val (automixAggressivenessStr, onAutomixAggressivenessChangeStr) = rememberPreference(
+        AutomixAggressivenessKey,
+        defaultValue = AutomixAggressiveness.STANDARD.value,
+    )
+    val (automixTransitionDurationStr, onAutomixTransitionDurationChangeStr) = rememberPreference(
+        AutomixTransitionDurationKey,
+        defaultValue = AutomixTransitionDuration.AUTO.value,
+    )
+    val automixAggressiveness = remember(automixAggressivenessStr) {
+        AutomixAggressiveness.entries.find { it.value.equals(automixAggressivenessStr, ignoreCase = true) }
+            ?: AutomixAggressiveness.STANDARD
+    }
+    val automixTransitionDuration = remember(automixTransitionDurationStr) {
+        AutomixTransitionDuration.entries.find { it.value.equals(automixTransitionDurationStr, ignoreCase = true) }
+            ?: AutomixTransitionDuration.AUTO
+    }
 
     val (_, onEnableLosslessChange) = rememberPreference(EnableLosslessKey, false)
     val (memoryCacheToggle, onMemoryCacheToggleChange) = rememberPreference(MemoryCacheToggleKey, false)
@@ -199,6 +219,8 @@ fun PlayerSettings(navController: NavController) {
         crossfadeDurationSeconds = crossfadeDurationSeconds,
         crossfadeGapless = crossfadeGapless,
         automixEnabled = automixEnabled,
+        automixTransitionDuration = automixTransitionDuration,
+        automixAggressiveness = automixAggressiveness,
         memoryCacheToggle = memoryCacheToggle,
         downloadLocationUri = downloadLocationUri,
         flacFolderPath = flacFolderPath,
@@ -207,7 +229,13 @@ fun PlayerSettings(navController: NavController) {
         qobuzUserAuthToken = qobuzUserAuthToken,
     )
 
-    val actions = remember(navController, folderPickerLauncher, onEqualizerClick) {
+    val actions = remember(
+        navController,
+        folderPickerLauncher,
+        onEqualizerClick,
+        onAutomixTransitionDurationChangeStr,
+        onAutomixAggressivenessChangeStr,
+    ) {
         PlayerSettingsUiActions(
             onNavigateUp = navController::navigateUp,
             onNavigateHome = navController::backToMain,
@@ -228,6 +256,12 @@ fun PlayerSettings(navController: NavController) {
             onCrossfadeDurationSecondsChange = onCrossfadeDurationSecondsChange,
             onCrossfadeGaplessChange = onCrossfadeGaplessChange,
             onAutomixEnabledChange = onAutomixEnabledChange,
+            onAutomixTransitionDurationChange = { newDuration ->
+                onAutomixTransitionDurationChangeStr(newDuration.value)
+            },
+            onAutomixAggressivenessChange = { newAggr ->
+                onAutomixAggressivenessChangeStr(newAggr.value)
+            },
             onMemoryCacheToggleChange = onMemoryCacheToggleChange,
             onSelectFlacDownloadFolder = { folderPickerLauncher.launch(null) },
             onQobuzAppIdChange = onQobuzAppIdChange,

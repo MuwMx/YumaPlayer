@@ -22,6 +22,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.AutomixAggressiveness
+import moe.rukamori.archivetune.constants.AutomixTransitionDuration
 import moe.rukamori.archivetune.constants.FlacQuality
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
@@ -249,6 +251,39 @@ internal fun PlayerCrossfadeSection(
                 checked = state.automixEnabled,
                 onCheckedChange = actions.onAutomixEnabledChange,
                 isEnabled = state.crossfadeEnabled,
+            )
+        }
+        item {
+            EnumListPreference(
+                title = { Text(stringResource(R.string.automix_transition_style)) },
+                icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                selectedValue = state.automixAggressiveness,
+                onValueSelected = actions.onAutomixAggressivenessChange,
+                valueText = { aggr ->
+                    when (aggr) {
+                        AutomixAggressiveness.SOFT -> stringResource(R.string.automix_style_soft)
+                        AutomixAggressiveness.STANDARD -> stringResource(R.string.automix_style_standard)
+                        AutomixAggressiveness.CLUB -> stringResource(R.string.automix_style_club)
+                    }
+                },
+                isEnabled = state.crossfadeEnabled && state.automixEnabled,
+            )
+        }
+        item {
+            EnumListPreference(
+                title = { Text(stringResource(R.string.automix_transition_length)) },
+                icon = { Icon(painterResource(R.drawable.speed), null) },
+                selectedValue = state.automixTransitionDuration,
+                onValueSelected = actions.onAutomixTransitionDurationChange,
+                valueText = { duration ->
+                    when (duration) {
+                        AutomixTransitionDuration.AUTO -> stringResource(R.string.automix_duration_auto)
+                        AutomixTransitionDuration.S4 -> stringResource(R.string.automix_duration_4s)
+                        AutomixTransitionDuration.S8 -> stringResource(R.string.automix_duration_8s)
+                        AutomixTransitionDuration.S12 -> stringResource(R.string.automix_duration_12s)
+                    }
+                },
+                isEnabled = state.crossfadeEnabled && state.automixEnabled,
             )
         }
         item {

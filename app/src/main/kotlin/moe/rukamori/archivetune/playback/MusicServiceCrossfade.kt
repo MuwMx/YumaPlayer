@@ -609,8 +609,14 @@ internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
 }
 
 internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
-    val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-    contentLength > 0L && cache.isCached(key, 0L, contentLength)
+    val spans = cache.getCachedSpans(key)
+    if (spans.isEmpty()) return@runCatching false
+    val len = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+    if (len > 0L) {
+        cache.isCached(key, 0L, len)
+    } else {
+        spans.sumOf { it.length } > 1_500_000L
+    }
 }.getOrDefault(false)
 
 internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
@@ -750,15 +756,8 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
             }
 
             val directUri = mediaItem?.localConfiguration?.uri
-            if (directUri != null && (directUri.scheme == "http" || directUri.scheme == "https" || directUri.scheme == "content" || directUri.scheme == "file")) {
+            if (directUri != null && (directUri.scheme == "content" || directUri.scheme == "file")) {
                 TrackAnalyzer.analyze(mediaId, service, directUri)
-                return@launch
-            }
-
-            val cachedPlaybackUrl = playbackUrlCache.entries.firstOrNull { it.key.startsWith(mediaId) }?.value?.url
-                ?: extractorPlaybackUrlCache[mediaId]?.url
-            if (!cachedPlaybackUrl.isNullOrBlank()) {
-                TrackAnalyzer.analyze(mediaId, service, cachedPlaybackUrl.toUri())
                 return@launch
             }
         } catch (e: Exception) {

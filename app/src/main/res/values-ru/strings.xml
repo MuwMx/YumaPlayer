@@ -772,4 +772,13 @@
     <string name="smart_automix_desc">Гармоничные переходы по темпу и тактам</string>
     <string name="automix_ready">Готов</string>
     <string name="automix_analyzing">Анализ…</string>
+    <string name="automix_transition_style">Стиль перехода</string>
+    <string name="automix_style_soft">Мягкий</string>
+    <string name="automix_style_standard">Стандартный</string>
+    <string name="automix_style_club">Клубный</string>
+    <string name="automix_transition_length">Длительность перехода</string>
+    <string name="automix_duration_auto">Авто</string>
+    <string name="automix_duration_4s">4 с</string>
+    <string name="automix_duration_8s">8 с</string>
+    <string name="automix_duration_12s">12 с</string>
 </resources>

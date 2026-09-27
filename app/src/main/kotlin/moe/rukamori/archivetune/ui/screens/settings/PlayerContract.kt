@@ -12,7 +12,11 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixAggressiveness
+import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
+import moe.rukamori.archivetune.constants.AutomixTransitionDuration
+import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -50,6 +54,8 @@ internal object PlayerContract {
     val CrossfadeDuration = CrossfadeDurationKey
     val CrossfadeGapless = CrossfadeGaplessKey
     val AutomixEnabled = AutomixEnabledKey
+    val AutomixTransitionDuration = AutomixTransitionDurationKey
+    val AutomixAggressiveness = AutomixAggressivenessKey
     val EnableLossless = EnableLosslessKey
     val MemoryCacheToggle = MemoryCacheToggleKey
     val DownloadLocationUri = DownloadLocationUriKey
@@ -76,6 +82,8 @@ data class PlayerSettingsUiState(
     val crossfadeDurationSeconds: Float = 5f,
     val crossfadeGapless: Boolean = true,
     val automixEnabled: Boolean = false,
+    val automixTransitionDuration: AutomixTransitionDuration = AutomixTransitionDuration.AUTO,
+    val automixAggressiveness: AutomixAggressiveness = AutomixAggressiveness.STANDARD,
     val memoryCacheToggle: Boolean = false,
     val downloadLocationUri: String = "",
     val flacFolderPath: String? = null,
@@ -105,6 +113,8 @@ data class PlayerSettingsUiActions(
     val onCrossfadeDurationSecondsChange: (Float) -> Unit = {},
     val onCrossfadeGaplessChange: (Boolean) -> Unit = {},
     val onAutomixEnabledChange: (Boolean) -> Unit = {},
+    val onAutomixTransitionDurationChange: (AutomixTransitionDuration) -> Unit = {},
+    val onAutomixAggressivenessChange: (AutomixAggressiveness) -> Unit = {},
     val onMemoryCacheToggleChange: (Boolean) -> Unit = {},
     val onSelectFlacDownloadFolder: () -> Unit = {},
     val onQobuzAppIdChange: (String) -> Unit = {},

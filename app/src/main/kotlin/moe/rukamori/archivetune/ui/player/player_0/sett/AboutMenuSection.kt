@@ -20,11 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import moe.rukamori.archivetune.constants.AutomixAggressiveness
-import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
-import moe.rukamori.archivetune.constants.AutomixTransitionDuration
-import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -44,7 +40,6 @@ import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
 import moe.rukamori.archivetune.utils.toggleSpeedDialPin
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingsMenuContent(
@@ -153,40 +148,14 @@ fun SettingsMenuContent(
             AutomixEnabledKey,
             defaultValue = false,
         )
-        val (automixAggressiveness, onAutomixAggressivenessChange) = rememberPreference(
-            AutomixAggressivenessKey,
-            defaultValue = AutomixAggressiveness.STANDARD.value,
-        )
-        val (automixTransitionPreset, onAutomixTransitionPresetChange) = rememberPreference(
-            AutomixTransitionDurationKey,
-            defaultValue = AutomixTransitionDuration.AUTO.value,
-        )
-        val totalRowCount = 9 + (if (hasCast) 1 else 0) + (if (automixEnabled) 2 else 0)
+        val totalRowCount = 9 + (if (hasCast) 1 else 0)
         var currentRow = 0
 
         val trackAnalysis = state.trackAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
         val isAnalysisReady = trackAnalysis != null
-        val currentBpm = trackAnalysis?.bpm ?: 0.0
-
-        val aggressivenessLabel = when (automixAggressiveness.lowercase()) {
-            AutomixAggressiveness.SOFT.value -> "Soft"
-            AutomixAggressiveness.CLUB.value -> "Club"
-            else -> "Standard"
-        }
-        val durationLabel = when (automixTransitionPreset.lowercase()) {
-            AutomixTransitionDuration.S4.value -> "4s"
-            AutomixTransitionDuration.S8.value -> "8s"
-            AutomixTransitionDuration.S12.value -> "12s"
-            else -> "Auto"
-        }
 
         val automixSubtitle = if (automixEnabled) {
-            val status = when {
-                isAnalysisReady && currentBpm > 0.0 -> "${currentBpm.roundToInt()} BPM • ${stringResource(R.string.automix_ready)}"
-                isAnalysisReady -> stringResource(R.string.automix_ready)
-                else -> stringResource(R.string.automix_analyzing)
-            }
-            "$status • $aggressivenessLabel • $durationLabel"
+            if (isAnalysisReady) stringResource(R.string.automix_ready) else stringResource(R.string.automix_analyzing)
         } else {
             stringResource(R.string.smart_automix_desc)
         }
@@ -203,49 +172,6 @@ fun SettingsMenuContent(
             index = currentRow++,
             count = totalRowCount,
         )
-
-        if (automixEnabled) {
-            Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
-
-            CompactMenuRow(
-                title = "Transition style",
-                subtitle = aggressivenessLabel,
-                iconResId = R.drawable.auto_awesome,
-                isActive = true,
-                activeIconTint = Color(state.vibrantColor),
-                onClick = {
-                    val next = when (automixAggressiveness.lowercase()) {
-                        AutomixAggressiveness.SOFT.value -> AutomixAggressiveness.STANDARD.value
-                        AutomixAggressiveness.STANDARD.value -> AutomixAggressiveness.CLUB.value
-                        else -> AutomixAggressiveness.SOFT.value
-                    }
-                    onAutomixAggressivenessChange(next)
-                },
-                index = currentRow++,
-                count = totalRowCount,
-            )
-
-            Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
-
-            CompactMenuRow(
-                title = "Transition length",
-                subtitle = durationLabel,
-                iconResId = R.drawable.speed,
-                isActive = true,
-                activeIconTint = Color(state.vibrantColor),
-                onClick = {
-                    val next = when (automixTransitionPreset.lowercase()) {
-                        AutomixTransitionDuration.AUTO.value -> AutomixTransitionDuration.S4.value
-                        AutomixTransitionDuration.S4.value -> AutomixTransitionDuration.S8.value
-                        AutomixTransitionDuration.S8.value -> AutomixTransitionDuration.S12.value
-                        else -> AutomixTransitionDuration.AUTO.value
-                    }
-                    onAutomixTransitionPresetChange(next)
-                },
-                index = currentRow++,
-                count = totalRowCount,
-            )
-        }
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 

@@ -1207,4 +1207,13 @@
     <string name="smart_automix_desc">Harmonic beat-matched transitions</string>
     <string name="automix_ready">Ready</string>
     <string name="automix_analyzing">Analyzing…</string>
+    <string name="automix_transition_style">Transition style</string>
+    <string name="automix_style_soft">Soft</string>
+    <string name="automix_style_standard">Standard</string>
+    <string name="automix_style_club">Club</string>
+    <string name="automix_transition_length">Transition length</string>
+    <string name="automix_duration_auto">Auto</string>
+    <string name="automix_duration_4s">4s</string>
+    <string name="automix_duration_8s">8s</string>
+    <string name="automix_duration_12s">12s</string>
 </resources>

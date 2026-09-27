@@ -1,15 +1,10 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,15 +64,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.extensions.metadata
-import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
-import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
-import moe.rukamori.archivetune.utils.rememberPreference
-import kotlin.math.roundToInt
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.ActiveDragSheet
@@ -420,16 +410,6 @@ private fun QueueSheetHeader(
 ) {
     val haptics = rememberYumaHaptics()
 
-    val (automixPref, onAutomixPrefChange) = rememberPreference(
-        AutomixEnabledKey,
-        defaultValue = false
-    )
-    val effectiveAutoMix = automixPref || isAutoMixEnabled
-
-    val trackAnalysis = state.trackAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
-    val isReady = trackAnalysis != null
-    val bpm = trackAnalysis?.bpm ?: 0.0
-
     val closeInteractionSource = remember { MutableInteractionSource() }
     val closePressed by closeInteractionSource.collectIsPressedAsState()
     val closeScale by androidx.compose.animation.core.animateFloatAsState(if (closePressed) 0.92f else 1f, spring(dampingRatio = 0.5f))
@@ -438,21 +418,10 @@ private fun QueueSheetHeader(
     val autoMixPressed by autoMixInteractionSource.collectIsPressedAsState()
     val autoMixScale by androidx.compose.animation.core.animateFloatAsState(if (autoMixPressed) 0.92f else 1f, spring(dampingRatio = 0.5f))
 
-    val activeAccentColor = Color(state.vibrantColor)
     val autoMixTint by animateColorAsState(
-        targetValue = if (effectiveAutoMix) activeAccentColor else Color.White.copy(alpha = 0.5f),
+        targetValue = if (isAutoMixEnabled) Color(state.vibrantColor) else Color.White.copy(alpha = 0.5f),
         animationSpec = tween(300),
         label = "AutoMixTint"
-    )
-    val autoMixContainerColor by animateColorAsState(
-        targetValue = if (effectiveAutoMix) activeAccentColor.copy(alpha = 0.18f) else Color.Transparent,
-        animationSpec = tween(300),
-        label = "AutoMixContainer"
-    )
-    val autoMixBorderColor by animateColorAsState(
-        targetValue = if (effectiveAutoMix) activeAccentColor.copy(alpha = 0.45f) else Color.Transparent,
-        animationSpec = tween(300),
-        label = "AutoMixBorder"
     )
 
     val moreInteractionSource = remember { MutableInteractionSource() }
@@ -526,56 +495,13 @@ private fun QueueSheetHeader(
                     style = androidx.compose.ui.text.TextStyle(shadow = SoftTextShadow)
                 )
             }
-            AnimatedVisibility(
-                visible = effectiveAutoMix,
-                enter = fadeIn(tween(250)) + expandHorizontally(tween(250)),
-                exit = fadeOut(tween(200)) + shrinkHorizontally(tween(200))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 6.dp)
-                        .height(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(activeAccentColor.copy(alpha = 0.16f))
-                        .border(0.8.dp, activeAccentColor.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(if (isReady) activeAccentColor else Color.White.copy(alpha = 0.5f))
-                        )
-                        Text(
-                            text = when {
-                                isReady && bpm > 0.0 -> "${bpm.roundToInt()} BPM • ${stringResource(R.string.automix_ready)}"
-                                isReady -> stringResource(R.string.automix_ready)
-                                else -> stringResource(R.string.automix_analyzing)
-                            },
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            fontFamily = LocalArchiveTuneFontFamily.current
-                        )
-                    }
-                }
-            }
             Box(
                 modifier = Modifier
                     .graphicsLayer { scaleX = autoMixScale; scaleY = autoMixScale }
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(autoMixContainerColor)
-                    .border(0.8.dp, autoMixBorderColor, CircleShape)
                     .clickable(interactionSource = autoMixInteractionSource, indication = null) {
                         haptics.click()
-                        onAutomixPrefChange(!automixPref)
                         onToggleAutoMix()
                     },
                 contentAlignment = Alignment.Center
