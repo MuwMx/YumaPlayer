@@ -163,6 +163,9 @@ internal fun CanvasArtworkPlayer(
                     CacheDataSource
                         .Factory()
                         .setCache(playerCache)
+                        .setCacheKeyFactory { dataSpec ->
+                            dataSpec.key ?: dataSpec.uri.buildUpon().clearQuery().build().toString()
+                        }
                         .setUpstreamDataSourceFactory(httpDataSourceFactory)
                         .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
                 } else {
@@ -188,6 +191,7 @@ internal fun CanvasArtworkPlayer(
                     trackSelectionParameters =
                         trackSelectionParameters
                             .buildUpon()
+                            .setForceHighestSupportedBitrate(true)
                             .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
                             .setMaxVideoSize(CanvasMaxVideoWidth, CanvasMaxVideoHeight)
                             .build()
