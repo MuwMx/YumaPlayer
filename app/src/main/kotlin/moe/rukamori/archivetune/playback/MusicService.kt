@@ -549,6 +549,8 @@ class MusicService :
     internal var crossfadeJob: Job? = null
     internal var secondaryCrossfadePlayer: ExoPlayer? = null
     internal var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    internal var secondaryPreparationFailedMediaId: String? = null
+    internal var hasPreparedSecondaryPlayer: Boolean = false
     internal var reserveCrossfadePlayer: ExoPlayer? = null
     internal var isCrossfading = false
     internal var crossfadeHandoffInProgress = false
@@ -566,9 +568,14 @@ class MusicService :
         object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Timber.tag(TAG).w(error, "Secondary crossfade player failed")
+                val isEofOrSource = isSourceOrEofError(error)
                 scope.launch {
-                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-                    scheduleCrossfade()
+                    if (isEofOrSource) {
+                        cancelSecondaryCrossfadePreparation()
+                    } else {
+                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                        scheduleCrossfade()
+                    }
                 }
             }
         }
@@ -689,15 +696,21 @@ class MusicService :
             override fun onSpanAdded(cache: Cache, span: CacheSpan) {
                 val key = span.key
                 Timber.tag(TAG).d("Automix cache onSpanAdded key=$key length=${span.length} cached=${cache.isCached(key, span.position, span.length)}")
-                if (isFullyCached(cache, key)) {
-                    val mediaId =
-                        if (key.startsWith(FLAC_CACHE_KEY_PREFIX)) {
-                            key.removePrefix(FLAC_CACHE_KEY_PREFIX)
-                        } else {
-                            key
+                val mediaId =
+                    if (key.startsWith(FLAC_CACHE_KEY_PREFIX)) {
+                        key.removePrefix(FLAC_CACHE_KEY_PREFIX)
+                    } else {
+                        key
+                    }
+                if (mediaId.isNotBlank()) {
+                    if (secondaryPreparationFailedMediaId == mediaId) {
+                        secondaryPreparationFailedMediaId = null
+                        scope.launch { scheduleCrossfade() }
+                    }
+                    if (isFullyCached(cache, key)) {
+                        if (!TrackAnalyzer.hasCached(mediaId)) {
+                            kickOffTrackAnalysis(mediaId)
                         }
-                    if (mediaId.isNotBlank() && !TrackAnalyzer.hasCached(mediaId)) {
-                        kickOffTrackAnalysis(mediaId)
                     }
                 }
             }
@@ -1995,15 +2008,6 @@ class MusicService :
         var throwable: Throwable? = error.cause
         while (throwable != null) {
             when {
-                throwable is EOFException -> {
-                    return true
-                }
-
-                throwable is IOException &&
-                    throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true -> {
-                    return true
-                }
-
                 throwable is IllegalStateException || throwable is IllegalArgumentException -> {
                     if (throwable.stackTrace.any { it.className.startsWith("androidx.media3.extractor") }) {
                         return true
@@ -2989,6 +2993,9 @@ class MusicService :
     ) {
         super.onMediaItemTransition(mediaItem, reason)
 
+        secondaryPreparationFailedMediaId = null
+        hasPreparedSecondaryPlayer = false
+
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
 
         // Pre-load lyrics for upcoming songs in queue
@@ -3624,14 +3631,7 @@ class MusicService :
         val currentMediaId = player.currentMediaItem?.mediaId ?: return
         val isLocalMedia = currentMediaId.isLocalMediaId()
 
-        val isFullyCachedMedia =
-            runCatching {
-                val cachedInDownload =
-                    downloadCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L ||
-                        downloadCache.getCachedSpans(currentMediaId).isNotEmpty()
-                val cachedInPlayer = playerCache.getContentMetadata(currentMediaId).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
-                cachedInDownload || cachedInPlayer
-            }.getOrDefault(false)
+        val isFullyCachedMedia = isTrackFullyCached(currentMediaId)
 
         val hasAnyCachedData =
             isFullyCachedMedia ||

@@ -3,12 +3,15 @@ package moe.rukamori.archivetune.playback
 import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import java.io.EOFException
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -86,7 +89,7 @@ internal fun MusicService.scheduleCrossfade() {
 
     crossfadeTriggerJob =
         scope.launch {
-            var hasPreparedSecondaryPlayer = false
+            hasPreparedSecondaryPlayer = false
             while (isActive) {
                 if (!crossfadeEnabled || isCrossfading) return@launch
                 if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
@@ -142,11 +145,15 @@ internal fun MusicService.scheduleCrossfade() {
 
                 val remainingToTrigger = triggerAt - player.currentPosition
                 val incomingStartMs = automixPlan?.incomingStartMs ?: 0L
-                if (!hasPreparedSecondaryPlayer && remainingToTrigger <= prepareAhead) {
+                val secondaryFailedForThisCycle = secondaryPreparationFailedMediaId == target.mediaId
+                if (!hasPreparedSecondaryPlayer && !secondaryFailedForThisCycle && remainingToTrigger <= prepareAhead) {
                     prepareSecondaryCrossfadePlayer(target, incomingStartMs)
                     hasPreparedSecondaryPlayer = true
                 }
                 if (remainingToTrigger <= 0L) {
+                    if (secondaryPreparationFailedMediaId == target.mediaId) {
+                        return@launch
+                    }
                     if (automixEnabled && outgoingAnalysis == null && isTrackFullyCached(currentMediaId)) {
                         val fastAnalysis = runCatching {
                             withTimeoutOrNull(FAST_ANALYSIS_TIMEOUT_MS) {
@@ -246,6 +253,7 @@ internal fun MusicService.prepareSecondaryCrossfadePlayer(
     target: MusicService.CrossfadeTarget,
     startPositionMs: Long = 0L,
 ): ExoPlayer? {
+    if (secondaryPreparationFailedMediaId == target.mediaId) return null
     val player = prepareNext(target)
     if (player != null && startPositionMs > 0L && player.currentPosition != startPositionMs) {
         player.seekTo(target.index, startPositionMs)
@@ -278,6 +286,7 @@ internal fun MusicService.startCrossfade(
     incomingStartMs: Long = 0L,
 ) {
     if (isCrossfading || !crossfadeEnabled) return
+    if (secondaryPreparationFailedMediaId == target.mediaId) return
 
     val incomingPlayer = prepareSecondaryCrossfadePlayer(target, incomingStartMs) ?: return
     val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
@@ -568,6 +577,7 @@ internal fun MusicService.cancelCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
+    hasPreparedSecondaryPlayer = false
     secondaryCrossfadePlayer?.apply {
         playWhenReady = false
         volume = 0f
@@ -585,6 +595,43 @@ internal fun MusicService.cancelCrossfade(
     if (resetVolume && isPlayerInitialized()) {
         applyEffectiveVolumeImmediately()
     }
+}
+
+internal fun isSourceOrEofError(error: PlaybackException): Boolean {
+    if (error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE) return true
+    var throwable: Throwable? = error.cause ?: error
+    while (throwable != null) {
+        if (throwable is EOFException) return true
+        if (throwable is IOException &&
+            throwable.message?.contains("unexpected end of stream", ignoreCase = true) == true
+        ) return true
+        throwable = throwable.cause
+    }
+    return false
+}
+
+internal fun MusicService.cancelSecondaryCrossfadePreparation() {
+    secondaryPreparationFailedMediaId = secondaryCrossfadeTarget?.mediaId
+    hasPreparedSecondaryPlayer = false
+    if (isCrossfading) {
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        isCrossfading = false
+        crossfadeHandoffInProgress = false
+        activeAutomixPlan = null
+        crossfadeProgress = 0f
+        crossfadeIncomingBaseVolume = 1f
+        crossfadePlaybackRequested = false
+        if (isPlayerInitialized()) {
+            applyEffectiveVolumeImmediately()
+        }
+    }
+    if (isPlayerInitialized()) {
+        dualForwardingPlayer.attachPlayer(localPlayer)
+        dualPlayerRoleHolder.reset()
+        localPlayer.pauseAtEndOfMediaItems = false
+    }
+    releaseSecondaryCrossfadePlayer()
 }
 
 internal fun MusicService.releaseSecondaryCrossfadePlayer() {
@@ -611,11 +658,11 @@ internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
 internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
     val spans = cache.getCachedSpans(key)
     if (spans.isEmpty()) return@runCatching false
-    val len = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-    if (len > 0L) {
-        cache.isCached(key, 0L, len)
+    val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+    if (contentLength > 0L) {
+        cache.isCached(key, 0L, contentLength)
     } else {
-        spans.sumOf { it.length } > 1_500_000L
+        spans.any { it.position == 0L && it.length > 2_500_000L }
     }
 }.getOrDefault(false)
 
@@ -623,6 +670,7 @@ internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
     if (mediaId.isBlank()) return false
     val flacKey = flacCacheKey(mediaId)
     return isFullyCached(downloadCache, flacKey) ||
+        isFullyCached(playerCache, flacKey) ||
         isFullyCached(downloadCache, mediaId) ||
         isFullyCached(playerCache, mediaId)
 }
@@ -634,6 +682,10 @@ internal suspend fun MusicService.analyzeCachedTrack(mediaId: String): TrackAnal
     val flacKey = flacCacheKey(mediaId)
     if (isFullyCached(downloadCache, flacKey)) {
         return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey)
+    }
+
+    if (isFullyCached(playerCache, flacKey)) {
+        return TrackAnalyzer.analyze(mediaId, playerCache, flacKey)
     }
 
     if (isFullyCached(downloadCache, mediaId)) {
