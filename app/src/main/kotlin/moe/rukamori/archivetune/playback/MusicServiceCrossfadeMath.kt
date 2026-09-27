@@ -61,6 +61,4 @@ internal fun MusicService.isGaplessAlbumTransition(
 }
 
 internal fun MusicService.requiredCrossfadeStartBufferMs(durationMs: Long): Long =
-    (durationMs + MusicService.CROSSFADE_HANDOFF_BUFFER_MS)
-        .coerceAtLeast(MusicService.CROSSFADE_MIN_BUFFER_BEFORE_START_MS)
-        .coerceAtMost(MusicService.CROSSFADE_MAX_BUFFER_BEFORE_START_MS)
+    minOf(crossfadeDurationMs, 2000L)

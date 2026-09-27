@@ -140,7 +140,6 @@ internal fun MusicService.startCrossfade(
             crossfadeBaseVolume = currentEffectivePlayerVolume()
             crossfadeIncomingBaseVolume = currentEffectivePlayerVolumeForMediaId(target.mediaId)
             crossfadePlaybackRequested = player.playWhenReady
-            localPlayer.pauseAtEndOfMediaItems = true
 
             try {
                 val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
@@ -149,6 +148,8 @@ internal fun MusicService.startCrossfade(
                     scheduleCrossfade()
                     return@launch
                 }
+
+                localPlayer.pauseAtEndOfMediaItems = true
 
                 val standbyPlayer = incomingPlayer
                 val outgoingPlayer = localPlayer
@@ -163,6 +164,7 @@ internal fun MusicService.startCrossfade(
 
                 var elapsedMs = 0L
                 var lastTickMs = android.os.SystemClock.elapsedRealtime()
+                var bufferingStartMs: Long? = null
                 while (isActive && elapsedMs < durationMs) {
                     if (player.currentMediaItem?.mediaId != outgoingMediaId) {
                         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -172,12 +174,33 @@ internal fun MusicService.startCrossfade(
                     val nowMs = android.os.SystemClock.elapsedRealtime()
                     if (crossfadePlaybackRequested) {
                         standbyPlayer.playWhenReady = true
-                        elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
-                        crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                        outgoingPlayer.volume = (crossfadeBaseVolume * FALL(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
-                        incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
+                        val isIncomingProducingSound =
+                            standbyPlayer.playbackState == Player.STATE_READY && standbyPlayer.isPlaying
+
+                        if (isIncomingProducingSound) {
+                            bufferingStartMs = null
+                            elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
+                            crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                            outgoingPlayer.volume = (crossfadeBaseVolume * FALL(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
+                            incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
+                        } else {
+                            if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                                return@launch
+                            }
+                            if (standbyPlayer.playbackState == Player.STATE_IDLE) {
+                                standbyPlayer.prepare()
+                            }
+                            val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
+                            if (nowMs - stallStart >= PlaybackConstants.CROSSFADE_BUFFERING_TIMEOUT_MS) {
+                                Timber.tag(MusicService.TAG).w("Crossfade incoming player buffering timed out; bailing out")
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                                return@launch
+                            }
+                        }
                     } else {
                         standbyPlayer.pause()
+                        bufferingStartMs = null
                     }
                     lastTickMs = nowMs
                     delay(MusicService.CROSSFADE_FRAME_MS)
