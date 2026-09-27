@@ -1824,14 +1824,15 @@ class MusicService :
             }
     }
 
-    internal fun forceRevivePlayback() {
+    internal fun forceRevivePlayback(): Boolean {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastForceReviveTimeMs < FORCE_REVIVE_DEBOUNCE_MS) return
+        if (now - lastForceReviveTimeMs < FORCE_REVIVE_DEBOUNCE_MS) return false
         lastForceReviveTimeMs = now
         networkRecoveryGeneration++
         networkStallRecoveryJob?.cancel()
         networkStallRecoveryJob = null
         revivePlaybackFromStall()
+        return true
     }
 
     internal fun revivePlaybackFromStall(gen: Long = networkRecoveryGeneration) {
@@ -2745,12 +2746,10 @@ class MusicService :
 
         val flacKey = flacCacheKey(mediaId)
         val hasFlacDiskEntry = runCatching {
-            downloadCache.getCachedSpans(flacKey).isNotEmpty() ||
-                playerCache.getCachedSpans(flacKey).isNotEmpty()
+            downloadCache.getCachedSpans(flacKey).isNotEmpty()
         }.getOrDefault(false)
         val hasMediaDiskEntry = runCatching {
-            downloadCache.getCachedSpans(mediaId).isNotEmpty() ||
-                playerCache.getCachedSpans(mediaId).isNotEmpty()
+            downloadCache.getCachedSpans(mediaId).isNotEmpty()
         }.getOrDefault(false)
 
         if (hasMediaDiskEntry || hasFlacDiskEntry) {
@@ -3581,8 +3580,8 @@ class MusicService :
                 waitOnNetworkError()
                 return
             } else if (isConnectionError) {
-                forceRevivePlayback()
-                return
+                invalidatePlaybackUrlCache(currentMediaId)
+                if (forceRevivePlayback()) return
             }
         }
 
