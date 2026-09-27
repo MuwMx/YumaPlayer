@@ -196,6 +196,9 @@ class PlaybackStateHolder(
         val player = audioPlayerProvider() ?: return
         if (player.playbackState == Player.STATE_ENDED) {
             player.seekTo(0)
+        } else if (player.playbackState == Player.STATE_BUFFERING) {
+            playerConnectionProvider()?.service?.forceRevivePlayback()
+            return
         }
         if (player.playWhenReady) player.pause() else player.play()
     }

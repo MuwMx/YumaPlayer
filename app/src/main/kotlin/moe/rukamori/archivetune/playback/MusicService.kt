@@ -1818,6 +1818,13 @@ class MusicService :
             }
     }
 
+    internal fun forceRevivePlayback() {
+        if (networkRecoveryGeneration == lastRevivedNetworkGeneration) return
+        networkStallRecoveryJob?.cancel()
+        networkStallRecoveryJob = null
+        revivePlaybackFromStall()
+    }
+
     internal fun revivePlaybackFromStall(gen: Long = networkRecoveryGeneration) {
         lastRevivedNetworkGeneration = gen
         if (player.currentMediaItem == null) return
