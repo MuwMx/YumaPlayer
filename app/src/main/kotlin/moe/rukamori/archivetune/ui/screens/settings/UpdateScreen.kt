@@ -495,7 +495,7 @@ fun UpdateScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding))
+                Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset()))
             }
         }
     }

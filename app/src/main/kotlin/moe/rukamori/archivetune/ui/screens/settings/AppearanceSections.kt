@@ -671,6 +671,7 @@ internal fun AppearanceSettingsContent(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
+            .playerAwareBottomPadding()
             .padding(bottom = SettingsDimensions.ScreenBottomPadding),
     ) {
         AppearanceThemeSection(

@@ -336,8 +336,9 @@ fun StorageSettings(
         Column(
             Modifier
                 .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
                 .verticalScroll(rememberScrollState())
+                .playerAwareBottomPadding()
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
             StorageFolderSection(

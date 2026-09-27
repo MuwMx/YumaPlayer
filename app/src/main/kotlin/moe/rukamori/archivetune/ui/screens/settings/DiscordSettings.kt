@@ -440,14 +440,12 @@ fun DiscordSettings(navController: NavController) {
                 Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     ),
             contentPadding =
                 PaddingValues(
                     top = innerPadding.calculateTopPadding() + 16.dp,
-                    bottom = 32.dp,
+                    bottom = 32.dp + playerAwareBottomInset(),
                 ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

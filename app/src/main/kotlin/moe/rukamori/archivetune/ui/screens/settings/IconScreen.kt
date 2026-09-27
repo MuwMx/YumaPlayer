@@ -243,14 +243,14 @@ private fun IconScreenContent(
                             start = SettingsDimensions.ScreenHorizontalPadding,
                             top = innerPadding.calculateTopPadding() + 8.dp,
                             end = SettingsDimensions.ScreenHorizontalPadding,
-                            bottom = SettingsDimensions.ScreenBottomPadding,
+                            bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                         ),
                     onSelectIcon = onSelectIcon,
                     onOpenAuthorProfile = onOpenAuthorProfile,
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .playerAwareInsets(),
+                            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)),
                 )
             }
         }

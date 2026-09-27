@@ -261,12 +261,11 @@ internal fun LyricsSettingsScreen(
                     Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current.only(
-                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                            ),
+                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                         )
                         .padding(top = innerPadding.calculateTopPadding())
                         .verticalScroll(rememberScrollState())
+                        .playerAwareBottomPadding()
                         .padding(bottom = SettingsDimensions.ScreenBottomPadding),
             )
         }

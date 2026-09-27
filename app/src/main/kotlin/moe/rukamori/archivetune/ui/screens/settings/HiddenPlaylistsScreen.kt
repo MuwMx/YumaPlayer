@@ -117,16 +117,14 @@ fun HiddenPlaylistsScreen(navController: NavController) {
                     Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current.only(
-                                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                            ),
+                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                         ),
                 contentPadding =
                     PaddingValues(
                         start = 16.dp,
                         top = innerPadding.calculateTopPadding() + 8.dp,
                         end = 16.dp,
-                        bottom = SettingsDimensions.ScreenBottomPadding,
+                        bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                     ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
