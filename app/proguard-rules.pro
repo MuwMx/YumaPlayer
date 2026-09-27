@@ -149,3 +149,8 @@
 
 # engine HTTP Android/OkHttp Ktor
 -dontwarn kotlinx.coroutines.**
+
+# Dual-player crossfade: DualForwardingPlayer flips the delegate via reflection
+-keepclassmembers class androidx.media3.common.ForwardingPlayer {
+    private *;
+}

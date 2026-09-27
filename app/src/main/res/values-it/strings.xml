@@ -72,7 +72,7 @@
     <string name="import_playlist">Importa playlist</string>
     <string name="import_failed">Importazione non riuscita</string>
     <string name="update_button">Aggiorna</string>
-    <string name="add_to_playlist">Aggiungi alla playlist</string>
+    <string name="add_to_playlist">Aggiungi a playlist</string>
     <string name="view_artist">Visualizza artista</string>
     <string name="view_album">Visualizza l\'album</string>
     <string name="view_all">Visualizza tutto</string>
@@ -155,7 +155,7 @@
     <string name="playlist_synced">Playlist sincronizzata</string>
     <string name="undo">Annulla</string>
     <string name="lyrics_not_found">Testo non trovato</string>
-    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_timer">Timer Spegnimento</string>
     <string name="end_of_song">Fine del brano</string>
     <plurals name="minute">
         <item quantity="one">1 minuto</item>
@@ -302,7 +302,7 @@
     <string name="persistent_queue">Coda persistente</string>
     <string name="persistent_queue_desc">Ripristina l\'ultima coda all\'avvio dell\'app</string>
     <string name="permanent_shuffle">Modalità shuffle permanente</string>
-    <string name="permanent_shuffle_desc">Mantieni la riproduzione casuale abilitata quando inizi un nuovo brano</string>
+    <string name="permanent_shuffle_desc">Mantieni lo shuffle abilitato quando inizi un nuovo brano</string>
     <string name="skip_silence">Salta i silenzi</string>
     <string name="audio_normalization">Normalizzazione dell\'audio</string>
     <string name="auto_skip_next_on_error">Passa automaticamente al brano successivo quando si verifica un errore</string>
@@ -356,7 +356,7 @@
     <string name="pause_search_history">Metti in pausa la cronologia delle ricerche</string>
     <string name="clear_search_history">Cancella la cronologia delle ricerche</string>
     <string name="clear_search_history_confirm">Vuoi davvero cancellare tutta la cronologia delle ricerche?</string>
-    <string name="use_login_for_browse_desc">Ciò può influenzare il contenuto che vedi e, ad esempio, mostrare gli album solo premium se hai effettuato l\'accesso con un account Premium</string>
+    <string name="use_login_for_browse_desc">Influenza il contenuto che vedi e, ad esempio, mostra gli album solo premium se hai effettuato l\'accesso con un account Premium</string>
     <string name="disable_screenshot">Disabilita screenshot</string>
     <string name="disable_screenshot_desc">Gli screenshot e la visualizzazione dell\'app in Recenti sono disabilitati.</string>
     <string name="enable_lrclib">Abilita il provider di testi LrcLib</string>
@@ -669,7 +669,7 @@
     <string name="enable_youlyplus_lyrics">Abilita i testi di YouLyPlus</string>
     <string name="enable_unison_lyrics">Abilita i testi di Unison</string>
     <string name="settings_player_subtitle">Qualità audio, crossfade, equalizzatore</string>
-    <string name="settings_section_account">Account e Integrazioni</string>
+    <string name="settings_section_account">Account e Integrazioni AI</string>
     <string name="settings_section_appearance">Interfaccia e Aspetto</string>
     <string name="settings_section_network">Rete e Servizi</string>
     <string name="settings_section_about">Altre Informazioni</string>
@@ -907,7 +907,7 @@
     <string name="updates_subtitle_nightly">Build Nightly e commit di sviluppo recenti</string>
     <string name="updates_status_checking">Verifica se presente nuova versione</string>
     <string name="updates_status_current">Hai già l\'ultima versione disponibile</string>
-    <string name="update_channel_desc">Scegli tra versioni stabili oppure ancora in testing.</string>
+    <string name="update_channel_desc">Scegli tra versioni stabili o ancora in testing.</string>
     <string name="channel_canary">Canary</string>
     <string name="channel_canary_soon">Canary (prossimamente)</string>
     <string name="channel_daily_nightly">Daily</string>
@@ -1016,7 +1016,7 @@
     <string name="together_join_section">Unisciti</string>
     <string name="together_status">Stato</string>
     <string name="together_idle">Non in una sessione</string>
-    <string name="together_hosting">Hosting sessione</string>
+    <string name="together_hosting">Hosting</string>
     <string name="together_joining">Unione alla sessione</string>
     <string name="together_connected">Connesso</string>
     <string name="together_error_state">Errore</string>
@@ -1031,10 +1031,10 @@
     <string name="together_repeat_mode">Ripeti %1$d</string>
     <string name="together_participants_empty">Nessun partecipante</string>
     <string name="together_participants_empty_body">Le persone che si uniranno saranno visibili qui.</string>
-    <string name="together_activity_log">Log di attività</string>
+    <string name="together_activity_log">Cronologia delle attività</string>
     <string name="together_activity_log_subtitle">Eventi di riproduzione e sessioni</string>
     <string name="together_activity_log_empty">Nessuna attività</string>
-    <string name="together_activity_log_empty_body">Gli eventi di sessione appariranno qui.</string>
+    <string name="together_activity_log_empty_body">Gli eventi della sessione appariranno qui.</string>
     <string name="together_activity_session_started">Sessione iniziata</string>
     <string name="together_activity_joining_session">Unendoti alla sessione</string>
     <string name="together_activity_join_requested">%1$s ha richiesto di unirsi</string>
@@ -1111,8 +1111,8 @@
     <string name="spotify_new_releases">Nuove Uscite</string>
     <string name="home_switch_to_yt">Apri YouTube Music</string>
     <string name="spotify_integration">Spotify</string>
-    <string name="spotify_sync_likes">Sinc i like di Spotify</string>
-    <string name="spotify_sync_likes_desc">Copia su Spotify i brani che ti sono piaciuti</string>
+    <string name="spotify_sync_likes">Sincronizza Spotify</string>
+    <string name="spotify_sync_likes_desc">Mostra playlist con i like di Spotify</string>
     <string name="spotify_sp_dc">sp_dc</string>
     <string name="spotify_login_via_token">Login via token</string>
     <string name="hide_ytm_liked_songs">Nascondi i brani piaciuti su YTM</string>
@@ -1206,4 +1206,15 @@
     <string name="downloading_flac_ellipsis">In download FLAC...</string>
     <string name="flac_downloaded">FLAC scaricato</string>
     <string name="flac_downloaded_desc">Premi per eliminare il file .flac</string>
+    <string name="cast_no_play_services">Google Play Services non disponibile</string>
+    <string name="cast_no_play_services_desc">Per castare è necessario che Google Play Services possa connettersi ai dispositivi.</string>
+    <string name="cast_no_network">Connessione non trovata</string>
+    <string name="cast_no_network_desc">Connetti al Wi-Fi per castare sulla tua rete locale.</string>
+    <string name="blur_nav_bar">Sfocatura interfaccia</string>
+    <string name="blur_nav_bar_desc">Applica sfocatura dietro alla barra di navigazione, ricerca e pannelli</string>
+    <string name="blur_radius">Intensità sfocatura</string>
+    <string name="blur_radius_desc">Modifica l\'intensità della sfocatura sui pannelli flottanti</string>
+    <string name="unlink_cookie_and_enable">Scollega cookie e abilita</string>
+    <string name="continue_with_visitor_data">Continua coi dati dei visitatori</string>
+    <string name="voice_search">Ricerca vocale</string>
 </resources>

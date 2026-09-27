@@ -150,10 +150,15 @@ internal fun MusicService.startCrossfade(
                     return@launch
                 }
 
-                incomingPlayer.playbackParameters = player.playbackParameters
-                incomingPlayer.playWhenReady = crossfadePlaybackRequested
+                val standbyPlayer = incomingPlayer
+                val outgoingPlayer = localPlayer
+
+                outgoingPlayer.volume = (crossfadeBaseVolume * FALL(0f)).coerceIn(0f, maxSafeGainFactor)
+                incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
+                standbyPlayer.playbackParameters = player.playbackParameters
+                standbyPlayer.playWhenReady = crossfadePlaybackRequested
                 if (crossfadePlaybackRequested) {
-                    incomingPlayer.play()
+                    standbyPlayer.play()
                 }
 
                 var elapsedMs = 0L
@@ -166,18 +171,13 @@ internal fun MusicService.startCrossfade(
 
                     val nowMs = android.os.SystemClock.elapsedRealtime()
                     if (crossfadePlaybackRequested) {
-                        incomingPlayer.playWhenReady = true
+                        standbyPlayer.playWhenReady = true
                         elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
                         crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                        applyCrossfadeVolumes(
-                            crossfadeProgress,
-                            crossfadeBaseVolume,
-                            crossfadeIncomingBaseVolume,
-                            localPlayer,
-                            incomingPlayer,
-                        )
+                        outgoingPlayer.volume = (crossfadeBaseVolume * FALL(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
+                        incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
                     } else {
-                        incomingPlayer.pause()
+                        standbyPlayer.pause()
                     }
                     lastTickMs = nowMs
                     delay(MusicService.CROSSFADE_FRAME_MS)
@@ -189,6 +189,10 @@ internal fun MusicService.startCrossfade(
             } catch (error: Exception) {
                 Timber.tag(MusicService.TAG).w(error, "Crossfade failed")
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+            } finally {
+                if (isCrossfading) {
+                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                }
             }
         }
 }
@@ -231,23 +235,27 @@ internal suspend fun MusicService.finishCrossfade(
         return
     }
 
-    val incomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
-    val shouldContinuePlayback = crossfadePlaybackRequested
-
     var handoffCompleted = false
     try {
         localPlayer.pauseAtEndOfMediaItems = false
-        player.volume = 0f
         crossfadeHandoffInProgress = true
-        player.seekTo(targetIndex, incomingPosition)
-        player.playWhenReady = shouldContinuePlayback
-        if (shouldContinuePlayback) {
-            if (awaitPrimaryCrossfadeHandoffReady(incomingPlayer)) {
-                val syncedIncomingPosition = incomingPlayer.currentPosition.coerceAtLeast(0L)
-                player.seekTo(targetIndex, syncedIncomingPosition)
-            }
+
+        incomingPlayer.volume = currentEffectivePlayerVolumeForMediaId(target.mediaId).coerceIn(0f, maxSafeGainFactor)
+        dualForwardingPlayer.attachPlayer(incomingPlayer)
+
+        val playerA = localPlayer
+        transferAudioEffects(incomingPlayer)
+        incomingPlayer.setShuffleOrder(playerA.shuffleOrder)
+        playerA.stop()
+        playerA.clearMediaItems()
+        reserveCrossfadePlayer = playerA
+        localPlayer = incomingPlayer
+
+        val targetMetadata = incomingPlayer.currentMediaItem?.metadata
+            ?: runCatching { player.getMediaItemAt(targetIndex).metadata }.getOrNull()
+        if (targetMetadata != null) {
+            currentMediaMetadata.value = targetMetadata
         }
-        currentMediaMetadata.value = player.getMediaItemAt(targetIndex).metadata
         handoffCompleted = true
     } finally {
         if (!handoffCompleted) {
@@ -255,6 +263,9 @@ internal suspend fun MusicService.finishCrossfade(
             isCrossfading = false
             crossfadeProgress = 0f
             crossfadePlaybackRequested = false
+            secondaryCrossfadePlayer?.stop()
+            dualForwardingPlayer.attachPlayer(localPlayer)
+            dualPlayerRoleHolder.reset()
             releaseSecondaryCrossfadePlayer()
             applyEffectiveVolumeImmediately()
         }
@@ -265,8 +276,9 @@ internal suspend fun MusicService.finishCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
-    dualPlayerRoleHolder.swap()
-    releaseSecondaryCrossfadePlayer()
+    dualPlayerRoleHolder.reset()
+    secondaryCrossfadePlayer = null
+    secondaryCrossfadeTarget = null
     applyEffectiveVolumeImmediately()
     updateAudiblePlaybackRecovery()
     scheduleCrossfade()
@@ -362,6 +374,11 @@ internal fun MusicService.cancelCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
+    secondaryCrossfadePlayer?.stop()
+    if (isPlayerInitialized()) {
+        dualForwardingPlayer.attachPlayer(localPlayer)
+    }
+    dualPlayerRoleHolder.reset()
     if (isPlayerInitialized() && resetPauseAtEnd) {
         localPlayer.pauseAtEndOfMediaItems = false
     }
