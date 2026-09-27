@@ -40,6 +40,7 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -133,6 +134,10 @@ fun PlayerSettings(navController: NavController) {
         CrossfadeGaplessKey,
         defaultValue = true,
     )
+    val (automixEnabled, onAutomixEnabledChange) = rememberPreference(
+        AutomixEnabledKey,
+        defaultValue = false,
+    )
 
     val (_, onEnableLosslessChange) = rememberPreference(EnableLosslessKey, false)
     val (memoryCacheToggle, onMemoryCacheToggleChange) = rememberPreference(MemoryCacheToggleKey, false)
@@ -193,6 +198,7 @@ fun PlayerSettings(navController: NavController) {
         crossfadeEnabled = crossfadeEnabled,
         crossfadeDurationSeconds = crossfadeDurationSeconds,
         crossfadeGapless = crossfadeGapless,
+        automixEnabled = automixEnabled,
         memoryCacheToggle = memoryCacheToggle,
         downloadLocationUri = downloadLocationUri,
         flacFolderPath = flacFolderPath,
@@ -221,6 +227,7 @@ fun PlayerSettings(navController: NavController) {
             onCrossfadeEnabledChange = onCrossfadeEnabledChange,
             onCrossfadeDurationSecondsChange = onCrossfadeDurationSecondsChange,
             onCrossfadeGaplessChange = onCrossfadeGaplessChange,
+            onAutomixEnabledChange = onAutomixEnabledChange,
             onMemoryCacheToggleChange = onMemoryCacheToggleChange,
             onSelectFlacDownloadFolder = { folderPickerLauncher.launch(null) },
             onQobuzAppIdChange = onQobuzAppIdChange,

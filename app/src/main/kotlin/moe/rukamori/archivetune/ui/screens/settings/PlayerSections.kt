@@ -242,6 +242,16 @@ internal fun PlayerCrossfadeSection(
             )
         }
         item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.automix_title)) },
+                description = stringResource(R.string.automix_description),
+                icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                checked = state.automixEnabled,
+                onCheckedChange = actions.onAutomixEnabledChange,
+                isEnabled = state.crossfadeEnabled,
+            )
+        }
+        item {
             CrossfadeSliderPreference(
                 valueSeconds = state.crossfadeDurationSeconds,
                 onValueChange = actions.onCrossfadeDurationSecondsChange,

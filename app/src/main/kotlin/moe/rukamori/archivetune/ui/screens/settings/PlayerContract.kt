@@ -12,6 +12,7 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
@@ -48,6 +49,7 @@ internal object PlayerContract {
     val CrossfadeEnabled = CrossfadeEnabledKey
     val CrossfadeDuration = CrossfadeDurationKey
     val CrossfadeGapless = CrossfadeGaplessKey
+    val AutomixEnabled = AutomixEnabledKey
     val EnableLossless = EnableLosslessKey
     val MemoryCacheToggle = MemoryCacheToggleKey
     val DownloadLocationUri = DownloadLocationUriKey
@@ -73,6 +75,7 @@ data class PlayerSettingsUiState(
     val crossfadeEnabled: Boolean = false,
     val crossfadeDurationSeconds: Float = 5f,
     val crossfadeGapless: Boolean = true,
+    val automixEnabled: Boolean = false,
     val memoryCacheToggle: Boolean = false,
     val downloadLocationUri: String = "",
     val flacFolderPath: String? = null,
@@ -101,6 +104,7 @@ data class PlayerSettingsUiActions(
     val onCrossfadeEnabledChange: (Boolean) -> Unit = {},
     val onCrossfadeDurationSecondsChange: (Float) -> Unit = {},
     val onCrossfadeGaplessChange: (Boolean) -> Unit = {},
+    val onAutomixEnabledChange: (Boolean) -> Unit = {},
     val onMemoryCacheToggleChange: (Boolean) -> Unit = {},
     val onSelectFlacDownloadFolder: () -> Unit = {},
     val onQobuzAppIdChange: (String) -> Unit = {},

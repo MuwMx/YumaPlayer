@@ -132,9 +132,11 @@ import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
+import moe.rukamori.archivetune.playback.automix.AutomixPlan
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
 import moe.rukamori.archivetune.constants.DiscordTokenKey
@@ -533,6 +535,8 @@ class MusicService :
     internal val audioFocusVolumeFactor = MutableStateFlow(1f)
     internal var effectiveVolumeRampJob: Job? = null
     internal var crossfadeEnabled = false
+    internal var automixEnabled = false
+    internal var activeAutomixPlan: AutomixPlan? = null
     internal var crossfadeDurationMs = 0L
     internal var crossfadeGapless = false
     internal var crossfadeTriggerJob: Job? = null
@@ -567,6 +571,7 @@ class MusicService :
         val enabled: Boolean,
         val durationSeconds: Float,
         val gapless: Boolean,
+        val automix: Boolean = false,
     )
 
     internal data class DiscordSyncRequest(
@@ -1269,10 +1274,12 @@ class MusicService :
             val enabled = prefs[CrossfadeEnabledKey] ?: false
             val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
             val gapless = prefs[CrossfadeGaplessKey] ?: true
+            val automix = prefs[AutomixEnabledKey] ?: false
             CrossfadeConfig(
                 enabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle,
                 durationSeconds = durationSeconds,
                 gapless = gapless,
+                automix = automix,
             )
         }.distinctUntilChanged()
             .collectLatest(scope) { config ->
@@ -1282,6 +1289,7 @@ class MusicService :
                         .roundToLong()
                         .coerceAtLeast(0L)
                 crossfadeGapless = config.gapless
+                automixEnabled = config.automix
                 if (crossfadeEnabled && !shouldUseLegacyPath(crossfadeDurationMs)) {
                     scheduleCrossfade()
                 } else {

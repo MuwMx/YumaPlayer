@@ -11,6 +11,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
+import moe.rukamori.archivetune.playback.automix.TransitionPlanner
 import timber.log.Timber
 
 internal fun MusicService.scheduleCrossfade() {
@@ -31,12 +32,26 @@ internal fun MusicService.scheduleCrossfade() {
     if (target == null || effectiveDuration == null) {
         localPlayer.pauseAtEndOfMediaItems = false
         releaseSecondaryCrossfadePlayer()
+        activeAutomixPlan = null
         return
     }
 
+    val automixPlan = if (automixEnabled) {
+        TransitionPlanner.planTransition(
+            currentDurationMs = duration,
+            preferredDurationMs = effectiveDuration,
+        ).also { activeAutomixPlan = it }
+    } else {
+        activeAutomixPlan = null
+        null
+    }
+
+    val plannedDuration = automixPlan?.durationMs ?: effectiveDuration
+    val triggerOffset = automixPlan?.triggerOffsetMs ?: effectiveDuration
+
     val currentMediaId = player.currentMediaItem?.mediaId ?: return
     val currentIndex = player.currentMediaItemIndex
-    val triggerAt = duration - effectiveDuration - MusicService.CROSSFADE_END_GUARD_MS
+    val triggerAt = duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS
 
     crossfadeTriggerJob =
         scope.launch {
@@ -58,9 +73,9 @@ internal fun MusicService.scheduleCrossfade() {
                 if (remainingToTrigger <= 0L) {
                     val adjustedDuration =
                         (duration - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
-                            .coerceAtMost(effectiveDuration)
+                            .coerceAtMost(plannedDuration)
                     if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                        startCrossfade(target, adjustedDuration)
+                        startCrossfade(target, adjustedDuration, automixPlan?.incomingStartMs ?: 0L)
                     }
                     return@launch
                 }
@@ -124,6 +139,7 @@ internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
 internal fun MusicService.startCrossfade(
     target: MusicService.CrossfadeTarget,
     durationMs: Long,
+    incomingStartMs: Long = 0L,
 ) {
     if (isCrossfading || !crossfadeEnabled) return
 
@@ -158,7 +174,9 @@ internal fun MusicService.startCrossfade(
                 incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
                 standbyPlayer.playbackParameters = player.playbackParameters
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
-                if (standbyPlayer.currentPosition > 0L) {
+                if (incomingStartMs > 0L) {
+                    standbyPlayer.seekTo(target.index, incomingStartMs)
+                } else if (standbyPlayer.currentPosition > 0L) {
                     standbyPlayer.seekTo(target.index, 0L)
                 }
                 if (crossfadePlaybackRequested) {
@@ -312,6 +330,7 @@ internal suspend fun MusicService.finishCrossfade(
     dualPlayerRoleHolder.reset()
     secondaryCrossfadePlayer = null
     secondaryCrossfadeTarget = null
+    activeAutomixPlan = null
     applyEffectiveVolumeImmediately()
     updateAudiblePlaybackRecovery()
     scheduleCrossfade()
@@ -404,6 +423,7 @@ internal fun MusicService.cancelCrossfade(
     crossfadeJob = null
     isCrossfading = false
     crossfadeHandoffInProgress = false
+    activeAutomixPlan = null
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false

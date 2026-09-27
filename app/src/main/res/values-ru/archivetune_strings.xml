@@ -284,6 +284,8 @@
     <string name="audio_crossfade_seconds">%1$s сек</string>
     <string name="crossfade_gapless_title">Кроссфейд без пробелов</string>
     <string name="crossfade_gapless_description">Затухание и появление без перекрываний звука.</string>
+    <string name="automix_title">Автомикс</string>
+    <string name="automix_description">Адаптивные переходы с нормализацией темпа</string>
     <string name="about_position_mo_agamy">Базовая структура | Metrolist</string>
     <string name="about_position_zion_huang">Создатель InnerTune · Основатель проектов Metrolist, YumaPlayer и других форков</string>
     <string name="about_content_desc_github">GitHub</string>
