@@ -64,6 +64,11 @@ import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import moe.rukamori.archivetune.audiodsp.AnalysisStore
+import moe.rukamori.archivetune.audiodsp.AudioDeck
+import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
+import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
+import moe.rukamori.archivetune.audiodsp.DeckController
 import moe.rukamori.archivetune.playback.dsp.DjFilterAudioProcessor
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -297,6 +302,9 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import kotlin.math.sin
 import kotlin.time.Duration.Companion.seconds
+
+typealias CrossfadeConfig = moe.rukamori.archivetune.audiodsp.CrossfadeConfig
+typealias CrossfadeTarget = moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
 @AndroidEntryPoint
@@ -553,18 +561,33 @@ class MusicService :
     internal var crossfadeGapless = false
     internal var crossfadeTriggerJob: Job? = null
     internal var crossfadeJob: Job? = null
-    internal var secondaryCrossfadePlayer: ExoPlayer? = null
-    internal var secondaryCrossfadeTarget: CrossfadeTarget? = null
+    internal lateinit var controller: DeckController
+    val isControllerInitialized: Boolean get() = ::controller.isInitialized
+    val activeDeck: AudioDeck get() = controller.activeDeck
+    val transitionDeck: AudioDeck? get() = if (isControllerInitialized) controller.transitionDeck else null
+    internal var crossfadeConfig: CrossfadeConfig = CrossfadeConfig()
+    internal val analysisStore: AnalysisStore get() = TrackAnalyzer
+
+    internal val dualForwardingPlayer: DualForwardingPlayer
+        get() = (controller as ExoDeckController).dualForwardingPlayer
+    internal val dualPlayerRoleHolder: DualPlayerRoleHolder
+        get() = if (isControllerInitialized) (controller as ExoDeckController).dualPlayerRoleHolder else DualPlayerRoleHolder()
+    internal val secondaryCrossfadePlayer: ExoPlayer?
+        get() = if (isControllerInitialized) (controller as? ExoDeckController)?.secondaryCrossfadePlayer else null
+    internal var secondaryCrossfadeTarget: CrossfadeTarget?
+        get() = if (isControllerInitialized) (controller as? ExoDeckController)?.secondaryCrossfadeTarget else null
+        set(value) { if (isControllerInitialized) (controller as? ExoDeckController)?.secondaryCrossfadeTarget = value }
+    internal val reserveCrossfadePlayer: ExoPlayer?
+        get() = if (isControllerInitialized) (controller as? ExoDeckController)?.reserveCrossfadePlayer else null
+
     internal var secondaryPreparationFailedMediaId: String? = null
     internal var hasPreparedSecondaryPlayer: Boolean = false
-    internal var reserveCrossfadePlayer: ExoPlayer? = null
     internal var isCrossfading = false
     internal var crossfadeHandoffInProgress = false
     internal var crossfadeBaseVolume = 1f
     internal var crossfadeIncomingBaseVolume = 1f
     internal var crossfadeProgress = 0f
     internal var crossfadePlaybackRequested = false
-    internal val dualPlayerRoleHolder = DualPlayerRoleHolder()
     internal val djFilterByPlayer = ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor>()
     private var lyricsPreloadManager: LyricsPreloadManager? = null
     private var prefetchJob: Job? = null
@@ -589,15 +612,6 @@ class MusicService :
             }
         }
 
-    internal data class CrossfadeConfig(
-        val enabled: Boolean,
-        val durationSeconds: Float,
-        val gapless: Boolean,
-        val automix: Boolean = false,
-        val automixAggressiveness: String = "standard",
-        val automixTransitionPreset: String = "auto",
-    )
-
     internal data class DiscordSyncRequest(
         val epoch: Long,
         val reason: String,
@@ -612,11 +626,6 @@ class MusicService :
     )
 
     internal class StaleDiscordSyncException : CancellationException("Stale Discord sync request")
-
-    internal data class CrossfadeTarget(
-        val index: Int,
-        val mediaId: String,
-    )
 
     internal data class PendingHistoryFinalization(
         val sessionToken: Long,
@@ -733,7 +742,6 @@ class MusicService :
         internal set
     lateinit var player: Player
         internal set
-    internal lateinit var dualForwardingPlayer: DualForwardingPlayer
 
     internal fun transferAudioEffects(to: ExoPlayer) {
         localPlayer.removeListener(audioEffectPlayerListener)
@@ -1089,9 +1097,16 @@ class MusicService :
                     localPlayer = localPlayer,
                     mediaItemResolver = CastMediaItemResolver(::resolveMediaItemForCast),
                 )
-        dualForwardingPlayer = DualForwardingPlayer(basePlayer)
+        val initialDualForwardingPlayer = DualForwardingPlayer(basePlayer)
+        val initialDeck = ExoDeck(player = localPlayer, djFilter = localDjFilter)
+        controller =
+            ExoDeckController(
+                service = this,
+                initialDeck = initialDeck,
+                dualForwardingPlayer = initialDualForwardingPlayer,
+            )
         player =
-            dualForwardingPlayer.apply {
+            initialDualForwardingPlayer.apply {
                 addListener(this@MusicService)
                 sleepTimer = AdvancedSleepTimer(scope, this)
                 addListener(sleepTimer)
@@ -1336,25 +1351,25 @@ class MusicService :
             val automix = prefs[AutomixEnabledKey] ?: false
             val automixAggressiveness = prefs[AutomixAggressivenessKey] ?: "standard"
             val automixTransitionPreset = prefs[AutomixTransitionDurationKey] ?: "auto"
+            val effectiveEnabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle
+            val durationMs = (durationSeconds.coerceIn(0f, 10f) * 1000f).roundToLong().coerceAtLeast(0L)
             CrossfadeConfig(
-                enabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle,
-                durationSeconds = durationSeconds,
+                durationMs = durationMs,
+                automixEnabled = automix,
+                aggressiveness = automixAggressiveness,
+                preset = automixTransitionPreset,
                 gapless = gapless,
-                automix = automix,
-                automixAggressiveness = automixAggressiveness,
-                automixTransitionPreset = automixTransitionPreset,
+                enabled = effectiveEnabled,
             )
         }.distinctUntilChanged()
             .collectLatest(scope) { config ->
+                crossfadeConfig = config
                 crossfadeEnabled = config.enabled
-                crossfadeDurationMs =
-                    (config.durationSeconds.coerceIn(0f, 10f) * 1000f)
-                        .roundToLong()
-                        .coerceAtLeast(0L)
+                crossfadeDurationMs = config.durationMs
                 crossfadeGapless = config.gapless
-                automixEnabled = config.automix
-                automixAggressiveness = config.automixAggressiveness
-                automixTransitionPreset = config.automixTransitionPreset
+                automixEnabled = config.automixEnabled
+                automixAggressiveness = config.aggressiveness
+                automixTransitionPreset = config.preset
                 if (crossfadeEnabled && !shouldUseLegacyPath(crossfadeDurationMs)) {
                     scheduleCrossfade()
                 } else {
@@ -4571,11 +4586,10 @@ class MusicService :
         } catch (_: Exception) {
         }
         try {
-            reserveCrossfadePlayer?.let { djFilterByPlayer.remove(it) }
-            reserveCrossfadePlayer?.release()
-            reserveCrossfadePlayer = null
-            secondaryCrossfadePlayer?.let { djFilterByPlayer.remove(it) }
-            secondaryCrossfadePlayer = null
+            if (isControllerInitialized) {
+                (controller as? ExoDeckController)?.releaseReserveDeck()
+                (controller as? ExoDeckController)?.releaseTransitionDeck()
+            }
             runCatching { djFilterByPlayer.remove(localPlayer) }
             localPlayer.removeListener(audioEffectPlayerListener)
             player.removeListener(this)

@@ -26,6 +26,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.App
+import moe.rukamori.archivetune.audiodsp.AnalysisStore
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.TrackAnalysisEntity
 import org.json.JSONObject
@@ -37,7 +38,7 @@ internal interface TrackAnalyzerEntryPoint {
     fun database(): MusicDatabase
 }
 
-object TrackAnalyzer {
+object TrackAnalyzer : AnalysisStore {
     private const val KICK_OFF_COOLDOWN_MS = 10_000L
     private val analyzerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val memoryCache = ConcurrentHashMap<String, TrackAnalysisResult>()
@@ -48,7 +49,7 @@ object TrackAnalyzer {
         extraBufferCapacity = 16,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
-    val analysisEvents: SharedFlow<Pair<String, TrackAnalysisResult>> = _analysisEvents.asSharedFlow()
+    override val analysisEvents: SharedFlow<Pair<String, TrackAnalysisResult>> = _analysisEvents.asSharedFlow()
 
     fun shouldThrottleKickOff(trackId: String): Boolean {
         if (trackId.isBlank()) return true
@@ -75,7 +76,7 @@ object TrackAnalyzer {
         }.getOrNull()?.also { database = it }
     }
 
-    fun getCached(trackId: String): TrackAnalysisResult? = memoryCache[trackId]
+    override fun getCached(trackId: String): TrackAnalysisResult? = memoryCache[trackId]
 
     fun hasCached(trackId: String): Boolean = memoryCache.containsKey(trackId)
 

@@ -320,7 +320,7 @@ internal fun MusicService.scheduleCrossfade() {
         }
 }
 
-internal fun MusicService.resolveCrossfadeTarget(): MusicService.CrossfadeTarget? {
+internal fun MusicService.resolveCrossfadeTarget(): CrossfadeTarget? {
     if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
     if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
     if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
@@ -337,14 +337,14 @@ internal fun MusicService.resolveCrossfadeTarget(): MusicService.CrossfadeTarget
     val targetItem = player.getMediaItemAt(targetIndex)
     if (!repeatCurrent && crossfadeGapless && isGaplessAlbumTransition(currentItem, targetItem)) return null
 
-    return MusicService.CrossfadeTarget(
+    return CrossfadeTarget(
         index = targetIndex,
         mediaId = targetItem.mediaId,
     )
 }
 
 internal fun MusicService.prepareSecondaryCrossfadePlayer(
-    target: MusicService.CrossfadeTarget,
+    target: CrossfadeTarget,
     startPositionMs: Long = 0L,
 ): ExoPlayer? {
     if (secondaryPreparationFailedMediaId == target.mediaId) return null
@@ -385,31 +385,21 @@ internal fun MusicService.applyDjFilterAutomation(
     outgoing: ExoPlayer,
     incoming: ExoPlayer,
 ) {
-    val outgoingFilter = djFilterFor(outgoing) ?: return
-    val incomingFilter = djFilterFor(incoming) ?: return
-    if (!bassSwap) {
-        outgoingFilter.clearAutomation()
-        incomingFilter.clearAutomation()
-        return
-    }
-    val clamped = progress.coerceIn(0f, 1f)
-    outgoingFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ *
-        Math.pow(
-            DjFilterAudioProcessor.SWEEP_TARGET_HZ / DjFilterAudioProcessor.BYPASS_CUTOFF_HZ,
-            clamped.toDouble(),
-        )
-    outgoingFilter.bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB * (clamped * 2f).coerceIn(0f, 1f).toDouble()
-    incomingFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-    incomingFilter.bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB +
-        (-DjFilterAudioProcessor.FULL_CUT_DB) * ((clamped - 0.5f) / 0.5f).coerceIn(0f, 1f).toDouble()
+    val plan = AutomixPlan(0L, 0L, 0L, enableBassSwap = bassSwap)
+    activeDeck.applyAutomation(progress, plan)
+    transitionDeck?.applyAutomation(progress, plan)
 }
 
 internal fun MusicService.resetDjFilterChain() {
-    resetDjFilters(localPlayer, secondaryCrossfadePlayer, reserveCrossfadePlayer)
+    if (isControllerInitialized) {
+        activeDeck.clearAutomation()
+        transitionDeck?.clearAutomation()
+        (controller as? ExoDeckController)?.reserveDeck?.clearAutomation()
+    }
 }
 
 internal fun MusicService.startCrossfade(
-    target: MusicService.CrossfadeTarget,
+    target: CrossfadeTarget,
     durationMs: Long,
     incomingStartMs: Long = 0L,
     plan: AutomixPlan? = activeAutomixPlan,
@@ -444,29 +434,14 @@ internal fun MusicService.startCrossfade(
                     return@launch
                 }
 
-                localPlayer.pauseAtEndOfMediaItems = true
-
+                val effectivePlan = plan ?: AutomixPlan(
+                    triggerOffsetMs = 0L,
+                    durationMs = durationMs,
+                    incomingStartMs = cueInMs,
+                    enableBassSwap = false,
+                )
+                controller.startCrossfade(effectivePlan)
                 val standbyPlayer = incomingPlayer
-                val outgoingPlayer = localPlayer
-
-                outgoingPlayer.volume = (crossfadeBaseVolume * FALL(0f)).coerceIn(0f, maxSafeGainFactor)
-                incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
-                val djBassSwap = plan?.enableBassSwap == true
-                if (djBassSwap) {
-                    djFilterFor(outgoingPlayer)?.clearAutomation()
-                    djFilterFor(standbyPlayer)?.apply {
-                        lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-                        bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB
-                    }
-                } else {
-                    resetDjFilters(outgoingPlayer, standbyPlayer)
-                }
-                if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
-                    standbyPlayer.playbackParameters = PlaybackParameters(plan.incomingTempoRatio)
-                } else {
-                    standbyPlayer.playbackParameters = player.playbackParameters
-                }
-                standbyPlayer.playWhenReady = crossfadePlaybackRequested
 
                 if (cueInMs > 0L) {
                     if (standbyPlayer.currentPosition != cueInMs) {
@@ -498,11 +473,8 @@ internal fun MusicService.startCrossfade(
                             bufferingStartMs = null
                             elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
                             crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                            outgoingPlayer.volume = (crossfadeBaseVolume * FALL(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
-                            incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
-                            if (djBassSwap) {
-                                applyDjFilterAutomation(crossfadeProgress, true, outgoingPlayer, incomingPlayer)
-                            }
+                            activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
+                            transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
                         } else {
                             if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
                                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -569,7 +541,7 @@ internal suspend fun MusicService.awaitCrossfadePlayerReady(
 }
 
 internal suspend fun MusicService.finishCrossfade(
-    target: MusicService.CrossfadeTarget,
+    target: CrossfadeTarget,
     incomingPlayer: ExoPlayer,
     plan: AutomixPlan? = activeAutomixPlan,
 ) {
@@ -581,21 +553,11 @@ internal suspend fun MusicService.finishCrossfade(
 
     var handoffCompleted = false
     try {
-        localPlayer.pauseAtEndOfMediaItems = false
         crossfadeHandoffInProgress = true
-
-        incomingPlayer.playWhenReady = true
-        incomingPlayer.pauseAtEndOfMediaItems = false
         incomingPlayer.volume = currentEffectivePlayerVolumeForMediaId(target.mediaId).coerceIn(0f, maxSafeGainFactor)
+        val userPlaybackSpeed = localPlayer.playbackParameters.takeIf { it != PlaybackParameters.DEFAULT }
 
-        val playerA = localPlayer
-        val userPlaybackSpeed = playerA.playbackParameters.takeIf { it != PlaybackParameters.DEFAULT }
-        runCatching { incomingPlayer.removeListener(secondaryCrossfadeListener) }
-        transferAudioEffects(incomingPlayer)
-        incomingPlayer.setShuffleOrder(playerA.shuffleOrder)
-
-        dualForwardingPlayer.attachPlayer(incomingPlayer)
-        localPlayer = incomingPlayer
+        controller.completeHandoff()
 
         if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
             localPlayer.playbackParameters = userPlaybackSpeed ?: PlaybackParameters.DEFAULT
@@ -608,13 +570,6 @@ internal suspend fun MusicService.finishCrossfade(
         }
 
         refreshPlaybackNotification()
-
-        playerA.playWhenReady = false
-        playerA.volume = 0f
-        playerA.stop()
-        playerA.clearMediaItems()
-        reserveCrossfadePlayer = playerA
-
         handoffCompleted = true
     } finally {
         if (!handoffCompleted) {
@@ -622,16 +577,9 @@ internal suspend fun MusicService.finishCrossfade(
             isCrossfading = false
             crossfadeProgress = 0f
             crossfadePlaybackRequested = false
-            secondaryCrossfadePlayer?.apply {
-                playWhenReady = false
-                volume = 0f
-                stop()
-                clearMediaItems()
+            if (isControllerInitialized) {
+                (controller as? ExoDeckController)?.cancel(resetVolume = true, resetPauseAtEnd = true)
             }
-            dualForwardingPlayer.attachPlayer(localPlayer)
-            dualPlayerRoleHolder.reset()
-            releaseSecondaryCrossfadePlayer()
-            applyEffectiveVolumeImmediately()
         }
     }
 
@@ -640,11 +588,7 @@ internal suspend fun MusicService.finishCrossfade(
     crossfadeProgress = 0f
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
-    dualPlayerRoleHolder.reset()
-    secondaryCrossfadePlayer = null
-    secondaryCrossfadeTarget = null
     activeAutomixPlan = null
-    resetDjFilters(localPlayer, incomingPlayer, reserveCrossfadePlayer)
     applyEffectiveVolumeImmediately()
     updateAudiblePlaybackRecovery()
     scheduleCrossfade()
@@ -712,7 +656,7 @@ internal fun MusicService.hasBufferedForSmoothStart(
         targetPlayer.bufferedPosition >= duration - MusicService.CROSSFADE_END_GUARD_MS
 }
 
-internal fun MusicService.resolveCrossfadeTargetIndex(target: MusicService.CrossfadeTarget): Int {
+internal fun MusicService.resolveCrossfadeTargetIndex(target: CrossfadeTarget): Int {
     if (target.index in 0 until player.mediaItemCount &&
         player.getMediaItemAt(target.index).mediaId == target.mediaId
     ) {
@@ -743,23 +687,8 @@ internal fun MusicService.cancelCrossfade(
     crossfadeIncomingBaseVolume = 1f
     crossfadePlaybackRequested = false
     hasPreparedSecondaryPlayer = false
-    secondaryCrossfadePlayer?.apply {
-        playWhenReady = false
-        volume = 0f
-        stop()
-        clearMediaItems()
-    }
-    if (isPlayerInitialized()) {
-        dualForwardingPlayer.attachPlayer(localPlayer)
-    }
-    resetDjFilters(localPlayer, secondaryCrossfadePlayer, reserveCrossfadePlayer)
-    dualPlayerRoleHolder.reset()
-    if (isPlayerInitialized() && resetPauseAtEnd) {
-        localPlayer.pauseAtEndOfMediaItems = false
-    }
-    releaseSecondaryCrossfadePlayer()
-    if (resetVolume && isPlayerInitialized()) {
-        applyEffectiveVolumeImmediately()
+    if (isControllerInitialized) {
+        (controller as? ExoDeckController)?.cancel(resetVolume = resetVolume, resetPauseAtEnd = resetPauseAtEnd)
     }
 }
 
@@ -793,26 +722,15 @@ internal fun MusicService.cancelSecondaryCrossfadePreparation() {
             applyEffectiveVolumeImmediately()
         }
     }
-    if (isPlayerInitialized()) {
-        dualForwardingPlayer.attachPlayer(localPlayer)
-        dualPlayerRoleHolder.reset()
-        localPlayer.pauseAtEndOfMediaItems = false
+    if (isControllerInitialized) {
+        (controller as? ExoDeckController)?.cancel(resetVolume = false, resetPauseAtEnd = true)
     }
-    releaseSecondaryCrossfadePlayer()
 }
 
 internal fun MusicService.releaseSecondaryCrossfadePlayer() {
-    val playerToRelease = secondaryCrossfadePlayer ?: return
-    secondaryCrossfadePlayer = null
-    secondaryCrossfadeTarget = null
-    djFilterFor(playerToRelease)?.clearAutomation()
-    runCatching { playerToRelease.removeListener(secondaryCrossfadeListener) }
-    runCatching { playerToRelease.playWhenReady = false }
-    runCatching { playerToRelease.volume = 0f }
-    runCatching { playerToRelease.stop() }
-    runCatching { playerToRelease.clearMediaItems() }
-    runCatching { playerToRelease.release() }
-    djFilterByPlayer.remove(playerToRelease)
+    if (isControllerInitialized) {
+        (controller as? ExoDeckController)?.releaseTransitionDeck()
+    }
 }
 
 internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
