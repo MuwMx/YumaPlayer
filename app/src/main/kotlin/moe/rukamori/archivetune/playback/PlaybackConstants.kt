@@ -8,8 +8,12 @@ object PlaybackConstants {
     ): Boolean = (isHostSessionActive && isPlaybackInactive) || stopMusicOnTaskClearEnabled
 
     const val CHUNK_LENGTH = 8 * 1024 * 1024L
-    const val MIN_CROSSFADE_DURATION_MS = 500L
-    const val CROSSFADE_END_GUARD_MS = 150L
+
+    @Deprecated("Use CrossfadeConstants.MIN_FADE_MS directly", ReplaceWith("CrossfadeConstants.MIN_FADE_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+    const val MIN_CROSSFADE_DURATION_MS = CrossfadeConstants.MIN_FADE_MS
+
+    @Deprecated("Use CrossfadeConstants.END_GUARD_MS directly", ReplaceWith("CrossfadeConstants.END_GUARD_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+    const val CROSSFADE_END_GUARD_MS = CrossfadeConstants.END_GUARD_MS
     const val CROSSFADE_PREPARE_AHEAD_MS = 30_000L
     const val CROSSFADE_READY_TIMEOUT_MS = 5_000L
     const val CROSSFADE_HANDOFF_READY_TIMEOUT_MS = 5_000L

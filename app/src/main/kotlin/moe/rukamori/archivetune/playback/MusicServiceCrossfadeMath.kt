@@ -9,23 +9,34 @@ import moe.rukamori.archivetune.extensions.metadata
 
 internal const val CURVE_IN_DEFAULT = "S_CURVE"
 internal const val CURVE_OUT_DEFAULT = "S_CURVE"
-internal const val FADE_DEFAULT_MS = 2000L
-internal const val MIN_FADE_MS = 500L
-internal const val GUARD_WINDOW_MS = 150L
+
+@Deprecated("Use CrossfadeConstants.DEFAULT_MS directly", ReplaceWith("CrossfadeConstants.DEFAULT_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+internal const val FADE_DEFAULT_MS = CrossfadeConstants.DEFAULT_MS
+
+@Deprecated("Use CrossfadeConstants.MIN_FADE_MS directly", ReplaceWith("CrossfadeConstants.MIN_FADE_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+internal const val MIN_FADE_MS = CrossfadeConstants.MIN_FADE_MS
+
+@Deprecated("Use CrossfadeConstants.END_GUARD_MS directly", ReplaceWith("CrossfadeConstants.END_GUARD_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+internal const val GUARD_WINDOW_MS = CrossfadeConstants.END_GUARD_MS
+
 internal const val ARM_LEAD_MS = 4000L
 internal const val FADE_TIMEOUT_MS = 12000L
-internal const val FADE_CLAMP_MIN_S = 1
-internal const val FADE_CLAMP_MAX_S = 12
+
+@Deprecated("Use CrossfadeConstants.CLAMP_MIN_S directly", ReplaceWith("CrossfadeConstants.CLAMP_MIN_S", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+internal const val FADE_CLAMP_MIN_S = CrossfadeConstants.CLAMP_MIN_S
+
+@Deprecated("Use CrossfadeConstants.CLAMP_MAX_S directly", ReplaceWith("CrossfadeConstants.CLAMP_MAX_S", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
+internal const val FADE_CLAMP_MAX_S = CrossfadeConstants.CLAMP_MAX_S
 
 internal val RISE: (Float) -> Float = { p -> sin(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
 internal val FALL: (Float) -> Float = { p -> cos(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
 
 internal fun MusicService.effectiveCrossfadeDuration(duration: Long): Long? {
     if (duration == C.TIME_UNSET || duration <= 0L) return null
-    val maxDuration = duration - GUARD_WINDOW_MS
-    if (maxDuration < MIN_FADE_MS) return null
+    val maxDuration = duration - CrossfadeConstants.END_GUARD_MS
+    if (maxDuration < CrossfadeConstants.MIN_FADE_MS) return null
     return crossfadeDurationMs
-        .coerceAtLeast(MIN_FADE_MS)
+        .coerceAtLeast(CrossfadeConstants.MIN_FADE_MS)
         .coerceAtMost(maxDuration)
 }
 
@@ -61,4 +72,4 @@ internal fun MusicService.isGaplessAlbumTransition(
 }
 
 internal fun MusicService.requiredCrossfadeStartBufferMs(durationMs: Long): Long =
-    minOf(crossfadeDurationMs, 2000L)
+    minOf(crossfadeDurationMs, CrossfadeConstants.DEFAULT_MS)

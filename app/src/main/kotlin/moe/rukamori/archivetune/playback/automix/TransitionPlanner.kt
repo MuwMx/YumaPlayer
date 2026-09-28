@@ -2,21 +2,22 @@ package moe.rukamori.archivetune.playback.automix
 
 import kotlin.math.abs
 import kotlin.math.roundToLong
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 import org.json.JSONObject
 
 object TransitionPlanner {
     private const val MAX_STRETCH_DEVIATION = 0.04f
 
-    const val AUTO_MIN_SECONDS = 4.0
+    const val AUTO_MIN_SECONDS = CrossfadeConstants.STANDARD_MIN_S
     const val AUTO_FAST_TRACK_MIN_SECONDS = 6.0
-    const val AUTO_MAX_SECONDS = 12.0
+    const val AUTO_MAX_SECONDS = CrossfadeConstants.STANDARD_MAX_S
     const val AUTO_FALLBACK_SECONDS = 8.0
 
-    const val SOFT_MIN_SECONDS = 6.0
-    const val SOFT_MAX_SECONDS = 14.0
-    const val CLUB_MIN_SECONDS = 3.0
-    const val CLUB_MAX_SECONDS = 8.0
+    const val SOFT_MIN_SECONDS = CrossfadeConstants.SOFT_MIN_S
+    const val SOFT_MAX_SECONDS = CrossfadeConstants.SOFT_MAX_S
+    const val CLUB_MIN_SECONDS = CrossfadeConstants.CLUB_MIN_S
+    const val CLUB_MAX_SECONDS = CrossfadeConstants.CLUB_MAX_S
 
     const val FAST_TRACK_BPM_THRESHOLD = 140.0
     const val OCTAVE_UPPER_BOUND = 1.5
@@ -26,7 +27,7 @@ object TransitionPlanner {
     const val BEATS_MATCHED = 8
     const val BEATS_UNMATCHED = 16
     const val SECONDS_PER_MINUTE = 60.0
-    const val MS_PER_SECOND = 1000L
+    const val MS_PER_SECOND = CrossfadeConstants.MS_PER_SECOND
 
     const val BEATMATCHED_THRESHOLD = 0.05
     const val DJ_ASSISTED_THRESHOLD = 0.15
@@ -34,17 +35,11 @@ object TransitionPlanner {
 
     private const val FALLBACK_LEAD_BEAT_MULTIPLIER = 2
 
-    fun minSecondsFor(aggressiveness: String): Double = when (aggressiveness.lowercase()) {
-        "soft" -> SOFT_MIN_SECONDS
-        "club" -> CLUB_MIN_SECONDS
-        else -> AUTO_MIN_SECONDS
-    }
+    fun minSecondsFor(aggressiveness: String): Double =
+        CrossfadeConstants.Aggressiveness.fromString(aggressiveness).minSeconds
 
-    fun maxSecondsFor(aggressiveness: String): Double = when (aggressiveness.lowercase()) {
-        "soft" -> SOFT_MAX_SECONDS
-        "club" -> CLUB_MAX_SECONDS
-        else -> AUTO_MAX_SECONDS
-    }
+    fun maxSecondsFor(aggressiveness: String): Double =
+        CrossfadeConstants.Aggressiveness.fromString(aggressiveness).maxSeconds
 
     fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when (aggressiveness.lowercase()) {
         "soft" -> false
@@ -233,11 +228,11 @@ object TransitionPlanner {
             null
         }
 
-        val isInteriorCliff = rawMixOutMs < contentEndMs - 1000L
+        val isInteriorCliff = rawMixOutMs < contentEndMs - CrossfadeConstants.CLAMP_MIN_MS
         val outroLeadMs = (OUTRO_MIN_LEAD_SECONDS * MS_PER_SECOND).roundToLong()
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
-            val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(1000L)
+            val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(CrossfadeConstants.CLAMP_MIN_MS)
             val fade = naturalFade.coerceIn(minMs, maxMs).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
             Pair(rawMixOutMs, fade)
         } else if (outroStartMs != null && outroStartMs <= contentEndMs - outroLeadMs) {
