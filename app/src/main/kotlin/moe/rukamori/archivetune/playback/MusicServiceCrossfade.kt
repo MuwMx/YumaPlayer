@@ -18,7 +18,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.abs
 import kotlin.math.roundToLong
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
@@ -31,11 +30,6 @@ import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
-
-internal data class PrerollDriftAnchor(
-    val primaryStartMs: Long,
-    val standbyStartMs: Long,
-)
 
 private fun MusicService.computeCrossfadeTriggerAt(
     outgoingAnalysis: TrackAnalysisResult?,
@@ -141,40 +135,58 @@ internal fun MusicService.scheduleCrossfade() {
         automixPlanTriggerAtMs = automixPlan?.triggerAtMs,
     )
     outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, outgoingAnalysis, triggerAt)
-    var prepareAhead = (automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS)
-        .coerceAtLeast(PlaybackConstants.MIN_CROSSFADE_PREPARE_AHEAD_MS)
+    var prepareAhead = automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
     crossfadeTriggerJob =
         scope.launch {
             hasPreparedSecondaryPlayer = false
-            var hasPrerolledSecondaryPlayer = false
-            var prerollPrimaryPosition = C.TIME_UNSET
-            var prerollStandbyPosition = C.TIME_UNSET
-            try {
-                while (isActive) {
-                    if (!crossfadeEnabled || isCrossfading) return@launch
-                    if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
-                        return@launch
-                    }
-                    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                        return@launch
-                    }
-                    if (!player.playWhenReady) {
-                        return@launch
-                    }
+            while (isActive) {
+                if (!crossfadeEnabled || isCrossfading) return@launch
+                if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
+                    return@launch
+                }
+                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                    return@launch
+                }
+                if (!player.playWhenReady) {
+                    return@launch
+                }
 
-                    if (automixEnabled && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
-                        var latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
-                        if (latestOutgoing == null && isTrackFullyCached(currentMediaId)) {
-                            kickOffTrackAnalysis(currentMediaId)
-                            latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
-                        }
-                        val latestIncoming = TrackAnalyzer.getCached(target.mediaId)
-                        if (latestOutgoing != null && latestOutgoing != outgoingAnalysis) {
-                            outgoingAnalysis = latestOutgoing
+                if (automixEnabled && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
+                    var latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
+                    if (latestOutgoing == null && isTrackFullyCached(currentMediaId)) {
+                        kickOffTrackAnalysis(currentMediaId)
+                        latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
+                    }
+                    val latestIncoming = TrackAnalyzer.getCached(target.mediaId)
+                    if (latestOutgoing != null && latestOutgoing != outgoingAnalysis) {
+                        outgoingAnalysis = latestOutgoing
+                        incomingAnalysis = latestIncoming
+                        val newPlan = TransitionPlanner.planSmartTransition(
+                            outgoingAnalysis = latestOutgoing,
+                            incomingAnalysis = latestIncoming,
+                            currentDurationMs = duration,
+                            preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                            aggressiveness = automixAggressiveness,
+                        )
+                        automixPlan = newPlan
+                        activeAutomixPlan = newPlan
+                        plannedDuration = newPlan.durationMs
+                        triggerOffset = newPlan.triggerOffsetMs
+                        triggerAt = computeCrossfadeTriggerAt(
+                            outgoingAnalysis = latestOutgoing,
+                            duration = duration,
+                            triggerOffset = triggerOffset,
+                            automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                        )
+                        outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, latestOutgoing, triggerAt)
+                        prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                    } else {
+                        val currentOutgoing = outgoingAnalysis
+                        if (latestIncoming != null && latestIncoming != incomingAnalysis && currentOutgoing != null) {
                             incomingAnalysis = latestIncoming
                             val newPlan = TransitionPlanner.planSmartTransition(
-                                outgoingAnalysis = latestOutgoing,
+                                outgoingAnalysis = currentOutgoing,
                                 incomingAnalysis = latestIncoming,
                                 currentDurationMs = duration,
                                 preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
@@ -185,184 +197,108 @@ internal fun MusicService.scheduleCrossfade() {
                             plannedDuration = newPlan.durationMs
                             triggerOffset = newPlan.triggerOffsetMs
                             triggerAt = computeCrossfadeTriggerAt(
-                                outgoingAnalysis = latestOutgoing,
+                                outgoingAnalysis = currentOutgoing,
                                 duration = duration,
                                 triggerOffset = triggerOffset,
                                 automixPlanTriggerAtMs = newPlan.triggerAtMs,
                             )
-                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, latestOutgoing, triggerAt)
-                            prepareAhead = (newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS)
-                                .coerceAtLeast(PlaybackConstants.MIN_CROSSFADE_PREPARE_AHEAD_MS)
-                        } else {
-                            val currentOutgoing = outgoingAnalysis
-                            if (latestIncoming != null && latestIncoming != incomingAnalysis && currentOutgoing != null) {
-                                incomingAnalysis = latestIncoming
-                                val newPlan = TransitionPlanner.planSmartTransition(
-                                    outgoingAnalysis = currentOutgoing,
-                                    incomingAnalysis = latestIncoming,
-                                    currentDurationMs = duration,
-                                    preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                    aggressiveness = automixAggressiveness,
-                                )
-                                automixPlan = newPlan
-                                activeAutomixPlan = newPlan
-                                plannedDuration = newPlan.durationMs
-                                triggerOffset = newPlan.triggerOffsetMs
-                                triggerAt = computeCrossfadeTriggerAt(
-                                    outgoingAnalysis = currentOutgoing,
-                                    duration = duration,
-                                    triggerOffset = triggerOffset,
-                                    automixPlanTriggerAtMs = newPlan.triggerAtMs,
-                                )
-                                outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, currentOutgoing, triggerAt)
-                                prepareAhead = (newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS)
-                                    .coerceAtLeast(PlaybackConstants.MIN_CROSSFADE_PREPARE_AHEAD_MS)
-                            }
+                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, currentOutgoing, triggerAt)
+                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
                         }
                     }
+                }
 
-                    val remainingToTrigger = triggerAt - player.currentPosition
-                    val incomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis)
-                    val secondaryFailedForThisCycle = secondaryPreparationFailedMediaId == target.mediaId
-                    if (!hasPreparedSecondaryPlayer && !secondaryFailedForThisCycle && remainingToTrigger <= prepareAhead) {
-                        prepareSecondaryCrossfadePlayer(target, incomingStartMs)
-                        hasPreparedSecondaryPlayer = true
-                    }
+                val remainingToTrigger = triggerAt - player.currentPosition
+                val incomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis)
+                val secondaryFailedForThisCycle = secondaryPreparationFailedMediaId == target.mediaId
+                if (!hasPreparedSecondaryPlayer && !secondaryFailedForThisCycle && remainingToTrigger <= prepareAhead) {
+                    prepareSecondaryCrossfadePlayer(target, incomingStartMs)
+                    hasPreparedSecondaryPlayer = true
+                }
 
-                    if (hasPreparedSecondaryPlayer && !hasPrerolledSecondaryPlayer && !secondaryFailedForThisCycle &&
-                        remainingToTrigger <= PlaybackConstants.CROSSFADE_PREROLL_LEAD_MS
-                    ) {
-                        val standby = secondaryCrossfadePlayer
-                        if (standby != null && player.playWhenReady) {
-                            standby.volume = 0f
-                            val currentPlan = automixPlan
-                            if (currentPlan?.tier == TransitionTier.SMART_BEATMATCH) {
-                                standby.playbackParameters = PlaybackParameters(currentPlan.incomingTempoRatio)
-                            } else {
-                                standby.playbackParameters = player.playbackParameters
-                            }
-                            standby.playWhenReady = true
-                            standby.play()
-                            hasPrerolledSecondaryPlayer = true
-                            prerollPrimaryPosition = player.currentPosition
-                            prerollStandbyPosition = standby.currentPosition
-                        }
-                    }
-
-                    if (remainingToTrigger <= 0L) {
-                        if (secondaryPreparationFailedMediaId == target.mediaId) {
-                            return@launch
-                        }
-                        if (automixEnabled && outgoingAnalysis == null && isTrackFullyCached(currentMediaId)) {
-                            val currentDurationSec = if (duration > 0L && duration != C.TIME_UNSET) duration.toDouble() / 1000.0 else null
-                            val fastAnalysis = runCatching {
-                                withTimeoutOrNull(FAST_ANALYSIS_TIMEOUT_MS) {
-                                    analyzeCachedTrack(currentMediaId, durationSeconds = currentDurationSec)
-                                }
-                            }.getOrNull()
-
-                            if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
-                                return@launch
-                            }
-                            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                                return@launch
-                            }
-
-                            if (fastAnalysis != null) {
-                                outgoingAnalysis = fastAnalysis
-                                incomingAnalysis = TrackAnalyzer.getCached(target.mediaId)
-                                val newPlan = TransitionPlanner.planSmartTransition(
-                                    outgoingAnalysis = fastAnalysis,
-                                    incomingAnalysis = incomingAnalysis,
-                                    currentDurationMs = duration,
-                                    preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                    aggressiveness = automixAggressiveness,
-                                )
-                                automixPlan = newPlan
-                                activeAutomixPlan = newPlan
-                                plannedDuration = newPlan.durationMs
-                                triggerOffset = newPlan.triggerOffsetMs
-                                triggerAt = computeCrossfadeTriggerAt(
-                                    outgoingAnalysis = fastAnalysis,
-                                    duration = duration,
-                                    triggerOffset = triggerOffset,
-                                    automixPlanTriggerAtMs = newPlan.triggerAtMs,
-                                )
-                                outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, fastAnalysis, triggerAt)
-                                prepareAhead = (newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS)
-                                    .coerceAtLeast(PlaybackConstants.MIN_CROSSFADE_PREPARE_AHEAD_MS)
-
-                                val updatedRemainingToTrigger = triggerAt - player.currentPosition
-                                if (updatedRemainingToTrigger > 0L) {
-                                    if (updatedRemainingToTrigger > PlaybackConstants.CROSSFADE_PREROLL_LEAD_MS && hasPrerolledSecondaryPlayer) {
-                                        secondaryCrossfadePlayer?.apply {
-                                            playWhenReady = false
-                                            volume = 0f
-                                            pause()
-                                        }
-                                        hasPrerolledSecondaryPlayer = false
-                                        prerollPrimaryPosition = C.TIME_UNSET
-                                        prerollStandbyPosition = C.TIME_UNSET
-                                    }
-                                    val sleepMs =
-                                        when {
-                                            updatedRemainingToTrigger > 5_000L -> 1_000L
-                                            updatedRemainingToTrigger > 1_000L -> 250L
-                                            else -> 50L
-                                        }.coerceAtMost(updatedRemainingToTrigger).coerceAtLeast(1L)
-                                    delay(sleepMs)
-                                    continue
-                                }
-                            }
-                        }
-
-                        val currentOutgoing = outgoingAnalysis
-                        val endLimit = if (currentOutgoing != null && currentOutgoing.mixOutTime > 0.0) {
-                            (currentOutgoing.mixOutTime * 1000.0).roundToLong() + (crossfadeDurationMs / 2L)
-                        } else if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
-                            (currentOutgoing.contentEndTime * 1000.0).roundToLong()
-                        } else {
-                            duration
-                        }
-                        val adjustedDuration =
-                            (endLimit - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
-                                .coerceAtMost(plannedDuration)
-                        if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                            val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
-                            val prerollAnchor = if (hasPrerolledSecondaryPlayer && prerollPrimaryPosition != C.TIME_UNSET) {
-                                PrerollDriftAnchor(
-                                    primaryStartMs = prerollPrimaryPosition,
-                                    standbyStartMs = prerollStandbyPosition,
-                                )
-                            } else {
-                                null
-                            }
-                            hasPrerolledSecondaryPlayer = false
-                            startCrossfade(target, adjustedDuration, finalIncomingStartMs, automixPlan, prerollAnchor)
-                        } else {
-                            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-                        }
+                if (remainingToTrigger <= 0L) {
+                    if (secondaryPreparationFailedMediaId == target.mediaId) {
                         return@launch
                     }
+                    if (automixEnabled && outgoingAnalysis == null && isTrackFullyCached(currentMediaId)) {
+                        val currentDurationSec = if (duration > 0L && duration != C.TIME_UNSET) duration.toDouble() / 1000.0 else null
+                        val fastAnalysis = runCatching {
+                            withTimeoutOrNull(FAST_ANALYSIS_TIMEOUT_MS) {
+                                analyzeCachedTrack(currentMediaId, durationSeconds = currentDurationSec)
+                            }
+                        }.getOrNull()
 
-                    val remainingToPreroll = remainingToTrigger - PlaybackConstants.CROSSFADE_PREROLL_LEAD_MS
-                    val nextStepTarget = if (!hasPrerolledSecondaryPlayer && remainingToPreroll > 0L) {
-                        remainingToPreroll
-                    } else {
-                        remainingToTrigger
+                        if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
+                            return@launch
+                        }
+                        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                            return@launch
+                        }
+
+                        if (fastAnalysis != null) {
+                            outgoingAnalysis = fastAnalysis
+                            incomingAnalysis = TrackAnalyzer.getCached(target.mediaId)
+                            val newPlan = TransitionPlanner.planSmartTransition(
+                                outgoingAnalysis = fastAnalysis,
+                                incomingAnalysis = incomingAnalysis,
+                                currentDurationMs = duration,
+                                preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                                aggressiveness = automixAggressiveness,
+                            )
+                            automixPlan = newPlan
+                            activeAutomixPlan = newPlan
+                            plannedDuration = newPlan.durationMs
+                            triggerOffset = newPlan.triggerOffsetMs
+                            triggerAt = computeCrossfadeTriggerAt(
+                                outgoingAnalysis = fastAnalysis,
+                                duration = duration,
+                                triggerOffset = triggerOffset,
+                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                            )
+                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, fastAnalysis, triggerAt)
+                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+
+                            val updatedRemainingToTrigger = triggerAt - player.currentPosition
+                            if (updatedRemainingToTrigger > 0L) {
+                                val sleepMs =
+                                    when {
+                                        updatedRemainingToTrigger > 5_000L -> 1_000L
+                                        updatedRemainingToTrigger > 1_000L -> 250L
+                                        else -> 50L
+                                    }.coerceAtMost(updatedRemainingToTrigger).coerceAtLeast(1L)
+                                delay(sleepMs)
+                                continue
+                            }
+                        }
                     }
-                    val sleepMs =
-                        when {
-                            remainingToTrigger > 5_000L -> 1_000L
-                            remainingToTrigger > 1_000L -> 250L
-                            else -> 50L
-                        }.coerceAtMost(nextStepTarget).coerceAtLeast(1L)
-                    delay(sleepMs)
+
+                    val currentOutgoing = outgoingAnalysis
+                    val endLimit = if (currentOutgoing != null && currentOutgoing.mixOutTime > 0.0) {
+                        (currentOutgoing.mixOutTime * 1000.0).roundToLong() + (crossfadeDurationMs / 2L)
+                    } else if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
+                        (currentOutgoing.contentEndTime * 1000.0).roundToLong()
+                    } else {
+                        duration
+                    }
+                    val adjustedDuration =
+                        (endLimit - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
+                            .coerceAtMost(plannedDuration)
+                    if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
+                        val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
+                        startCrossfade(target, adjustedDuration, finalIncomingStartMs, automixPlan)
+                    } else {
+                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    }
+                    return@launch
                 }
-            } finally {
-                if (hasPrerolledSecondaryPlayer && !isCrossfading) {
-                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-                }
+
+                val sleepMs =
+                    when {
+                        remainingToTrigger > 5_000L -> 1_000L
+                        remainingToTrigger > 1_000L -> 250L
+                        else -> 50L
+                    }.coerceAtMost(remainingToTrigger).coerceAtLeast(1L)
+                delay(sleepMs)
             }
         }
 }
@@ -423,42 +359,11 @@ internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
             skipSilenceEnabled = localPlayer.skipSilenceEnabled
         }
 
-private fun MusicService.degradeToHardCut(
-    target: MusicService.CrossfadeTarget,
-    outgoingMediaId: String,
-) {
-    val userPlaybackSpeed = player.playbackParameters.takeIf { it != PlaybackParameters.DEFAULT }
-    secondaryPreparationFailedMediaId = target.mediaId
-    cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
-    if (isPlayerInitialized() && localPlayer.volume != crossfadeBaseVolume) {
-        localPlayer.volume = crossfadeBaseVolume.coerceIn(0f, maxSafeGainFactor)
-    }
-    scope.launch {
-        while (isActive && player.currentMediaItem?.mediaId == outgoingMediaId && player.playbackState != Player.STATE_ENDED && player.playbackState != Player.STATE_IDLE) {
-            delay(50L)
-        }
-        val targetIndex = resolveCrossfadeTargetIndex(target)
-        if (targetIndex != C.INDEX_UNSET &&
-            player.playbackState != Player.STATE_IDLE &&
-            (player.currentMediaItemIndex == targetIndex ||
-                player.currentMediaItem?.mediaId == target.mediaId ||
-                player.playbackState == Player.STATE_ENDED)
-        ) {
-            player.seekTo(targetIndex, 0L)
-            player.playbackParameters = userPlaybackSpeed ?: PlaybackParameters.DEFAULT
-            if (player.playWhenReady) {
-                player.play()
-            }
-        }
-    }
-}
-
 internal fun MusicService.startCrossfade(
     target: MusicService.CrossfadeTarget,
     durationMs: Long,
     incomingStartMs: Long = 0L,
     plan: AutomixPlan? = activeAutomixPlan,
-    prerollAnchor: PrerollDriftAnchor? = null,
 ) {
     if (isCrossfading || !crossfadeEnabled) return
     if (secondaryPreparationFailedMediaId == target.mediaId) return
@@ -481,12 +386,12 @@ internal fun MusicService.startCrossfade(
             crossfadePlaybackRequested = player.playWhenReady
 
             try {
-                if (prerollAnchor == null && cueInMs > 0L && incomingPlayer.currentPosition != cueInMs) {
+                if (cueInMs > 0L && incomingPlayer.currentPosition != cueInMs) {
                     incomingPlayer.seekTo(target.index, cueInMs)
                 }
                 val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
                 if (!awaitCrossfadePlayerReady(incomingPlayer, MusicService.CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
-                    degradeToHardCut(target, outgoingMediaId)
+                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
                     return@launch
                 }
 
@@ -504,33 +409,12 @@ internal fun MusicService.startCrossfade(
                 }
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
 
-                val hasPrerollDriftCorrected = if (prerollAnchor != null) {
-                    val primaryAdvance = player.currentPosition - prerollAnchor.primaryStartMs
-                    val expectedStandbyAdvance = if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
-                        (primaryAdvance * plan.incomingTempoRatio).roundToLong()
-                    } else {
-                        primaryAdvance
+                if (cueInMs > 0L) {
+                    if (standbyPlayer.currentPosition != cueInMs) {
+                        standbyPlayer.seekTo(target.index, cueInMs)
                     }
-                    val expectedStandbyPos = prerollAnchor.standbyStartMs + expectedStandbyAdvance
-                    val actualStandbyPos = standbyPlayer.currentPosition
-                    val driftMs = actualStandbyPos - expectedStandbyPos
-                    if (abs(driftMs) <= PlaybackConstants.PREROLL_DRIFT_TOLERANCE_MS) {
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-
-                if (!hasPrerollDriftCorrected) {
-                    if (cueInMs > 0L) {
-                        if (standbyPlayer.currentPosition != cueInMs) {
-                            standbyPlayer.seekTo(target.index, cueInMs)
-                        }
-                    } else if (standbyPlayer.currentPosition > 0L) {
-                        standbyPlayer.seekTo(target.index, 0L)
-                    }
+                } else if (standbyPlayer.currentPosition > 0L) {
+                    standbyPlayer.seekTo(target.index, 0L)
                 }
                 if (crossfadePlaybackRequested) {
                     standbyPlayer.play()
@@ -559,7 +443,7 @@ internal fun MusicService.startCrossfade(
                             incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
                         } else {
                             if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
-                                degradeToHardCut(target, outgoingMediaId)
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
                                 return@launch
                             }
                             if (standbyPlayer.playbackState == Player.STATE_IDLE) {
@@ -568,7 +452,7 @@ internal fun MusicService.startCrossfade(
                             val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
                             if (nowMs - stallStart >= PlaybackConstants.CROSSFADE_BUFFERING_TIMEOUT_MS) {
                                 Timber.tag(MusicService.TAG).w("Crossfade incoming player buffering timed out; bailing out")
-                                degradeToHardCut(target, outgoingMediaId)
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
                                 return@launch
                             }
                         }
@@ -585,7 +469,7 @@ internal fun MusicService.startCrossfade(
                 throw error
             } catch (error: Exception) {
                 Timber.tag(MusicService.TAG).w(error, "Crossfade failed")
-                degradeToHardCut(target, outgoingMediaId)
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
             } finally {
                 if (isCrossfading) {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
