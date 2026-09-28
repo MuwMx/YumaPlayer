@@ -20,6 +20,7 @@ object AudioDecoder {
     const val TARGET_SAMPLE_RATE: Double = 11025.0
     const val DEFAULT_HEAD_DECODE_MS: Long = 30_000L
     const val MAX_HEAD_DECODE_MS: Long = 45_000L
+    const val TAIL_WINDOW_MS: Long = 45_000L
     const val DECODE_WATCHDOG_MS: Long = 45_000L
 
     fun decode(
@@ -122,6 +123,58 @@ object AudioDecoder {
             }
         }
         return decode(CacheMediaDataSource(cache, cacheKey), startMs, endMs)
+    }
+
+    fun decodeTail(
+        filePath: String,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(filePath, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
+    }
+
+    fun decodeTail(
+        file: File,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(file, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
+    }
+
+    fun decodeTail(
+        context: Context,
+        uri: Uri,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(context, uri, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
+    }
+
+    fun decodeTail(
+        fd: FileDescriptor,
+        offset: Long = 0L,
+        length: Long = Long.MAX_VALUE,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(fd, offset, length, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
+    }
+
+    fun decodeTail(
+        mediaDataSource: MediaDataSource,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(mediaDataSource, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
+    }
+
+    fun decodeTail(
+        cache: Cache,
+        cacheKey: String,
+        durationMs: Long,
+    ): FloatArray? {
+        if (durationMs <= TAIL_WINDOW_MS) return null
+        return decode(cache, cacheKey, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
     }
 
     private fun decodeInternal(

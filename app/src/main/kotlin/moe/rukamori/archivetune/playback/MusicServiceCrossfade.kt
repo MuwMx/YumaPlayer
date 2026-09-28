@@ -164,11 +164,7 @@ internal fun MusicService.scheduleCrossfade() {
                 if (automixEnabled && !isPlanFrozen && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
                     val recomputeStartGeneration = crossfadePlanGeneration.get()
                     val recomputeStartPosition = player.currentPosition
-                    var latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
-                    if (latestOutgoing == null && isTrackFullyCached(currentMediaId)) {
-                        kickOffTrackAnalysis(currentMediaId)
-                        latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
-                    }
+                    val latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
                     val latestIncoming = TrackAnalyzer.getCached(target.mediaId)
                     if (latestOutgoing != null && latestOutgoing != outgoingAnalysis) {
                         val newPlan = TransitionPlanner.planSmartTransition(
@@ -840,27 +836,14 @@ internal fun MusicService.unregisterAllCacheListeners() {
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
-    if (mediaItem == null) {
-        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: mediaItem=null")
-        return
-    }
-    if (!automixEnabled) {
-        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: automix disabled")
-        return
-    }
+    if (mediaItem == null || !automixEnabled) return
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
     kickOffTrackAnalysis(mediaId, mediaItem)
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
-    if (mediaId.isBlank()) {
-        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: blank mediaId")
-        return
-    }
-    if (!automixEnabled) {
-        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: automix disabled mediaId=$mediaId")
-        return
-    }
+    if (mediaId.isBlank() || !automixEnabled) return
+    if (TrackAnalyzer.shouldThrottleKickOff(mediaId)) return
 
     val service = this
     ioScope.launch {
@@ -904,8 +887,6 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
                 analyzeCachedTrack(mediaId, durationSeconds = durationSeconds)
                 return@launch
             }
-
-            Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: network track without full local copy mediaId=$mediaId")
         } catch (e: Exception) {
             Timber.tag(MusicService.TAG).v(e, "Background TrackAnalyzer failed for mediaId=$mediaId")
         }
