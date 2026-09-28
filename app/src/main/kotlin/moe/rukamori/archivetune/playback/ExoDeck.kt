@@ -7,6 +7,7 @@ import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.FALL
 import moe.rukamori.archivetune.audiodsp.RISE
 import kotlin.math.pow
+import timber.log.Timber
 
 class ExoDeck(
     override val player: ExoPlayer,
@@ -15,9 +16,15 @@ class ExoDeck(
     var baseVolume: Float = 1f,
     var maxGainFactor: Float = 1f,
 ) : AudioDeck {
+    private var lastLoggedQuarter = -1
 
     override fun applyAutomation(progress: Float, plan: AutomixPlan) {
         val clamped = progress.coerceIn(0f, 1f)
+        val quarter = (clamped * 4f).toInt().coerceIn(0, 4)
+        if (plan.enableBassSwap && quarter != lastLoggedQuarter) {
+            lastLoggedQuarter = quarter
+            Timber.tag("DjFilter").d("automation incoming=$isIncoming p=${"%.2f".format(clamped)} cutoff=${"%.0f".format(djFilter.lowPassCutoffHz)} bass=${"%.1f".format(djFilter.bassGainDb)}")
+        }
         if (isIncoming) {
             player.volume = (baseVolume * RISE(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
@@ -42,5 +49,6 @@ class ExoDeck(
 
     override fun clearAutomation() {
         djFilter.clearAutomation()
+        lastLoggedQuarter = -1
     }
 }
