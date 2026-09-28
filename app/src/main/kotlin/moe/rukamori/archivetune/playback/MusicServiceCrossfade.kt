@@ -523,18 +523,17 @@ internal suspend fun MusicService.finishCrossfade(
         localPlayer.pauseAtEndOfMediaItems = false
         crossfadeHandoffInProgress = true
 
+        incomingPlayer.playWhenReady = true
+        incomingPlayer.pauseAtEndOfMediaItems = false
         incomingPlayer.volume = currentEffectivePlayerVolumeForMediaId(target.mediaId).coerceIn(0f, maxSafeGainFactor)
-        dualForwardingPlayer.attachPlayer(incomingPlayer)
 
         val playerA = localPlayer
         val userPlaybackSpeed = playerA.playbackParameters.takeIf { it != PlaybackParameters.DEFAULT }
+        runCatching { incomingPlayer.removeListener(secondaryCrossfadeListener) }
         transferAudioEffects(incomingPlayer)
         incomingPlayer.setShuffleOrder(playerA.shuffleOrder)
-        playerA.playWhenReady = false
-        playerA.volume = 0f
-        playerA.stop()
-        playerA.clearMediaItems()
-        reserveCrossfadePlayer = playerA
+
+        dualForwardingPlayer.attachPlayer(incomingPlayer)
         localPlayer = incomingPlayer
 
         if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
@@ -546,6 +545,15 @@ internal suspend fun MusicService.finishCrossfade(
         if (targetMetadata != null) {
             currentMediaMetadata.value = targetMetadata
         }
+
+        refreshPlaybackNotification()
+
+        playerA.playWhenReady = false
+        playerA.volume = 0f
+        playerA.stop()
+        playerA.clearMediaItems()
+        reserveCrossfadePlayer = playerA
+
         handoffCompleted = true
     } finally {
         if (!handoffCompleted) {
