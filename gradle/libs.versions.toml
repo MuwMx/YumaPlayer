@@ -58,6 +58,7 @@ foundationLayout = "1.11.4"
 animationCore = "1.11.4"
 webkit = "1.17.0"
 foundationLayoutVersion = "1.12.0"
+kopus = "1.6.1.3"
 
 
 [libraries]
@@ -178,6 +179,7 @@ haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "haze" }
 graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
+kopus = { module = "eu.buney.kopus:kopus", version.ref = "kopus" }
 
 
 [plugins]

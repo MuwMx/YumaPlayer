@@ -9,9 +9,12 @@ import android.media.MediaFormat
 import android.net.Uri
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
+import eu.buney.kopus.OpusDecoder
+import eu.buney.kopus.OpusLoader
 import moe.rukamori.archivetune.audiodsp.FloatChunkList
 import java.io.File
 import java.io.FileDescriptor
+import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -326,9 +329,6 @@ object AudioDecoder {
             extractor.selectTrack(audioTrackIndex)
 
             val mime = audioFormat.getString(MediaFormat.KEY_MIME) ?: return null
-            codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(audioFormat, null, null, 0)
-            codec.start()
 
             val safeStartMs = startMs.coerceAtLeast(0L)
             val requestedEndMs = if (endMs <= safeStartMs || endMs == Long.MAX_VALUE) {
@@ -357,6 +357,39 @@ object AudioDecoder {
             }
             if (channelCount <= 0) channelCount = 1
 
+            val decodeStartMs = android.os.SystemClock.elapsedRealtime()
+
+            if (mime.equals("audio/opus", ignoreCase = true)) {
+                val kopusSamples = runCatching {
+                    decodeOpusInternal(
+                        extractor = extractor,
+                        sampleRate = sampleRate,
+                        channelCount = channelCount,
+                        startUs = startUs,
+                        endUs = endUs,
+                        watchdogMs = watchdogMs,
+                        decimateToTargetRate = decimateToTargetRate,
+                        decodeStartMs = decodeStartMs,
+                    )
+                }.getOrNull()
+
+                if (kopusSamples != null && kopusSamples.isNotEmpty()) {
+                    return kopusSamples
+                }
+
+                if (startUs > 0L) {
+                    extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+                } else {
+                    extractor.seekTo(0L, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                }
+            }
+
+            codec = MediaCodec.createDecoderByType(mime)
+            codec.configure(audioFormat, null, null, 0)
+            codec.start()
+            val decoderForLog: MediaCodec? = codec
+            val decoderName = runCatching { decoderForLog?.name }.getOrNull() ?: "MediaCodec"
+
             var pcmEncoding = if (audioFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
                 audioFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
             } else {
@@ -380,7 +413,6 @@ object AudioDecoder {
             } else {
                 null
             }
-            val decodeStartMs = android.os.SystemClock.elapsedRealtime()
             var wallClockAborted = false
 
             while (!sawOutputEOS) {
@@ -506,6 +538,7 @@ object AudioDecoder {
             if (decimateSink != null) {
                 val decimated = monoSamples
                 monoSamples = null
+                Timber.tag("AudioDecoder").d("decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via $decoderName (mono, ${decimated.size} samples)")
                 return decimated
             }
 
@@ -513,13 +546,16 @@ object AudioDecoder {
             if (sampleRate.toDouble() == targetRate) {
                 val direct = monoSamples
                 monoSamples = null
+                Timber.tag("AudioDecoder").d("decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via $decoderName (mono, ${direct.size} samples)")
                 return direct
             }
             val source = monoSamples
             monoSamples = null
-            return runCatching {
+            val resampled = runCatching {
                 TrackFeatures.resample(source, sampleRate.toDouble(), targetRate)
             }.getOrNull() ?: source
+            Timber.tag("AudioDecoder").d("decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via $decoderName (mono, ${resampled.size} samples)")
+            return resampled
         } catch (e: Exception) {
             Timber.tag("AudioDecoder").e(e, "Decode failed")
             null
@@ -528,6 +564,170 @@ object AudioDecoder {
             runCatching { codec?.release() }
             runCatching { extractor.release() }
         }
+    }
+
+    private val opusLoadLock = Any()
+
+    @Volatile
+    private var opusNativeUsable: Boolean? = null
+
+    private fun openOpusDecoder(sampleRate: Int, channels: Int): OpusDecoder? {
+        if (opusNativeUsable == false) return null
+        if (channels !in 1..2) return null
+        synchronized(opusLoadLock) {
+            if (opusNativeUsable == false) return null
+            try {
+                OpusLoader.load()
+            } catch (error: Throwable) {
+                Timber.tag("AudioDecoder").w(error, "Opus native library unavailable, using platform decoder")
+                opusNativeUsable = false
+                return null
+            }
+        }
+        return try {
+            OpusDecoder(sampleRate, channels).also { opusNativeUsable = true }
+        } catch (error: LinkageError) {
+            Timber.tag("AudioDecoder").w(error, "Opus native decoder unusable, using platform decoder")
+            opusNativeUsable = false
+            null
+        } catch (error: Throwable) {
+            Timber.tag("AudioDecoder").w(error, "Failed to create OpusDecoder, using platform decoder")
+            null
+        }
+    }
+
+    private fun closestOpusRate(rate: Int): Int {
+        val rates = intArrayOf(8000, 12000, 16000, 24000, 48000)
+        return rates.minByOrNull { kotlin.math.abs(it - rate) } ?: 48000
+    }
+
+    private fun decodeOpusInternal(
+        extractor: MediaExtractor,
+        sampleRate: Int,
+        channelCount: Int,
+        startUs: Long,
+        endUs: Long,
+        watchdogMs: Long,
+        decimateToTargetRate: Boolean,
+        decodeStartMs: Long,
+    ): FloatArray? {
+        val validChannels = if (channelCount > 0) channelCount else 1
+        val opusSampleRate = closestOpusRate(sampleRate)
+        val decoder = openOpusDecoder(opusSampleRate, validChannels) ?: return null
+
+        val collector = FloatChunkList()
+        val decimateTargetRate = if (decimateToTargetRate) {
+            runCatching { TrackFeatures.sampleRate() }
+                .getOrDefault(TARGET_SAMPLE_RATE)
+                .takeIf { it.isFinite() && it > 0.0 } ?: TARGET_SAMPLE_RATE
+        } else {
+            Double.NaN
+        }
+        val decimateSink = if (decimateToTargetRate) {
+            DecimatingSink(collector, strideFor(opusSampleRate, decimateTargetRate))
+        } else {
+            null
+        }
+
+        val inputBuffer = ByteBuffer.allocateDirect(32768)
+        var reusableData = ByteArray(32768)
+        val outPcm = FloatArray(5760 * validChannels)
+        val frameDurationUs = 1_000_000.0 / opusSampleRate
+        val invChannels = 1.0f / validChannels
+
+        try {
+            while (true) {
+                if (android.os.SystemClock.elapsedRealtime() - decodeStartMs > watchdogMs) {
+                    Timber.tag("AudioDecoder").w("Kopus decode wall-clock guard tripped after ${watchdogMs}ms")
+                    break
+                }
+
+                val packetTimeUs = extractor.sampleTime
+                if (packetTimeUs < 0L || packetTimeUs > endUs) {
+                    break
+                }
+
+                inputBuffer.clear()
+                val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                if (sampleSize <= 0) {
+                    break
+                }
+
+                if (sampleSize > reusableData.size) {
+                    reusableData = ByteArray(sampleSize)
+                }
+                inputBuffer.position(0)
+                inputBuffer.get(reusableData, 0, sampleSize)
+
+                val decodedSamples = decoder.decode(reusableData, 0, sampleSize, outPcm, 0, 5760, false)
+                if (decodedSamples > 0) {
+                    val packetEndUs = packetTimeUs + (decodedSamples * frameDurationUs).toLong()
+                    if (packetEndUs >= startUs) {
+                        var reachedEnd = false
+                        for (i in 0 until decodedSamples) {
+                            val frameTimeUs = packetTimeUs + (i * frameDurationUs).toLong()
+                            if (frameTimeUs < startUs) continue
+                            if (frameTimeUs > endUs) {
+                                reachedEnd = true
+                                break
+                            }
+                            var sum = 0f
+                            val base = i * validChannels
+                            for (c in 0 until validChannels) {
+                                sum += outPcm[base + c]
+                            }
+                            val mono = (sum * invChannels).coerceIn(-1.0f, 1.0f)
+                            if (decimateSink != null) {
+                                decimateSink.push(mono)
+                            } else {
+                                collector.add(mono)
+                            }
+                        }
+                        if (reachedEnd) break
+                    }
+                }
+
+                val advanced = runCatching { extractor.advance() }.getOrDefault(false)
+                if (!advanced) break
+            }
+        } catch (e: Throwable) {
+            Timber.tag("AudioDecoder").w(e, "Kopus decode failed, falling back to MediaCodec")
+            return null
+        } finally {
+            runCatching { decoder.close() }
+        }
+
+        decimateSink?.flush()
+        var monoSamples: FloatArray? = collector.toFloatArray()
+        if (monoSamples == null || monoSamples.isEmpty()) {
+            return null
+        }
+
+        if (decimateSink != null) {
+            val decimated = monoSamples
+            Timber.tag("AudioDecoder").d(
+                "decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via Kopus (mono, ${decimated.size} samples)"
+            )
+            return decimated
+        }
+
+        val targetRate = runCatching { TrackFeatures.sampleRate() }.getOrDefault(TARGET_SAMPLE_RATE)
+        if (opusSampleRate.toDouble() == targetRate) {
+            val direct = monoSamples
+            Timber.tag("AudioDecoder").d(
+                "decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via Kopus (mono, ${direct.size} samples)"
+            )
+            return direct
+        }
+
+        val source = monoSamples
+        val resampled = runCatching {
+            TrackFeatures.resample(source, opusSampleRate.toDouble(), targetRate)
+        }.getOrNull() ?: source
+        Timber.tag("AudioDecoder").d(
+            "decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via Kopus (mono, ${resampled.size} samples)"
+        )
+        return resampled
     }
 
     private fun strideFor(nativeRate: Int, targetRate: Double): Int {

@@ -403,6 +403,7 @@ implementation(libs.androidx.foundation.layout)
     implementation(libs.accompanist.lyrics.core)
     implementation(libs.webkit)
     implementation("org.json:json:20240303")
+    implementation(libs.kopus)
 }
 
 androidComponents {

@@ -205,7 +205,7 @@ object TrackAnalyzer : AnalysisStore {
             cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
         }.getOrDefault(-1L)
         if (length <= 0L || !cache.isCached(cacheKey, 0L, length)) {
-            Timber.tag("TrackAnalyzer").w("Rejecting partially cached key=$cacheKey for trackId=$trackId")
+            Timber.tag("TrackAnalyzer").d("Waiting on cache for $trackId")
             return null
         }
         val durationMs = if (durationSeconds != null && durationSeconds > 0.0) (durationSeconds * 1000.0).roundToLong() else null
@@ -299,6 +299,7 @@ object TrackAnalyzer : AnalysisStore {
             } else {
                 val newDeferred = analyzerScope.async(Dispatchers.Default) {
                     try {
+                        val startedMs = System.currentTimeMillis()
                         val cachedDb = runCatching {
                             withContext(Dispatchers.IO) {
                                 database?.trackAnalysisDao()?.get(trackId)
@@ -313,7 +314,11 @@ object TrackAnalyzer : AnalysisStore {
                             return@async result
                         }
 
-                        Timber.tag("TrackAnalyzer").d("Start analysis trackId=$trackId source=$source")
+                        if (durationSeconds != null && durationSeconds.isFinite() && durationSeconds > 0.0) {
+                            Timber.tag("TrackAnalyzer").d("Analysing $trackId, ${durationSeconds}s, PLAYBACK")
+                        } else {
+                            Timber.tag("TrackAnalyzer").d("Analysing $trackId, PLAYBACK")
+                        }
 
                         analysisSemaphore.withPermit {
                             memoryCache[trackId]?.let { return@withPermit it }
@@ -323,7 +328,6 @@ object TrackAnalyzer : AnalysisStore {
                                 Timber.tag("TrackAnalyzer").w("Decode yielded no samples trackId=$trackId source=$source")
                                 return@withPermit null
                             }
-                            Timber.tag("TrackAnalyzer").d("Decode head done trackId=$trackId samples=${headSamples.size} source=$source")
 
                             val targetSampleRate = runCatching { TrackFeatures.sampleRate() }
                                 .getOrDefault(AudioDecoder.TARGET_SAMPLE_RATE)
@@ -350,7 +354,6 @@ object TrackAnalyzer : AnalysisStore {
                             val finalResult = if (decodeTailSamples != null && durationMs != null && durationMs > AudioDecoder.TAIL_WINDOW_MS) {
                                 val tailSamples = runCatching { decodeTailSamples() }.getOrNull()
                                 if (tailSamples != null && tailSamples.isNotEmpty()) {
-                                    Timber.tag("TrackAnalyzer").d("Decode tail done trackId=$trackId samples=${tailSamples.size} source=$source")
                                     val tailDuration = if (targetSampleRate > 0.0) {
                                         tailSamples.size / targetSampleRate
                                     } else {
@@ -371,13 +374,16 @@ object TrackAnalyzer : AnalysisStore {
                                 headResult
                             }
 
-                            Timber.tag("TrackAnalyzer").d("Native analyze done trackId=$trackId bpm=${finalResult.bpm} mixOut=${finalResult.mixOutTime}")
                             val cliffedResult = applyFullSpanCliff(
                                 base = finalResult,
                                 durationSeconds = durationSeconds,
                                 durationMs = durationMs,
                                 decodeFullSamples = decodeFullSamples,
                                 trackId = trackId,
+                            )
+                            Timber.tag("TrackAnalyzer").d(
+                                "Analysed $trackId in ${System.currentTimeMillis() - startedMs}ms " +
+                                    "bpm=${cliffedResult.bpm} mixOut=${cliffedResult.mixOutTime}",
                             )
                             memoryCache[trackId] = cliffedResult
                             _analysisEvents.tryEmit(trackId to cliffedResult)
@@ -427,7 +433,6 @@ object TrackAnalyzer : AnalysisStore {
         if (fullSamples == null || fullSamples.isEmpty()) return base
         try {
             val cliff = runCatching { TrackFeatures.energyCliff(fullSamples, durationSeconds) }.getOrDefault(0.0)
-            Timber.tag("TrackAnalyzer").d("Full-span cliff trackId=$trackId cliff=$cliff contentEnd=$contentEnd")
             if (!cliff.isFinite() || cliff <= 0.0 || cliff >= contentEnd - 8.0) return base
             val mergedRawJson = runCatching {
                 if (base.rawJson.isBlank()) return@runCatching base.rawJson
