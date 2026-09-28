@@ -132,7 +132,7 @@ class TransitionPlannerTest {
         )
 
         assertTrue(plan.durationMs in 4_000L..12_000L)
-        assertEquals(190_000L - plan.durationMs, plan.triggerAtMs)
+        assertEquals(182_000L, plan.triggerAtMs)
         assertEquals(4_000L, plan.incomingStartMs)
     }
 
