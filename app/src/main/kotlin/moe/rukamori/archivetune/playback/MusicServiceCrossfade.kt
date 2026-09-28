@@ -284,11 +284,24 @@ internal fun MusicService.scheduleCrossfade() {
                     val adjustedDuration =
                         (endLimit - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
                             .coerceAtMost(plannedDuration)
+                    val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
+                    localPlayer.pauseAtEndOfMediaItems = false
                     if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                        val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
                         startCrossfade(target, adjustedDuration, finalIncomingStartMs, automixPlan)
+                    } else if (player.currentPosition >= endLimit - MusicService.CROSSFADE_END_GUARD_MS || adjustedDuration <= 0L) {
+                        val incomingPlayer = prepareSecondaryCrossfadePlayer(target, finalIncomingStartMs)
+                        if (incomingPlayer != null) {
+                            if (finalIncomingStartMs > 0L) {
+                                if (incomingPlayer.currentPosition != finalIncomingStartMs) {
+                                    incomingPlayer.seekTo(target.index, finalIncomingStartMs)
+                                }
+                            } else if (incomingPlayer.currentPosition > 0L) {
+                                incomingPlayer.seekTo(target.index, 0L)
+                            }
+                            finishCrossfade(target, incomingPlayer, automixPlan)
+                        }
                     } else {
-                        cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                        startCrossfade(target, MusicService.MIN_CROSSFADE_DURATION_MS, finalIncomingStartMs, automixPlan)
                     }
                     return@launch
                 }

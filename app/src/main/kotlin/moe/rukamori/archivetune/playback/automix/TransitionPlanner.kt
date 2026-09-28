@@ -3,6 +3,7 @@ package moe.rukamori.archivetune.playback.automix
 import kotlin.math.abs
 import kotlin.math.roundToLong
 import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import org.json.JSONObject
 
 object TransitionPlanner {
     private const val MAX_STRETCH_DEVIATION = 0.04f
@@ -197,14 +198,30 @@ object TransitionPlanner {
             contentEndMs
         }.coerceIn(0L, contentEndMs)
 
+        val outroStartTime = if (outgoingAnalysis.rawJson.isNotBlank()) {
+            runCatching {
+                JSONObject(outgoingAnalysis.rawJson).optDouble("outroStartTime", 0.0)
+            }.getOrDefault(0.0)
+        } else {
+            0.0
+        }
+        val outroStartMs = if (outroStartTime.isFinite() && outroStartTime > 0.0) {
+            (outroStartTime * MS_PER_SECOND).roundToLong()
+        } else {
+            null
+        }
+
         val isInteriorCliff = rawMixOutMs < contentEndMs - 1000L
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
             val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(1000L)
             val fade = naturalFade.coerceIn(minMs, maxMs).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
             Pair(rawMixOutMs, fade)
+        } else if (outroStartMs != null && outroStartMs < contentEndMs - minMs) {
+            val fade = minOf(bpmAdjustedDurationMs, contentEndMs - outroStartMs).coerceIn(minMs, maxMs)
+            Pair(outroStartMs, fade)
         } else {
-            val fade = bpmAdjustedDurationMs.coerceAtMost(contentEndMs)
+            val fade = bpmAdjustedDurationMs.coerceIn(minMs, maxMs).coerceAtMost(contentEndMs)
             val start = (contentEndMs - fade).coerceAtLeast(0L)
             Pair(start, fade)
         }
