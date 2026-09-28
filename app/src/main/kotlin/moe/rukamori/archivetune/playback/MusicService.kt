@@ -69,9 +69,14 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSink
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheSpan
+import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.cache.ContentMetadata
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
+import moe.rukamori.archivetune.utils.isLowDataModeActive
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -563,6 +568,8 @@ class MusicService :
     private var prefetchJob: Job? = null
     private val prefetchTimelineGeneration = AtomicLong(0L)
     private val resolvingPrefetchMediaIds = ConcurrentHashMap.newKeySet<String>()
+    @Volatile private var activePrefetchMediaId: String? = null
+    @Volatile private var activeCacheWriter: CacheWriter? = null
 
     internal val secondaryCrossfadeListener =
         object : Player.Listener {
@@ -2788,78 +2795,70 @@ class MusicService :
 
     private fun cancelPrefetch() {
         prefetchTimelineGeneration.incrementAndGet()
+        activePrefetchMediaId = null
+        activeCacheWriter?.cancel()
+        activeCacheWriter = null
         prefetchJob?.cancel()
         prefetchJob = null
+        resolvingPrefetchMediaIds.clear()
     }
 
-    private fun prefetchNextTrack(currentIndex: Int) {
-        cancelPrefetch()
-        val targetGeneration = prefetchTimelineGeneration.get()
+    internal fun prefetchAround(currentIndex: Int = player.currentMediaItemIndex) {
+        if (!player.isPlaying && !player.playWhenReady) return
 
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET || nextIndex < 0 || nextIndex >= player.mediaItemCount) return
         if (player.repeatMode == REPEAT_MODE_ONE || nextIndex == currentIndex) return
 
-        val nextMediaItem = player.getMediaItemAt(nextIndex)
+        val nextMediaItem = runCatching { player.getMediaItemAt(nextIndex) }.getOrNull() ?: return
         val mediaId = nextMediaItem.mediaId.ifBlank { nextMediaItem.metadata?.id.orEmpty() }
-        if (mediaId.isBlank() || mediaId.isLocalMediaId()) return
+        if (mediaId.isBlank()) return
 
-        val metadata = nextMediaItem.metadata
+        if (mediaId.isLocalMediaId() || mediaId.startsWith("/") || mediaId.contains(".m3u8", ignoreCase = true)) return
+
+        val directUri = nextMediaItem.localConfiguration?.uri
+        if (directUri != null) {
+            val scheme = directUri.scheme?.lowercase(Locale.US)
+            if (scheme == "content" || scheme == "file" || scheme == "android.resource") return
+            if (scheme == "http" || scheme == "https") {
+                val uriStr = directUri.toString()
+                if (uriStr.contains(".m3u8", ignoreCase = true) || uriStr.contains("manifest", ignoreCase = true)) return
+            }
+        }
+
+        if (isTrackFullyCached(mediaId)) return
+
+        val activeNetwork = connectivityManager.activeNetwork ?: return
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return
+        val isMetered = connectivityManager.isActiveNetworkMetered ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+        if (isMetered && isLowDataModeActive()) return
+
+        if (activePrefetchMediaId == mediaId && prefetchJob?.isActive == true) return
+
+        cancelPrefetch()
         if (!resolvingPrefetchMediaIds.add(mediaId)) return
 
-        val flacKey = flacCacheKey(mediaId)
-        val hasFlacDiskEntry = runCatching {
-            downloadCache.getCachedSpans(flacKey).isNotEmpty()
-        }.getOrDefault(false)
-        val hasMediaDiskEntry = runCatching {
-            downloadCache.getCachedSpans(mediaId).isNotEmpty()
-        }.getOrDefault(false)
-
-        if (hasMediaDiskEntry || hasFlacDiskEntry) {
-            resolvingPrefetchMediaIds.remove(mediaId)
-            return
-        }
-
-        if (connectivityManager.activeNetwork == null) {
-            resolvingPrefetchMediaIds.remove(mediaId)
-            return
-        }
-
+        activePrefetchMediaId = mediaId
+        val targetGeneration = prefetchTimelineGeneration.get()
+        val metadata = nextMediaItem.metadata
         val lowData = isLowDataEnabled
-        val isMetered = runCatching {
-            connectivityManager.isActiveNetworkMetered ||
-                (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
-        }.getOrDefault(false)
-        val bypassFlac = shouldBypassFlac(lowData = lowData, metered = isMetered) && !hasFlacDiskEntry
+        val bypassFlac = shouldBypassFlac(lowData = lowData, metered = isMetered)
         val currentSource = currentPlaybackSource
         val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = bypassFlac)
         val cacheKey = "${mediaId}_${effectiveSource.name}"
         val streamClient = preferredStreamClient
         val quality = audioQuality
 
-        if (streamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
-            val authState = YouTube.currentPlaybackAuthState()
-            val authFingerprint = ArchiveTuneExtractorCacheFingerprintPrefix + authState.fingerprint
-            if (extractorPlaybackUrlCache[mediaId]?.isValidFor(authFingerprint = authFingerprint, minimumRemainingMs = 0L) == true) {
-                resolvingPrefetchMediaIds.remove(mediaId)
-                return
-            }
-        } else {
-            val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
-            val isPlaybackUrlValid = playbackUrlCache[cacheKey]?.isValidFor(
-                authFingerprint = authFingerprint,
-                minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
-            ) == true
-            val isFlacCached = !bypassFlac && effectiveSource == PlaybackSource.FLAC && losslessUrlCache.get(cacheKey) != null
-            if (isPlaybackUrlValid || isFlacCached) {
-                resolvingPrefetchMediaIds.remove(mediaId)
-                return
-            }
-        }
-
         prefetchJob = ioScope.launch {
             try {
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
                 if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
+
+                var downloadUrl: String? = null
+                var targetCacheKey: String = mediaId
+                var downloadClient: OkHttpClient = mediaOkHttpClient
+                val requestHeaders = mutableMapOf<String, String>()
 
                 if (streamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
                     val authState = YouTube.currentPlaybackAuthState()
@@ -2882,7 +2881,9 @@ class MusicService :
                         expiresAtMs = System.currentTimeMillis() + ArchiveTuneExtractorCacheTtlMs,
                         authFingerprint = authFingerprint,
                     )
-                    kickOffTrackAnalysis(nextMediaItem)
+                    downloadUrl = streamUrl
+                    targetCacheKey = mediaId
+                    downloadClient = extractorMediaOkHttpClient
                 } else {
                     var resolvedFlac = false
                     if (!bypassFlac && effectiveSource == PlaybackSource.FLAC) {
@@ -2892,11 +2893,16 @@ class MusicService :
                             song = createTransientSongFromMedia(metadata)
                         }
                         if (song != null) {
-                            val flacResult = losslessStreamResolver.resolve(song, flacQuality)
+                            val cachedFlac = if (enableMemoryCache) losslessUrlCache.get(cacheKey) else null
+                            val flacResult = cachedFlac ?: losslessStreamResolver.resolve(song, flacQuality)
                             if (flacResult != null && flacResult.url.isNotBlank()) {
                                 if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
-                                if (enableMemoryCache) {
+                                if (enableMemoryCache && cachedFlac == null) {
                                     losslessUrlCache.put(cacheKey, flacResult)
+                                }
+                                if (flacResult.origin in listOf("squid", "kennyy", "arcod", "qobuz", "qbdlx")) {
+                                    requestHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+                                    requestHeaders["Referer"] = "https://music.youtube.com/"
                                 }
                                 val flacFormat = FormatEntity(
                                     id = mediaId,
@@ -2913,74 +2919,139 @@ class MusicService :
                                 )
                                 database.query { upsert(flacFormat) }
                                 resolvedFlac = true
-                                kickOffTrackAnalysis(nextMediaItem)
+                                downloadUrl = flacResult.url
+                                targetCacheKey = flacCacheKey(mediaId)
+                                downloadClient = mediaOkHttpClient
                             }
                         }
                     }
 
                     if (!resolvedFlac) {
-                        val playbackDataResult = retryWithoutPlaybackLoginContext {
-                            YTPlayerUtils.playerResponseForPlayback(
-                                videoId = mediaId,
-                                audioQuality = if (bypassFlac) AudioQuality.LOW else quality,
-                                connectivityManager = connectivityManager,
-                                preferredStreamClient = streamClient,
-                                networkMetered = isMetered,
+                        val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
+                        val cachedPlayback = playbackUrlCache[cacheKey]?.takeIf {
+                            it.isValidFor(
+                                authFingerprint = authFingerprint,
+                                minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
                             )
                         }
-                        val nonNullPlayback = playbackDataResult.getOrNull()
-                        if (nonNullPlayback != null) {
-                            if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
+                        if (cachedPlayback != null) {
+                            downloadUrl = cachedPlayback.url
+                            targetCacheKey = mediaId
+                            downloadClient = mediaOkHttpClient
+                        } else {
+                            val playbackDataResult = retryWithoutPlaybackLoginContext {
+                                YTPlayerUtils.playerResponseForPlayback(
+                                    videoId = mediaId,
+                                    audioQuality = if (bypassFlac) AudioQuality.LOW else quality,
+                                    connectivityManager = connectivityManager,
+                                    preferredStreamClient = streamClient,
+                                    networkMetered = isMetered,
+                                )
+                            }
+                            val nonNullPlayback = playbackDataResult.getOrNull()
+                            if (nonNullPlayback != null) {
+                                if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
 
-                            nonNullPlayback.playbackTracking
-                                ?.remotePlaybackTrackingUrl()
-                                ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
+                                nonNullPlayback.playbackTracking
+                                    ?.remotePlaybackTrackingUrl()
+                                    ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
 
-                            val format = nonNullPlayback.format
-                            val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
-                            val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
-                            val resolvedContentLength = format.contentLength ?: 0L
-                            val resolvedCodecs =
-                                format.mimeType
-                                    .substringAfter("codecs=", "")
-                                    .removeSurrounding("\"")
-                                    .substringBefore("\"")
-                            resolvedContentLength.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+                                val format = nonNullPlayback.format
+                                val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
+                                val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
+                                val resolvedContentLength = format.contentLength ?: 0L
+                                val resolvedCodecs =
+                                    format.mimeType
+                                        .substringAfter("codecs=", "")
+                                        .removeSurrounding("\"")
+                                        .substringBefore("\"")
+                                resolvedContentLength.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
 
-                            val formatEntity = FormatEntity(
-                                id = mediaId,
-                                itag = format.itag,
-                                mimeType = format.mimeType.split(";")[0],
-                                codecs = resolvedCodecs,
-                                bitrate = format.bitrate,
-                                sampleRate = format.audioSampleRate,
-                                contentLength = resolvedContentLength,
-                                loudnessDb = loudnessDb,
-                                perceptualLoudnessDb = perceptualLoudnessDb,
-                                playbackUrl = nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
-                            )
-                            val resolvedNormalizationFactor = calculateAudioNormalizationFactor(formatEntity, normalizeAudio = true)
-                            audioNormalizationFactorCache[mediaId] = resolvedNormalizationFactor
-                            database.query { upsert(formatEntity) }
+                                val formatEntity = FormatEntity(
+                                    id = mediaId,
+                                    itag = format.itag,
+                                    mimeType = format.mimeType.split(";")[0],
+                                    codecs = resolvedCodecs,
+                                    bitrate = format.bitrate,
+                                    sampleRate = format.audioSampleRate,
+                                    contentLength = resolvedContentLength,
+                                    loudnessDb = loudnessDb,
+                                    perceptualLoudnessDb = perceptualLoudnessDb,
+                                    playbackUrl = nonNullPlayback.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
+                                )
+                                val resolvedNormalizationFactor = calculateAudioNormalizationFactor(formatEntity, normalizeAudio = true)
+                                audioNormalizationFactorCache[mediaId] = resolvedNormalizationFactor
+                                database.query { upsert(formatEntity) }
 
-                            val streamUrl = nonNullPlayback.streamUrl
-                            val trackingExpiryMs = System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
-                            val cacheValue = AuthScopedCacheValue(
-                                url = streamUrl,
-                                expiresAtMs = trackingExpiryMs,
-                                authFingerprint = nonNullPlayback.authFingerprint,
-                            )
-                            playbackUrlCache[cacheKey] = cacheValue
-                            playbackUrlCache[mediaId] = cacheValue
-                            kickOffTrackAnalysis(nextMediaItem)
+                                val streamUrl = nonNullPlayback.streamUrl
+                                val trackingExpiryMs = System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
+                                val cacheValue = AuthScopedCacheValue(
+                                    url = streamUrl,
+                                    expiresAtMs = trackingExpiryMs,
+                                    authFingerprint = nonNullPlayback.authFingerprint,
+                                )
+                                playbackUrlCache[cacheKey] = cacheValue
+                                playbackUrlCache[mediaId] = cacheValue
+                                downloadUrl = streamUrl
+                                targetCacheKey = mediaId
+                                downloadClient = mediaOkHttpClient
+                            }
                         }
                     }
                 }
+
+                if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
+                if (downloadUrl.isNullOrBlank() || isFullyCached(downloadCache, targetCacheKey)) {
+                    if (isTrackFullyCached(mediaId)) {
+                        kickOffTrackAnalysis(mediaId, nextMediaItem)
+                    }
+                    return@launch
+                }
+
+                val dataSpecBuilder = DataSpec.Builder()
+                    .setUri(downloadUrl.toUri())
+                    .setKey(targetCacheKey)
+                if (requestHeaders.isNotEmpty()) {
+                    dataSpecBuilder.setHttpRequestHeaders(requestHeaders)
+                }
+                val dataSpec = dataSpecBuilder.build()
+
+                val cacheDataSource = CacheDataSource.Factory()
+                    .setCache(downloadCache)
+                    .setUpstreamDataSourceFactory(OkHttpDataSource.Factory(downloadClient))
+                    .setCacheWriteDataSinkFactory(
+                        CacheDataSink.Factory()
+                            .setCache(downloadCache)
+                            .setBufferSize(256 * 1024)
+                    )
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                    .createDataSource()
+
+                val writer = CacheWriter(cacheDataSource, dataSpec, ByteArray(128 * 1024), null)
+                activeCacheWriter = writer
+
+                Timber.tag(TAG).d("Prefetch start: mediaId=$mediaId, key=$targetCacheKey")
+                try {
+                    writer.cache()
+                    if (targetGeneration == prefetchTimelineGeneration.get() && isActive) {
+                        Timber.tag(TAG).d("Prefetch finish: mediaId=$mediaId, key=$targetCacheKey")
+                        if (isTrackFullyCached(mediaId)) {
+                            kickOffTrackAnalysis(mediaId, nextMediaItem)
+                        }
+                    }
+                } finally {
+                    if (activeCacheWriter === writer) {
+                        activeCacheWriter = null
+                    }
+                    runCatching { cacheDataSource.close() }
+                }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Throwable) {
-                Timber.tag("MusicService").w(e, "Prefetch failed for $mediaId")
+            } catch (_: Throwable) {
             } finally {
+                if (activePrefetchMediaId == mediaId) {
+                    activePrefetchMediaId = null
+                }
                 resolvingPrefetchMediaIds.remove(mediaId)
             }
         }
@@ -3004,7 +3075,7 @@ class MusicService :
         if (queue.isNotEmpty()) {
             lyricsPreloadManager?.onSongChanged(currentIndex, queue)
         }
-        prefetchNextTrack(currentIndex)
+        prefetchAround(currentIndex)
         kickOffUpcomingTrackAnalysis(currentIndex)
         kickOffTrackAnalysis(mediaItem)
         registerCacheListenersForMediaItem(mediaItem)
@@ -3244,6 +3315,9 @@ class MusicService :
         }
         if (isPlaying && !isCrossfading) {
             scheduleCrossfade()
+        }
+        if (isPlaying) {
+            prefetchAround(player.currentMediaItemIndex)
         }
         updateAudiblePlaybackRecovery()
 
@@ -3537,6 +3611,12 @@ class MusicService :
         val isSeekDiscontinuity =
             reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
         if (isSeekDiscontinuity) {
+            if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex) {
+                cancelPrefetch()
+                if (player.isPlaying) {
+                    prefetchAround(newPosition.mediaItemIndex)
+                }
+            }
             if (!crossfadeHandoffInProgress) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
             }
@@ -3548,6 +3628,9 @@ class MusicService :
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         cancelPrefetch()
+        if (player.isPlaying) {
+            prefetchAround(player.currentMediaItemIndex)
+        }
         updateNotification()
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -3581,6 +3664,9 @@ class MusicService :
 
     override fun onRepeatModeChanged(repeatMode: Int) {
         cancelPrefetch()
+        if (player.isPlaying) {
+            prefetchAround(player.currentMediaItemIndex)
+        }
         updateNotification()
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) {
@@ -3621,6 +3707,9 @@ class MusicService :
         super.onTimelineChanged(timeline, reason)
         if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
             cancelPrefetch()
+            if (player.isPlaying) {
+                prefetchAround(player.currentMediaItemIndex)
+            }
         }
     }
 
