@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.MediaDataSource
 import android.net.Uri
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -61,6 +62,26 @@ object TrackAnalyzer {
 
     fun hasCached(trackId: String): Boolean = memoryCache.containsKey(trackId)
 
+    suspend fun getOrFetchCached(trackId: String): TrackAnalysisResult? {
+        if (trackId.isBlank()) return null
+        memoryCache[trackId]?.let { return it }
+
+        val cachedDb = runCatching {
+            withContext(Dispatchers.IO) {
+                database?.trackAnalysisDao()?.get(trackId)
+            }
+        }.getOrNull()
+
+        if (cachedDb != null) {
+            val result = toResult(cachedDb)
+            Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
+            memoryCache[trackId] = result
+            _analysisEvents.tryEmit(trackId to result)
+            return result
+        }
+        return null
+    }
+
     fun putCached(trackId: String, result: TrackAnalysisResult) {
         memoryCache[trackId] = result
     }
@@ -75,8 +96,16 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "filePath") {
-        AudioDecoder.decode(filePath, startMs, endMs)
+    ): TrackAnalysisResult? {
+        if (filePath.startsWith("http://", ignoreCase = true) || filePath.startsWith("https://", ignoreCase = true)) {
+            Timber.tag("TrackAnalyzer").w("Rejecting remote filePath=$filePath for trackId=$trackId")
+            return null
+        }
+        val file = File(filePath)
+        if (!file.exists() || !file.canRead()) return null
+        return analyzeWithSource(trackId, durationSeconds, "filePath") {
+            AudioDecoder.decode(file, startMs, endMs)
+        }
     }
 
     suspend fun analyze(
@@ -85,8 +114,11 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "file") {
-        AudioDecoder.decode(file, startMs, endMs)
+    ): TrackAnalysisResult? {
+        if (!file.exists() || !file.canRead()) return null
+        return analyzeWithSource(trackId, durationSeconds, "file") {
+            AudioDecoder.decode(file, startMs, endMs)
+        }
     }
 
     suspend fun analyze(
@@ -96,8 +128,19 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "uri:$uri") {
-        AudioDecoder.decode(context, uri, startMs, endMs)
+    ): TrackAnalysisResult? {
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "http" || scheme == "https") {
+            Timber.tag("TrackAnalyzer").w("Rejecting remote uri=$uri for trackId=$trackId")
+            return null
+        }
+        if (scheme != "content" && scheme != "file" && scheme != "android.resource" && scheme != null) {
+            Timber.tag("TrackAnalyzer").w("Rejecting unsupported uri scheme=$scheme for trackId=$trackId")
+            return null
+        }
+        return analyzeWithSource(trackId, durationSeconds, "uri:$uri") {
+            AudioDecoder.decode(context, uri, startMs, endMs)
+        }
     }
 
     suspend fun analyze(
@@ -107,8 +150,17 @@ object TrackAnalyzer {
         durationSeconds: Double? = null,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "cache:$cacheKey") {
-        AudioDecoder.decode(cache, cacheKey, startMs, endMs)
+    ): TrackAnalysisResult? {
+        val length = runCatching {
+            cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+        }.getOrDefault(-1L)
+        if (length <= 0L || !cache.isCached(cacheKey, 0L, length)) {
+            Timber.tag("TrackAnalyzer").w("Rejecting partially cached key=$cacheKey for trackId=$trackId")
+            return null
+        }
+        return analyzeWithSource(trackId, durationSeconds, "cache:$cacheKey") {
+            AudioDecoder.decode(cache, cacheKey, startMs, endMs)
+        }
     }
 
     suspend fun analyze(

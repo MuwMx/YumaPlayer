@@ -659,20 +659,14 @@ internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
     val spans = cache.getCachedSpans(key)
     if (spans.isEmpty()) return@runCatching false
     val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-    if (contentLength > 0L) {
-        cache.isCached(key, 0L, contentLength)
-    } else {
-        spans.any { it.position == 0L && it.length > 2_500_000L }
-    }
+    contentLength > 0L && cache.isCached(key, 0L, contentLength)
 }.getOrDefault(false)
 
 internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
     if (mediaId.isBlank()) return false
     val flacKey = flacCacheKey(mediaId)
     return isFullyCached(downloadCache, flacKey) ||
-        isFullyCached(playerCache, flacKey) ||
-        isFullyCached(downloadCache, mediaId) ||
-        isFullyCached(playerCache, mediaId)
+        isFullyCached(downloadCache, mediaId)
 }
 
 internal suspend fun MusicService.analyzeCachedTrack(mediaId: String): TrackAnalysisResult? {
@@ -684,16 +678,8 @@ internal suspend fun MusicService.analyzeCachedTrack(mediaId: String): TrackAnal
         return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey)
     }
 
-    if (isFullyCached(playerCache, flacKey)) {
-        return TrackAnalyzer.analyze(mediaId, playerCache, flacKey)
-    }
-
     if (isFullyCached(downloadCache, mediaId)) {
         return TrackAnalyzer.analyze(mediaId, downloadCache, mediaId)
-    }
-
-    if (isFullyCached(playerCache, mediaId)) {
-        return TrackAnalyzer.analyze(mediaId, playerCache, mediaId)
     }
 
     return null
@@ -702,7 +688,6 @@ internal suspend fun MusicService.analyzeCachedTrack(mediaId: String): TrackAnal
 internal fun MusicService.registerCacheListenerForKey(key: String) {
     if (key.isBlank()) return
     if (registeredCacheKeys.add(key)) {
-        runCatching { playerCache.addListener(key, automixCacheListener) }
         runCatching { downloadCache.addListener(key, automixCacheListener) }
     }
 }
@@ -773,30 +758,23 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
         Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: automix disabled mediaId=$mediaId")
         return
     }
-    if (TrackAnalyzer.hasCached(mediaId)) {
-        Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: already cached mediaId=$mediaId")
-        return
-    }
 
     val service = this
     ioScope.launch {
         try {
-            if (TrackAnalyzer.hasCached(mediaId)) {
-                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip late: already cached mediaId=$mediaId")
+            val cached = TrackAnalyzer.getOrFetchCached(mediaId)
+            if (cached != null) {
+                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis ready from cache/Room: mediaId=$mediaId bpm=${cached.bpm}")
                 return@launch
             }
-
-            if (isTrackFullyCached(mediaId)) {
-                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis start: fully cached mediaId=$mediaId")
-                analyzeCachedTrack(mediaId)
-                return@launch
-            }
-            Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis: not fully cached mediaId=$mediaId, probing direct sources")
 
             if (mediaId.isLocalMediaId()) {
                 val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()
-                TrackAnalyzer.analyze(mediaId, service, uri)
-                return@launch
+                val scheme = uri.scheme?.lowercase()
+                if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
+                    TrackAnalyzer.analyze(mediaId, service, uri)
+                    return@launch
+                }
             }
 
             if (mediaId.startsWith("/")) {
@@ -808,10 +786,21 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
             }
 
             val directUri = mediaItem?.localConfiguration?.uri
-            if (directUri != null && (directUri.scheme == "content" || directUri.scheme == "file")) {
-                TrackAnalyzer.analyze(mediaId, service, directUri)
+            if (directUri != null) {
+                val scheme = directUri.scheme?.lowercase()
+                if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
+                    TrackAnalyzer.analyze(mediaId, service, directUri)
+                    return@launch
+                }
+            }
+
+            if (isTrackFullyCached(mediaId)) {
+                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis start: offline downloaded track mediaId=$mediaId")
+                analyzeCachedTrack(mediaId)
                 return@launch
             }
+
+            Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis skip: network track without full local copy mediaId=$mediaId")
         } catch (e: Exception) {
             Timber.tag(MusicService.TAG).v(e, "Background TrackAnalyzer failed for mediaId=$mediaId")
         }

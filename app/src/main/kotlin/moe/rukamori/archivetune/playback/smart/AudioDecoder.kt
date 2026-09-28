@@ -8,6 +8,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import java.io.File
 import java.io.FileDescriptor
 import java.nio.ByteOrder
@@ -22,11 +23,18 @@ object AudioDecoder {
         filePath: String,
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
-    ): FloatArray? = decodeInternal(
-        setDataSource = { it.setDataSource(filePath) },
-        startMs = startMs,
-        endMs = endMs,
-    )
+    ): FloatArray? {
+        if (filePath.startsWith("http://", ignoreCase = true) || filePath.startsWith("https://", ignoreCase = true)) {
+            return null
+        }
+        val file = File(filePath)
+        if (!file.exists() || !file.canRead()) return null
+        return decodeInternal(
+            setDataSource = { it.setDataSource(file.absolutePath) },
+            startMs = startMs,
+            endMs = endMs,
+        )
+    }
 
     fun decode(
         file: File,
@@ -34,7 +42,11 @@ object AudioDecoder {
         endMs: Long = Long.MAX_VALUE,
     ): FloatArray? {
         if (!file.exists() || !file.canRead()) return null
-        return decode(file.absolutePath, startMs, endMs)
+        return decodeInternal(
+            setDataSource = { it.setDataSource(file.absolutePath) },
+            startMs = startMs,
+            endMs = endMs,
+        )
     }
 
     fun decode(
@@ -45,6 +57,9 @@ object AudioDecoder {
     ): FloatArray? {
         val scheme = uri.scheme?.lowercase()
         if (scheme == "http" || scheme == "https") return null
+        if (scheme != "file" && scheme != "content" && scheme != "android.resource" && scheme != null) {
+            return null
+        }
         if (scheme == "file" || scheme == null) {
             val path = uri.path
             if (path != null) {
@@ -89,11 +104,17 @@ object AudioDecoder {
         startMs: Long = 0L,
         endMs: Long = Long.MAX_VALUE,
     ): FloatArray? {
+        val length = runCatching {
+            cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+        }.getOrDefault(-1L)
+        if (length <= 0L || !cache.isCached(cacheKey, 0L, length)) {
+            return null
+        }
         val spans = runCatching { cache.getCachedSpans(cacheKey) }.getOrNull().orEmpty()
         if (spans.isEmpty()) return null
         if (spans.size == 1) {
             val singleFile = spans.first().file
-            if (singleFile != null && singleFile.exists()) {
+            if (singleFile != null && singleFile.exists() && singleFile.canRead()) {
                 return decode(singleFile, startMs, endMs)
             }
         }

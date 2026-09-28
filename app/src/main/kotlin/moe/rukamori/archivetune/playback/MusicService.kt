@@ -707,7 +707,7 @@ class MusicService :
                         secondaryPreparationFailedMediaId = null
                         scope.launch { scheduleCrossfade() }
                     }
-                    if (isFullyCached(cache, key)) {
+                    if (cache !== playerCache && isFullyCached(cache, key)) {
                         if (!TrackAnalyzer.hasCached(mediaId)) {
                             kickOffTrackAnalysis(mediaId)
                         }
@@ -1087,7 +1087,6 @@ class MusicService :
             }
         playerInitialized.value = true
         ioScope.launch {
-            runCatching { playerCache.keys }.getOrNull()?.forEach { key -> registerCacheListenerForKey(key) }
             runCatching { downloadCache.keys }.getOrNull()?.forEach { key -> registerCacheListenerForKey(key) }
         }
         widgetUpdater =
