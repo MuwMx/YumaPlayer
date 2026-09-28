@@ -421,7 +421,7 @@ object TrackAnalyzer {
         if (durationSeconds == null || durationSeconds <= 0.0) return base
         val contentEnd = if (base.contentEndTime > 0.0) base.contentEndTime else durationSeconds
         if (contentEnd <= 0.0) return base
-        val fullSamples = runCatching { decodeFullSamples() }.getOrNull()
+        var fullSamples = runCatching { decodeFullSamples() }.getOrNull()
         if (fullSamples == null || fullSamples.isEmpty()) return base
         try {
             val cliff = runCatching { TrackFeatures.energyCliff(fullSamples, durationSeconds) }.getOrDefault(0.0)
@@ -454,6 +454,7 @@ object TrackAnalyzer {
             return base.copy(mixOutTime = cliff, rawJson = mergedRawJson)
         } finally {
             fullSamples.fill(0f)
+            fullSamples = null
         }
     }
 
