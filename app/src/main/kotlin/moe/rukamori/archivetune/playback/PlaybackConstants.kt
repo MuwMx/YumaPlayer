@@ -25,4 +25,8 @@ object PlaybackConstants {
     const val CROSSFADE_MIN_BUFFER_MS = 15_000
     const val CROSSFADE_MAX_BUFFER_MS = 45_000
     const val CROSSFADE_FRAME_MS = 32L
+    const val CROSSFADE_PREROLL_LEAD_MS = PRIMARY_BUFFER_FOR_PLAYBACK_MS.toLong() + CROSSFADE_END_GUARD_MS
+    const val PREROLL_DRIFT_TOLERANCE_MS = 40L
+    // Standby prepare must cover preroll lead time plus initial playback buffer
+    const val MIN_CROSSFADE_PREPARE_AHEAD_MS = CROSSFADE_PREROLL_LEAD_MS + CROSSFADE_MIN_BUFFER_BEFORE_START_MS
 }
