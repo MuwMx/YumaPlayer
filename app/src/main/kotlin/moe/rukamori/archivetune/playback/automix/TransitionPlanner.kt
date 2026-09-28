@@ -178,7 +178,7 @@ object TransitionPlanner {
         val enableBassSwap = resolveBassSwap(style, aggressiveness)
 
         val incomingStartMs = if (canBeatmatch) {
-            (incomingAnalysis.mixInTime.takeIf { it > 0.0 }
+            (incomingAnalysis?.mixInTime?.takeIf { it > 0.0 }
                 ?.let { it * MS_PER_SECOND }?.roundToLong() ?: 0L)
                 .coerceAtLeast(0L)
         } else {

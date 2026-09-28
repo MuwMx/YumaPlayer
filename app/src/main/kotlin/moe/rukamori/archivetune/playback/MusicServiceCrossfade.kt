@@ -515,9 +515,6 @@ internal fun MusicService.startCrossfade(
                     val actualStandbyPos = standbyPlayer.currentPosition
                     val driftMs = actualStandbyPos - expectedStandbyPos
                     if (abs(driftMs) <= PlaybackConstants.PREROLL_DRIFT_TOLERANCE_MS) {
-                        if (driftMs != 0L) {
-                            standbyPlayer.seekTo(target.index, expectedStandbyPos)
-                        }
                         true
                     } else {
                         false
