@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import timber.log.Timber
 import java.nio.ByteBuffer
 import kotlin.math.PI
 import kotlin.math.abs
@@ -36,6 +37,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
 
     private var channelCount = 0
     private var sampleRate = 0
+    private var encoding = C.ENCODING_INVALID
     private var lowPassState = Array(0) { DoubleArray(4) }
     private var shelfState = Array(0) { DoubleArray(4) }
     private val lowPassCoeff = DoubleArray(5)
@@ -44,14 +46,25 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     private var cachedBassDb = Double.NaN
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
+            inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
+        ) {
+            Timber.tag("DjFilter").d("bypass: unsupported encoding=${inputAudioFormat.encoding}")
+            channelCount = 0
+            sampleRate = 0
+            encoding = C.ENCODING_INVALID
             return AudioProcessor.AudioFormat.NOT_SET
         }
-        if (inputAudioFormat.channelCount != STEREO_CHANNELS) {
+        if (inputAudioFormat.channelCount < 1) {
+            Timber.tag("DjFilter").d("bypass: unsupported channels=${inputAudioFormat.channelCount}")
+            channelCount = 0
+            sampleRate = 0
+            encoding = C.ENCODING_INVALID
             return AudioProcessor.AudioFormat.NOT_SET
         }
         channelCount = inputAudioFormat.channelCount
         sampleRate = inputAudioFormat.sampleRate
+        encoding = inputAudioFormat.encoding
         lowPassState = Array(channelCount) { DoubleArray(4) }
         shelfState = Array(channelCount) { DoubleArray(4) }
         cachedCutoffHz = -1.0
@@ -62,10 +75,19 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     override fun isActive(): Boolean = sampleRate != 0 && channelCount != 0
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!isActive) return
-        val frames = inputBuffer.remaining() / (BYTES_PER_SAMPLE * channelCount)
+        if (!isActive) {
+            if (inputBuffer.hasRemaining()) {
+                val output = replaceOutputBuffer(inputBuffer.remaining())
+                output.put(inputBuffer)
+                output.flip()
+            }
+            return
+        }
+        val isFloat = encoding == C.ENCODING_PCM_FLOAT
+        val bytesPerSample = if (isFloat) BYTES_PER_FLOAT_SAMPLE else BYTES_PER_SAMPLE
+        val frames = inputBuffer.remaining() / (bytesPerSample * channelCount)
         if (frames == 0) return
-        val output = replaceOutputBuffer(inputBuffer.remaining())
+        val output = replaceOutputBuffer(frames * bytesPerSample * channelCount)
         val cutoff = lowPassCutoffHz
         val bassDb = bassGainDb
         val level = gain
@@ -76,11 +98,19 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         val applyGain = abs(level - 1.0) >= 1e-4
         for (frame in 0 until frames) {
             for (channel in 0 until channelCount) {
-                var sample = inputBuffer.short.toDouble() / 32768.0
-                if (filtering) sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
-                if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
-                if (applyGain) sample *= level
-                output.putShort((sample.coerceIn(-1.0, 1.0) * 32767.0).toInt().toShort())
+                if (isFloat) {
+                    var sample = inputBuffer.float.toDouble()
+                    if (filtering) sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
+                    if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
+                    if (applyGain) sample *= level
+                    output.putFloat(sample.coerceIn(-1.0, 1.0).toFloat())
+                } else {
+                    var sample = inputBuffer.short.toDouble() / 32768.0
+                    if (filtering) sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
+                    if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
+                    if (applyGain) sample *= level
+                    output.putShort((sample.coerceIn(-1.0, 1.0) * 32767.0).toInt().toShort())
+                }
             }
         }
         inputBuffer.position(inputBuffer.limit())
@@ -100,6 +130,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         cachedBassDb = Double.NaN
         channelCount = 0
         sampleRate = 0
+        encoding = C.ENCODING_INVALID
     }
 
     private fun resetDelayLines() {
@@ -154,8 +185,8 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         const val SWEEP_TARGET_HZ = 400.0
         const val FULL_CUT_DB = -24.0
         const val BASS_CROSSOVER_HZ = 200.0
-        private const val STEREO_CHANNELS = 2
         private const val BYTES_PER_SAMPLE = 2
+        private const val BYTES_PER_FLOAT_SAMPLE = 4
         private const val BUTTERWORTH_Q = 0.70710678
         private const val SHELF_SLOPE = 1.0
     }
