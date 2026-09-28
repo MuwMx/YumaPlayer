@@ -30,6 +30,9 @@ object TransitionPlanner {
 
     const val BEATMATCHED_THRESHOLD = 0.05
     const val DJ_ASSISTED_THRESHOLD = 0.15
+    const val OUTRO_MIN_LEAD_SECONDS = 8.0
+
+    private const val FALLBACK_LEAD_BEAT_MULTIPLIER = 2
 
     fun minSecondsFor(aggressiveness: String): Double = when (aggressiveness.lowercase()) {
         "soft" -> SOFT_MIN_SECONDS
@@ -131,6 +134,25 @@ object TransitionPlanner {
         }
     }
 
+    private fun fallbackLeadBeats(outgoingBpm: Double?, nextBpm: Double?): Int {
+        val cur = outgoingBpm ?: 0.0
+        val next = nextBpm ?: 0.0
+        if (cur <= 0.0 || next <= 0.0) return BEATS_UNMATCHED * FALLBACK_LEAD_BEAT_MULTIPLIER
+        val ratio = normalizedTempoRatio(cur, next)
+        val transitionBeats = if (abs(1.0 - ratio) > TEMPO_ALIGNMENT_TOLERANCE) {
+            BEATS_UNMATCHED
+        } else {
+            BEATS_MATCHED
+        }
+        return transitionBeats * FALLBACK_LEAD_BEAT_MULTIPLIER
+    }
+
+    private fun fallbackLeadMsBeforeContentEnd(outgoingBpm: Double?, nextBpm: Double?): Long {
+        val cur = outgoingBpm ?: 0.0
+        if (cur <= 0.0) return (AUTO_MAX_SECONDS * MS_PER_SECOND).roundToLong()
+        return ((fallbackLeadBeats(outgoingBpm, nextBpm) * SECONDS_PER_MINUTE / cur) * MS_PER_SECOND).roundToLong()
+    }
+
     fun planTransition(
         currentDurationMs: Long,
         currentBpm: Double? = null,
@@ -212,17 +234,19 @@ object TransitionPlanner {
         }
 
         val isInteriorCliff = rawMixOutMs < contentEndMs - 1000L
+        val outroLeadMs = (OUTRO_MIN_LEAD_SECONDS * MS_PER_SECOND).roundToLong()
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
             val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(1000L)
             val fade = naturalFade.coerceIn(minMs, maxMs).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
             Pair(rawMixOutMs, fade)
-        } else if (outroStartMs != null && outroStartMs < contentEndMs - minMs) {
+        } else if (outroStartMs != null && outroStartMs <= contentEndMs - outroLeadMs) {
             val fade = minOf(bpmAdjustedDurationMs, contentEndMs - outroStartMs).coerceIn(minMs, maxMs)
             Pair(outroStartMs, fade)
         } else {
             val fade = bpmAdjustedDurationMs.coerceIn(minMs, maxMs).coerceAtMost(contentEndMs)
-            val start = (contentEndMs - fade).coerceAtLeast(0L)
+            val fallbackLeadMs = fallbackLeadMsBeforeContentEnd(outgoingBpm, nextBpm)
+            val start = (contentEndMs - maxOf(fade, fallbackLeadMs)).coerceAtLeast(0L)
             Pair(start, fade)
         }
 

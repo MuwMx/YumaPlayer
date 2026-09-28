@@ -59,6 +59,9 @@ private fun MusicService.computeCrossfadeTriggerAt(
     triggerOffset: Long,
     automixPlanTriggerAtMs: Long?,
 ): Long {
+    if (automixEnabled && automixPlanTriggerAtMs != null) {
+        return automixPlanTriggerAtMs
+    }
     val mixOutSec = outgoingAnalysis?.mixOutTime ?: 0.0
     return if (automixEnabled && mixOutSec > 0.0) {
         val mixOutTimeMs = (mixOutSec * 1000.0).roundToLong()
