@@ -484,7 +484,8 @@ internal fun MusicService.startCrossfade(
                 val standbyPlayer = incomingPlayer
 
                 val nowMs = android.os.SystemClock.elapsedRealtime()
-                val elapsedBeforeStartMs = (triggerAtMs?.takeIf { it > 0L }?.let { nowMs - it } ?: 0L)
+                val elapsedBeforeStartMs = (triggerAtMs?.takeIf { it > 0L }
+                    ?.let { player.currentPosition - it } ?: 0L)
                     .coerceIn(0L, durationMs)
                 val effectiveCueMs = advanceCueForLateStart(standbyPlayer, cueInMs, elapsedBeforeStartMs)
 
