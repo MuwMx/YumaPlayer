@@ -16,7 +16,7 @@ This document serves as the official reference for the modular structure of Yuma
 
 ## 2. Architecture & Category Hierarchy
 
-YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.kts`: `:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, `:lyrics:*` ×6, `:spotifycore`, `:shazamkit`, `:canvas`, `:lastfm`, `:flaccore`, `:moriextractor`, `:morideobfuscator`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
+YumaPlayer consists of **20 Gradle modules** (verified against `settings.gradle.kts`: `:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, `:lyrics:*` ×6, `:spotifycore`, `:shazamkit`, `:canvas`, `:lastfm`, `:flaccore`, `:moriextractor`, `:morideobfuscator`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
 
 ```
                  ┌──────────────┐
