@@ -561,6 +561,7 @@ class MusicService :
     internal var crossfadeDurationMs = 0L
     internal var crossfadeGapless = false
     internal var crossfadeTriggerJob: Job? = null
+    internal var activeCrossfadeScheduledKey: Pair<String, CrossfadeTarget>? = null
     internal var crossfadeJob: Job? = null
     internal lateinit var controller: DeckController
     val isControllerInitialized: Boolean get() = ::controller.isInitialized
@@ -3380,6 +3381,7 @@ class MusicService :
         } else if (!playWhenReady && !isCrossfading) {
             crossfadeTriggerJob?.cancel()
             crossfadeTriggerJob = null
+            activeCrossfadeScheduledKey = null
             isCrossfading = false
             localPlayer.pauseAtEndOfMediaItems = false
             releaseSecondaryCrossfadePlayer()

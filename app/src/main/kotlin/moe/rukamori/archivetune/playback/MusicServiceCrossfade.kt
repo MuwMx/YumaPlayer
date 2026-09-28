@@ -85,12 +85,7 @@ private fun resolveIncomingCueInMs(
 }
 
 internal fun MusicService.scheduleCrossfade() {
-    val currentGeneration = bumpCrossfadePlanGeneration()
     if (!isPlayerInitialized()) return
-    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade: enabled=$crossfadeEnabled, durationMs=$crossfadeDurationMs, automix=$automixEnabled")
-    crossfadeTriggerJob?.cancel()
-    crossfadeTriggerJob = null
-
     if (isCrossfading) {
         Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade bail: already crossfading")
         return
@@ -101,6 +96,21 @@ internal fun MusicService.scheduleCrossfade() {
         releaseSecondaryCrossfadePlayer()
         return
     }
+
+    val earlyTarget = resolveCrossfadeTarget()
+    val earlyMediaId = player.currentMediaItem?.mediaId
+    if (earlyTarget != null && earlyMediaId != null &&
+        crossfadeTriggerJob?.isActive == true &&
+        activeCrossfadeScheduledKey == (earlyMediaId to earlyTarget)
+    ) {
+        return
+    }
+
+    val currentGeneration = bumpCrossfadePlanGeneration()
+    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade: enabled=$crossfadeEnabled, durationMs=$crossfadeDurationMs, automix=$automixEnabled")
+    crossfadeTriggerJob?.cancel()
+    crossfadeTriggerJob = null
+    activeCrossfadeScheduledKey = null
 
     val target = resolveCrossfadeTarget()
     val duration = player.duration
@@ -156,6 +166,7 @@ internal fun MusicService.scheduleCrossfade() {
     )
     var prepareAhead = automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
+    activeCrossfadeScheduledKey = currentMediaId to target
     crossfadeTriggerJob =
         scope.launch {
             hasPreparedSecondaryPlayer = false
@@ -423,6 +434,7 @@ internal fun MusicService.startCrossfade(
 
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
+    activeCrossfadeScheduledKey = null
     crossfadeJob?.cancel()
     crossfadeJob =
         scope.launch {
@@ -686,6 +698,7 @@ internal fun MusicService.cancelCrossfade(
     bumpCrossfadePlanGeneration()
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
+    activeCrossfadeScheduledKey = null
     crossfadeJob?.cancel()
     crossfadeJob = null
     isCrossfading = false
