@@ -3,6 +3,7 @@ package moe.rukamori.archivetune.playback
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.exoplayer.ExoPlayer
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 import moe.rukamori.archivetune.audiodsp.DeckController
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
@@ -30,6 +31,8 @@ class ExoDeckController(
     val dualPlayerRoleHolder: DualPlayerRoleHolder = DualPlayerRoleHolder()
 
     var secondaryCrossfadeTarget: CrossfadeTarget? = null
+
+    private var incomingPrimedMuted = false
 
     val secondaryCrossfadePlayer: ExoPlayer?
         get() = transitionDeck?.player
@@ -89,6 +92,23 @@ class ExoDeckController(
         }.getOrDefault(false)
     }
 
+    override fun primeIncoming(cueMs: Long) {
+        val incoming = transitionDeck ?: return
+        val incomingPlayer = incoming.player
+        incoming.baseVolume = 0f
+        incoming.maxGainFactor = 1f
+        incomingPrimedMuted = true
+        if (cueMs > 0L && kotlin.math.abs(incomingPlayer.currentPosition - cueMs) > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
+            incomingPlayer.seekTo(secondaryCrossfadeTarget?.index ?: 0, cueMs)
+        }
+        incomingPlayer.playWhenReady = true
+    }
+
+    override fun stopIncoming() {
+        incomingPrimedMuted = false
+        transitionDeck?.player?.playWhenReady = false
+    }
+
     override fun startCrossfade(plan: AutomixPlan) {
         val incoming = transitionDeck ?: return
         val outgoing = activeDeck
@@ -98,8 +118,9 @@ class ExoDeckController(
         outgoing.maxGainFactor = service.maxSafeGainFactor
 
         incoming.isIncoming = true
-        incoming.baseVolume = service.crossfadeIncomingBaseVolume
+        incoming.baseVolume = if (incomingPrimedMuted) 0f else service.crossfadeIncomingBaseVolume
         incoming.maxGainFactor = service.maxSafeGainFactor
+        incomingPrimedMuted = false
 
         outgoing.player.pauseAtEndOfMediaItems = true
 
@@ -133,6 +154,7 @@ class ExoDeckController(
 
         activeDeck = incomingDeck
         transitionDeck = null
+        incomingPrimedMuted = false
         secondaryCrossfadeTarget = null
         dualPlayerRoleHolder.reset()
 
@@ -154,6 +176,7 @@ class ExoDeckController(
 
     fun cancel(resetVolume: Boolean = true, resetPauseAtEnd: Boolean = true) {
         val secondary = transitionDeck
+        incomingPrimedMuted = false
         secondary?.player?.apply {
             playWhenReady = false
             volume = 0f
@@ -179,6 +202,7 @@ class ExoDeckController(
     fun releaseTransitionDeck() {
         val deckToRelease = transitionDeck ?: return
         transitionDeck = null
+        incomingPrimedMuted = false
         secondaryCrossfadeTarget = null
         deckToRelease.clearAutomation()
         val playerToRelease = deckToRelease.player

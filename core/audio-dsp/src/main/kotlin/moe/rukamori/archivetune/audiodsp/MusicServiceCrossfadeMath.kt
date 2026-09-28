@@ -55,6 +55,13 @@ fun incomingBassGainDb(progress: Float): Double = linearToBassDb(bassSwapIncomin
 
 fun outgoingBassGainDb(progress: Float): Double = linearToBassDb(1.0 - bassSwapIncomingLinear(progress))
 
+fun advanceCueForElapsed(cueInMs: Long, elapsedMs: Long, maxPositionMs: Long?): Long {
+    if (cueInMs <= 0L || elapsedMs <= 0L) return cueInMs
+    val advanced = cueInMs + elapsedMs
+    val ceiling = maxPositionMs ?: return advanced
+    return advanced.coerceAtMost(ceiling.coerceAtLeast(0L))
+}
+
 fun effectiveCrossfadeDuration(durationMs: Long, configuredMs: Long): Long? {
     if (durationMs == C.TIME_UNSET || durationMs <= 0L) return null
     val maxDuration = durationMs - CrossfadeConstants.END_GUARD_MS
