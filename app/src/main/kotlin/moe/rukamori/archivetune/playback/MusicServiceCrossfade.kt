@@ -486,33 +486,19 @@ internal fun MusicService.startCrossfade(
                     val nowMs = android.os.SystemClock.elapsedRealtime()
                     if (crossfadePlaybackRequested) {
                         standbyPlayer.playWhenReady = true
-                        val isIncomingProducingSound =
-                            standbyPlayer.playbackState == Player.STATE_READY && standbyPlayer.isPlaying
-
-                        if (isIncomingProducingSound) {
-                            bufferingStartMs = null
-                            elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
-                            crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                            activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
-                            transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
-                        } else {
-                            if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
-                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-                                return@launch
-                            }
-                            if (standbyPlayer.playbackState == Player.STATE_IDLE) {
-                                standbyPlayer.prepare()
-                            }
-                            val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
-                            if (nowMs - stallStart >= PlaybackConstants.CROSSFADE_BUFFERING_TIMEOUT_MS) {
-                                Timber.tag(MusicService.TAG).w("Crossfade incoming player buffering timed out; bailing out")
-                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
-                                return@launch
-                            }
+                        if (standbyPlayer.playerError != null || standbyPlayer.playbackState == Player.STATE_ENDED) {
+                            cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                            return@launch
                         }
+                        if (standbyPlayer.playbackState == Player.STATE_IDLE) {
+                            standbyPlayer.prepare()
+                        }
+                        elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
+                        crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                        activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
+                        transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
                     } else {
                         standbyPlayer.pause()
-                        bufferingStartMs = null
                     }
                     lastTickMs = nowMs
                     delay(MusicService.CROSSFADE_FRAME_MS)

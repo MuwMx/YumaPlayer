@@ -41,8 +41,7 @@ object TransitionPlanner {
 
     fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when (aggressiveness.lowercase()) {
         "soft" -> false
-        "club" -> true
-        else -> style != TransitionStyle.PLAIN_CROSSFADE
+        else -> true
     }
 
     fun resolveForcedDurationMs(preset: String): Long? = when (preset.lowercase()) {
