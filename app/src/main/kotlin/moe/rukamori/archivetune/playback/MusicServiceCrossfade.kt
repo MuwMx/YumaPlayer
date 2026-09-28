@@ -458,7 +458,7 @@ internal fun MusicService.startCrossfade(
                     triggerOffsetMs = 0L,
                     durationMs = durationMs,
                     incomingStartMs = cueInMs,
-                    enableBassSwap = automixEnabled,
+                    enableBassSwap = false,
                 )
                 controller.startCrossfade(effectivePlan)
                 val standbyPlayer = incomingPlayer

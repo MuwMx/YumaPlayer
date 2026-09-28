@@ -39,8 +39,9 @@ object TransitionPlanner {
     fun maxSecondsFor(aggressiveness: String): Double =
         CrossfadeConstants.Aggressiveness.fromString(aggressiveness).maxSeconds
 
-    fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when (aggressiveness.lowercase()) {
-        "soft" -> false
+    fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when {
+        style == TransitionStyle.PLAIN_CROSSFADE -> false
+        aggressiveness.lowercase() == "soft" -> false
         else -> true
     }
 

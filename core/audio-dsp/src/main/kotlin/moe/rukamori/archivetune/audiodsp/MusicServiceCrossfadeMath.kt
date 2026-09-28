@@ -4,6 +4,8 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.log10
+import kotlin.math.pow
 import kotlin.math.sin
 
 const val CURVE_IN_DEFAULT = "S_CURVE"
@@ -29,6 +31,29 @@ const val FADE_CLAMP_MAX_S = CrossfadeConstants.CLAMP_MAX_S
 
 val RISE: (Float) -> Float = { p -> sin(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
 val FALL: (Float) -> Float = { p -> cos(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
+
+const val BASS_SWAP_WINDOW_START = 0.45f
+const val BASS_SWAP_WINDOW_END = 0.55f
+private const val BASS_SWAP_DOMINANCE = 0.55
+
+private val bassFloorLinear = 10.0.pow(DjFilterAudioProcessor.FULL_CUT_DB / 20.0)
+
+private fun bassSwapIncomingLinear(progress: Float): Double {
+    val phase = ((progress.coerceIn(0f, 1f) - BASS_SWAP_WINDOW_START) /
+        (BASS_SWAP_WINDOW_END - BASS_SWAP_WINDOW_START)).coerceIn(0f, 1f)
+    return if (phase <= 0.5f) {
+        phase / 0.5f * BASS_SWAP_DOMINANCE
+    } else {
+        BASS_SWAP_DOMINANCE + (phase - 0.5f) / 0.5f * (1.0 - BASS_SWAP_DOMINANCE)
+    }.toDouble()
+}
+
+private fun linearToBassDb(linear: Double): Double =
+    (20.0 * log10(linear.coerceAtLeast(bassFloorLinear))).coerceAtLeast(DjFilterAudioProcessor.FULL_CUT_DB)
+
+fun incomingBassGainDb(progress: Float): Double = linearToBassDb(bassSwapIncomingLinear(progress))
+
+fun outgoingBassGainDb(progress: Float): Double = linearToBassDb(1.0 - bassSwapIncomingLinear(progress))
 
 fun effectiveCrossfadeDuration(durationMs: Long, configuredMs: Long): Long? {
     if (durationMs == C.TIME_UNSET || durationMs <= 0L) return null
