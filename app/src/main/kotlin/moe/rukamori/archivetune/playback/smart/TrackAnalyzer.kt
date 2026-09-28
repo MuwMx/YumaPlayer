@@ -93,10 +93,14 @@ object TrackAnalyzer : AnalysisStore {
 
         if (cachedDb != null) {
             val result = toResult(cachedDb)
-            Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
-            memoryCache[trackId] = result
-            _analysisEvents.tryEmit(trackId to result)
-            return result
+            if (result.contentEndTime in 1.0..35.0 && result.mixOutTime in 1.0..35.0) {
+                Timber.tag("TrackAnalyzer").w("Ignoring corrupted short analysis in Room for trackId=$trackId contentEnd=${result.contentEndTime}")
+            } else {
+                Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
+                memoryCache[trackId] = result
+                _analysisEvents.tryEmit(trackId to result)
+                return result
+            }
         }
         return null
     }
@@ -388,10 +392,14 @@ object TrackAnalyzer : AnalysisStore {
                             memoryCache[trackId] = cliffedResult
                             _analysisEvents.tryEmit(trackId to cliffedResult)
                             logCues(trackId, cliffedResult)
-                            analyzerScope.launch(Dispatchers.IO) {
-                                runCatching {
-                                    database?.trackAnalysisDao()?.upsert(fromResult(trackId, cliffedResult))
+                            if (durationSeconds != null && durationSeconds > 45.0) {
+                                analyzerScope.launch(Dispatchers.IO) {
+                                    runCatching {
+                                        database?.trackAnalysisDao()?.upsert(fromResult(trackId, cliffedResult))
+                                    }
                                 }
+                            } else {
+                                Timber.tag("TrackAnalyzer").w("Not saving cues to Room for $trackId: duration is unknown or too short ($durationSeconds)")
                             }
                             cliffedResult
                         }

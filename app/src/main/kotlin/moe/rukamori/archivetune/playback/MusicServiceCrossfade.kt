@@ -866,7 +866,25 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
                 return@launch
             }
 
-            val durationSeconds = mediaItem?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
+            var durationSeconds = mediaItem?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
+            if (durationSeconds == null || durationSeconds <= 0.0) {
+                if (player.currentMediaItem?.mediaId == mediaId && player.duration > 0) {
+                    durationSeconds = player.duration / 1000.0
+                } else {
+                    val count = runCatching { player.mediaItemCount }.getOrDefault(0)
+                    for (i in 0 until count) {
+                        val item = runCatching { player.getMediaItemAt(i) }.getOrNull()
+                        val id = item?.mediaId?.ifBlank { item.metadata?.id.orEmpty() }
+                        if (id == mediaId) {
+                            val d = item?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
+                            if (d != null && d > 0.0) {
+                                durationSeconds = d
+                                break
+                            }
+                        }
+                    }
+                }
+            }
 
             if (mediaId.isLocalMediaId()) {
                 val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()

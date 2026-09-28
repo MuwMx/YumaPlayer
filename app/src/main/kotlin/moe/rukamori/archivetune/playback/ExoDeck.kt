@@ -37,9 +37,10 @@ class ExoDeck(
         } else {
             player.volume = (baseVolume * FALL(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
+                val sweepDepth = clamped.toDouble().pow(0.65)
                 djFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ *
                     (DjFilterAudioProcessor.SWEEP_TARGET_HZ / DjFilterAudioProcessor.BYPASS_CUTOFF_HZ)
-                        .pow(clamped.toDouble())
+                        .pow(sweepDepth)
                 djFilter.bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB * (clamped * 2f).coerceIn(0f, 1f).toDouble()
             } else {
                 djFilter.clearAutomation()
