@@ -5,6 +5,8 @@ import kotlin.math.roundToLong
 import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 
 object TransitionPlanner {
+    private const val MAX_STRETCH_DEVIATION = 0.04f
+
     const val AUTO_MIN_SECONDS = 4.0
     const val AUTO_FAST_TRACK_MIN_SECONDS = 6.0
     const val AUTO_MAX_SECONDS = 12.0
@@ -155,7 +157,11 @@ object TransitionPlanner {
         currentDurationMs: Long,
         preferredDurationMs: Long? = null,
         aggressiveness: String = "standard",
+        isGaplessAlbumTransition: Boolean = false,
     ): AutomixPlan {
+        if (isGaplessAlbumTransition) {
+            return AutomixPlan(0L, 0L, 0L, false, currentDurationMs, 0L, TransitionTier.GAPLESS, 1.0f)
+        }
         val minMs = (minSecondsFor(aggressiveness) * MS_PER_SECOND).roundToLong()
         val maxMs = (maxSecondsFor(aggressiveness) * MS_PER_SECOND).roundToLong()
         val outgoingBpm = outgoingAnalysis.bpm.takeIf { it > 0.0 }
@@ -163,12 +169,21 @@ object TransitionPlanner {
         val bpmAdjustedDurationMs = calculateAdaptiveDurationMs(outgoingBpm, nextBpm, preferredDurationMs, aggressiveness)
             .coerceAtMost(maxOf(0L, currentDurationMs))
 
+        val canBeatmatch = outgoingBpm != null && nextBpm != null &&
+            ((abs(outgoingBpm - nextBpm) / outgoingBpm).toFloat() <= MAX_STRETCH_DEVIATION)
+        val tier = if (canBeatmatch) TransitionTier.SMART_BEATMATCH else TransitionTier.PLAIN_CROSSFADE
+        val incomingTempoRatio = if (canBeatmatch) (outgoingBpm / nextBpm).toFloat() else 1.0f
+
         val style = resolveTransitionStyle(outgoingBpm, nextBpm)
         val enableBassSwap = resolveBassSwap(style, aggressiveness)
 
-        val incomingStartMs = (incomingAnalysis?.mixInTime?.takeIf { it > 0.0 }
-            ?.let { it * MS_PER_SECOND }?.roundToLong() ?: 0L)
-            .coerceAtLeast(0L)
+        val incomingStartMs = if (canBeatmatch) {
+            (incomingAnalysis.mixInTime.takeIf { it > 0.0 }
+                ?.let { it * MS_PER_SECOND }?.roundToLong() ?: 0L)
+                .coerceAtLeast(0L)
+        } else {
+            0L
+        }
 
         val contentEndMs = if (outgoingAnalysis.contentEndTime > 0.0) {
             (outgoingAnalysis.contentEndTime * MS_PER_SECOND).roundToLong()
@@ -203,6 +218,8 @@ object TransitionPlanner {
             enableBassSwap = enableBassSwap,
             triggerAtMs = startAtMs,
             prepareAheadMs = prepareAheadMs,
+            tier = tier,
+            incomingTempoRatio = incomingTempoRatio,
         )
     }
 }
