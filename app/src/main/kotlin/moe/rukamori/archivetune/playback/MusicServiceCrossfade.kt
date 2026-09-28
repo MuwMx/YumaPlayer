@@ -275,9 +275,7 @@ internal fun MusicService.scheduleCrossfade() {
                     }
 
                     val currentOutgoing = outgoingAnalysis
-                    val endLimit = if (currentOutgoing != null && currentOutgoing.mixOutTime > 0.0) {
-                        (currentOutgoing.mixOutTime * 1000.0).roundToLong() + (crossfadeDurationMs / 2L)
-                    } else if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
+                    val endLimit = if (currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
                         (currentOutgoing.contentEndTime * 1000.0).roundToLong()
                     } else {
                         duration
@@ -299,6 +297,7 @@ internal fun MusicService.scheduleCrossfade() {
                             } else if (incomingPlayer.currentPosition > 0L) {
                                 incomingPlayer.seekTo(target.index, 0L)
                             }
+                            incomingPlayer.playWhenReady = true
                             finishCrossfade(target, incomingPlayer, automixPlan)
                         }
                     } else {
