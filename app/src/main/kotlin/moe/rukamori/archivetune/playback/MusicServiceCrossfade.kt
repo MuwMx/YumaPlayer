@@ -444,7 +444,7 @@ internal fun MusicService.startCrossfade(
                             incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
                         } else {
                             if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
-                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
                                 return@launch
                             }
                             if (standbyPlayer.playbackState == Player.STATE_IDLE) {
@@ -453,7 +453,7 @@ internal fun MusicService.startCrossfade(
                             val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
                             if (nowMs - stallStart >= PlaybackConstants.CROSSFADE_BUFFERING_TIMEOUT_MS) {
                                 Timber.tag(MusicService.TAG).w("Crossfade incoming player buffering timed out; bailing out")
-                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
                                 return@launch
                             }
                         }
@@ -470,7 +470,7 @@ internal fun MusicService.startCrossfade(
                 throw error
             } catch (error: Exception) {
                 Timber.tag(MusicService.TAG).w(error, "Crossfade failed")
-                cancelCrossfade(resetVolume = true, resetPauseAtEnd = false)
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
             } finally {
                 if (isCrossfading) {
                     cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
