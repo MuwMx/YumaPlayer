@@ -32,8 +32,6 @@ class ExoDeckController(
 
     var secondaryCrossfadeTarget: CrossfadeTarget? = null
 
-    private var incomingPrimedMuted = false
-
     val secondaryCrossfadePlayer: ExoPlayer?
         get() = transitionDeck?.player
 
@@ -93,11 +91,7 @@ class ExoDeckController(
     }
 
     override fun primeIncoming(cueMs: Long) {
-        val incoming = transitionDeck ?: return
-        val incomingPlayer = incoming.player
-        incoming.baseVolume = 0f
-        incoming.maxGainFactor = 1f
-        incomingPrimedMuted = true
+        val incomingPlayer = transitionDeck?.player ?: return
         if (cueMs > 0L && kotlin.math.abs(incomingPlayer.currentPosition - cueMs) > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
             incomingPlayer.seekTo(secondaryCrossfadeTarget?.index ?: 0, cueMs)
         }
@@ -105,7 +99,6 @@ class ExoDeckController(
     }
 
     override fun stopIncoming() {
-        incomingPrimedMuted = false
         transitionDeck?.player?.playWhenReady = false
     }
 
@@ -118,9 +111,8 @@ class ExoDeckController(
         outgoing.maxGainFactor = service.maxSafeGainFactor
 
         incoming.isIncoming = true
-        incoming.baseVolume = if (incomingPrimedMuted) 0f else service.crossfadeIncomingBaseVolume
+        incoming.baseVolume = service.crossfadeIncomingBaseVolume
         incoming.maxGainFactor = service.maxSafeGainFactor
-        incomingPrimedMuted = false
 
         outgoing.player.pauseAtEndOfMediaItems = true
 
@@ -154,7 +146,6 @@ class ExoDeckController(
 
         activeDeck = incomingDeck
         transitionDeck = null
-        incomingPrimedMuted = false
         secondaryCrossfadeTarget = null
         dualPlayerRoleHolder.reset()
 
@@ -176,7 +167,6 @@ class ExoDeckController(
 
     fun cancel(resetVolume: Boolean = true, resetPauseAtEnd: Boolean = true) {
         val secondary = transitionDeck
-        incomingPrimedMuted = false
         secondary?.player?.apply {
             playWhenReady = false
             volume = 0f
@@ -202,7 +192,6 @@ class ExoDeckController(
     fun releaseTransitionDeck() {
         val deckToRelease = transitionDeck ?: return
         transitionDeck = null
-        incomingPrimedMuted = false
         secondaryCrossfadeTarget = null
         deckToRelease.clearAutomation()
         val playerToRelease = deckToRelease.player
