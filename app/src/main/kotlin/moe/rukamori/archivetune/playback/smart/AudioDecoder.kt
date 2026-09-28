@@ -181,6 +181,9 @@ object AudioDecoder {
     fun canDoFullPass(durationMs: Long?): Boolean =
         durationMs != null && durationMs > TAIL_WINDOW_MS && durationMs <= MAX_FULL_DECODE_MS
 
+    fun fullPassWatchdogMs(durationMs: Long): Long =
+        (durationMs / 2 + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 300_000L)
+
     fun decodeFull(
         context: Context,
         uri: Uri,
@@ -198,17 +201,38 @@ object AudioDecoder {
                 }
             }
         }
-        return runCatching {
+        val watchdog = fullPassWatchdogMs(durationMs)
+        val viaFramework = try {
+            decodeInternal(
+                setDataSource = { it.setDataSource(context, uri, null) },
+                startMs = 0L,
+                endMs = durationMs,
+                maxWindowMs = MAX_FULL_DECODE_MS,
+                watchdogMs = watchdog,
+            )
+        } catch (e: Exception) {
+            Timber.tag("AudioDecoder").e(e, "decodeFull(context-uri) failed uri=$uri durationMs=$durationMs")
+            null
+        }
+        if (viaFramework != null && viaFramework.isNotEmpty()) return viaFramework
+        if (viaFramework == null) {
+            Timber.tag("AudioDecoder").w("decodeFull(context-uri) yielded no samples uri=$uri durationMs=$durationMs, trying fd fallback")
+        }
+        return try {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val fdLength = pfd.statSize.takeIf { it > 0 } ?: Long.MAX_VALUE
                 decodeInternal(
-                    setDataSource = { it.setDataSource(pfd.fileDescriptor, 0L, Long.MAX_VALUE) },
+                    setDataSource = { it.setDataSource(pfd.fileDescriptor, 0L, fdLength) },
                     startMs = 0L,
                     endMs = durationMs,
                     maxWindowMs = MAX_FULL_DECODE_MS,
-                    watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+                    watchdogMs = watchdog,
                 )
             }
-        }.getOrNull()
+        } catch (e: Exception) {
+            Timber.tag("AudioDecoder").e(e, "decodeFull(fd-fallback) failed uri=$uri durationMs=$durationMs")
+            null
+        }
     }
 
     fun decodeFull(
@@ -222,7 +246,7 @@ object AudioDecoder {
             startMs = 0L,
             endMs = durationMs,
             maxWindowMs = MAX_FULL_DECODE_MS,
-            watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+            watchdogMs = fullPassWatchdogMs(durationMs),
         )
     }
 
@@ -232,13 +256,21 @@ object AudioDecoder {
         durationMs: Long,
     ): FloatArray? {
         if (!canDoFullPass(durationMs)) return null
-        val length = runCatching {
+        val length = try {
             cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-        }.getOrDefault(-1L)
+        } catch (e: Exception) {
+            Timber.tag("AudioDecoder").e(e, "decodeFull(cache) metadata failed key=$cacheKey")
+            -1L
+        }
         if (length <= 0L || !cache.isCached(cacheKey, 0L, length)) {
             return null
         }
-        val spans = runCatching { cache.getCachedSpans(cacheKey) }.getOrNull().orEmpty()
+        val spans = try {
+            cache.getCachedSpans(cacheKey)
+        } catch (e: Exception) {
+            Timber.tag("AudioDecoder").e(e, "decodeFull(cache) spans failed key=$cacheKey")
+            null
+        }.orEmpty()
         if (spans.isEmpty()) return null
         if (spans.size == 1) {
             val singleFile = spans.first().file
@@ -251,7 +283,7 @@ object AudioDecoder {
             startMs = 0L,
             endMs = durationMs,
             maxWindowMs = MAX_FULL_DECODE_MS,
-            watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+            watchdogMs = fullPassWatchdogMs(durationMs),
         )
     }
 

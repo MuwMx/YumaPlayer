@@ -304,20 +304,25 @@ double FindEnergyCliffTime(const EnvelopeResult& envelope, double duration) {
   const size_t last_boundary = static_cast<size_t>(std::floor(search_end / window));
   const size_t chunk = std::max<size_t>(1, static_cast<size_t>(2.0 / window));
   const size_t recovery_windows = std::max<size_t>(1, static_cast<size_t>(3.0 / window));
+  constexpr double kPreRefFloor = 0.45;
+  constexpr double kPostPreCeil = 0.72;
+  constexpr double kPostRefCeil = 0.80;
+  constexpr double kMinDropRef = 0.10;
+  constexpr double kSustainPreCeil = 0.80;
   size_t best = 0;
   for (size_t boundary = first_boundary;
        boundary + post_windows <= levels.size() && boundary <= last_boundary;
        ++boundary) {
     const double before = Average(levels, boundary - pre_windows, boundary);
-    if (before < reference * 0.55) continue;
+    if (before < reference * kPreRefFloor) continue;
     const double after = Average(levels, boundary, boundary + post_windows);
-    if (after > before * 0.60) continue;
-    if (after > reference * 0.70) continue;
-    if (before - after < reference * 0.15) continue;
+    if (after > before * kPostPreCeil) continue;
+    if (after > reference * kPostRefCeil) continue;
+    if (before - after < reference * kMinDropRef) continue;
     bool sustained = true;
     for (size_t part = boundary; part < boundary + post_windows; part += chunk) {
       const size_t part_end = std::min(boundary + post_windows, part + chunk);
-      if (Average(levels, part, part_end) > before * 0.70) {
+      if (Average(levels, part, part_end) > before * kSustainPreCeil) {
         sustained = false;
         break;
       }
