@@ -45,9 +45,9 @@ To keep the codebase maintainable as it grows, all modules and layers must stric
 - **Responsibilities:** Declarative Jetpack Compose UI rendering, visual state representation, and user input handling.
 - **Components:** Screens under `:app` (`ui/screens/`, `ui/player/player_0/`), Yuma UI Kit + YDS tokens in `:designsystem`, ViewModels (`StateFlow<UiState>`), `UiIntent`, `UiEffect`.
 
-### Domain Layer (colocated `:app` domain packages + `:core` contracts)
+### Domain Layer (colocated `:app` domain packages + `:core` contracts + `:core:audio-dsp` DSP)
 - **Responsibilities:** Pure business rules, application use cases, and core data structures.
-- **Components:** Use Cases / Interactors colocated in `:app` domain packages (`artist/`, `search/`, `library/`, `spotify/`, `playlisttags/`, …), Domain Models, Repository & Service Interfaces, shared contracts in `:core` (`core/common/`, `core/model/`).
+- **Components:** Use Cases / Interactors colocated in `:app` domain packages (`artist/`, `search/`, `library/`, `spotify/`, `playlisttags/`, …), Domain Models, Repository & Service Interfaces, shared contracts in `:core` (`core/common/`, `core/model/`), domain-pure playback DSP in `:core:audio-dsp` (`TransitionPlanner`, `MusicServiceCrossfadeMath` + `CrossfadeConstants`, `DjFilterAudioProcessor`, forwarding set, `AudioDeck`/`DeckController` interfaces — see [MODULES.md](MODULES.md) §3 Core Infrastructure).
 
 ### Data Layer (`:core:innertube`, `:database`, `:app` data sources)
 - **Responsibilities:** Fetching, caching, persisting, and transforming data from local databases and remote network APIs.
@@ -89,4 +89,4 @@ User Action (Click / Input)
 
 ## 4. Module Graph Reference
 
-For the complete module catalog, category definitions, layer boundaries, and dependency enforcement rules, see **[MODULES.md](MODULES.md)**.
+For the complete module catalog, category definitions, layer boundaries, and dependency enforcement rules, see **[MODULES.md](MODULES.md)** — including `:core:audio-dsp` (playback DSP single home) under Core Infrastructure.

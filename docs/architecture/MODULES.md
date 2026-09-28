@@ -16,7 +16,7 @@ This document serves as the official reference for the modular structure of Yuma
 
 ## 2. Architecture & Category Hierarchy
 
-YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.kts`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
+YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.kts`: `:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, `:lyrics:*` ×6, `:spotifycore`, `:shazamkit`, `:canvas`, `:lastfm`, `:flaccore`, `:moriextractor`, `:morideobfuscator`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
 
 ```
                  ┌──────────────┐
@@ -32,9 +32,10 @@ YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.
 └──────────────┘ └──────────────┘ │  :flaccore)                           │
                                   └───────────────────┬───────────────────┘
                                                       ▼
-                         ┌────────────────────────────────────────────┐
-                         │  :core + :core:innertube (shared logic,    │
-                         │   InnerTube API client, math, packed models)│
+                          ┌────────────────────────────────────────────┐
+                          │  :core + :core:innertube + :core:audio-dsp   │
+                          │   (shared logic, InnerTube API client,       │
+                          │    playback DSP/math, packed models)         │
                          └──────────────────────┬─────────────────────┘
                                                 ▼
                          ┌────────────────────────────────────────────┐
@@ -73,8 +74,9 @@ YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.
 ### ⚙️ Core Infrastructure
 - **`:core`** — Shared pure-Kotlin logic: `core/common/math/` (`lerp3`, palette/color/image math), `core/model/packed/` models.
 - **`:core:innertube`** — InnerTube API client for YouTube Music (`InnerTube.kt`, `YouTube.kt` facade, `utils/`, `pages/`, `models/`, `proxy/`).
+- **`:core:audio-dsp`** (`namespace moe.rukamori.archivetune.audiodsp`, Android library, deps: `media3-common`/`media3`, `org.json`, `timber`, `kotlinx-coroutines-core` only) — Playback DSP single home: models (`AutomixModels`, `TrackAnalysisResult`, `FloatChunkList`), planner + math (`TransitionPlanner`, `MusicServiceCrossfadeMath`), constants (`CrossfadeConstants`), Media3 DSP (`DjFilterAudioProcessor`), forwarding set (`DualForwardingPlayer`, `PlayerRole`, role holder, `shouldUseLegacyPath`), deck interfaces (`AudioDeck`, `DeckController`), config/store DTOs (`CrossfadeConfig`, `CrossfadeTarget`, `AnalysisStore`).
 - **Responsibility:** Shared domain abstractions, common models, and application-wide utilities.
-- **Rule:** Single source of truth for shared contracts; `:core` stays free of Android UI imports.
+- **Rule:** Single source of truth for shared contracts; `:core` stays free of Android UI imports. Playback DSP lives only in `:core:audio-dsp` — no DSP/math duplicates in `:app` (only typealias-compat shims where noted); no `:database`, Hilt-app, DataStore-keys, or Compose imports in `:core:audio-dsp`.
 
 ### 🛠️ Low-Level Engines
 - **`:moriextractor`** — Media extraction engine and stream link resolution utilities.
@@ -87,11 +89,11 @@ YumaPlayer consists of **19 Gradle modules** (verified against `settings.gradle.
 
 | Category / Layer | Allowed Dependencies | Forbidden Dependencies |
 | :--- | :--- | :--- |
-| **Application Root** (`:app`) | `:designsystem`, `:database`, `:core`, `:core:innertube`, Integrations, `:lyrics:*`, low-level engines | None (Root container) |
+| **Application Root** (`:app`) | `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, Integrations, `:lyrics:*`, low-level engines | None (Root container) |
 | **Design System** (`:designsystem`) | Design/token dependencies only | `:app`, `:database`, business logic, data sources |
 | **Persistence** (`:database`) | Internal Room/KSP dependencies only | `:app`, `:designsystem`, network clients |
 | **Integrations & Lyrics** | `:core` (+ `:database`/`network` only via domain interfaces where applicable) | `:app`, `:designsystem`, direct dependencies between independent integration modules |
-| **Core Infrastructure** (`:core`, `:core:innertube`) | `:moriextractor`, `:morideobfuscator` | `:app`, `:designsystem`, `:database`, Integrations, `:lyrics:*` |
+| **Core Infrastructure** (`:core`, `:core:innertube`, `:core:audio-dsp`) | `:core:audio-dsp` → `media3`, `org.json`, `timber`, `coroutines` only; `:core:innertube` → `:moriextractor`, `:morideobfuscator` | `:app`, `:designsystem`, `:database`, Integrations, `:lyrics:*`, Hilt-app, DataStore-keys, Compose |
 | **Low-Level Engines** | Internal utility dependencies only | Higher-level modules (`:core`, `:app`, etc.) |
 
 ---
@@ -108,3 +110,4 @@ The names `:feature:*`, `:service:*` (e.g. `:service:playback`), `:core:model`, 
 2. **Circular Dependencies:** Module A depending on Module B while Module B depends on Module A is strictly blocked at the build system level.
 3. **Leaky Integration Models:** Exposing third-party DTOs or network response models directly to UI features instead of mapping them through Domain models defined in `:core:*`.
 4. **Shared Utility Duplication:** Common utilities, models, or helpers must not be duplicated across modules. Shared functionality belongs in `:core:*`.
+5. **Playback DSP Outside `:core:audio-dsp`:** Crossfade math/planner (`TransitionPlanner`, `MusicServiceCrossfadeMath`, `CrossfadeConstants`), `DjFilterAudioProcessor`, and the dual-player forwarding set must not be duplicated or reimplemented in `:app` — `:app` keeps only orchestration (`MusicService`, deck impl, DataStore mapping).
