@@ -84,6 +84,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.cache.ContentMetadata
+import androidx.media3.datasource.cache.ContentMetadataMutations
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLowDataModeActive
@@ -2822,6 +2823,48 @@ class MusicService :
         resolvingPrefetchMediaIds.clear()
     }
 
+    private fun copyCacheSpans(
+        cache: Cache,
+        sourceKey: String,
+        destKey: String,
+    ) {
+        if (sourceKey == destKey) return
+        runCatching {
+            val sourceSpans = cache.getCachedSpans(sourceKey)
+            if (sourceSpans.isEmpty()) return
+            val sourceMetadata = cache.getContentMetadata(sourceKey)
+            val contentLength = ContentMetadata.getContentLength(sourceMetadata)
+            val resolvedLength = if (contentLength > 0L) {
+                contentLength
+            } else {
+                sourceSpans.sumOf { it.length }.takeIf { it > 0L } ?: -1L
+            }
+            if (resolvedLength > 0L) {
+                val mutations = ContentMetadataMutations()
+                ContentMetadataMutations.setContentLength(mutations, resolvedLength)
+                cache.applyContentMetadataMutations(destKey, mutations)
+            }
+            for (span in sourceSpans) {
+                val file = span.file
+                if (file != null && file.exists() && span.length > 0L) {
+                    if (!cache.isCached(destKey, span.position, span.length)) {
+                        val destFile = cache.startFile(destKey, span.position, span.length)
+                        var linked = false
+                        try {
+                            java.nio.file.Files.createLink(destFile.toPath(), file.toPath())
+                            linked = true
+                        } catch (_: Throwable) {
+                        }
+                        if (!linked) {
+                            file.copyTo(destFile, overwrite = true)
+                        }
+                        cache.commitFile(destFile, span.length)
+                    }
+                }
+            }
+        }
+    }
+
     internal fun prefetchAround(currentIndex: Int = player.currentMediaItemIndex) {
         if (!player.isPlaying && !player.playWhenReady) return
 
@@ -2895,11 +2938,13 @@ class MusicService :
 
                     if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
 
-                    extractorPlaybackUrlCache[mediaId] = AuthScopedCacheValue(
+                    val cacheValue = AuthScopedCacheValue(
                         url = streamUrl,
                         expiresAtMs = System.currentTimeMillis() + ArchiveTuneExtractorCacheTtlMs,
                         authFingerprint = authFingerprint,
                     )
+                    extractorPlaybackUrlCache[mediaId] = cacheValue
+                    extractorPlaybackUrlCache[flacCacheKey(mediaId)] = cacheValue
                     downloadUrl = streamUrl
                     targetCacheKey = mediaId
                     downloadClient = extractorMediaOkHttpClient
@@ -2916,8 +2961,13 @@ class MusicService :
                             val flacResult = cachedFlac ?: losslessStreamResolver.resolve(song, flacQuality)
                             if (flacResult != null && flacResult.url.isNotBlank()) {
                                 if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
-                                if (enableMemoryCache && cachedFlac == null) {
-                                    losslessUrlCache.put(cacheKey, flacResult)
+                                if (enableMemoryCache) {
+                                    if (cachedFlac == null) {
+                                        losslessUrlCache.put(cacheKey, flacResult)
+                                    }
+                                    losslessUrlCache.put(mediaId, flacResult)
+                                    losslessUrlCache.put(flacCacheKey(mediaId), flacResult)
+                                    losslessUrlCache.put("${mediaId}_${PlaybackSource.FLAC.name}", flacResult)
                                 }
                                 if (flacResult.origin in listOf("squid", "kennyy", "arcod", "qobuz", "qbdlx")) {
                                     requestHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
@@ -2954,6 +3004,8 @@ class MusicService :
                             )
                         }
                         if (cachedPlayback != null) {
+                            playbackUrlCache[mediaId] = cachedPlayback
+                            playbackUrlCache[flacCacheKey(mediaId)] = cachedPlayback
                             downloadUrl = cachedPlayback.url
                             targetCacheKey = mediaId
                             downloadClient = mediaOkHttpClient
@@ -3011,6 +3063,8 @@ class MusicService :
                                 )
                                 playbackUrlCache[cacheKey] = cacheValue
                                 playbackUrlCache[mediaId] = cacheValue
+                                playbackUrlCache[flacCacheKey(mediaId)] = cacheValue
+                                playbackUrlCache["${mediaId}_${PlaybackSource.YT_MUSIC.name}"] = cacheValue
                                 downloadUrl = streamUrl
                                 targetCacheKey = mediaId
                                 downloadClient = mediaOkHttpClient
@@ -3020,6 +3074,14 @@ class MusicService :
                 }
 
                 if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch
+                val flacKey = flacCacheKey(mediaId)
+                val fallbackCacheKey = if (targetCacheKey == flacKey) mediaId else flacKey
+                if (isFullyCached(downloadCache, fallbackCacheKey) && !isFullyCached(downloadCache, targetCacheKey)) {
+                    copyCacheSpans(downloadCache, fallbackCacheKey, targetCacheKey)
+                } else if (isFullyCached(downloadCache, targetCacheKey) && !isFullyCached(downloadCache, fallbackCacheKey)) {
+                    copyCacheSpans(downloadCache, targetCacheKey, fallbackCacheKey)
+                }
+
                 if (downloadUrl.isNullOrBlank() || isFullyCached(downloadCache, targetCacheKey)) {
                     if (isTrackFullyCached(mediaId)) {
                         kickOffTrackAnalysis(mediaId, nextMediaItem)
@@ -3054,6 +3116,14 @@ class MusicService :
                     writer.cache()
                     if (targetGeneration == prefetchTimelineGeneration.get() && isActive) {
                         Timber.tag(TAG).d("Prefetch finish: mediaId=$mediaId, key=$targetCacheKey")
+                        val candidateKey = if (targetCacheKey == flacKey) mediaId else flacKey
+                        copyCacheSpans(downloadCache, targetCacheKey, candidateKey)
+                        val len = contentLengthCache[targetCacheKey] ?: runCatching {
+                            downloadCache.getContentMetadata(targetCacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+                        }.getOrNull()?.takeIf { it > 0L }
+                        if (len != null && len > 0L) {
+                            contentLengthCache[candidateKey] = len
+                        }
                         if (isTrackFullyCached(mediaId)) {
                             kickOffTrackAnalysis(mediaId, nextMediaItem)
                         }
