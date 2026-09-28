@@ -87,6 +87,7 @@ private fun resolveIncomingCueInMs(
 internal fun MusicService.scheduleCrossfade() {
     val currentGeneration = bumpCrossfadePlanGeneration()
     if (!isPlayerInitialized()) return
+    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade: enabled=$crossfadeEnabled, durationMs=$crossfadeDurationMs, automix=$automixEnabled")
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
 
