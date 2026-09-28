@@ -3328,7 +3328,7 @@ class MusicService :
         updateHistoryTrackingPlaybackState()
         if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
             enqueueCurrentHistorySessionForFinalization()
-            if (!isCrossfading || playbackState == Player.STATE_IDLE) {
+            if ((!isCrossfading || playbackState == Player.STATE_IDLE) && !crossfadeHandoffInProgress) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
             }
             if (playbackState == Player.STATE_ENDED &&
@@ -4204,7 +4204,7 @@ class MusicService :
                 enableAudioTrackPlaybackParams: Boolean,
             ) = DefaultAudioSink
                 .Builder(context)
-                .setEnableFloatOutput(false)
+                .setEnableFloatOutput(true)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                 .setAudioProcessorChain(
                     DefaultAudioSink.DefaultAudioProcessorChain(
