@@ -4,6 +4,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
@@ -20,7 +21,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToLong
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
+import moe.rukamori.archivetune.playback.automix.AutomixPlan
 import moe.rukamori.archivetune.playback.automix.TransitionPlanner
+import moe.rukamori.archivetune.playback.automix.TransitionTier
 import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -278,7 +281,7 @@ internal fun MusicService.scheduleCrossfade() {
                             .coerceAtMost(plannedDuration)
                     if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
                         val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
-                        startCrossfade(target, adjustedDuration, finalIncomingStartMs)
+                        startCrossfade(target, adjustedDuration, finalIncomingStartMs, automixPlan)
                     }
                     return@launch
                 }
@@ -354,12 +357,13 @@ internal fun MusicService.startCrossfade(
     target: MusicService.CrossfadeTarget,
     durationMs: Long,
     incomingStartMs: Long = 0L,
+    plan: AutomixPlan? = activeAutomixPlan,
 ) {
     if (isCrossfading || !crossfadeEnabled) return
     if (secondaryPreparationFailedMediaId == target.mediaId) return
 
     val incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
-    val cueInMs = resolveIncomingCueInMs(activeAutomixPlan, incomingAnalysis, incomingStartMs)
+    val cueInMs = resolveIncomingCueInMs(plan ?: activeAutomixPlan, incomingAnalysis, incomingStartMs)
 
     val incomingPlayer = prepareSecondaryCrossfadePlayer(target, cueInMs) ?: return
     val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
@@ -393,7 +397,11 @@ internal fun MusicService.startCrossfade(
 
                 outgoingPlayer.volume = (crossfadeBaseVolume * FALL(0f)).coerceIn(0f, maxSafeGainFactor)
                 incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
-                standbyPlayer.playbackParameters = player.playbackParameters
+                if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
+                    standbyPlayer.playbackParameters = PlaybackParameters(plan.incomingTempoRatio)
+                } else {
+                    standbyPlayer.playbackParameters = player.playbackParameters
+                }
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
                 if (cueInMs > 0L) {
                     if (standbyPlayer.currentPosition != cueInMs) {
@@ -450,7 +458,7 @@ internal fun MusicService.startCrossfade(
                     delay(MusicService.CROSSFADE_FRAME_MS)
                 }
 
-                finishCrossfade(target, incomingPlayer)
+                finishCrossfade(target, incomingPlayer, plan)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -495,6 +503,7 @@ internal suspend fun MusicService.awaitCrossfadePlayerReady(
 internal suspend fun MusicService.finishCrossfade(
     target: MusicService.CrossfadeTarget,
     incomingPlayer: ExoPlayer,
+    plan: AutomixPlan? = activeAutomixPlan,
 ) {
     val targetIndex = resolveCrossfadeTargetIndex(target)
     if (targetIndex == C.INDEX_UNSET) {
@@ -511,6 +520,7 @@ internal suspend fun MusicService.finishCrossfade(
         dualForwardingPlayer.attachPlayer(incomingPlayer)
 
         val playerA = localPlayer
+        val userPlaybackSpeed = playerA.playbackParameters.takeIf { it != PlaybackParameters.DEFAULT }
         transferAudioEffects(incomingPlayer)
         incomingPlayer.setShuffleOrder(playerA.shuffleOrder)
         playerA.playWhenReady = false
@@ -519,6 +529,10 @@ internal suspend fun MusicService.finishCrossfade(
         playerA.clearMediaItems()
         reserveCrossfadePlayer = playerA
         localPlayer = incomingPlayer
+
+        if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
+            localPlayer.playbackParameters = userPlaybackSpeed ?: PlaybackParameters.DEFAULT
+        }
 
         val targetMetadata = incomingPlayer.currentMediaItem?.metadata
             ?: runCatching { player.getMediaItemAt(targetIndex).metadata }.getOrNull()
