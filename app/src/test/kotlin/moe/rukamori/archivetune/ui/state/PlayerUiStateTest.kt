@@ -4,7 +4,7 @@ import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

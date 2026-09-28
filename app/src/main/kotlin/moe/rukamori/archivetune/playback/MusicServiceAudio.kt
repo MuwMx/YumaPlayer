@@ -14,6 +14,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.audiodsp.FALL
+import moe.rukamori.archivetune.audiodsp.RISE
 import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
 import kotlin.math.abs

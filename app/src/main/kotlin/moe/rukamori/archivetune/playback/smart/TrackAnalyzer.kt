@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.App
 import moe.rukamori.archivetune.audiodsp.AnalysisStore
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.TrackAnalysisEntity
 import org.json.JSONObject

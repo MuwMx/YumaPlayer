@@ -4,7 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.AutomixPlan
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.TransitionPlanner
+import moe.rukamori.archivetune.audiodsp.TransitionStyle
+import moe.rukamori.archivetune.audiodsp.TransitionTier
 
 class TransitionPlannerTest {
 

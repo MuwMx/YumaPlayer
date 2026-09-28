@@ -22,11 +22,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToLong
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
-import moe.rukamori.archivetune.playback.automix.AutomixPlan
-import moe.rukamori.archivetune.playback.dsp.DjFilterAudioProcessor
-import moe.rukamori.archivetune.playback.automix.TransitionPlanner
-import moe.rukamori.archivetune.playback.automix.TransitionTier
-import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.AutomixPlan
+import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
+import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.TransitionPlanner
+import moe.rukamori.archivetune.audiodsp.TransitionTier
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
@@ -72,7 +73,7 @@ private fun MusicService.computeCrossfadeTriggerAt(
 }
 
 private fun resolveIncomingCueInMs(
-    automixPlan: moe.rukamori.archivetune.playback.automix.AutomixPlan?,
+    automixPlan: AutomixPlan?,
     incomingAnalysis: TrackAnalysisResult?,
     explicitStartMs: Long = 0L,
 ): Long {

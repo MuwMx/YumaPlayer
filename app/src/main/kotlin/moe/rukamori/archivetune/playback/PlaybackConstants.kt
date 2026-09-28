@@ -1,5 +1,7 @@
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
+
 object PlaybackConstants {
     internal fun shouldStopServiceOnTaskRemoved(
         stopMusicOnTaskClearEnabled: Boolean,

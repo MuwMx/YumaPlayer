@@ -66,10 +66,14 @@ import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import moe.rukamori.archivetune.audiodsp.AnalysisStore
 import moe.rukamori.archivetune.audiodsp.AudioDeck
+import moe.rukamori.archivetune.audiodsp.AutomixPlan
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 import moe.rukamori.archivetune.audiodsp.DeckController
-import moe.rukamori.archivetune.playback.dsp.DjFilterAudioProcessor
+import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
+import moe.rukamori.archivetune.audiodsp.DualForwardingPlayer
+import moe.rukamori.archivetune.audiodsp.DualPlayerRoleHolder
+import moe.rukamori.archivetune.audiodsp.shouldUseLegacyPath
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
@@ -151,7 +155,6 @@ import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
-import moe.rukamori.archivetune.playback.automix.AutomixPlan
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
 import moe.rukamori.archivetune.constants.DiscordTokenKey
@@ -302,9 +305,6 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import kotlin.math.sin
 import kotlin.time.Duration.Companion.seconds
-
-typealias CrossfadeConfig = moe.rukamori.archivetune.audiodsp.CrossfadeConfig
-typealias CrossfadeTarget = moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
 @AndroidEntryPoint

@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
-import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState

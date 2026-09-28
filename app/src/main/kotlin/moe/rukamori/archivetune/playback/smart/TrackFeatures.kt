@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.playback.smart
 
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import org.json.JSONObject
 
 object TrackFeatures {
