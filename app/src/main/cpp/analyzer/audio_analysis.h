@@ -143,4 +143,17 @@ TempoResult AnalyzeTempo(
   double audible_start
 );
 
+/**
+ * Full-span mix-out for the Kotlin energy pass. Recomputes envelope and tempo
+ * over the whole track and returns the silence-free energy-cliff start in
+ * seconds (snapped at or before the nearest downbeat when the grid exists),
+ * the full-span silence-gap fallback when no cliff qualifies, or 0 when the
+ * input is unusable. Never throws.
+ */
+double FindFullSpanMixOut(
+  const std::vector<float>& samples,
+  double sample_rate,
+  double duration
+);
+
 }  // namespace yuma::smart

@@ -280,6 +280,71 @@ double FindMixOutTime(
   return cliff_start * window_seconds;
 }
 
+// Full-span energy cliff without requiring silence: a phrase-scale sustained
+// RMS drop (loud 8 s pre-window collapsing into a quiet 8 s post-window) with
+// no material recovery afterwards. Breakdowns that rebuild are rejected by the
+// recovery scan; only the final collapse survives, which is what prefers the
+// latest qualifying boundary. Operates on the 250 ms envelope so a cliff far
+// outside any 45 s tail window (e.g. 282 s into a 335 s track) is visible.
+double FindEnergyCliffTime(const EnvelopeResult& envelope, double duration) {
+  const auto& levels = envelope.levels;
+  if (levels.size() < 64 || envelope.reference <= 0) return 0;
+  const double window = envelope.window_seconds;
+  const double reference = envelope.reference;
+  const double content_end = envelope.content_end > 0 ? envelope.content_end : duration;
+  if (content_end <= 60.0) return 0;
+  constexpr double pre_length = 8.0;
+  constexpr double post_length = 8.0;
+  const size_t pre_windows = std::max<size_t>(1, std::round(pre_length / window));
+  const size_t post_windows = std::max<size_t>(1, std::round(post_length / window));
+  const double search_start = std::max(30.0, duration * 0.25);
+  const double search_end = content_end - 8.0 - post_length;
+  if (search_end <= search_start + pre_length) return 0;
+  const size_t first_boundary = static_cast<size_t>(std::ceil((search_start + pre_length) / window));
+  const size_t last_boundary = static_cast<size_t>(std::floor(search_end / window));
+  const size_t chunk = std::max<size_t>(1, static_cast<size_t>(2.0 / window));
+  const size_t recovery_windows = std::max<size_t>(1, static_cast<size_t>(3.0 / window));
+  size_t best = 0;
+  for (size_t boundary = first_boundary;
+       boundary + post_windows <= levels.size() && boundary <= last_boundary;
+       ++boundary) {
+    const double before = Average(levels, boundary - pre_windows, boundary);
+    if (before < reference * 0.55) continue;
+    const double after = Average(levels, boundary, boundary + post_windows);
+    if (after > before * 0.60) continue;
+    if (after > reference * 0.70) continue;
+    if (before - after < reference * 0.15) continue;
+    bool sustained = true;
+    for (size_t part = boundary; part < boundary + post_windows; part += chunk) {
+      const size_t part_end = std::min(boundary + post_windows, part + chunk);
+      if (Average(levels, part, part_end) > before * 0.70) {
+        sustained = false;
+        break;
+      }
+    }
+    if (!sustained) continue;
+    const double post_peak = *std::max_element(
+      levels.begin() + boundary,
+      levels.begin() + boundary + post_windows
+    );
+    if (post_peak > before * 0.95) continue;
+    bool recovered = false;
+    for (size_t resume = boundary + post_windows;
+         resume + recovery_windows <= levels.size();
+         ++resume) {
+      if (resume * window > content_end) break;
+      if (Average(levels, resume, resume + recovery_windows) >= before * 0.85) {
+        recovered = true;
+        break;
+      }
+    }
+    if (recovered) continue;
+    best = boundary;
+  }
+  if (!best) return 0;
+  return best * window;
+}
+
 double NearestDownbeat(const std::vector<double>& downbeats, double target, double fallback) {
   if (downbeats.empty()) return fallback;
   auto found = std::lower_bound(downbeats.begin(), downbeats.end(), target);
@@ -292,6 +357,25 @@ double DownbeatAtOrBefore(const std::vector<double>& downbeats, double target, d
   if (downbeats.empty()) return fallback;
   auto found = std::upper_bound(downbeats.begin(), downbeats.end(), target);
   return found == downbeats.begin() ? downbeats.front() : *(found - 1);
+}
+
+// Full-span mix-out entry point for the Kotlin energy pass. Tries the
+// silence-free cliff first; falls back to the unchanged silence-gap detector
+// so short tracks and quiet fades keep their previous behavior.
+double FindFullSpanMixOut(
+  const std::vector<float>& samples,
+  double sample_rate,
+  double duration,
+  const EnvelopeResult& envelope
+) {
+  const double cliff = FindEnergyCliffTime(envelope, duration);
+  if (cliff > 0) {
+    const auto tempo = AnalyzeTempo(samples, sample_rate, duration, envelope.audible_start);
+    const double snapped = DownbeatAtOrBefore(tempo.downbeats, cliff, cliff);
+    if (snapped > 0 && snapped <= cliff && cliff - snapped <= 2.0) return snapped;
+    return cliff;
+  }
+  return FindMixOutTime(samples, sample_rate, duration, envelope);
 }
 
 // Sparse 4096-point Hann frames feed chroma templates and broad spectral bands.
@@ -578,6 +662,19 @@ void BuildStructure(const EnvelopeResult& envelope, AnalysisResult& result) {
 }
 
 }  // namespace
+
+// Full-span mix-out for the Kotlin energy pass: envelope plus tempo are
+// recomputed over the whole track so cliffs outside any tail window resolve.
+double FindFullSpanMixOut(
+  const std::vector<float>& samples,
+  double sample_rate,
+  double duration
+) {
+  if (samples.empty() || sample_rate < 1000 || duration <= 0) return 0;
+  const auto envelope = AnalyzeEnvelope(samples, sample_rate, duration);
+  if (envelope.levels.empty()) return 0;
+  return FindFullSpanMixOut(samples, sample_rate, duration, envelope);
+}
 
 // Orchestrates independent envelope, tempo, level, spectral, and structure
 // stages. Every temporary and returned allocation is owned by this call.

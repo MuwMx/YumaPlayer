@@ -130,6 +130,9 @@ object TrackAnalyzer {
             decodeTailSamples = if (durationMs != null && durationMs > AudioDecoder.TAIL_WINDOW_MS) {
                 { AudioDecoder.decodeTail(file, durationMs) }
             } else null,
+            decodeFullSamples = if (AudioDecoder.canDoFullPass(durationMs)) {
+                { AudioDecoder.decodeFull(file, durationMs!!) }
+            } else null,
         )
     }
 
@@ -149,6 +152,9 @@ object TrackAnalyzer {
             decodeHeadSamples = { AudioDecoder.decode(file, startMs, endMs) },
             decodeTailSamples = if (durationMs != null && durationMs > AudioDecoder.TAIL_WINDOW_MS) {
                 { AudioDecoder.decodeTail(file, durationMs) }
+            } else null,
+            decodeFullSamples = if (AudioDecoder.canDoFullPass(durationMs)) {
+                { AudioDecoder.decodeFull(file, durationMs!!) }
             } else null,
         )
     }
@@ -179,6 +185,9 @@ object TrackAnalyzer {
             decodeTailSamples = if (durationMs != null && durationMs > AudioDecoder.TAIL_WINDOW_MS) {
                 { AudioDecoder.decodeTail(context, uri, durationMs) }
             } else null,
+            decodeFullSamples = if (AudioDecoder.canDoFullPass(durationMs)) {
+                { AudioDecoder.decodeFull(context, uri, durationMs!!) }
+            } else null,
         )
     }
 
@@ -205,6 +214,9 @@ object TrackAnalyzer {
             decodeHeadSamples = { AudioDecoder.decode(cache, cacheKey, startMs, endMs) },
             decodeTailSamples = if (durationMs != null && durationMs > AudioDecoder.TAIL_WINDOW_MS) {
                 { AudioDecoder.decodeTail(cache, cacheKey, durationMs) }
+            } else null,
+            decodeFullSamples = if (AudioDecoder.canDoFullPass(durationMs)) {
+                { AudioDecoder.decodeFull(cache, cacheKey, durationMs!!) }
             } else null,
         )
     }
@@ -272,6 +284,7 @@ object TrackAnalyzer {
         source: String = "unknown",
         decodeHeadSamples: () -> FloatArray?,
         decodeTailSamples: (() -> FloatArray?)? = null,
+        decodeFullSamples: (() -> FloatArray?)? = null,
     ): TrackAnalysisResult? = withContext(Dispatchers.Default) {
         memoryCache[trackId]?.let { return@withContext it }
 
@@ -357,14 +370,22 @@ object TrackAnalyzer {
                             }
 
                             Timber.tag("TrackAnalyzer").d("Native analyze done trackId=$trackId bpm=${finalResult.bpm} mixOut=${finalResult.mixOutTime}")
-                            memoryCache[trackId] = finalResult
-                            _analysisEvents.tryEmit(trackId to finalResult)
+                            val cliffedResult = applyFullSpanCliff(
+                                base = finalResult,
+                                durationSeconds = durationSeconds,
+                                durationMs = durationMs,
+                                decodeFullSamples = decodeFullSamples,
+                                trackId = trackId,
+                            )
+                            memoryCache[trackId] = cliffedResult
+                            _analysisEvents.tryEmit(trackId to cliffedResult)
+                            logCues(trackId, cliffedResult)
                             analyzerScope.launch(Dispatchers.IO) {
                                 runCatching {
-                                    database?.trackAnalysisDao()?.upsert(fromResult(trackId, finalResult))
+                                    database?.trackAnalysisDao()?.upsert(fromResult(trackId, cliffedResult))
                                 }
                             }
-                            finalResult
+                            cliffedResult
                         }
                     } catch (e: Exception) {
                         Timber.tag("TrackAnalyzer").e(e, "Analysis crashed trackId=$trackId source=$source")
@@ -386,6 +407,96 @@ object TrackAnalyzer {
         }
 
         activeDeferred?.await()
+    }
+
+    private fun applyFullSpanCliff(
+        base: TrackAnalysisResult,
+        durationSeconds: Double?,
+        durationMs: Long?,
+        decodeFullSamples: (() -> FloatArray?)?,
+        trackId: String,
+    ): TrackAnalysisResult {
+        if (decodeFullSamples == null) return base
+        if (!AudioDecoder.canDoFullPass(durationMs)) return base
+        if (durationSeconds == null || durationSeconds <= 0.0) return base
+        val contentEnd = if (base.contentEndTime > 0.0) base.contentEndTime else durationSeconds
+        if (contentEnd <= 0.0) return base
+        val fullSamples = runCatching { decodeFullSamples() }.getOrNull()
+        if (fullSamples == null || fullSamples.isEmpty()) return base
+        try {
+            val cliff = runCatching { TrackFeatures.energyCliff(fullSamples, durationSeconds) }.getOrDefault(0.0)
+            Timber.tag("TrackAnalyzer").d("Full-span cliff trackId=$trackId cliff=$cliff contentEnd=$contentEnd")
+            if (!cliff.isFinite() || cliff <= 0.0 || cliff >= contentEnd - 8.0) return base
+            val mergedRawJson = runCatching {
+                if (base.rawJson.isBlank()) return@runCatching base.rawJson
+                val json = JSONObject(base.rawJson)
+                json.put("mixOutTime", cliff)
+                val candidates = json.optJSONArray("mixOutCandidates")
+                val cliffObj = JSONObject().put("t", cliff).put("s", 0.95).put("y", "energy_cliff")
+                if (candidates != null) {
+                    var replaced = false
+                    for (i in 0 until candidates.length()) {
+                        val existing = candidates.optJSONObject(i) ?: continue
+                        if (existing.optString("y") == "energy_cliff" &&
+                            kotlin.math.abs(existing.optDouble("t", 0.0) - cliff) < 2.0
+                        ) {
+                            candidates.put(i, cliffObj)
+                            replaced = true
+                            break
+                        }
+                    }
+                    if (!replaced) candidates.put(cliffObj)
+                } else {
+                    json.put("mixOutCandidates", org.json.JSONArray().put(cliffObj))
+                }
+                json.toString()
+            }.getOrDefault(base.rawJson)
+            return base.copy(mixOutTime = cliff, rawJson = mergedRawJson)
+        } finally {
+            fullSamples.fill(0f)
+        }
+    }
+
+    private fun logCues(trackId: String, result: TrackAnalysisResult) {
+        runCatching {
+            val safeId = trackId.map { if (it.code in 32..126) it else '?' }.joinToString("")
+            val json = if (result.rawJson.isNotBlank()) JSONObject(result.rawJson) else null
+            fun fmt(v: Double): String = String.format(java.util.Locale.US, "%.2f", v)
+            fun candidates(key: String): String = runCatching {
+                val arr = json?.optJSONArray(key) ?: return@runCatching ""
+                buildList {
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val t = o.optDouble("t", Double.NaN)
+                        val y = o.optString("y", "")
+                        if (t.isFinite() && y.isNotBlank()) add("$y@${fmt(t)}")
+                    }
+                }.joinToString(", ")
+            }.getOrDefault("")
+            val outro = runCatching { json?.optDouble("outroStartTime", Double.NaN) }.getOrNull()
+                ?.takeIf { it.isFinite() && it > 0.0 }
+            val seen = LinkedHashSet<String>()
+            val mixOutCands = buildList {
+                runCatching {
+                    val arr = json?.optJSONArray("mixOutCandidates")
+                    if (arr != null) {
+                        for (i in 0 until arr.length()) {
+                            val o = arr.optJSONObject(i) ?: continue
+                            val t = o.optDouble("t", Double.NaN)
+                            val y = o.optString("y", "")
+                            if (t.isFinite() && y.isNotBlank() && seen.add(y)) add("$y@${fmt(t)}")
+                        }
+                    }
+                }
+                if (outro != null && seen.add("outro_start")) add("outro_start@${fmt(outro)}")
+                if (seen.add("content_end")) add("content_end@${fmt(result.contentEndTime)}")
+            }.joinToString(", ")
+            Timber.tag("TrackAnalyzer").d(
+                "Cues $safeId: contentEnd=${fmt(result.contentEndTime)} " +
+                    "mixIn=${fmt(result.mixInTime)} mixInCandidates=[${candidates("mixInCandidates")}] " +
+                    "mixOut=${fmt(result.mixOutTime)} mixOutCandidates=[$mixOutCands]",
+            )
+        }
     }
 
     private fun mergeHeadAndTail(

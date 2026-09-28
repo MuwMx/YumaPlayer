@@ -176,6 +176,21 @@ Java_moe_rukamori_archivetune_playback_smart_TrackFeatures_nativeAnalyze(
 }
 
 JNIEXPORT jdouble JNICALL
+Java_moe_rukamori_archivetune_playback_smart_TrackFeatures_nativeEnergyCliff(
+    JNIEnv* env,
+    jclass /* clazz */,
+    jfloatArray samples,
+    jdouble sample_rate,
+    jdouble duration) {
+  const jsize count = env->GetArrayLength(samples);
+  std::vector<float> input(static_cast<size_t>(count));
+  if (count > 0) {
+    env->GetFloatArrayRegion(samples, 0, count, input.data());
+  }
+  return yuma::smart::FindFullSpanMixOut(input, sample_rate, duration);
+}
+
+JNIEXPORT jdouble JNICALL
 Java_moe_rukamori_archivetune_playback_smart_TrackFeatures_nativeSampleRate(
     JNIEnv* /* env */,
     jclass /* clazz */) {

@@ -11,6 +11,7 @@ object TrackFeatures {
     }
 
     private external fun nativeAnalyze(samples: FloatArray, sampleRate: Double, duration: Double): String
+    private external fun nativeEnergyCliff(samples: FloatArray, sampleRate: Double, duration: Double): Double
     private external fun nativeSampleRate(): Double
     private external fun nativeResample(input: FloatArray, inRate: Double, outRate: Double): FloatArray
 
@@ -27,6 +28,10 @@ object TrackFeatures {
     fun analyze(samples: FloatArray, duration: Double, sampleRate: Double): TrackAnalysisResult? = runCatching {
         analyzeInternal(samples, duration, sampleRate)
     }.getOrNull()
+
+    fun energyCliff(samples: FloatArray, duration: Double): Double = runCatching {
+        nativeEnergyCliff(samples, nativeSampleRate(), duration)
+    }.getOrDefault(0.0)
 
     private fun analyzeInternal(samples: FloatArray, duration: Double, sampleRate: Double): TrackAnalysisResult {
         val jsonStr = nativeAnalyze(samples, sampleRate, duration)

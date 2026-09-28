@@ -22,6 +22,7 @@ object AudioDecoder {
     const val MAX_HEAD_DECODE_MS: Long = 45_000L
     const val TAIL_WINDOW_MS: Long = 45_000L
     const val DECODE_WATCHDOG_MS: Long = 45_000L
+    const val MAX_FULL_DECODE_MS: Long = 720_000L
 
     fun decode(
         filePath: String,
@@ -177,10 +178,89 @@ object AudioDecoder {
         return decode(cache, cacheKey, startMs = durationMs - TAIL_WINDOW_MS, endMs = durationMs)
     }
 
+    fun canDoFullPass(durationMs: Long?): Boolean =
+        durationMs != null && durationMs > TAIL_WINDOW_MS && durationMs <= MAX_FULL_DECODE_MS
+
+    fun decodeFull(
+        context: Context,
+        uri: Uri,
+        durationMs: Long,
+    ): FloatArray? {
+        if (!canDoFullPass(durationMs)) return null
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "http" || scheme == "https") return null
+        if (scheme == "file" || scheme == null) {
+            val path = uri.path
+            if (path != null) {
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    return decodeFull(file, durationMs)
+                }
+            }
+        }
+        return runCatching {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                decodeInternal(
+                    setDataSource = { it.setDataSource(pfd.fileDescriptor, 0L, Long.MAX_VALUE) },
+                    startMs = 0L,
+                    endMs = durationMs,
+                    maxWindowMs = MAX_FULL_DECODE_MS,
+                    watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+                )
+            }
+        }.getOrNull()
+    }
+
+    fun decodeFull(
+        file: File,
+        durationMs: Long,
+    ): FloatArray? {
+        if (!canDoFullPass(durationMs)) return null
+        if (!file.exists() || !file.canRead()) return null
+        return decodeInternal(
+            setDataSource = { it.setDataSource(file.absolutePath) },
+            startMs = 0L,
+            endMs = durationMs,
+            maxWindowMs = MAX_FULL_DECODE_MS,
+            watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+        )
+    }
+
+    fun decodeFull(
+        cache: Cache,
+        cacheKey: String,
+        durationMs: Long,
+    ): FloatArray? {
+        if (!canDoFullPass(durationMs)) return null
+        val length = runCatching {
+            cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+        }.getOrDefault(-1L)
+        if (length <= 0L || !cache.isCached(cacheKey, 0L, length)) {
+            return null
+        }
+        val spans = runCatching { cache.getCachedSpans(cacheKey) }.getOrNull().orEmpty()
+        if (spans.isEmpty()) return null
+        if (spans.size == 1) {
+            val singleFile = spans.first().file
+            if (singleFile != null && singleFile.exists() && singleFile.canRead()) {
+                return decodeFull(singleFile, durationMs)
+            }
+        }
+        return decodeInternal(
+            setDataSource = { it.setDataSource(CacheMediaDataSource(cache, cacheKey)) },
+            startMs = 0L,
+            endMs = durationMs,
+            maxWindowMs = MAX_FULL_DECODE_MS,
+            watchdogMs = (durationMs + 30_000L).coerceIn(DECODE_WATCHDOG_MS, 120_000L),
+        )
+    }
+
     private fun decodeInternal(
         setDataSource: (MediaExtractor) -> Unit,
         startMs: Long,
         endMs: Long,
+        maxWindowMs: Long = MAX_HEAD_DECODE_MS,
+        watchdogMs: Long = DECODE_WATCHDOG_MS,
     ): FloatArray? {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
@@ -217,7 +297,7 @@ object AudioDecoder {
             } else {
                 endMs
             }
-            val boundedEndMs = requestedEndMs.coerceAtMost(safeStartMs + MAX_HEAD_DECODE_MS)
+            val boundedEndMs = requestedEndMs.coerceAtMost(safeStartMs + maxWindowMs)
             val startUs = safeStartMs * 1000L
             val endUs = boundedEndMs * 1000L
             if (startUs > 0L) {
@@ -253,8 +333,8 @@ object AudioDecoder {
             var wallClockAborted = false
 
             while (!sawOutputEOS) {
-                if (android.os.SystemClock.elapsedRealtime() - decodeStartMs > DECODE_WATCHDOG_MS) {
-                    Timber.tag("AudioDecoder").w("Decode wall-clock guard tripped after ${DECODE_WATCHDOG_MS}ms; stopping decode loop")
+                if (android.os.SystemClock.elapsedRealtime() - decodeStartMs > watchdogMs) {
+                    Timber.tag("AudioDecoder").w("Decode wall-clock guard tripped after ${watchdogMs}ms; stopping decode loop")
                     wallClockAborted = true
                     break
                 }
