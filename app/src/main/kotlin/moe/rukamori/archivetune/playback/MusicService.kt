@@ -64,6 +64,7 @@ import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import moe.rukamori.archivetune.playback.dsp.DjFilterAudioProcessor
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
@@ -564,6 +565,7 @@ class MusicService :
     internal var crossfadeProgress = 0f
     internal var crossfadePlaybackRequested = false
     internal val dualPlayerRoleHolder = DualPlayerRoleHolder()
+    internal val djFilterByPlayer = ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor>()
     private var lyricsPreloadManager: LyricsPreloadManager? = null
     private var prefetchJob: Job? = null
     private val prefetchTimelineGeneration = AtomicLong(0L)
@@ -1056,11 +1058,12 @@ class MusicService :
             reportException(e)
         }
 
+        val localDjFilter = DjFilterAudioProcessor()
         localPlayer =
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory())
+                .setRenderersFactory(createRenderersFactory(localDjFilter))
                 .setLoadControl(createPrimaryLoadControl())
                 .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
                 .setHandleAudioBecomingNoisy(true)
@@ -1077,6 +1080,7 @@ class MusicService :
                     addListener(audioEffectPlayerListener)
                     setOffloadEnabled(false)
                 }
+        djFilterByPlayer[localPlayer] = localDjFilter
         castPlaybackRepository = CastPlaybackRepositoryLocator.get(this)
         val basePlayer =
             castPlaybackRepository
@@ -4105,7 +4109,7 @@ class MusicService :
             ).setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-    internal fun createRenderersFactory() =
+    internal fun createRenderersFactory(djFilter: DjFilterAudioProcessor) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,
@@ -4125,9 +4129,18 @@ class MusicService :
                             150.toShort(),
                         ),
                         SonicAudioProcessor(),
+                        djFilter,
                     ),
                 ).build()
         }
+
+    internal fun djFilterFor(player: ExoPlayer?): DjFilterAudioProcessor? = player?.let { djFilterByPlayer[it] }
+
+    internal fun resetDjFilters(vararg players: ExoPlayer?) {
+        for (player in players) {
+            djFilterFor(player)?.clearAutomation()
+        }
+    }
 
     override fun onPlaybackStatsReady(
         eventTime: AnalyticsListener.EventTime,
@@ -4558,10 +4571,12 @@ class MusicService :
         } catch (_: Exception) {
         }
         try {
+            reserveCrossfadePlayer?.let { djFilterByPlayer.remove(it) }
             reserveCrossfadePlayer?.release()
             reserveCrossfadePlayer = null
-            secondaryCrossfadePlayer?.release()
+            secondaryCrossfadePlayer?.let { djFilterByPlayer.remove(it) }
             secondaryCrossfadePlayer = null
+            runCatching { djFilterByPlayer.remove(localPlayer) }
             localPlayer.removeListener(audioEffectPlayerListener)
             player.removeListener(this)
             player.removeListener(sleepTimer)

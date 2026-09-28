@@ -23,6 +23,7 @@ import kotlin.math.roundToLong
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.playback.automix.AutomixPlan
+import moe.rukamori.archivetune.playback.dsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.playback.automix.TransitionPlanner
 import moe.rukamori.archivetune.playback.automix.TransitionTier
 import moe.rukamori.archivetune.playback.smart.TrackAnalysisResult
@@ -354,11 +355,12 @@ internal fun MusicService.prepareSecondaryCrossfadePlayer(
     return player
 }
 
-internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
-    ExoPlayer
+internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer {
+    val djFilter = DjFilterAudioProcessor()
+    return ExoPlayer
         .Builder(this)
         .setMediaSourceFactory(createMediaSourceFactory())
-        .setRenderersFactory(createRenderersFactory())
+        .setRenderersFactory(createRenderersFactory(djFilter))
         .setLoadControl(createCrossfadeLoadControl())
         .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
         .setHandleAudioBecomingNoisy(false)
@@ -368,10 +370,41 @@ internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer =
         .setSeekForwardIncrementMs(5000)
         .build()
         .apply {
+            djFilterByPlayer[this] = djFilter
             addListener(secondaryCrossfadeListener)
             setOffloadEnabled(false)
             skipSilenceEnabled = localPlayer.skipSilenceEnabled
         }
+}
+
+internal fun MusicService.applyDjFilterAutomation(
+    progress: Float,
+    bassSwap: Boolean,
+    outgoing: ExoPlayer,
+    incoming: ExoPlayer,
+) {
+    val outgoingFilter = djFilterFor(outgoing) ?: return
+    val incomingFilter = djFilterFor(incoming) ?: return
+    if (!bassSwap) {
+        outgoingFilter.clearAutomation()
+        incomingFilter.clearAutomation()
+        return
+    }
+    val clamped = progress.coerceIn(0f, 1f)
+    outgoingFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ *
+        Math.pow(
+            DjFilterAudioProcessor.SWEEP_TARGET_HZ / DjFilterAudioProcessor.BYPASS_CUTOFF_HZ,
+            clamped.toDouble(),
+        )
+    outgoingFilter.bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB * (clamped * 2f).coerceIn(0f, 1f).toDouble()
+    incomingFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
+    incomingFilter.bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB +
+        (-DjFilterAudioProcessor.FULL_CUT_DB) * ((clamped - 0.5f) / 0.5f).coerceIn(0f, 1f).toDouble()
+}
+
+internal fun MusicService.resetDjFilterChain() {
+    resetDjFilters(localPlayer, secondaryCrossfadePlayer, reserveCrossfadePlayer)
+}
 
 internal fun MusicService.startCrossfade(
     target: MusicService.CrossfadeTarget,
@@ -416,6 +449,16 @@ internal fun MusicService.startCrossfade(
 
                 outgoingPlayer.volume = (crossfadeBaseVolume * FALL(0f)).coerceIn(0f, maxSafeGainFactor)
                 incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
+                val djBassSwap = plan?.enableBassSwap == true
+                if (djBassSwap) {
+                    djFilterFor(outgoingPlayer)?.clearAutomation()
+                    djFilterFor(standbyPlayer)?.apply {
+                        lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
+                        bassGainDb = DjFilterAudioProcessor.FULL_CUT_DB
+                    }
+                } else {
+                    resetDjFilters(outgoingPlayer, standbyPlayer)
+                }
                 if (plan?.tier == TransitionTier.SMART_BEATMATCH) {
                     standbyPlayer.playbackParameters = PlaybackParameters(plan.incomingTempoRatio)
                 } else {
@@ -455,6 +498,9 @@ internal fun MusicService.startCrossfade(
                             crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                             outgoingPlayer.volume = (crossfadeBaseVolume * FALL(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
                             incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(crossfadeProgress)).coerceIn(0f, maxSafeGainFactor)
+                            if (djBassSwap) {
+                                applyDjFilterAutomation(crossfadeProgress, true, outgoingPlayer, incomingPlayer)
+                            }
                         } else {
                             if (standbyPlayer.playbackState == Player.STATE_ENDED || standbyPlayer.playerError != null) {
                                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -596,6 +642,7 @@ internal suspend fun MusicService.finishCrossfade(
     secondaryCrossfadePlayer = null
     secondaryCrossfadeTarget = null
     activeAutomixPlan = null
+    resetDjFilters(localPlayer, incomingPlayer, reserveCrossfadePlayer)
     applyEffectiveVolumeImmediately()
     updateAudiblePlaybackRecovery()
     scheduleCrossfade()
@@ -703,6 +750,7 @@ internal fun MusicService.cancelCrossfade(
     if (isPlayerInitialized()) {
         dualForwardingPlayer.attachPlayer(localPlayer)
     }
+    resetDjFilters(localPlayer, secondaryCrossfadePlayer, reserveCrossfadePlayer)
     dualPlayerRoleHolder.reset()
     if (isPlayerInitialized() && resetPauseAtEnd) {
         localPlayer.pauseAtEndOfMediaItems = false
@@ -755,12 +803,14 @@ internal fun MusicService.releaseSecondaryCrossfadePlayer() {
     val playerToRelease = secondaryCrossfadePlayer ?: return
     secondaryCrossfadePlayer = null
     secondaryCrossfadeTarget = null
+    djFilterFor(playerToRelease)?.clearAutomation()
     runCatching { playerToRelease.removeListener(secondaryCrossfadeListener) }
     runCatching { playerToRelease.playWhenReady = false }
     runCatching { playerToRelease.volume = 0f }
     runCatching { playerToRelease.stop() }
     runCatching { playerToRelease.clearMediaItems() }
     runCatching { playerToRelease.release() }
+    djFilterByPlayer.remove(playerToRelease)
 }
 
 internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
