@@ -84,6 +84,7 @@ object TrackAnalyzer {
 
     fun putCached(trackId: String, result: TrackAnalysisResult) {
         memoryCache[trackId] = result
+        _analysisEvents.tryEmit(trackId to result)
     }
 
     fun clearCache() {
@@ -95,7 +96,7 @@ object TrackAnalyzer {
         filePath: String,
         durationSeconds: Double? = null,
         startMs: Long = 0L,
-        endMs: Long = Long.MAX_VALUE,
+        endMs: Long = AudioDecoder.DEFAULT_HEAD_DECODE_MS,
     ): TrackAnalysisResult? {
         if (filePath.startsWith("http://", ignoreCase = true) || filePath.startsWith("https://", ignoreCase = true)) {
             Timber.tag("TrackAnalyzer").w("Rejecting remote filePath=$filePath for trackId=$trackId")
@@ -113,7 +114,7 @@ object TrackAnalyzer {
         file: File,
         durationSeconds: Double? = null,
         startMs: Long = 0L,
-        endMs: Long = Long.MAX_VALUE,
+        endMs: Long = AudioDecoder.DEFAULT_HEAD_DECODE_MS,
     ): TrackAnalysisResult? {
         if (!file.exists() || !file.canRead()) return null
         return analyzeWithSource(trackId, durationSeconds, "file") {
@@ -127,7 +128,7 @@ object TrackAnalyzer {
         uri: Uri,
         durationSeconds: Double? = null,
         startMs: Long = 0L,
-        endMs: Long = Long.MAX_VALUE,
+        endMs: Long = AudioDecoder.DEFAULT_HEAD_DECODE_MS,
     ): TrackAnalysisResult? {
         val scheme = uri.scheme?.lowercase()
         if (scheme == "http" || scheme == "https") {
@@ -149,7 +150,7 @@ object TrackAnalyzer {
         cacheKey: String,
         durationSeconds: Double? = null,
         startMs: Long = 0L,
-        endMs: Long = Long.MAX_VALUE,
+        endMs: Long = AudioDecoder.DEFAULT_HEAD_DECODE_MS,
     ): TrackAnalysisResult? {
         val length = runCatching {
             cache.getContentMetadata(cacheKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
@@ -168,7 +169,7 @@ object TrackAnalyzer {
         mediaDataSource: MediaDataSource,
         durationSeconds: Double? = null,
         startMs: Long = 0L,
-        endMs: Long = Long.MAX_VALUE,
+        endMs: Long = AudioDecoder.DEFAULT_HEAD_DECODE_MS,
     ): TrackAnalysisResult? = analyzeWithSource(trackId, durationSeconds, "dataSource") {
         AudioDecoder.decode(mediaDataSource, startMs, endMs)
     }

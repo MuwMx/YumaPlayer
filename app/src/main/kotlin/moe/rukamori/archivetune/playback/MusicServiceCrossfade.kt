@@ -28,6 +28,47 @@ import timber.log.Timber
 
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
+private fun MusicService.computeCrossfadeTriggerAt(
+    outgoingAnalysis: TrackAnalysisResult?,
+    duration: Long,
+    triggerOffset: Long,
+    automixPlanTriggerAtMs: Long?,
+): Long {
+    val mixOutSec = outgoingAnalysis?.mixOutTime ?: 0.0
+    return if (automixEnabled && mixOutSec > 0.0) {
+        val mixOutTimeMs = (mixOutSec * 1000.0).roundToLong()
+        mixOutTimeMs - (crossfadeDurationMs / 2L)
+    } else {
+        automixPlanTriggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+    }
+}
+
+private fun MusicService.feedTriggerMixOutToPlayerState(
+    mediaId: String,
+    outgoingAnalysis: TrackAnalysisResult?,
+    triggerAt: Long,
+): TrackAnalysisResult? {
+    if (!automixEnabled || outgoingAnalysis == null || outgoingAnalysis.mixOutTime <= 0.0) {
+        return outgoingAnalysis
+    }
+    val triggerSec = (triggerAt.coerceAtLeast(0L)).toDouble() / 1000.0
+    val updated = outgoingAnalysis.copy(mixOutTime = triggerSec)
+    TrackAnalyzer.putCached(mediaId, updated)
+    return updated
+}
+
+private fun resolveIncomingCueInMs(
+    automixPlan: moe.rukamori.archivetune.playback.automix.AutomixPlan?,
+    incomingAnalysis: TrackAnalysisResult?,
+    explicitStartMs: Long = 0L,
+): Long {
+    if (explicitStartMs > 0L) return explicitStartMs
+    val planStart = automixPlan?.incomingStartMs ?: 0L
+    if (planStart > 0L) return planStart
+    val mixInSec = incomingAnalysis?.mixInTime ?: 0.0
+    return if (mixInSec > 0.0) (mixInSec * 1000.0).roundToLong() else 0L
+}
+
 internal fun MusicService.scheduleCrossfade() {
     if (!isPlayerInitialized()) return
     crossfadeTriggerJob?.cancel()
@@ -84,7 +125,13 @@ internal fun MusicService.scheduleCrossfade() {
 
     var plannedDuration = automixPlan?.durationMs ?: effectiveDuration
     var triggerOffset = automixPlan?.triggerOffsetMs ?: effectiveDuration
-    var triggerAt = automixPlan?.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+    var triggerAt = computeCrossfadeTriggerAt(
+        outgoingAnalysis = outgoingAnalysis,
+        duration = duration,
+        triggerOffset = triggerOffset,
+        automixPlanTriggerAtMs = automixPlan?.triggerAtMs,
+    )
+    outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, outgoingAnalysis, triggerAt)
     var prepareAhead = automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
     crossfadeTriggerJob =
@@ -120,7 +167,13 @@ internal fun MusicService.scheduleCrossfade() {
                         activeAutomixPlan = newPlan
                         plannedDuration = newPlan.durationMs
                         triggerOffset = newPlan.triggerOffsetMs
-                        triggerAt = newPlan.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+                        triggerAt = computeCrossfadeTriggerAt(
+                            outgoingAnalysis = latestOutgoing,
+                            duration = duration,
+                            triggerOffset = triggerOffset,
+                            automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                        )
+                        outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, latestOutgoing, triggerAt)
                         prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
                     } else {
                         val currentOutgoing = outgoingAnalysis
@@ -137,14 +190,20 @@ internal fun MusicService.scheduleCrossfade() {
                             activeAutomixPlan = newPlan
                             plannedDuration = newPlan.durationMs
                             triggerOffset = newPlan.triggerOffsetMs
-                            triggerAt = newPlan.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+                            triggerAt = computeCrossfadeTriggerAt(
+                                outgoingAnalysis = currentOutgoing,
+                                duration = duration,
+                                triggerOffset = triggerOffset,
+                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                            )
+                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, currentOutgoing, triggerAt)
                             prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
                         }
                     }
                 }
 
                 val remainingToTrigger = triggerAt - player.currentPosition
-                val incomingStartMs = automixPlan?.incomingStartMs ?: 0L
+                val incomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis)
                 val secondaryFailedForThisCycle = secondaryPreparationFailedMediaId == target.mediaId
                 if (!hasPreparedSecondaryPlayer && !secondaryFailedForThisCycle && remainingToTrigger <= prepareAhead) {
                     prepareSecondaryCrossfadePlayer(target, incomingStartMs)
@@ -155,9 +214,10 @@ internal fun MusicService.scheduleCrossfade() {
                         return@launch
                     }
                     if (automixEnabled && outgoingAnalysis == null && isTrackFullyCached(currentMediaId)) {
+                        val currentDurationSec = if (duration > 0L && duration != C.TIME_UNSET) duration.toDouble() / 1000.0 else null
                         val fastAnalysis = runCatching {
                             withTimeoutOrNull(FAST_ANALYSIS_TIMEOUT_MS) {
-                                analyzeCachedTrack(currentMediaId)
+                                analyzeCachedTrack(currentMediaId, durationSeconds = currentDurationSec)
                             }
                         }.getOrNull()
 
@@ -182,7 +242,13 @@ internal fun MusicService.scheduleCrossfade() {
                             activeAutomixPlan = newPlan
                             plannedDuration = newPlan.durationMs
                             triggerOffset = newPlan.triggerOffsetMs
-                            triggerAt = newPlan.triggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
+                            triggerAt = computeCrossfadeTriggerAt(
+                                outgoingAnalysis = fastAnalysis,
+                                duration = duration,
+                                triggerOffset = triggerOffset,
+                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                            )
+                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, fastAnalysis, triggerAt)
                             prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
                             val updatedRemainingToTrigger = triggerAt - player.currentPosition
@@ -200,7 +266,9 @@ internal fun MusicService.scheduleCrossfade() {
                     }
 
                     val currentOutgoing = outgoingAnalysis
-                    val endLimit = if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
+                    val endLimit = if (currentOutgoing != null && currentOutgoing.mixOutTime > 0.0) {
+                        (currentOutgoing.mixOutTime * 1000.0).roundToLong() + (crossfadeDurationMs / 2L)
+                    } else if (automixPlan?.triggerAtMs != null && currentOutgoing != null && currentOutgoing.contentEndTime > 0.0) {
                         (currentOutgoing.contentEndTime * 1000.0).roundToLong()
                     } else {
                         duration
@@ -209,7 +277,7 @@ internal fun MusicService.scheduleCrossfade() {
                         (endLimit - player.currentPosition - MusicService.CROSSFADE_END_GUARD_MS)
                             .coerceAtMost(plannedDuration)
                     if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                        val finalIncomingStartMs = automixPlan?.incomingStartMs ?: incomingStartMs
+                        val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
                         startCrossfade(target, adjustedDuration, finalIncomingStartMs)
                     }
                     return@launch
@@ -254,9 +322,11 @@ internal fun MusicService.prepareSecondaryCrossfadePlayer(
     startPositionMs: Long = 0L,
 ): ExoPlayer? {
     if (secondaryPreparationFailedMediaId == target.mediaId) return null
+    val incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
+    val cueInMs = resolveIncomingCueInMs(activeAutomixPlan, incomingAnalysis, startPositionMs)
     val player = prepareNext(target)
-    if (player != null && startPositionMs > 0L && player.currentPosition != startPositionMs) {
-        player.seekTo(target.index, startPositionMs)
+    if (player != null && cueInMs > 0L && player.currentPosition != cueInMs) {
+        player.seekTo(target.index, cueInMs)
     }
     return player
 }
@@ -288,7 +358,10 @@ internal fun MusicService.startCrossfade(
     if (isCrossfading || !crossfadeEnabled) return
     if (secondaryPreparationFailedMediaId == target.mediaId) return
 
-    val incomingPlayer = prepareSecondaryCrossfadePlayer(target, incomingStartMs) ?: return
+    val incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
+    val cueInMs = resolveIncomingCueInMs(activeAutomixPlan, incomingAnalysis, incomingStartMs)
+
+    val incomingPlayer = prepareSecondaryCrossfadePlayer(target, cueInMs) ?: return
     val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
 
     crossfadeTriggerJob?.cancel()
@@ -303,8 +376,8 @@ internal fun MusicService.startCrossfade(
             crossfadePlaybackRequested = player.playWhenReady
 
             try {
-                if (incomingStartMs > 0L && incomingPlayer.currentPosition != incomingStartMs) {
-                    incomingPlayer.seekTo(target.index, incomingStartMs)
+                if (cueInMs > 0L && incomingPlayer.currentPosition != cueInMs) {
+                    incomingPlayer.seekTo(target.index, cueInMs)
                 }
                 val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
                 if (!awaitCrossfadePlayerReady(incomingPlayer, MusicService.CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
@@ -322,9 +395,9 @@ internal fun MusicService.startCrossfade(
                 incomingPlayer.volume = (crossfadeIncomingBaseVolume * RISE(0f)).coerceIn(0f, maxSafeGainFactor)
                 standbyPlayer.playbackParameters = player.playbackParameters
                 standbyPlayer.playWhenReady = crossfadePlaybackRequested
-                if (incomingStartMs > 0L) {
-                    if (standbyPlayer.currentPosition != incomingStartMs) {
-                        standbyPlayer.seekTo(target.index, incomingStartMs)
+                if (cueInMs > 0L) {
+                    if (standbyPlayer.currentPosition != cueInMs) {
+                        standbyPlayer.seekTo(target.index, cueInMs)
                     }
                 } else if (standbyPlayer.currentPosition > 0L) {
                     standbyPlayer.seekTo(target.index, 0L)
@@ -669,17 +742,20 @@ internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
         isFullyCached(downloadCache, mediaId)
 }
 
-internal suspend fun MusicService.analyzeCachedTrack(mediaId: String): TrackAnalysisResult? {
+internal suspend fun MusicService.analyzeCachedTrack(
+    mediaId: String,
+    durationSeconds: Double? = null,
+): TrackAnalysisResult? {
     if (mediaId.isBlank()) return null
     TrackAnalyzer.getCached(mediaId)?.let { return it }
 
     val flacKey = flacCacheKey(mediaId)
     if (isFullyCached(downloadCache, flacKey)) {
-        return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey)
+        return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey, durationSeconds = durationSeconds)
     }
 
     if (isFullyCached(downloadCache, mediaId)) {
-        return TrackAnalyzer.analyze(mediaId, downloadCache, mediaId)
+        return TrackAnalyzer.analyze(mediaId, downloadCache, mediaId, durationSeconds = durationSeconds)
     }
 
     return null
@@ -768,11 +844,13 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
                 return@launch
             }
 
+            val durationSeconds = mediaItem?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
+
             if (mediaId.isLocalMediaId()) {
                 val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()
                 val scheme = uri.scheme?.lowercase()
                 if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
-                    TrackAnalyzer.analyze(mediaId, service, uri)
+                    TrackAnalyzer.analyze(mediaId, service, uri, durationSeconds = durationSeconds)
                     return@launch
                 }
             }
@@ -780,7 +858,7 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
             if (mediaId.startsWith("/")) {
                 val file = File(mediaId)
                 if (file.exists() && file.canRead()) {
-                    TrackAnalyzer.analyze(mediaId, file)
+                    TrackAnalyzer.analyze(mediaId, file, durationSeconds = durationSeconds)
                     return@launch
                 }
             }
@@ -789,14 +867,14 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
             if (directUri != null) {
                 val scheme = directUri.scheme?.lowercase()
                 if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
-                    TrackAnalyzer.analyze(mediaId, service, directUri)
+                    TrackAnalyzer.analyze(mediaId, service, directUri, durationSeconds = durationSeconds)
                     return@launch
                 }
             }
 
             if (isTrackFullyCached(mediaId)) {
                 Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis start: offline downloaded track mediaId=$mediaId")
-                analyzeCachedTrack(mediaId)
+                analyzeCachedTrack(mediaId, durationSeconds = durationSeconds)
                 return@launch
             }
 
