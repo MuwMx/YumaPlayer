@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import java.io.EOFException
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -31,6 +32,26 @@ import timber.log.Timber
 
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
+private val crossfadePlanGeneration = AtomicLong(0L)
+
+internal fun bumpCrossfadePlanGeneration(): Long = crossfadePlanGeneration.incrementAndGet()
+
+private fun MusicService.isPlanGenerationCurrent(
+    generation: Long,
+    currentMediaId: String,
+    targetMediaId: String,
+    startPositionMs: Long,
+): Boolean {
+    if (crossfadePlanGeneration.get() != generation) return false
+    if (player.currentMediaItem?.mediaId != currentMediaId) return false
+    val currentTarget = resolveCrossfadeTarget() ?: return false
+    if (currentTarget.mediaId != targetMediaId) return false
+    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
+    if (!player.playWhenReady) return false
+    if (player.currentPosition < startPositionMs) return false
+    return true
+}
+
 private fun MusicService.computeCrossfadeTriggerAt(
     outgoingAnalysis: TrackAnalysisResult?,
     duration: Long,
@@ -46,20 +67,6 @@ private fun MusicService.computeCrossfadeTriggerAt(
     }
 }
 
-private fun MusicService.feedTriggerMixOutToPlayerState(
-    mediaId: String,
-    outgoingAnalysis: TrackAnalysisResult?,
-    triggerAt: Long,
-): TrackAnalysisResult? {
-    if (!automixEnabled || outgoingAnalysis == null || outgoingAnalysis.mixOutTime <= 0.0) {
-        return outgoingAnalysis
-    }
-    val triggerSec = (triggerAt.coerceAtLeast(0L)).toDouble() / 1000.0
-    val updated = outgoingAnalysis.copy(mixOutTime = triggerSec)
-    TrackAnalyzer.putCached(mediaId, updated)
-    return updated
-}
-
 private fun resolveIncomingCueInMs(
     automixPlan: moe.rukamori.archivetune.playback.automix.AutomixPlan?,
     incomingAnalysis: TrackAnalysisResult?,
@@ -73,6 +80,7 @@ private fun resolveIncomingCueInMs(
 }
 
 internal fun MusicService.scheduleCrossfade() {
+    val currentGeneration = bumpCrossfadePlanGeneration()
     if (!isPlayerInitialized()) return
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
@@ -134,14 +142,15 @@ internal fun MusicService.scheduleCrossfade() {
         triggerOffset = triggerOffset,
         automixPlanTriggerAtMs = automixPlan?.triggerAtMs,
     )
-    outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, outgoingAnalysis, triggerAt)
     var prepareAhead = automixPlan?.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
 
     crossfadeTriggerJob =
         scope.launch {
             hasPreparedSecondaryPlayer = false
+            var isPlanFrozen = false
             while (isActive) {
                 if (!crossfadeEnabled || isCrossfading) return@launch
+                if (crossfadePlanGeneration.get() != currentGeneration) return@launch
                 if (player.currentMediaItem?.mediaId != currentMediaId || player.currentMediaItemIndex != currentIndex) {
                     return@launch
                 }
@@ -152,7 +161,9 @@ internal fun MusicService.scheduleCrossfade() {
                     return@launch
                 }
 
-                if (automixEnabled && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
+                if (automixEnabled && !isPlanFrozen && (outgoingAnalysis == null || (incomingAnalysis == null && (automixPlan?.incomingStartMs ?: 0L) == 0L))) {
+                    val recomputeStartGeneration = crossfadePlanGeneration.get()
+                    val recomputeStartPosition = player.currentPosition
                     var latestOutgoing = TrackAnalyzer.getCached(currentMediaId)
                     if (latestOutgoing == null && isTrackFullyCached(currentMediaId)) {
                         kickOffTrackAnalysis(currentMediaId)
@@ -160,8 +171,6 @@ internal fun MusicService.scheduleCrossfade() {
                     }
                     val latestIncoming = TrackAnalyzer.getCached(target.mediaId)
                     if (latestOutgoing != null && latestOutgoing != outgoingAnalysis) {
-                        outgoingAnalysis = latestOutgoing
-                        incomingAnalysis = latestIncoming
                         val newPlan = TransitionPlanner.planSmartTransition(
                             outgoingAnalysis = latestOutgoing,
                             incomingAnalysis = latestIncoming,
@@ -169,22 +178,24 @@ internal fun MusicService.scheduleCrossfade() {
                             preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
                             aggressiveness = automixAggressiveness,
                         )
-                        automixPlan = newPlan
-                        activeAutomixPlan = newPlan
-                        plannedDuration = newPlan.durationMs
-                        triggerOffset = newPlan.triggerOffsetMs
-                        triggerAt = computeCrossfadeTriggerAt(
-                            outgoingAnalysis = latestOutgoing,
-                            duration = duration,
-                            triggerOffset = triggerOffset,
-                            automixPlanTriggerAtMs = newPlan.triggerAtMs,
-                        )
-                        outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, latestOutgoing, triggerAt)
-                        prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                        if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
+                            outgoingAnalysis = latestOutgoing
+                            incomingAnalysis = latestIncoming
+                            automixPlan = newPlan
+                            activeAutomixPlan = newPlan
+                            plannedDuration = newPlan.durationMs
+                            triggerOffset = newPlan.triggerOffsetMs
+                            triggerAt = computeCrossfadeTriggerAt(
+                                outgoingAnalysis = latestOutgoing,
+                                duration = duration,
+                                triggerOffset = triggerOffset,
+                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                            )
+                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                        }
                     } else {
                         val currentOutgoing = outgoingAnalysis
                         if (latestIncoming != null && latestIncoming != incomingAnalysis && currentOutgoing != null) {
-                            incomingAnalysis = latestIncoming
                             val newPlan = TransitionPlanner.planSmartTransition(
                                 outgoingAnalysis = currentOutgoing,
                                 incomingAnalysis = latestIncoming,
@@ -192,18 +203,20 @@ internal fun MusicService.scheduleCrossfade() {
                                 preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
                                 aggressiveness = automixAggressiveness,
                             )
-                            automixPlan = newPlan
-                            activeAutomixPlan = newPlan
-                            plannedDuration = newPlan.durationMs
-                            triggerOffset = newPlan.triggerOffsetMs
-                            triggerAt = computeCrossfadeTriggerAt(
-                                outgoingAnalysis = currentOutgoing,
-                                duration = duration,
-                                triggerOffset = triggerOffset,
-                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
-                            )
-                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, currentOutgoing, triggerAt)
-                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                            if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
+                                incomingAnalysis = latestIncoming
+                                automixPlan = newPlan
+                                activeAutomixPlan = newPlan
+                                plannedDuration = newPlan.durationMs
+                                triggerOffset = newPlan.triggerOffsetMs
+                                triggerAt = computeCrossfadeTriggerAt(
+                                    outgoingAnalysis = currentOutgoing,
+                                    duration = duration,
+                                    triggerOffset = triggerOffset,
+                                    automixPlanTriggerAtMs = newPlan.triggerAtMs,
+                                )
+                                prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
+                            }
                         }
                     }
                 }
@@ -214,6 +227,10 @@ internal fun MusicService.scheduleCrossfade() {
                 if (!hasPreparedSecondaryPlayer && !secondaryFailedForThisCycle && remainingToTrigger <= prepareAhead) {
                     prepareSecondaryCrossfadePlayer(target, incomingStartMs)
                     hasPreparedSecondaryPlayer = true
+                    isPlanFrozen = true
+                }
+                if (remainingToTrigger <= prepareAhead) {
+                    isPlanFrozen = true
                 }
 
                 if (remainingToTrigger <= 0L) {
@@ -222,6 +239,8 @@ internal fun MusicService.scheduleCrossfade() {
                     }
                     if (automixEnabled && outgoingAnalysis == null && isTrackFullyCached(currentMediaId)) {
                         val currentDurationSec = if (duration > 0L && duration != C.TIME_UNSET) duration.toDouble() / 1000.0 else null
+                        val recomputeStartGeneration = crossfadePlanGeneration.get()
+                        val recomputeStartPosition = player.currentPosition
                         val fastAnalysis = runCatching {
                             withTimeoutOrNull(FAST_ANALYSIS_TIMEOUT_MS) {
                                 analyzeCachedTrack(currentMediaId, durationSeconds = currentDurationSec)
@@ -234,40 +253,26 @@ internal fun MusicService.scheduleCrossfade() {
                         if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                             return@launch
                         }
+                        if (!player.playWhenReady || crossfadePlanGeneration.get() != currentGeneration) {
+                            return@launch
+                        }
 
                         if (fastAnalysis != null) {
-                            outgoingAnalysis = fastAnalysis
-                            incomingAnalysis = TrackAnalyzer.getCached(target.mediaId)
-                            val newPlan = TransitionPlanner.planSmartTransition(
-                                outgoingAnalysis = fastAnalysis,
-                                incomingAnalysis = incomingAnalysis,
-                                currentDurationMs = duration,
-                                preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                aggressiveness = automixAggressiveness,
-                            )
-                            automixPlan = newPlan
-                            activeAutomixPlan = newPlan
-                            plannedDuration = newPlan.durationMs
-                            triggerOffset = newPlan.triggerOffsetMs
-                            triggerAt = computeCrossfadeTriggerAt(
-                                outgoingAnalysis = fastAnalysis,
-                                duration = duration,
-                                triggerOffset = triggerOffset,
-                                automixPlanTriggerAtMs = newPlan.triggerAtMs,
-                            )
-                            outgoingAnalysis = feedTriggerMixOutToPlayerState(currentMediaId, fastAnalysis, triggerAt)
-                            prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
-
-                            val updatedRemainingToTrigger = triggerAt - player.currentPosition
-                            if (updatedRemainingToTrigger > 0L) {
-                                val sleepMs =
-                                    when {
-                                        updatedRemainingToTrigger > 5_000L -> 1_000L
-                                        updatedRemainingToTrigger > 1_000L -> 250L
-                                        else -> 50L
-                                    }.coerceAtMost(updatedRemainingToTrigger).coerceAtLeast(1L)
-                                delay(sleepMs)
-                                continue
+                            if (isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
+                                outgoingAnalysis = fastAnalysis
+                                incomingAnalysis = TrackAnalyzer.getCached(target.mediaId)
+                                val newPlan = TransitionPlanner.planSmartTransition(
+                                    outgoingAnalysis = fastAnalysis,
+                                    incomingAnalysis = incomingAnalysis,
+                                    currentDurationMs = duration,
+                                    preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
+                                    aggressiveness = automixAggressiveness,
+                                )
+                                automixPlan = newPlan
+                                activeAutomixPlan = newPlan
+                                plannedDuration = newPlan.durationMs
+                                triggerOffset = newPlan.triggerOffsetMs
+                                prepareAhead = newPlan.prepareAheadMs ?: MusicService.CROSSFADE_PREPARE_AHEAD_MS
                             }
                         }
                     }
@@ -660,6 +665,7 @@ internal fun MusicService.cancelCrossfade(
     resetVolume: Boolean,
     resetPauseAtEnd: Boolean,
 ) {
+    bumpCrossfadePlanGeneration()
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
     crossfadeJob?.cancel()
@@ -704,6 +710,7 @@ internal fun isSourceOrEofError(error: PlaybackException): Boolean {
 }
 
 internal fun MusicService.cancelSecondaryCrossfadePreparation() {
+    bumpCrossfadePlanGeneration()
     secondaryPreparationFailedMediaId = secondaryCrossfadeTarget?.mediaId
     hasPreparedSecondaryPlayer = false
     if (isCrossfading) {
