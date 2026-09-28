@@ -91,8 +91,12 @@ internal fun MusicService.scheduleCrossfade() {
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
 
-    if (isCrossfading) return
+    if (isCrossfading) {
+        Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade bail: already crossfading")
+        return
+    }
     if (!player.playWhenReady) {
+        Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade bail: not playWhenReady")
         localPlayer.pauseAtEndOfMediaItems = false
         releaseSecondaryCrossfadePlayer()
         return
@@ -102,11 +106,13 @@ internal fun MusicService.scheduleCrossfade() {
     val duration = player.duration
     val effectiveDuration = effectiveCrossfadeDuration(duration)
     if (target == null || effectiveDuration == null) {
+        Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade bail: target=${target?.mediaId} effectiveDuration=$effectiveDuration duration=$duration items=${player.mediaItemCount} state=${player.playbackState}")
         localPlayer.pauseAtEndOfMediaItems = false
         releaseSecondaryCrossfadePlayer()
         activeAutomixPlan = null
         return
     }
+    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade armed for target: ${target.mediaId} at index ${target.index}")
 
     val currentMediaId = player.currentMediaItem?.mediaId ?: return
     val currentIndex = player.currentMediaItemIndex
