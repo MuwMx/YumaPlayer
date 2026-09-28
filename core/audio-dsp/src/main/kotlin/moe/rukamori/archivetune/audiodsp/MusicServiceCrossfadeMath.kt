@@ -36,6 +36,15 @@ const val BASS_SWAP_WINDOW_START = 0.45f
 const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
+const val ENTRY_HIGH_PASS_HZ = 1200f
+const val ENTRY_OPEN_BY = 0.6f
+
+fun incomingHighPassHz(progress: Float): Double {
+    val openPhase = (progress.coerceIn(0f, 1f) / ENTRY_OPEN_BY).coerceIn(0f, 1f)
+    val bypass = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
+    return bypass * (ENTRY_HIGH_PASS_HZ / bypass).pow(openPhase.toDouble())
+}
+
 private val bassFloorLinear = 10.0.pow(DjFilterAudioProcessor.FULL_CUT_DB / 20.0)
 
 private fun bassSwapIncomingLinear(progress: Float): Double {
