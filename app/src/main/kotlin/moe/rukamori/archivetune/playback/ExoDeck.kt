@@ -8,6 +8,7 @@ import moe.rukamori.archivetune.audiodsp.FALL
 import moe.rukamori.archivetune.audiodsp.RISE
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
 import moe.rukamori.archivetune.audiodsp.incomingHighPassHz
+import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
 import timber.log.Timber
 
@@ -35,6 +36,7 @@ class ExoDeck(
             player.volume = (baseVolume * FALL(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
+                djFilter.bassGainDb = outgoingBassGainDb(clamped)
             } else {
                 djFilter.clearAutomation()
             }

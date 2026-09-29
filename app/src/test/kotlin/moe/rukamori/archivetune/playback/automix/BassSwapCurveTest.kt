@@ -11,6 +11,7 @@ import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.ENTRY_HIGH_PASS_HZ
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
 import moe.rukamori.archivetune.audiodsp.incomingHighPassHz
+import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
 
 class BassSwapCurveTest {
@@ -30,6 +31,28 @@ class BassSwapCurveTest {
     fun bassSwap_midpoint_givesIncomingDominance() {
         val progress = (BASS_SWAP_WINDOW_START + BASS_SWAP_WINDOW_END) / 2f
         assertEquals(0.55, dbToLinear(incomingBassGainDb(progress)), 1e-6)
+        assertEquals(0.45, dbToLinear(outgoingBassGainDb(progress)), 1e-6)
+    }
+
+    @Test
+    fun bassSwap_linearGains_stayComplementaryAcrossFade() {
+        for (step in 0..100) {
+            val progress = step / 100f
+            val sum = dbToLinear(incomingBassGainDb(progress)) + dbToLinear(outgoingBassGainDb(progress))
+            assertTrue("sum at p=$progress was $sum", sum in 1.0 - 1e-3..1.0 + 0.07)
+        }
+    }
+
+    @Test
+    fun bassSwap_bothDecksNeverOwnTheLowEndAtOnceForLong() {
+        var dualActive = 0
+        for (step in 0..20) {
+            val progress = step / 20f
+            val outgoing = dbToLinear(outgoingBassGainDb(progress))
+            val incoming = dbToLinear(incomingBassGainDb(progress))
+            if (outgoing > 0.8 && incoming > 0.8) dualActive++
+        }
+        assertTrue("both decks owned the low end for ${dualActive}/21 of the fade", dualActive <= 5)
     }
 
     @Test

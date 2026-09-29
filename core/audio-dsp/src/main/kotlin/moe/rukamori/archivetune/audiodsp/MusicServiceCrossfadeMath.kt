@@ -71,6 +71,8 @@ private fun linearToBassDb(linear: Double): Double =
 
 fun incomingBassGainDb(progress: Float): Double = linearToBassDb(bassSwapIncomingLinear(progress))
 
+fun outgoingBassGainDb(progress: Float): Double = linearToBassDb(1.0 - bassSwapIncomingLinear(progress))
+
 fun advanceCueForElapsed(cueInMs: Long, elapsedMs: Long, maxPositionMs: Long?): Long {
     if (cueInMs <= 0L || elapsedMs <= 0L) return cueInMs
     val advanced = cueInMs + elapsedMs
