@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.audiodsp
 
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.roundToLong
 import org.json.JSONObject
 
@@ -9,12 +10,12 @@ object TransitionPlanner {
     const val AUTO_FAST_TRACK_MIN_SECONDS = 6.0
     const val AUTO_MAX_SECONDS = CrossfadeConstants.STANDARD_MAX_S
     const val AUTO_FALLBACK_SECONDS = 8.0
-
     const val FAST_TRACK_BPM_THRESHOLD = 140.0
     const val OCTAVE_UPPER_BOUND = 1.5
     const val OCTAVE_LOWER_BOUND = 0.67
     const val TEMPO_ALIGNMENT_TOLERANCE = 0.07
 
+    const val BEATS_PER_BAR = 4
     const val BEATS_MATCHED = 8
     const val BEATS_UNMATCHED = 16
     const val SECONDS_PER_MINUTE = 60.0
@@ -67,6 +68,24 @@ object TransitionPlanner {
         return ratio
     }
 
+    fun snapDurationToBarsMs(
+        rawDurationMs: Long,
+        bpm: Double?,
+        minMs: Long = 0L,
+        maxMs: Long = Long.MAX_VALUE,
+    ): Long {
+        val effectiveMaxMs = maxOf(0L, maxMs)
+        val effectiveMinMs = minMs.coerceIn(0L, effectiveMaxMs)
+        if (bpm == null || bpm <= 0.0) return rawDurationMs.coerceIn(effectiveMinMs, effectiveMaxMs)
+
+        val barMs = ((BEATS_PER_BAR * SECONDS_PER_MINUTE / bpm) * MS_PER_SECOND).roundToLong()
+        if (barMs <= 0L) return rawDurationMs.coerceIn(effectiveMinMs, effectiveMaxMs)
+
+        val targetBars = (rawDurationMs.toDouble() / barMs).roundToLong().coerceAtLeast(1L)
+        val candidateMs = targetBars * barMs
+        return candidateMs.coerceIn(effectiveMinMs, effectiveMaxMs)
+    }
+
     fun calculateAdaptiveDurationSeconds(
         currentBpm: Double?,
         nextBpm: Double?,
@@ -89,13 +108,18 @@ object TransitionPlanner {
             BEATS_MATCHED
         }
         val beatSeconds = SECONDS_PER_MINUTE / cur
+        val barSeconds = BEATS_PER_BAR * beatSeconds
         val minimumOverlap = if (cur >= FAST_TRACK_BPM_THRESHOLD) {
             maxOf(AUTO_FAST_TRACK_MIN_SECONDS, minSeconds)
         } else {
             minSeconds
         }
 
-        return (transitionBeats * beatSeconds).coerceIn(minimumOverlap, maxSeconds)
+        val minBars = ceil(minimumOverlap / barSeconds).toInt().coerceAtLeast(1)
+        val maxBars = (maxSeconds / barSeconds).toInt().coerceAtLeast(minBars)
+        val targetBars = (transitionBeats / BEATS_PER_BAR).coerceIn(minBars, maxBars)
+
+        return targetBars * barSeconds
     }
 
     fun calculateAdaptiveDurationMs(
@@ -204,7 +228,7 @@ object TransitionPlanner {
             .coerceAtMost(maxOf(0L, currentDurationMs))
 
         val canBeatmatch = outgoingBpm != null && nextBpm != null &&
-            ((abs(outgoingBpm - nextBpm) / outgoingBpm).toFloat() <= MAX_STRETCH_DEVIATION)
+                ((abs(outgoingBpm - nextBpm) / outgoingBpm).toFloat() <= MAX_STRETCH_DEVIATION)
         val tier = if (canBeatmatch) TransitionTier.SMART_BEATMATCH else TransitionTier.PLAIN_CROSSFADE
         val incomingTempoRatio = if (canBeatmatch) (outgoingBpm / nextBpm).toFloat() else 1.0f
 
@@ -248,22 +272,40 @@ object TransitionPlanner {
         val acceptedOutroStartMs = outroStartMs?.let { sanitizeOutroMs(it, contentEndMs) }
 
         val isInteriorCliff = acceptedMixOutMs != null &&
-            acceptedMixOutMs < contentEndMs - CrossfadeConstants.CLAMP_MIN_MS
+                acceptedMixOutMs < contentEndMs - CrossfadeConstants.CLAMP_MIN_MS
         val outroLeadMs = (OUTRO_MIN_LEAD_SECONDS * MS_PER_SECOND).roundToLong()
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
             val naturalFade = (contentEndMs - acceptedMixOutMs).coerceAtLeast(CrossfadeConstants.CLAMP_MIN_MS)
-            val fade = naturalFade.coerceIn(minMs, maxMs)
-                .coerceAtMost(maxOf(0L, currentDurationMs - acceptedMixOutMs))
+            val maxAvailable = maxOf(0L, currentDurationMs - acceptedMixOutMs)
+            val fade = snapDurationToBarsMs(
+                rawDurationMs = naturalFade,
+                bpm = outgoingBpm,
+                minMs = minMs,
+                maxMs = minOf(maxMs, maxAvailable),
+            ).coerceAtMost(maxAvailable)
             Pair(acceptedMixOutMs, fade)
         } else if (acceptedOutroStartMs != null &&
             acceptedOutroStartMs <= contentEndMs - outroLeadMs
         ) {
-            val fade = minOf(bpmAdjustedDurationMs, contentEndMs - acceptedOutroStartMs)
-                .coerceIn(minMs, maxMs)
+            val availableTailMs = maxOf(0L, contentEndMs - acceptedOutroStartMs)
+            val targetFade = minOf(bpmAdjustedDurationMs, availableTailMs)
+            val maxAvailable = maxOf(0L, currentDurationMs - acceptedOutroStartMs)
+            val fade = snapDurationToBarsMs(
+                rawDurationMs = targetFade,
+                bpm = outgoingBpm,
+                minMs = minMs,
+                maxMs = minOf(maxMs, maxAvailable),
+            ).coerceAtMost(maxAvailable)
             Pair(acceptedOutroStartMs, fade)
         } else {
-            val fade = bpmAdjustedDurationMs.coerceIn(minMs, maxMs).coerceAtMost(contentEndMs)
+            val maxAvailable = minOf(maxMs, contentEndMs)
+            val fade = snapDurationToBarsMs(
+                rawDurationMs = bpmAdjustedDurationMs,
+                bpm = outgoingBpm,
+                minMs = minMs,
+                maxMs = maxAvailable,
+            ).coerceAtMost(contentEndMs)
             val fallbackLeadMs = fallbackLeadMsBeforeContentEnd(outgoingBpm, nextBpm)
             val start = (contentEndMs - maxOf(fade, fallbackLeadMs)).coerceAtLeast(0L)
             Pair(start, fade)

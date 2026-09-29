@@ -160,9 +160,7 @@ class PlaybackStateHolder(
                         connection.currentFormat,
                         connection.audioFormat,
                     ) { dbFormat, liveFormat ->
-                        if (!liveFormat.isNullOrBlank() && liveFormat != "UNKNOWN") {
-                            liveFormat
-                        } else if (dbFormat != null) {
+                        if (dbFormat != null) {
                             val isLossless = dbFormat.codecLabel() == "FLAC" || dbFormat.codecLabel() == "ALAC"
                             val quality = if (isLossless) {
                                 dbFormat.formattedQuality()
@@ -170,15 +168,15 @@ class PlaybackStateHolder(
                                 dbFormat.formattedBitrate()
                             }
                             "${dbFormat.codecLabel()} | $quality"
+                        } else if (!liveFormat.isNullOrBlank() && liveFormat != "UNKNOWN") {
+                            liveFormat
                         } else {
                             ""
                         }
                     }
                 }
                 .collect { format ->
-                    if (format.isNotEmpty()) {
-                        updateUiState { it.copy(codecInfo = format) }
-                    }
+                    updateUiState { it.copy(codecInfo = format) }
                 }
         }
 

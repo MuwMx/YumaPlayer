@@ -31,6 +31,20 @@ const val FADE_CLAMP_MIN_S = CrossfadeConstants.CLAMP_MIN_S
 @Deprecated("Use CrossfadeConstants.CLAMP_MAX_S directly", ReplaceWith("CrossfadeConstants.CLAMP_MAX_S", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
 const val FADE_CLAMP_MAX_S = CrossfadeConstants.CLAMP_MAX_S
 
+// --- НАСТРОЙКИ DJ-ФИЛЬТРА «ПОД ВОДОЙ» ---
+// 1. Точки прогресса (от 0.0 до 1.0)
+const val DIVE_START_P = 0.05f       // Начало закрытия фильтра (5%)
+const val DIVE_SUBMERGED_P = 0.35f   // Трек уже полностью под водой (35%)
+const val DIVE_HOLD_UNTIL_P = 0.45f  // До этого момента держим глухой звук и громкость (60%)
+
+// 2. Частоты среза (Гц)
+const val FILTER_OPEN_HZ = 20000.0   // Открытый звук
+const val FILTER_UNDERWATER_HZ = 2200.0 // Глухой «подводный» звук
+const val FILTER_FLOOR_HZ = 1000.0   // Полный срез перед выключением
+
+// 3. Громкость входящего трека
+const val INCOMING_START_P = 0.30f   // Входящий начинает плавно вступать с 30%
+
 val RISE: (Float) -> Float = { p -> sin(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
 val FALL: (Float) -> Float = { p -> cos(p.coerceIn(0f, 1f) * PI.toFloat() / 2f) }
 
@@ -39,15 +53,22 @@ const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val MID_DUCK_MAX_DB = 6.0
-const val SOLO_OUTGOING_PROGRESS = 0.35f
-const val SWEEP_HOLD_PROGRESS = 0.05f
+const val SOLO_OUTGOING_PROGRESS = 0.55f
 
 fun outgoingLowPassHz(progress: Float): Double {
-    val clamped = progress.coerceIn(0f, 1f)
-    val bypass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-    if (clamped <= SWEEP_HOLD_PROGRESS) return bypass
-    val depth = ((clamped - SWEEP_HOLD_PROGRESS) / (1f - SWEEP_HOLD_PROGRESS)).toDouble()
-    return bypass * (DjFilterAudioProcessor.SWEEP_TARGET_HZ / bypass).pow(depth)
+    val p = progress.coerceIn(0f, 1f)
+    return when {
+        p <= DIVE_START_P -> FILTER_OPEN_HZ
+        p <= DIVE_SUBMERGED_P -> {
+            val t = (p - DIVE_START_P) / (DIVE_SUBMERGED_P - DIVE_START_P)
+            FILTER_OPEN_HZ + (FILTER_UNDERWATER_HZ - FILTER_OPEN_HZ) * smoothStep(t)
+        }
+        p <= DIVE_HOLD_UNTIL_P -> FILTER_UNDERWATER_HZ
+        else -> {
+            val t = (p - DIVE_HOLD_UNTIL_P) / (1f - DIVE_HOLD_UNTIL_P)
+            FILTER_UNDERWATER_HZ + (FILTER_FLOOR_HZ - FILTER_UNDERWATER_HZ) * smoothStep(t)
+        }
+    }
 }
 
 // Shared depth curve keeps the outgoing close and the incoming open perceptually mirrored.
@@ -59,7 +80,7 @@ private fun bassSwapIncomingLinear(progress: Float): Double {
     return if (phase <= 0.5f) {
         phase / 0.5f * BASS_SWAP_DOMINANCE
     } else {
-        BASS_SWAP_DOMINANCE + (phase - 0.5f) / 0.5f * (1.0 - BASS_SWAP_DOMINANCE)
+        BASS_SWAP_DOMINANCE + (phase - 0.30f) / 1f * (0.30 - BASS_SWAP_DOMINANCE)
     }.toDouble()
 }
 
@@ -91,12 +112,9 @@ fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(pr
  */
 fun outgoingStageGain(progress: Float): Float {
     val p = progress.coerceIn(0f, 1f)
-    return if (p <= SOLO_OUTGOING_PROGRESS) {
-        1.0f
-    } else {
-        val t = (p - SOLO_OUTGOING_PROGRESS) / (1f - SOLO_OUTGOING_PROGRESS)
-        1.0f - smoothStep(t)
-    }
+    if (p <= DIVE_HOLD_UNTIL_P) return 1.0f
+    val t = (p - DIVE_HOLD_UNTIL_P) / (1f - DIVE_HOLD_UNTIL_P)
+    return 1.0f - smoothStep(t)
 }
 /**
  * Incoming deck counterpart: (0.0, 0.0) -> (0.35, 0.38) -> (1.0, 1.0). The second track stays
@@ -104,12 +122,9 @@ fun outgoingStageGain(progress: Float): Float {
  */
 fun incomingStageGain(progress: Float): Float {
     val p = progress.coerceIn(0f, 1f)
-    return if (p < SOLO_OUTGOING_PROGRESS) {
-        0f
-    } else {
-        val t = (p - SOLO_OUTGOING_PROGRESS) / (1f - SOLO_OUTGOING_PROGRESS)
-        smoothStep(t)
-    }
+    if (p < INCOMING_START_P) return 0f
+    val t = (p - INCOMING_START_P) / (1f - INCOMING_START_P)
+    return smoothStep(t)
 }
 private fun smoothStep(t: Float): Float {
     val clamped = t.coerceIn(0f, 1f)
