@@ -4,12 +4,11 @@ import androidx.media3.exoplayer.ExoPlayer
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
-import moe.rukamori.archivetune.audiodsp.FALL
-import moe.rukamori.archivetune.audiodsp.RISE
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
+import moe.rukamori.archivetune.audiodsp.incomingStageGain
 import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
-import moe.rukamori.archivetune.audiodsp.outgoingMidDuckGain
+import moe.rukamori.archivetune.audiodsp.outgoingStageGain
 import timber.log.Timber
 
 class ExoDeck(
@@ -24,7 +23,7 @@ class ExoDeck(
     override fun applyAutomation(progress: Float, plan: AutomixPlan) {
         val clamped = progress.coerceIn(0f, 1f)
         if (isIncoming) {
-            player.volume = (baseVolume * RISE(clamped)).coerceIn(0f, maxGainFactor)
+            player.volume = (baseVolume * incomingStageGain(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 // No entry high-pass: a corner sweeping down to 20 Hz phase-smears the kick.
                 djFilter.highPassHz = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
@@ -33,9 +32,7 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         } else {
-            // The duck exists to offset the collision the filter creates, so it goes with it.
-            val duck = if (plan.enableBassSwap) outgoingMidDuckGain(clamped).toFloat() else 1f
-            player.volume = (baseVolume * FALL(clamped) * duck).coerceIn(0f, maxGainFactor)
+            player.volume = (baseVolume * outgoingStageGain(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
                 djFilter.bassGainDb = outgoingBassGainDb(clamped)

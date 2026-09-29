@@ -151,7 +151,7 @@ internal fun MusicService.scheduleCrossfade() {
 
     var outgoingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(currentMediaId) else null
     var incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
-    val automixAggr = CrossfadeConstants.Aggressiveness.SOFT.name.lowercase() // DIAGNOSTIC: flip to STANDARD to re-enable the dj filter
+    val automixAggr = CrossfadeConstants.Aggressiveness.STANDARD.name.lowercase()
     val resolvedPreferred = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration)
 
     var automixPlan = if (automixEnabled && outgoingAnalysis != null) {

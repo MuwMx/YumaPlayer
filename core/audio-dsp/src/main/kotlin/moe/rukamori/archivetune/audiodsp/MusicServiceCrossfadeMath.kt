@@ -37,6 +37,7 @@ const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val MID_DUCK_MAX_DB = 6.0
+const val STAGE_HOLD_PROGRESS = 0.35f
 const val SWEEP_HOLD_PROGRESS = 0.35f
 
 fun outgoingLowPassHz(progress: Float): Double {
@@ -81,6 +82,36 @@ fun outgoingMidDuckDb(progress: Float): Double {
 }
 
 fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(progress) / 20.0)
+
+/**
+ * Volume law of the outgoing deck, transcribed from Orchard's staged choreography:
+ * (0.0, 1.0) -> (0.35, 0.95) -> (1.0, 0.0), smoothstep between the points. The outgoing barely
+ * attenuates while its low-pass closes, so the filter is heard on a near-unity track with no
+ * second track competing, which is what makes the effect read cleanly.
+ */
+fun outgoingStageGain(progress: Float): Float = stagedGain(progress, 0.95f, 1.0f, 0.0f)
+
+/**
+ * Incoming deck counterpart: (0.0, 0.0) -> (0.35, 0.38) -> (1.0, 1.0). The second track stays
+ * near-silent through the first third and arrives only once the outgoing is already dark.
+ */
+fun incomingStageGain(progress: Float): Float = stagedGain(progress, 0.38f, 0.0f, 1.0f)
+
+private fun stagedGain(progress: Float, holdValue: Float, atStart: Float, atEnd: Float): Float {
+    val p = progress.coerceIn(0f, 1f)
+    return if (p <= STAGE_HOLD_PROGRESS) {
+        val t = p / STAGE_HOLD_PROGRESS
+        atStart + (holdValue - atStart) * smoothStep(t)
+    } else {
+        val t = (p - STAGE_HOLD_PROGRESS) / (1f - STAGE_HOLD_PROGRESS)
+        holdValue + (atEnd - holdValue) * smoothStep(t)
+    }
+}
+
+private fun smoothStep(t: Float): Float {
+    val clamped = t.coerceIn(0f, 1f)
+    return clamped * clamped * (3f - 2f * clamped)
+}
 
 /**
  * Lateness is folded back into the fade window, but never far enough to eat it: a fold equal to
