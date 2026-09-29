@@ -31,6 +31,12 @@ object TransitionPlanner {
     const val DJ_ASSISTED_THRESHOLD = 0.15
     const val OUTRO_MIN_LEAD_SECONDS = 8.0
 
+    // The energy detector only sees a waveform, so a quiet passage can read as an exit point.
+    // Anything this far from the end is that false positive, and the guard belongs here because
+    // the planner is the only layer that knows the fade and the seekbar marker must agree.
+    const val OUTRO_MIN_TRACK_FRACTION = 0.65
+    const val OUTRO_MAX_LEAD_MS = 30_000L
+
     private const val FALLBACK_LEAD_BEAT_MULTIPLIER = 2
 
     fun minSecondsFor(aggressiveness: String): Double =
@@ -142,6 +148,15 @@ object TransitionPlanner {
         return ((fallbackLeadBeats(outgoingBpm, nextBpm) * SECONDS_PER_MINUTE / cur) * MS_PER_SECOND).roundToLong()
     }
 
+    fun sanitizeOutroMs(candidateMs: Long, contentEndMs: Long): Long? {
+        if (candidateMs <= 0L || contentEndMs <= 0L) return null
+        if (candidateMs >= contentEndMs) return candidateMs
+        val earliestByFraction = (contentEndMs * OUTRO_MIN_TRACK_FRACTION).toLong()
+        val earliestByTail = contentEndMs - OUTRO_MAX_LEAD_MS
+        val earliest = maxOf(earliestByFraction, earliestByTail)
+        return if (candidateMs >= earliest) candidateMs else null
+    }
+
     fun planTransition(
         currentDurationMs: Long,
         currentBpm: Double? = null,
@@ -169,6 +184,7 @@ object TransitionPlanner {
         preferredDurationMs: Long? = null,
         aggressiveness: String = "standard",
         isGaplessAlbumTransition: Boolean = false,
+        currentPositionMs: Long = 0L,
     ): AutomixPlan {
         if (isGaplessAlbumTransition) {
             return AutomixPlan(0L, 0L, 0L, false, currentDurationMs, 0L, TransitionTier.GAPLESS, 1.0f)
@@ -220,16 +236,24 @@ object TransitionPlanner {
             null
         }
 
-        val isInteriorCliff = rawMixOutMs < contentEndMs - CrossfadeConstants.CLAMP_MIN_MS
+        val acceptedMixOutMs = sanitizeOutroMs(rawMixOutMs, contentEndMs)
+        val acceptedOutroStartMs = outroStartMs?.let { sanitizeOutroMs(it, contentEndMs) }
+
+        val isInteriorCliff = acceptedMixOutMs != null &&
+            acceptedMixOutMs < contentEndMs - CrossfadeConstants.CLAMP_MIN_MS
         val outroLeadMs = (OUTRO_MIN_LEAD_SECONDS * MS_PER_SECOND).roundToLong()
 
         val (startAtMs, fadeDurationMs) = if (isInteriorCliff) {
-            val naturalFade = (contentEndMs - rawMixOutMs).coerceAtLeast(CrossfadeConstants.CLAMP_MIN_MS)
-            val fade = naturalFade.coerceIn(minMs, maxMs).coerceAtMost(maxOf(0L, currentDurationMs - rawMixOutMs))
-            Pair(rawMixOutMs, fade)
-        } else if (outroStartMs != null && outroStartMs <= contentEndMs - outroLeadMs) {
-            val fade = minOf(bpmAdjustedDurationMs, contentEndMs - outroStartMs).coerceIn(minMs, maxMs)
-            Pair(outroStartMs, fade)
+            val naturalFade = (contentEndMs - acceptedMixOutMs).coerceAtLeast(CrossfadeConstants.CLAMP_MIN_MS)
+            val fade = naturalFade.coerceIn(minMs, maxMs)
+                .coerceAtMost(maxOf(0L, currentDurationMs - acceptedMixOutMs))
+            Pair(acceptedMixOutMs, fade)
+        } else if (acceptedOutroStartMs != null &&
+            acceptedOutroStartMs <= contentEndMs - outroLeadMs
+        ) {
+            val fade = minOf(bpmAdjustedDurationMs, contentEndMs - acceptedOutroStartMs)
+                .coerceIn(minMs, maxMs)
+            Pair(acceptedOutroStartMs, fade)
         } else {
             val fade = bpmAdjustedDurationMs.coerceIn(minMs, maxMs).coerceAtMost(contentEndMs)
             val fallbackLeadMs = fallbackLeadMsBeforeContentEnd(outgoingBpm, nextBpm)
@@ -239,15 +263,36 @@ object TransitionPlanner {
 
         val prepareAheadMs = maxOf(bpmAdjustedDurationMs, 7000L)
 
+        val (anchoredStartAtMs, anchoredFadeMs) =
+            anchorPlanToPlaybackPosition(startAtMs, fadeDurationMs, currentPositionMs, contentEndMs)
+
         return AutomixPlan(
-            triggerOffsetMs = currentDurationMs - startAtMs,
-            durationMs = fadeDurationMs,
+            triggerOffsetMs = currentDurationMs - anchoredStartAtMs,
+            durationMs = anchoredFadeMs,
             incomingStartMs = incomingStartMs,
             enableBassSwap = enableBassSwap,
-            triggerAtMs = startAtMs,
+            triggerAtMs = anchoredStartAtMs,
             prepareAheadMs = prepareAheadMs,
             tier = tier,
             incomingTempoRatio = incomingTempoRatio,
         )
+    }
+
+    // A trigger the listener already seeked past yields negative remaining time and starts the fade
+    // where nobody is listening, so re-anchor to the live position and shorten to what is left.
+    fun anchorPlanToPlaybackPosition(
+        plannedStartAtMs: Long,
+        plannedFadeMs: Long,
+        currentPositionMs: Long,
+        contentEndMs: Long,
+    ): Pair<Long, Long> {
+        if (currentPositionMs <= 0L || currentPositionMs < plannedStartAtMs) {
+            return plannedStartAtMs to plannedFadeMs
+        }
+        val remainingMs = (contentEndMs - currentPositionMs).coerceAtLeast(0L)
+        if (remainingMs <= 0L) return currentPositionMs to CrossfadeConstants.MIN_FADE_MS
+        val compressedFade = plannedFadeMs.coerceAtMost(remainingMs)
+            .coerceAtLeast(CrossfadeConstants.MIN_FADE_MS)
+        return currentPositionMs to compressedFade
     }
 }

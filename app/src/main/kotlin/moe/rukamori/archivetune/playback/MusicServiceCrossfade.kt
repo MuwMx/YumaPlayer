@@ -172,6 +172,7 @@ internal fun MusicService.scheduleCrossfade() {
             currentDurationMs = duration,
             preferredDurationMs = resolvedPreferred,
             aggressiveness = automixAggr,
+            currentPositionMs = player.currentPosition,
         ).also { activeAutomixPlan = it }
     } else if (automixEnabled) {
         TransitionPlanner.planTransition(
@@ -227,6 +228,7 @@ internal fun MusicService.scheduleCrossfade() {
                                 currentDurationMs = duration,
                                 preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
                                 aggressiveness = automixAggr,
+                                currentPositionMs = recomputeStartPosition,
                             )
                             if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
                                 outgoingAnalysis = latestOutgoing
@@ -252,6 +254,7 @@ internal fun MusicService.scheduleCrossfade() {
                                     currentDurationMs = duration,
                                     preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
                                     aggressiveness = automixAggr,
+                                    currentPositionMs = recomputeStartPosition,
                                 )
                                 if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
                                     incomingAnalysis = latestIncoming
@@ -323,6 +326,7 @@ internal fun MusicService.scheduleCrossfade() {
                                         currentDurationMs = duration,
                                         preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
                                         aggressiveness = automixAggr,
+                                        currentPositionMs = recomputeStartPosition,
                                     )
                                     automixPlan = newPlan
                                     activeAutomixPlan = newPlan

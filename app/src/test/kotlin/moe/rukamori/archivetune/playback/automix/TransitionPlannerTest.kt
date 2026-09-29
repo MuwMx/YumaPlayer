@@ -207,4 +207,102 @@ class TransitionPlannerTest {
 
         assertTrue(plan.enableBassSwap)
     }
+
+    @Test
+    fun sanitizeOutroMs_rejectsAnExitPointLatchedOntoAQuietPassage() {
+        val contentEndMs = 95_481L
+
+        assertEquals(null, TransitionPlanner.sanitizeOutroMs(18_442L, contentEndMs))
+        assertEquals(null, TransitionPlanner.sanitizeOutroMs(20_000L, contentEndMs))
+        assertEquals(null, TransitionPlanner.sanitizeOutroMs(0L, contentEndMs))
+    }
+
+    @Test
+    fun sanitizeOutroMs_acceptsAnExitPointInTheFinalThird() {
+        val contentEndMs = 95_481L
+        val floor = maxOf((contentEndMs * 0.65).toLong(), contentEndMs - 30_000L)
+
+        assertEquals(floor, TransitionPlanner.sanitizeOutroMs(floor, contentEndMs))
+        assertEquals(null, TransitionPlanner.sanitizeOutroMs(floor - 1L, contentEndMs))
+        assertEquals(90_000L, TransitionPlanner.sanitizeOutroMs(90_000L, contentEndMs))
+        assertEquals(contentEndMs, TransitionPlanner.sanitizeOutroMs(contentEndMs, contentEndMs))
+    }
+
+    @Test
+    fun planSmartTransition_earlyMixOutFallsBackToTheTrackEnd() {
+        val outgoing = TrackAnalysisResult(bpm = 129.8, mixOutTime = 18.4, contentEndTime = 95.4)
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = null,
+            currentDurationMs = 95_481L,
+        )
+
+        val triggerAt = plan.triggerAtMs ?: error("plan must carry a trigger")
+        assertTrue(
+            "fade must not start at the rejected 18s point, was $triggerAt",
+            triggerAt >= 62_000L,
+        )
+        assertTrue("fade must fit inside the track", plan.durationMs <= 95_481L - triggerAt)
+    }
+
+    @Test
+    fun planSmartTransition_validMixOutIsPreserved() {
+        val outgoing = TrackAnalysisResult(bpm = 120.0, mixOutTime = 84.0, contentEndTime = 95.0)
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = null,
+            currentDurationMs = 95_000L,
+        )
+
+        val triggerAt = plan.triggerAtMs ?: error("plan must carry a trigger")
+        assertTrue(
+            "a legitimate outro must survive the guard, was $triggerAt",
+            triggerAt in 80_000L..86_000L,
+        )
+    }
+
+    @Test
+    fun anchorPlan_leavesAHealthyPlanUntouched() {
+        val anchored = TransitionPlanner.anchorPlanToPlaybackPosition(
+            plannedStartAtMs = 84_000L,
+            plannedFadeMs = 11_000L,
+            currentPositionMs = 12_000L,
+            contentEndMs = 95_481L,
+        )
+
+        assertEquals(84_000L, anchored.first)
+        assertEquals(11_000L, anchored.second)
+    }
+
+    @Test
+    fun anchorPlan_seekedPastTheTrigger_reanchorsAndCompresses() {
+        val anchored = TransitionPlanner.anchorPlanToPlaybackPosition(
+            plannedStartAtMs = 84_000L,
+            plannedFadeMs = 11_000L,
+            currentPositionMs = 90_000L,
+            contentEndMs = 95_481L,
+        )
+
+        assertEquals("trigger must follow playback, never lag behind it", 90_000L, anchored.first)
+        assertTrue("remaining time must never go negative", anchored.second > 0L)
+        assertEquals(5_481L, anchored.second)
+    }
+
+    @Test
+    fun planSmartTransition_seekedPastTheTrigger_neverYieldsNegativeRemaining() {
+        val outgoing = TrackAnalysisResult(bpm = 120.0, mixOutTime = 84.0, contentEndTime = 95.0)
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = null,
+            currentDurationMs = 95_481L,
+            currentPositionMs = 90_000L,
+        )
+
+        val triggerAt = plan.triggerAtMs ?: error("plan must carry a trigger")
+        assertTrue("remaining would be negative: $triggerAt - 90000", triggerAt >= 90_000L)
+        assertTrue(plan.durationMs > 0L)
+    }
 }
