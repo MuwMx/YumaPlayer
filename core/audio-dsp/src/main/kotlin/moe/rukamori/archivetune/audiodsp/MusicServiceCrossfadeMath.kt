@@ -1,15 +1,20 @@
+/*
+ * Copyright (C) 2026 MuwMix <https://github.com/MuwMx> (YumaPlayer)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package moe.rukamori.archivetune.audiodsp
 
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.sin
-
-const val CURVE_IN_DEFAULT = "S_CURVE"
-const val CURVE_OUT_DEFAULT = "S_CURVE"
 
 @Deprecated("Use CrossfadeConstants.DEFAULT_MS directly", ReplaceWith("CrossfadeConstants.DEFAULT_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
 const val FADE_DEFAULT_MS = CrossfadeConstants.DEFAULT_MS
@@ -19,9 +24,6 @@ const val MIN_FADE_MS = CrossfadeConstants.MIN_FADE_MS
 
 @Deprecated("Use CrossfadeConstants.END_GUARD_MS directly", ReplaceWith("CrossfadeConstants.END_GUARD_MS", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
 const val GUARD_WINDOW_MS = CrossfadeConstants.END_GUARD_MS
-
-const val ARM_LEAD_MS = 4000L
-const val FADE_TIMEOUT_MS = 12000L
 
 @Deprecated("Use CrossfadeConstants.CLAMP_MIN_S directly", ReplaceWith("CrossfadeConstants.CLAMP_MIN_S", "moe.rukamori.archivetune.audiodsp.CrossfadeConstants"))
 const val FADE_CLAMP_MIN_S = CrossfadeConstants.CLAMP_MIN_S
@@ -45,7 +47,6 @@ fun outgoingLowPassHz(progress: Float): Double {
     val bypass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
     if (clamped <= SWEEP_HOLD_PROGRESS) return bypass
     val depth = ((clamped - SWEEP_HOLD_PROGRESS) / (1f - SWEEP_HOLD_PROGRESS)).toDouble()
-    // Экспоненциальный спуск от 20000 к 1200 Гц
     return bypass * (DjFilterAudioProcessor.SWEEP_TARGET_HZ / bypass).pow(depth)
 }
 
@@ -157,23 +158,8 @@ fun effectiveCrossfadeDuration(durationMs: Long, configuredMs: Long): Long? {
 fun requiredStartBufferMs(configuredMs: Long): Long =
     minOf(configuredMs, CrossfadeConstants.DEFAULT_MS)
 
-fun requiredCrossfadeStartBufferMs(configuredMs: Long): Long =
-    requiredStartBufferMs(configuredMs)
-
 fun isGaplessAlbumTransition(
     currentAlbum: String?,
     targetAlbum: String?,
 ): Boolean = currentAlbum != null && currentAlbum == targetAlbum
 
-fun isGaplessAlbumTransition(
-    currentItem: MediaItem,
-    targetItem: MediaItem,
-    currentAlbum: String? = null,
-    targetAlbum: String? = null,
-): Boolean {
-    val current = currentAlbum
-        ?: currentItem.mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() }
-    val target = targetAlbum
-        ?: targetItem.mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() }
-    return isGaplessAlbumTransition(current, target)
-}
