@@ -54,10 +54,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     private var cachedCutoffHz = -1.0
     private var cachedHighPassHz = -1.0
     private var cachedBassDb = Double.NaN
-    private var glideCounter = 0
-    private var smoothedCutoffHz = BYPASS_CUTOFF_HZ
-    private var smoothedHighPassHz = BYPASS_HIGH_PASS_HZ
-    private var smoothedBassDb = 0.0
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
@@ -103,10 +99,12 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         val frames = inputBuffer.remaining() / (bytesPerSample * channelCount)
         if (frames == 0) return
         val output = replaceOutputBuffer(frames * bytesPerSample * channelCount)
-        glideCoefficients(frames)
-        val cutoff = smoothedCutoffHz
-        val highPass = smoothedHighPassHz
-        val bassDb = smoothedBassDb
+        // Coefficients are snapshotted once per block and the whole block runs on them, so a
+        // parameter can never change halfway through the samples it is filtering. Recomputing
+        // mid-block is what the reference avoids and what this loop used to do every 64 frames.
+        val cutoff = lowPassCutoffHz
+        val highPass = highPassHz
+        val bassDb = bassGainDb
         val level = gain
         val filtering = cutoff < BYPASS_CUTOFF_HZ
         val highPassing = highPass > MIN_ACTIVE_HIGH_PASS_HZ
@@ -183,44 +181,12 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         cachedCutoffHz = -1.0
         cachedHighPassHz = -1.0
         cachedBassDb = Double.NaN
-        glideCounter = 0
-        smoothedCutoffHz = lowPassCutoffHz
-        smoothedHighPassHz = highPassHz
-        smoothedBassDb = bassGainDb
     }
 
     private fun resetDelayLines() {
         for (state in lowPassState) state.fill(0.0)
         for (state in highPassState) state.fill(0.0)
         for (state in shelfState) state.fill(0.0)
-    }
-
-    private fun glideCoefficients(frames: Int) {
-        glideCounter += frames
-        while (glideCounter >= GLIDE_FRAMES) {
-            glideCounter -= GLIDE_FRAMES
-            smoothedCutoffHz = if (lowPassCutoffHz >= BYPASS_CUTOFF_HZ) {
-                BYPASS_CUTOFF_HZ
-            } else {
-                glideLog(smoothedCutoffHz, lowPassCutoffHz)
-            }
-            smoothedHighPassHz = if (highPassHz <= MIN_ACTIVE_HIGH_PASS_HZ) {
-                BYPASS_HIGH_PASS_HZ
-            } else {
-                glideLog(smoothedHighPassHz, highPassHz)
-            }
-            smoothedBassDb = if (abs(bassGainDb) < 0.01) {
-                0.0
-            } else {
-                smoothedBassDb + (bassGainDb - smoothedBassDb) * GLIDE_DB_COEFFICIENT
-            }
-        }
-    }
-
-    private fun glideLog(from: Double, to: Double): Double {
-        val startLn = ln(from.coerceAtLeast(MIN_GLIDE_HZ))
-        val targetLn = ln(to.coerceAtLeast(MIN_GLIDE_HZ))
-        return exp(startLn + (targetLn - startLn) * GLIDE_COEFFICIENT)
     }
 
     private fun runBiquad(coeff: DoubleArray, state: DoubleArray, input: Double): Double {
@@ -307,9 +273,5 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         private const val PCM_24BIT_SIGN_MASK = -0x1000000
         private const val BUTTERWORTH_Q = 0.70710678
         private const val SHELF_SLOPE = 1.0
-        private const val MIN_GLIDE_HZ = 10.0
-        private const val GLIDE_FRAMES = 64
-        private const val GLIDE_COEFFICIENT = 0.05
-        private const val GLIDE_DB_COEFFICIENT = 0.35
     }
 }

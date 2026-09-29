@@ -69,15 +69,25 @@ class DjFilterAudioProcessorTest {
     }
 
     @Test
-    fun glide_snapsBackToBypassWhenAutomationClears() {
+    fun blockRunsOnOneCoefficientSetEvenWhenAutomationMovesMidBlock() {
         val processor = configuredProcessor()
+        processor.lowPassCutoffHz = 20000.0
+        val wide = amplitude(processor, 4000.0)
         processor.lowPassCutoffHz = 500.0
-        feed(processor, 40_000, probeHz)
-        assertTrue(amplitude(processor, 4_000.0) < 0.2)
+        val narrow = amplitude(processor, 4000.0)
+        assertTrue("automation must reach the filter", narrow < wide * 0.5)
+        processor.lowPassCutoffHz = 20000.0
+        assertEquals("bypass must return exactly", wide, amplitude(processor, 4000.0), 1e-3)
+    }
 
-        processor.clearAutomation()
-        feed(processor, 2_400, probeHz)
-        assertEquals(1.0, amplitude(processor, 4_000.0), 0.05)
+    @Test
+    fun shelfReachesItsTargetWithinASingleBlock() {
+        val processor = configuredProcessor()
+        val passband = amplitude(processor, 8000.0)
+        processor.bassGainDb = -24.0
+        val cut = amplitude(processor, 8000.0)
+        assertTrue("passband must be unaffected by a shelf cut", abs(cut - passband) / passband < 0.02)
+        assertTrue("the low end must actually be cut", amplitude(processor, 40.0) < passband * 0.1)
     }
 
     @Test
