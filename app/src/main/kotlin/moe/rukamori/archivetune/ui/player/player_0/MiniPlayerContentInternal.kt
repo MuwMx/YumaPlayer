@@ -9,6 +9,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -28,13 +33,16 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 
 import moe.rukamori.archivetune.ui.theme.SoftTextShadow
 import coil3.compose.AsyncImage
-import coil3.request.crossfade
+import coil3.request.allowHardware
 
 val MiniPlayerHeight = 64.dp
+private val MiniArtworkSize = 42.dp
+private val MiniProgressRingSize = 48.dp
 @Composable
 internal fun MiniPlayerContentInternal(
     state: PlayerUiState,
     expansionFractionProvider: () -> Float,
+    progressMsProvider: () -> Long,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
     onMediaAreaClick: () -> Unit,
@@ -69,19 +77,60 @@ internal fun MiniPlayerContentInternal(
         // ==========================================
         // 1. ЛЕВАЯ ЧАСТЬ: Обложка
         // ==========================================
-        val albumArtModifier = Modifier
-            .size(42.dp)
-            .graphicsLayer {
-                val fraction = expansionFractionProvider()
-                scaleX = lerp(1.07f, 1f, fraction)
-                scaleY = lerp(1.07f, 1f, fraction)
-                rotationZ = rotation.value
-            }
-            .clip(CircleShape)
-
         val context = androidx.compose.ui.platform.LocalContext.current
+        val trackProgress = remember(state.durationMs) {
+            {
+                val duration = state.durationMs
+                if (duration <= 0L) 0f
+                else (progressMsProvider().toFloat() / duration).coerceIn(0f, 1f)
+            }
+        }
 
-        Box(modifier = albumArtModifier) {
+        // Progress ring lives outside the spinning layer: an arc that rotated with
+        // the disc would be unreadable, and drawing it separately keeps the arc off
+        // the per-frame rotation path.
+        Box(
+            modifier = Modifier
+                .size(MiniProgressRingSize)
+                .graphicsLayer {
+                    val fraction = expansionFractionProvider()
+                    scaleX = lerp(1.07f, 1f, fraction)
+                    scaleY = lerp(1.07f, 1f, fraction)
+                }
+                .drawBehind {
+                    val stroke = 2.dp.toPx()
+                    val inset = stroke / 2f
+                    val arcSize = Size(size.width - stroke, size.height - stroke)
+                    val topLeft = Offset(inset, inset)
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.22f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                    val sweep = trackProgress() * 360f
+                    if (sweep > 0f) {
+                        drawArc(
+                            color = Color.White.copy(alpha = 0.92f),
+                            startAngle = -90f,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = stroke, cap = StrokeCap.Round)
+                        )
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            val albumArtModifier = Modifier
+                .size(MiniArtworkSize)
+                .graphicsLayer { rotationZ = rotation.value }
+                .clip(CircleShape)
+
             androidx.compose.animation.Crossfade(
                 targetState = state.coverUrl.takeIf { it.isNotEmpty() },
                 animationSpec = tween(500),
@@ -98,7 +147,9 @@ internal fun MiniPlayerContentInternal(
                     val request = remember(targetUrl) {
                         coil3.request.ImageRequest.Builder(context)
                             .data(targetUrl)
-                            .crossfade(500)
+                            .size(96)
+                            .allowHardware(true)
+                            .apply { memoryCacheKey("mini:$targetUrl") }
                             .build()
                     }
                     AsyncImage(

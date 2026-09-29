@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -55,27 +55,29 @@ fun MarqueeText(
     val marqueeModifier = if (hasOverflow && isVisible) {
         Modifier
             .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-            .drawWithContent {
-                drawContent()
+            .drawWithCache {
                 val leftFadePx = 4.dp.toPx()
                 val rightFadePx = 24.dp.toPx()
-                if (size.width > leftFadePx + rightFadePx) {
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Transparent, Color.Black),
-                            startX = 0f,
-                            endX = leftFadePx
-                        ),
-                        blendMode = BlendMode.DstIn
-                    )
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color.Black, Color.Transparent),
-                            startX = size.width - rightFadePx,
-                            endX = size.width
-                        ),
-                        blendMode = BlendMode.DstIn
-                    )
+                val leftFade = Brush.horizontalGradient(
+                    colors = listOf(Color.Transparent, Color.Black),
+                    startX = 0f,
+                    endX = leftFadePx
+                )
+                val rightFade = Brush.horizontalGradient(
+                    colors = listOf(Color.Black, Color.Transparent),
+                    startX = size.width - rightFadePx,
+                    endX = size.width
+                )
+                val canFade = size.width > leftFadePx + rightFadePx
+
+                // Built here, not in onDrawWithContent: this block reruns only on a size
+                // change, so a scrolling marquee stops allocating two brushes per frame.
+                onDrawWithContent {
+                    drawContent()
+                    if (canFade) {
+                        drawRect(brush = leftFade, blendMode = BlendMode.DstIn)
+                        drawRect(brush = rightFade, blendMode = BlendMode.DstIn)
+                    }
                 }
             }
             .basicMarquee(

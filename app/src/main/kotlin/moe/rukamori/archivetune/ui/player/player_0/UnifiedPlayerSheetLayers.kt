@@ -189,6 +189,7 @@ internal fun UnifiedPlayerSheetLayers(
                 MiniPlayerContentInternal(
                     state = state,
                     expansionFractionProvider = expansionFractionProvider,
+                    progressMsProvider = progressMsProvider,
                     onAction = onAction,
                     onMediaAreaClick = onExpandClick,
                     isVisible = isMiniPlayerVisible
