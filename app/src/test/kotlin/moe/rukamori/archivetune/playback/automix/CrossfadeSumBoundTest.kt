@@ -38,6 +38,33 @@ class CrossfadeSumBoundTest {
     }
 
     @Test
+    fun summedGains_neverExceedUnityWhenTheDecksCarryDifferentBaseLevels() {
+        val pairs = listOf(1.2f to 0.8f, 1.414f to 0.5f, 0.4f to 1.3f, 1f to 1.414f, 0.6f to 0.9f)
+        for ((outBase, inBase) in pairs) {
+            var worst = 0f
+            for (i in 0..steps) {
+                val progress = i / steps.toFloat()
+                worst = maxOf(worst, outgoingGain(progress, outBase, inBase) + incomingGain(progress, inBase))
+            }
+            assertTrue("sum reached $worst for out=$outBase in=$inBase", worst <= 1.0f + 1e-4f)
+        }
+    }
+
+    @Test
+    fun theAsymmetricCaseIsWhatMakesTheCapNecessary() {
+        var wouldOverflow = 0
+        for (i in 0..steps) {
+            val progress = i / steps.toFloat()
+            val raw = (1.2f * outgoingStageGain(progress)).coerceAtMost(1f)
+            if (raw + incomingGain(progress, 0.8f) > 1.0f) wouldOverflow++
+        }
+        assertTrue(
+            "an asymmetric pair must actually need the cap, otherwise the test proves nothing",
+            wouldOverflow > 0,
+        )
+    }
+
+    @Test
     fun theCapLeavesTheEndsOfTheCurveUntouched() {
         val base = 1f
         val atStart = outgoingGain(0f, base, base)
