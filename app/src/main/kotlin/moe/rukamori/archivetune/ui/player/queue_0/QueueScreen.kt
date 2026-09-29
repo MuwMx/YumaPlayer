@@ -7,7 +7,6 @@
 package moe.rukamori.archivetune.ui.player.queue_0
 
 import android.view.View
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -52,8 +51,7 @@ import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -95,6 +93,7 @@ fun QueueScreen(
     lazyListState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     queueFractionProvider: () -> Float = { 1f },
+    isSheetActive: Boolean = true,
     onReorderStateChange: (Boolean) -> Unit = {},
     onCloseClick: () -> Unit = {},
 ) {
@@ -178,11 +177,12 @@ fun QueueScreen(
     }
 
     val fadeHeight = 24.dp
-    val darkScheme = darkColorScheme()
+    val darkScheme = remember { darkColorScheme() }
+    val yumaColors = remember(darkScheme) { darkYumaColorScheme(darkScheme) }
     MaterialTheme(colorScheme = darkScheme) {
         CompositionLocalProvider(
             LocalContentColor provides Color.White,
-            LocalYumaColors provides darkYumaColorScheme(darkScheme),
+            LocalYumaColors provides yumaColors,
         ) {
             LazyColumn(
                 state = lazyListState,
@@ -190,38 +190,28 @@ fun QueueScreen(
                 modifier =
                     modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            // Во время движения пальца GPU не тратит ресурсы на FBO-буфер
-                            compositingStrategy =
-                                if (queueFractionProvider() >= 0.99f) {
-                                    CompositingStrategy.Offscreen
-                                } else {
-                                    CompositingStrategy.Auto
-                                }
-                        }
-                        .drawWithContent {
-                            drawContent()
-                            if (queueFractionProvider() <= 0f) return@drawWithContent
+                        // No Offscreen layer here: the edge fade is drawn over the
+                        // content with SrcOver, so the list never allocates an FBO.
+                        .drawWithCache {
                             val fadeHeightPx = fadeHeight.toPx()
-                            if (size.height > 0f && fadeHeightPx > 0f) {
-                                drawRect(
-                                    brush =
-                                        Brush.verticalGradient(
-                                            colors = listOf(Color.Transparent, Color.Black),
-                                            startY = 0f,
-                                            endY = fadeHeightPx,
-                                        ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                                drawRect(
-                                    brush =
-                                        Brush.verticalGradient(
-                                            colors = listOf(Color.Black, Color.Transparent),
-                                            startY = size.height - fadeHeightPx,
-                                            endY = size.height,
-                                        ),
-                                    blendMode = BlendMode.DstIn,
-                                )
+                            val topFade = Brush.verticalGradient(
+                                colors = listOf(Color.Black, Color.Transparent),
+                                startY = 0f,
+                                endY = fadeHeightPx,
+                            )
+                            val bottomFade = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
+                                startY = (size.height - fadeHeightPx).coerceAtLeast(0f),
+                                endY = size.height,
+                            )
+
+                            onDrawWithContent {
+                                drawContent()
+                                if (queueFractionProvider() <= 0f) return@onDrawWithContent
+                                if (size.height > 0f && fadeHeightPx > 0f) {
+                                    drawRect(brush = topFade, alpha = 0.85f)
+                                    drawRect(brush = bottomFade, alpha = 0.85f)
+                                }
                             }
                         },
                 contentPadding = contentPadding,
@@ -251,16 +241,22 @@ fun QueueScreen(
                     isActive = currentPlayingUid != null && window.uid == currentPlayingUid,
                     isDragging = isDragging,
                     cropToSquare = cropToSquare,
+                    shouldLoadImage = isSheetActive,
                     itemWidthPx = itemWidthPx,
+                    isSheetActive = isSheetActive,
                     enableHapticFeedback = enableHapticFeedback,
                     hapticView = hapticView,
-                    onPlay = {
-                        haptics.click()
-                        onAction(PlayerAction.PlayQueueItem(window.uid))
+                    onPlay = remember(window.uid, onAction) {
+                        {
+                            haptics.click()
+                            onAction(PlayerAction.PlayQueueItem(window.uid))
+                        }
                     },
-                    onRemove = {
-                        mutableQueueWindows.removeAll { it.uid == window.uid }
-                        onAction(PlayerAction.RemoveQueueItem(window.uid))
+                    onRemove = remember(window.uid, onAction) {
+                        {
+                            mutableQueueWindows.removeAll { it.uid == window.uid }
+                            onAction(PlayerAction.RemoveQueueItem(window.uid))
+                        }
                     },
                     dragHandle = {
                         IconButton(
@@ -323,6 +319,8 @@ private fun QueueItem(
     isDragging: Boolean,
     cropToSquare: Boolean,
     itemWidthPx: Float,
+    shouldLoadImage: Boolean,
+    isSheetActive: Boolean,
     enableHapticFeedback: Boolean,
     hapticView: View,
     onPlay: () -> Unit,
@@ -449,12 +447,13 @@ private fun QueueItem(
                     isActive = isActive,
                     isPlaying = isActive,
                     cropToSquare = cropToSquare,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = currentOffsetPx == 0f) {
-                                onPlay()
-                            },
+                    shouldLoadImage = shouldLoadImage,
+                    isSheetActive = isSheetActive,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = currentOffsetPx == 0f) {
+                            onPlay()
+                        },
                 )
             }
         }

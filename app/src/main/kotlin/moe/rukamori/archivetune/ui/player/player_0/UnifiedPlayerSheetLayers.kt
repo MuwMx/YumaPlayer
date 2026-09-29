@@ -381,6 +381,7 @@ internal fun UnifiedPlayerSheetLayers(
                             state = queueState,
                             onAction = onAction,
                             queueFractionProvider = queueFractionProvider,
+                            isSheetActive = isQueueVisible,
                             onCloseClick = onCloseQueueClick,
                             lazyListState = queueListState,
                             contentPadding = PaddingValues(
@@ -429,9 +430,15 @@ private fun QueueSheetHeader(
     val moreScale by androidx.compose.animation.core.animateFloatAsState(if (morePressed) 0.92f else 1f, spring(dampingRatio = 0.5f))
 
     val songCount = queueState.songCount.takeIf { it != 0 } ?: queueState.queueWindows.size
-    val queueDurationMs = queueState.queueDurationMs.takeIf { it != 0L } ?: queueState.queueWindows.sumOf { (it.mediaItem.metadata?.duration ?: 0).toLong() } * 1000L
+    // remember inside the elvis would shift Compose's positional slots whenever
+    // queueDurationMs flips between zero and non-zero.
+    val windowsDurationMs = remember(queueState.queueWindows) {
+        queueState.queueWindows.sumOf { (it.mediaItem.metadata?.duration ?: 0).toLong() } * 1000L
+    }
+    val queueDurationMs = queueState.queueDurationMs.takeIf { it != 0L } ?: windowsDurationMs
     val queueTitle = queueState.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.queue)
-    val subtitle = pluralStringResource(R.plurals.n_song, songCount, songCount) + "  •  " + makeTimeString(queueDurationMs)
+    val songPlural = pluralStringResource(R.plurals.n_song, songCount, songCount)
+    val subtitle = remember(songPlural, queueDurationMs) { "$songPlural  •  ${makeTimeString(queueDurationMs)}" }
 
     val capsuleShape = RoundedCornerShape(24.dp)
     val capsuleColor = if (state.isBlurBackgroundEnabled) Color.Black else Color(state.darkMutedColor)

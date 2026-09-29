@@ -201,6 +201,7 @@ fun MediaMetadataListItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     shouldLoadImage: Boolean = true,
+    isSheetActive: Boolean = true,
     cropToSquare: Boolean? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
@@ -227,6 +228,7 @@ fun MediaMetadataListItem(
         trailingContent = trailingContent,
         modifier = modifier,
         isActive = isActive,
+        isSheetActive = isSheetActive,
     )
 }
 

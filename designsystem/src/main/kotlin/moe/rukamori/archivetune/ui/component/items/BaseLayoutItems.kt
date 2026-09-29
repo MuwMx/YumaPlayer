@@ -46,6 +46,7 @@ inline fun ListItem(
     thumbnailContent: @Composable () -> Unit,
     crossinline trailingContent: @Composable RowScope.() -> Unit = {},
     isActive: Boolean = false,
+    isSheetActive: Boolean = true,
 ) {
     val yumaColors = LocalYumaColors.current
     val titleColor = if (isActive) yumaColors.textPrimary else yumaColors.textPrimary.copy(alpha = 0.85f)
@@ -85,6 +86,7 @@ inline fun ListItem(
                 ),
                 maxLines = 1,
                 modifier = Modifier,
+                isVisible = isSheetActive,
             )
             if (subtitle != null) {
                 CompositionLocalProvider(LocalContentColor provides subtitleContentColor) {
@@ -110,10 +112,12 @@ fun ListItem(
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
     isActive: Boolean = false,
+    isSheetActive: Boolean = true,
 ) = ListItem(
     title = title,
     modifier = modifier,
     isActive = isActive,
+    isSheetActive = isSheetActive,
     subtitle = {
         badges()
         if (!subtitle.isNullOrEmpty()) {
@@ -130,6 +134,7 @@ fun ListItem(
                 style = MaterialTheme.typography.bodySmall.copy(color = subtitleColor),
                 maxLines = 1,
                 modifier = Modifier,
+                isVisible = isSheetActive,
             )
         }
     },
