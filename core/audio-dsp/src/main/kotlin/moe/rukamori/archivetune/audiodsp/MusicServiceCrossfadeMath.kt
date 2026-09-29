@@ -6,6 +6,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.sqrt
 import kotlin.math.sin
 
 const val CURVE_IN_DEFAULT = "S_CURVE"
@@ -81,6 +82,32 @@ fun outgoingMidDuckDb(progress: Float): Double {
 }
 
 fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(progress) / 20.0)
+
+/**
+ * Compensating factor that keeps the summed level of the two decks at or below unity.
+ * Each deck is normalised on its own and may sit as high as [MusicService.MAX_AUDIO_NORMALIZATION_FACTOR],
+ * while the equal-power ramps already sum to sqrt(2) at mid-fade, so an uncompensated pair can reach
+ * +6 dBFS and clip. Clipping is amplitude distortion and lands on the loudest transients only, which
+ * is heard as crackle on the beat. The peak of a*cos(p) + b*sin(p) is sqrt(a^2 + b^2), so scaling
+ * both decks by its reciprocal bounds the sum for every progress value, not just mid-fade.
+ */
+fun crossfadePairCompensation(outgoingBase: Float, incomingBase: Float): Float {
+    val a = outgoingBase.toDouble()
+    val b = incomingBase.toDouble()
+    if (a <= 0.0 && b <= 0.0) return 1f
+    val peak = sqrt(a * a + b * b)
+    if (peak <= 1.0) return 1f
+    return (1.0 / peak).toFloat()
+}
+
+/** Summed deck gain at a given progress, after [crossfadePairCompensation]. */
+fun crossfadeSummedGain(progress: Float, outgoingBase: Float, incomingBase: Float): Float {
+    val p = progress.coerceIn(0f, 1f)
+    val compensation = crossfadePairCompensation(outgoingBase, incomingBase)
+    val out = outgoingBase * cos((p * PI / 2.0)) * outgoingMidDuckGain(p).toFloat()
+    val inc = incomingBase * sin((p * PI / 2.0))
+    return (compensation * (out + inc)).toFloat()
+}
 
 /**
  * Lateness is folded back into the fade window, but never far enough to eat it: a fold equal to
