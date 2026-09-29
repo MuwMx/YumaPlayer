@@ -36,6 +36,8 @@ import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 
+private const val SYNC_LOG_PERIOD_MS = 400L
+
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
 private val crossfadePlanGeneration = AtomicLong(0L)
@@ -491,6 +493,7 @@ internal fun MusicService.startCrossfade(
                 var stallEpisodes = 0
                 var stalledTotalMs = 0L
                 var maxTickGapMs = 0L
+                var lastSyncLogMs = 0L
                 val fadeStartedMs = nowMs
                 while (isActive && elapsedMs < durationMs) {
                     if (player.currentMediaItem?.mediaId != outgoingMediaId) {
@@ -517,11 +520,14 @@ internal fun MusicService.startCrossfade(
                             crossfadeProgress = fadeProgress(elapsedMs, elapsedBeforeStartMs, durationMs)
                             activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
                             transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
-                            val outPos = runCatching { player.currentPosition }.getOrDefault(-1L)
-                            val inPos = runCatching { standbyPlayer.currentPosition }.getOrDefault(-1L)
-                            Timber.tag("MusicServiceCrossfade").d(
-                                "Sync p=${"%.2f".format(crossfadeProgress)} out=$outPos in=$inPos delta=${inPos - outPos}",
-                            )
+                            if (nowMs - lastSyncLogMs >= SYNC_LOG_PERIOD_MS) {
+                                lastSyncLogMs = nowMs
+                                val outPos = runCatching { player.currentPosition }.getOrDefault(-1L)
+                                val inPos = runCatching { standbyPlayer.currentPosition }.getOrDefault(-1L)
+                                Timber.tag("MusicServiceCrossfade").d(
+                                    "Sync p=${"%.2f".format(crossfadeProgress)} out=$outPos in=$inPos delta=${inPos - outPos}",
+                                )
+                            }
                         } else {
                             val stallStart = bufferingStartMs ?: nowMs.also {
                                 bufferingStartMs = it
