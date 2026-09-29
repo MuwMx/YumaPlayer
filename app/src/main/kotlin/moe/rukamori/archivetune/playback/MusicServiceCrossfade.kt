@@ -902,6 +902,26 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
     if (mediaId.isBlank() || !automixEnabled) return
     if (TrackAnalyzer.shouldThrottleKickOff(mediaId)) return
 
+    // ExoPlayer is thread-confined to the application thread, so its state has to be read here,
+    // before the analysis moves to IO. player.duration is C.TIME_UNSET when unknown, hence the > 0 guard.
+    val currentId = runCatching { player.currentMediaItem?.mediaId }.getOrNull()
+    val currentDurationMs =
+        if (currentId == mediaId) runCatching { player.duration }.getOrDefault(0L) else 0L
+    val playlistDurations: Map<String, Double> = if (currentDurationMs > 0L) {
+        emptyMap()
+    } else {
+        runCatching {
+            buildMap {
+                for (i in 0 until player.mediaItemCount) {
+                    val item = player.getMediaItemAt(i)
+                    val id = item.mediaId.ifBlank { item.metadata?.id.orEmpty() }
+                    val seconds = item.metadata?.duration?.takeIf { it > 0 }?.toDouble()
+                    if (id.isNotBlank() && seconds != null) put(id, seconds)
+                }
+            }
+        }.getOrDefault(emptyMap())
+    }
+
     val service = this
     ioScope.launch {
         try {
@@ -913,21 +933,10 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
 
             var durationSeconds = mediaItem?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
             if (durationSeconds == null || durationSeconds <= 0.0) {
-                if (player.currentMediaItem?.mediaId == mediaId && player.duration > 0) {
-                    durationSeconds = player.duration / 1000.0
+                durationSeconds = if (currentId == mediaId && currentDurationMs > 0L) {
+                    currentDurationMs / 1000.0
                 } else {
-                    val count = runCatching { player.mediaItemCount }.getOrDefault(0)
-                    for (i in 0 until count) {
-                        val item = runCatching { player.getMediaItemAt(i) }.getOrNull()
-                        val id = item?.mediaId?.ifBlank { item.metadata?.id.orEmpty() }
-                        if (id == mediaId) {
-                            val d = item?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
-                            if (d != null && d > 0.0) {
-                                durationSeconds = d
-                                break
-                            }
-                        }
-                    }
+                    playlistDurations[mediaId]
                 }
             }
 
