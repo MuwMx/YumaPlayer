@@ -33,8 +33,9 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         } else {
-            player.volume = (baseVolume * FALL(clamped) * outgoingMidDuckGain(clamped).toFloat())
-                .coerceIn(0f, maxGainFactor)
+            // The duck exists to offset the collision the filter creates, so it goes with it.
+            val duck = if (plan.enableBassSwap) outgoingMidDuckGain(clamped).toFloat() else 1f
+            player.volume = (baseVolume * FALL(clamped) * duck).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
                 djFilter.bassGainDb = outgoingBassGainDb(clamped)
