@@ -319,26 +319,8 @@ internal fun MusicService.scheduleCrossfade() {
                         val finalIncomingStartMs = resolveIncomingCueInMs(automixPlan, incomingAnalysis, incomingStartMs)
                         localPlayer.pauseAtEndOfMediaItems = false
                         handedOffToCrossfade = true
-                        if (adjustedDuration >= MusicService.MIN_CROSSFADE_DURATION_MS) {
-                            startCrossfade(target, adjustedDuration, finalIncomingStartMs, automixPlan, triggerAt)
-                        } else if (player.currentPosition >= endLimit - MusicService.CROSSFADE_END_GUARD_MS || adjustedDuration <= 0L) {
-                            val incomingPlayer = prepareSecondaryCrossfadePlayer(target, finalIncomingStartMs)
-                            if (incomingPlayer != null) {
-                                if (finalIncomingStartMs > 0L) {
-                                    if (incomingPlayer.currentPosition != finalIncomingStartMs) {
-                                        incomingPlayer.seekTo(target.index, finalIncomingStartMs)
-                                    }
-                                } else if (incomingPlayer.currentPosition > 0L) {
-                                    incomingPlayer.seekTo(target.index, 0L)
-                                }
-                                incomingPlayer.playWhenReady = true
-                                finishCrossfade(target, incomingPlayer, automixPlan)
-                            } else {
-                                handedOffToCrossfade = false
-                            }
-                        } else {
-                            startCrossfade(target, MusicService.MIN_CROSSFADE_DURATION_MS, finalIncomingStartMs, automixPlan, triggerAt)
-                        }
+                        val fadeDuration = adjustedDuration.coerceAtLeast(MusicService.MIN_CROSSFADE_DURATION_MS)
+                        startCrossfade(target, fadeDuration, finalIncomingStartMs, automixPlan, triggerAt)
                         return@launch
                     }
 

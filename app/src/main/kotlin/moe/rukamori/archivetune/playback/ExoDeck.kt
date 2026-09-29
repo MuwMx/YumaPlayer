@@ -8,8 +8,7 @@ import moe.rukamori.archivetune.audiodsp.FALL
 import moe.rukamori.archivetune.audiodsp.RISE
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
 import moe.rukamori.archivetune.audiodsp.incomingHighPassHz
-import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
-import kotlin.math.pow
+import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
 import timber.log.Timber
 
 class ExoDeck(
@@ -40,11 +39,7 @@ class ExoDeck(
         } else {
             player.volume = (baseVolume * FALL(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
-                val sweepDepth = clamped.toDouble().pow(0.65)
-                djFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ *
-                    (DjFilterAudioProcessor.SWEEP_TARGET_HZ / DjFilterAudioProcessor.BYPASS_CUTOFF_HZ)
-                        .pow(sweepDepth)
-                djFilter.bassGainDb = outgoingBassGainDb(clamped)
+                djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
             } else {
                 djFilter.clearAutomation()
             }

@@ -275,7 +275,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         const val BYPASS_CUTOFF_HZ = 20_000.0
         const val BYPASS_HIGH_PASS_HZ = 20.0
         const val MIN_ACTIVE_HIGH_PASS_HZ = 30.0
-        const val SWEEP_TARGET_HZ = 400.0
+        const val SWEEP_TARGET_HZ = 300.0
         const val FULL_CUT_DB = -24.0
         const val BASS_CROSSOVER_HZ = 200.0
         private const val BYTES_PER_SAMPLE = 2

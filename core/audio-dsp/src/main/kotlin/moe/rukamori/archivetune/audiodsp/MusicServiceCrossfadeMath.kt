@@ -37,13 +37,22 @@ const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val ENTRY_HIGH_PASS_HZ = 1200f
-const val ENTRY_OPEN_BY = 0.6f
+private const val SWEEP_DEPTH_EXPONENT = 0.65
 
 fun incomingHighPassHz(progress: Float): Double {
-    val openPhase = (progress.coerceIn(0f, 1f) / ENTRY_OPEN_BY).coerceIn(0f, 1f)
+    val depth = sweepDepth(progress)
     val bypass = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
-    return bypass * (ENTRY_HIGH_PASS_HZ / bypass).pow(openPhase.toDouble())
+    return ENTRY_HIGH_PASS_HZ.toDouble() * (bypass / ENTRY_HIGH_PASS_HZ).pow(depth)
 }
+
+fun outgoingLowPassHz(progress: Float): Double {
+    val depth = sweepDepth(progress)
+    val bypass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
+    return bypass * (DjFilterAudioProcessor.SWEEP_TARGET_HZ / bypass).pow(depth)
+}
+
+// Shared depth curve keeps the outgoing close and the incoming open perceptually mirrored.
+private fun sweepDepth(progress: Float): Double = progress.coerceIn(0f, 1f).toDouble().pow(SWEEP_DEPTH_EXPONENT)
 
 private val bassFloorLinear = 10.0.pow(DjFilterAudioProcessor.FULL_CUT_DB / 20.0)
 
@@ -61,8 +70,6 @@ private fun linearToBassDb(linear: Double): Double =
     (20.0 * log10(linear.coerceAtLeast(bassFloorLinear))).coerceAtLeast(DjFilterAudioProcessor.FULL_CUT_DB)
 
 fun incomingBassGainDb(progress: Float): Double = linearToBassDb(bassSwapIncomingLinear(progress))
-
-fun outgoingBassGainDb(progress: Float): Double = linearToBassDb(1.0 - bassSwapIncomingLinear(progress))
 
 fun advanceCueForElapsed(cueInMs: Long, elapsedMs: Long, maxPositionMs: Long?): Long {
     if (cueInMs <= 0L || elapsedMs <= 0L) return cueInMs
