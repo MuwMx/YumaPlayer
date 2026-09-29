@@ -471,7 +471,9 @@ internal fun MusicService.startCrossfade(
                 var elapsedMs = elapsedBeforeStartMs
                 var lastTickMs = nowMs
                 var bufferingStartMs: Long? = null
-                var stallLogged = false
+                var stallWarnedForEpisode = false
+                var stallEpisodes = 0
+                var stalledTotalMs = 0L
                 var maxTickGapMs = 0L
                 val fadeStartedMs = nowMs
                 while (isActive && elapsedMs < durationMs) {
@@ -494,15 +496,19 @@ internal fun MusicService.startCrossfade(
                         val incomingProducing = standbyPlayer.playbackState == Player.STATE_READY && standbyPlayer.isPlaying
                         if (incomingProducing) {
                             bufferingStartMs = null
-                            stallLogged = false
+                            stallWarnedForEpisode = false
                             elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
                             crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                             activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
                             transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
                         } else {
-                            val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
-                            if (!stallLogged) {
-                                stallLogged = true
+                            val stallStart = bufferingStartMs ?: nowMs.also {
+                                bufferingStartMs = it
+                                stallEpisodes++
+                            }
+                            stalledTotalMs += nowMs - lastTickMs
+                            if (!stallWarnedForEpisode) {
+                                stallWarnedForEpisode = true
                                 Timber.tag("MusicServiceCrossfade").w(
                                     "Incoming stalled mid-fade at p=%.2f state=%d error=%s; holding progress",
                                     crossfadeProgress,
@@ -525,7 +531,7 @@ internal fun MusicService.startCrossfade(
                 }
                 Timber.tag("MusicServiceCrossfade").d(
                     "Crossfade closed: plannedMs=$durationMs wallMs=${android.os.SystemClock.elapsedRealtime() - fadeStartedMs}" +
-                        " maxTickGapMs=$maxTickGapMs stalled=$stallLogged",
+                        " maxTickGapMs=$maxTickGapMs stallEpisodes=$stallEpisodes stalledMs=$stalledTotalMs",
                 )
 
                 finishCrossfade(target, incomingPlayer, plan)

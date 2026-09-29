@@ -48,12 +48,17 @@ internal fun MusicService.resolvePlaybackDataSpec(
     }
     val mediaId = (dataSpec.key ?: return dataSpec).removePrefix(FLAC_CACHE_KEY_PREFIX)
     val storedFormat =
-        runBlocking(Dispatchers.IO) {
-            database.format(mediaId).first()
+        if (audioNormalizationFactorCache.containsKey(mediaId)) {
+            null
+        } else {
+            runBlocking(Dispatchers.IO) {
+                database.format(mediaId).first()
+            }.also { format ->
+                format?.let {
+                    audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(it, normalizeAudio = true)
+                }
+            }
         }
-    storedFormat?.let { format ->
-        audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(format, normalizeAudio = true)
-    }
 
     val lowDataEnabled = isLowDataEnabled
     val isMeteredConnection = connectivityManager.isActiveNetworkMetered ||
