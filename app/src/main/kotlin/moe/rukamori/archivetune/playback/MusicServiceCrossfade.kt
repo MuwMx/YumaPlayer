@@ -30,6 +30,8 @@ import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.audiodsp.TransitionTier
 import moe.rukamori.archivetune.audiodsp.advanceCueForElapsed
+import moe.rukamori.archivetune.audiodsp.boundedFoldMs
+import moe.rukamori.archivetune.audiodsp.fadeProgress
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
@@ -460,9 +462,9 @@ internal fun MusicService.startCrossfade(
                 val standbyPlayer = incomingPlayer
 
                 val nowMs = android.os.SystemClock.elapsedRealtime()
-                val elapsedBeforeStartMs = (triggerAtMs?.takeIf { it > 0L }
-                    ?.let { player.currentPosition - it } ?: 0L)
-                    .coerceIn(0L, durationMs)
+                val latenessMs = triggerAtMs?.takeIf { it > 0L }
+                    ?.let { player.currentPosition - it } ?: 0L
+                val elapsedBeforeStartMs = boundedFoldMs(latenessMs, durationMs)
                 val effectiveCueMs = advanceCueForLateStart(standbyPlayer, cueInMs, elapsedBeforeStartMs)
 
                 if (effectiveCueMs > 0L) {
@@ -512,7 +514,7 @@ internal fun MusicService.startCrossfade(
                             bufferingStartMs = null
                             stallWarnedForEpisode = false
                             elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
-                            crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                            crossfadeProgress = fadeProgress(elapsedMs, elapsedBeforeStartMs, durationMs)
                             activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
                             transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
                         } else {

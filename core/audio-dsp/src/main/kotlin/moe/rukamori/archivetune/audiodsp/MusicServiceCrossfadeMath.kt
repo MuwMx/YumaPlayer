@@ -82,6 +82,29 @@ fun outgoingMidDuckDb(progress: Float): Double {
 
 fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(progress) / 20.0)
 
+/**
+ * Lateness is folded back into the fade window, but never far enough to eat it: a fold equal to
+ * the whole duration degenerates the crossfade into a hard cut, which is exactly what the fold
+ * was meant to avoid. At most half the window is folded, and always enough room is left for
+ * [CrossfadeConstants.MIN_FADE_MS].
+ */
+fun boundedFoldMs(latenessMs: Long, durationMs: Long): Long {
+    if (latenessMs <= 0L || durationMs <= 0L) return 0L
+    val maxFold = (durationMs / 2).coerceAtMost(durationMs - CrossfadeConstants.MIN_FADE_MS)
+    return latenessMs.coerceIn(0L, maxFold.coerceAtLeast(0L))
+}
+
+/**
+ * Progress is measured from the end of the fold rather than from the fade start, so the decks
+ * start from the levels they already had. Progressing from the folded position instead would step
+ * both gains to their mid-fade value on the very first tick.
+ */
+fun fadeProgress(elapsedMs: Long, foldMs: Long, durationMs: Long): Float {
+    val span = durationMs - foldMs
+    if (span <= 0L) return 1f
+    return ((elapsedMs - foldMs).toFloat() / span.toFloat()).coerceIn(0f, 1f)
+}
+
 fun advanceCueForElapsed(cueInMs: Long, elapsedMs: Long, maxPositionMs: Long?): Long {
     if (cueInMs <= 0L || elapsedMs <= 0L) return cueInMs
     val advanced = cueInMs + elapsedMs
