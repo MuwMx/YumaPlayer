@@ -273,19 +273,12 @@ val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
 val AutomixEnabledKey = booleanPreferencesKey("automixEnabled")
 val AutomixTransitionDurationKey = stringPreferencesKey("automixTransitionDuration")
-val AutomixAggressivenessKey = stringPreferencesKey("automixAggressiveness")
 
 enum class AutomixTransitionDuration(val value: String) {
     AUTO("auto"),
     S4("4"),
     S8("8"),
     S12("12"),
-}
-
-enum class AutomixAggressiveness(val value: String) {
-    SOFT("soft"),
-    STANDARD("standard"),
-    CLUB("club"),
 }
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")

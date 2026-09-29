@@ -150,7 +150,6 @@ import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
-import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
@@ -555,7 +554,6 @@ class MusicService :
     internal var effectiveVolumeRampJob: Job? = null
     internal var crossfadeEnabled = false
     internal var automixEnabled = false
-    internal var automixAggressiveness = "standard"
     internal var automixTransitionPreset = "auto"
     internal var activeAutomixPlan: AutomixPlan? = null
     internal var crossfadeDurationMs = 0L
@@ -1351,14 +1349,12 @@ class MusicService :
             val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
             val gapless = prefs[CrossfadeGaplessKey] ?: true
             val automix = prefs[AutomixEnabledKey] ?: false
-            val automixAggressiveness = prefs[AutomixAggressivenessKey] ?: "standard"
             val automixTransitionPreset = prefs[AutomixTransitionDurationKey] ?: "auto"
             val effectiveEnabled = enabled && togetherState is moe.rukamori.archivetune.together.TogetherSessionState.Idle
             val durationMs = (durationSeconds.coerceIn(0f, 10f) * 1000f).roundToLong().coerceAtLeast(0L)
             CrossfadeConfig(
                 durationMs = durationMs,
                 automixEnabled = automix,
-                aggressiveness = automixAggressiveness,
                 preset = automixTransitionPreset,
                 gapless = gapless,
                 enabled = effectiveEnabled,
@@ -1370,7 +1366,6 @@ class MusicService :
                 crossfadeDurationMs = config.durationMs
                 crossfadeGapless = config.gapless
                 automixEnabled = config.automixEnabled
-                automixAggressiveness = config.aggressiveness
                 automixTransitionPreset = config.preset
                 if (crossfadeEnabled && !shouldUseLegacyPath(crossfadeDurationMs)) {
                     scheduleCrossfade()

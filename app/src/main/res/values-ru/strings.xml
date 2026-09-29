@@ -768,14 +768,8 @@
     <string name="cast_no_network">Нет подключения к сети</string>
     <string name="cast_no_network_desc">Подключитесь к Wi-Fi для поиска устройств Cast в локальной сети.</string>
     <string name="voice_search">Голосовой поиск</string>
-    <string name="smart_automix_title">Умный Автомикс</string>
-    <string name="smart_automix_desc">Гармоничные переходы по темпу и тактам</string>
     <string name="automix_ready">Готов</string>
     <string name="automix_analyzing">Анализ…</string>
-    <string name="automix_transition_style">Стиль перехода</string>
-    <string name="automix_style_soft">Мягкий</string>
-    <string name="automix_style_standard">Стандартный</string>
-    <string name="automix_style_club">Клубный</string>
     <string name="automix_transition_length">Длительность перехода</string>
     <string name="automix_duration_auto">Авто</string>
     <string name="automix_duration_4s">4 с</string>

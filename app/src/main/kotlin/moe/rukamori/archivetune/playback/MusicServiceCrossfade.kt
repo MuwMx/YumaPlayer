@@ -141,7 +141,7 @@ internal fun MusicService.scheduleCrossfade() {
 
     var outgoingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(currentMediaId) else null
     var incomingAnalysis = if (automixEnabled) TrackAnalyzer.getCached(target.mediaId) else null
-    val automixAggr = automixAggressiveness
+    val automixAggr = CrossfadeConstants.Aggressiveness.STANDARD.name.lowercase()
     val resolvedPreferred = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration)
 
     var automixPlan = if (automixEnabled && outgoingAnalysis != null) {
@@ -205,7 +205,7 @@ internal fun MusicService.scheduleCrossfade() {
                                 incomingAnalysis = latestIncoming,
                                 currentDurationMs = duration,
                                 preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                aggressiveness = automixAggressiveness,
+                                aggressiveness = automixAggr,
                             )
                             if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
                                 outgoingAnalysis = latestOutgoing
@@ -230,7 +230,7 @@ internal fun MusicService.scheduleCrossfade() {
                                     incomingAnalysis = latestIncoming,
                                     currentDurationMs = duration,
                                     preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                    aggressiveness = automixAggressiveness,
+                                    aggressiveness = automixAggr,
                                 )
                                 if (!isPlanFrozen && isPlanGenerationCurrent(recomputeStartGeneration, currentMediaId, target.mediaId, recomputeStartPosition)) {
                                     incomingAnalysis = latestIncoming
@@ -301,7 +301,7 @@ internal fun MusicService.scheduleCrossfade() {
                                         incomingAnalysis = incomingAnalysis,
                                         currentDurationMs = duration,
                                         preferredDurationMs = TransitionPlanner.resolvePreferredDurationMs(automixTransitionPreset, effectiveDuration),
-                                        aggressiveness = automixAggressiveness,
+                                        aggressiveness = automixAggr,
                                     )
                                     automixPlan = newPlan
                                     activeAutomixPlan = newPlan
@@ -402,25 +402,6 @@ internal fun MusicService.createSecondaryCrossfadePlayer(): ExoPlayer {
             setOffloadEnabled(false)
             skipSilenceEnabled = localPlayer.skipSilenceEnabled
         }
-}
-
-internal fun MusicService.applyDjFilterAutomation(
-    progress: Float,
-    bassSwap: Boolean,
-    outgoing: ExoPlayer,
-    incoming: ExoPlayer,
-) {
-    val plan = AutomixPlan(0L, 0L, 0L, enableBassSwap = bassSwap)
-    activeDeck.applyAutomation(progress, plan)
-    transitionDeck?.applyAutomation(progress, plan)
-}
-
-internal fun MusicService.resetDjFilterChain() {
-    if (isControllerInitialized) {
-        activeDeck.clearAutomation()
-        transitionDeck?.clearAutomation()
-        (controller as? ExoDeckController)?.reserveDeck?.clearAutomation()
-    }
 }
 
 internal fun MusicService.startCrossfade(

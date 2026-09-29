@@ -40,8 +40,6 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
-import moe.rukamori.archivetune.constants.AutomixAggressiveness
-import moe.rukamori.archivetune.constants.AutomixAggressivenessKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.AutomixTransitionDuration
 import moe.rukamori.archivetune.constants.AutomixTransitionDurationKey
@@ -142,18 +140,10 @@ fun PlayerSettings(navController: NavController) {
         AutomixEnabledKey,
         defaultValue = false,
     )
-    val (automixAggressivenessStr, onAutomixAggressivenessChangeStr) = rememberPreference(
-        AutomixAggressivenessKey,
-        defaultValue = AutomixAggressiveness.STANDARD.value,
-    )
     val (automixTransitionDurationStr, onAutomixTransitionDurationChangeStr) = rememberPreference(
         AutomixTransitionDurationKey,
         defaultValue = AutomixTransitionDuration.AUTO.value,
     )
-    val automixAggressiveness = remember(automixAggressivenessStr) {
-        AutomixAggressiveness.entries.find { it.value.equals(automixAggressivenessStr, ignoreCase = true) }
-            ?: AutomixAggressiveness.STANDARD
-    }
     val automixTransitionDuration = remember(automixTransitionDurationStr) {
         AutomixTransitionDuration.entries.find { it.value.equals(automixTransitionDurationStr, ignoreCase = true) }
             ?: AutomixTransitionDuration.AUTO
@@ -220,7 +210,6 @@ fun PlayerSettings(navController: NavController) {
         crossfadeGapless = crossfadeGapless,
         automixEnabled = automixEnabled,
         automixTransitionDuration = automixTransitionDuration,
-        automixAggressiveness = automixAggressiveness,
         memoryCacheToggle = memoryCacheToggle,
         downloadLocationUri = downloadLocationUri,
         flacFolderPath = flacFolderPath,
@@ -234,7 +223,6 @@ fun PlayerSettings(navController: NavController) {
         folderPickerLauncher,
         onEqualizerClick,
         onAutomixTransitionDurationChangeStr,
-        onAutomixAggressivenessChangeStr,
     ) {
         PlayerSettingsUiActions(
             onNavigateUp = navController::navigateUp,
@@ -258,9 +246,6 @@ fun PlayerSettings(navController: NavController) {
             onAutomixEnabledChange = onAutomixEnabledChange,
             onAutomixTransitionDurationChange = { newDuration ->
                 onAutomixTransitionDurationChangeStr(newDuration.value)
-            },
-            onAutomixAggressivenessChange = { newAggr ->
-                onAutomixAggressivenessChangeStr(newAggr.value)
             },
             onMemoryCacheToggleChange = onMemoryCacheToggleChange,
             onSelectFlacDownloadFolder = { folderPickerLauncher.launch(null) },
