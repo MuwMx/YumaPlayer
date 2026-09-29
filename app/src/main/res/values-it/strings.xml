@@ -72,7 +72,7 @@
     <string name="import_playlist">Importa playlist</string>
     <string name="import_failed">Importazione non riuscita</string>
     <string name="update_button">Aggiorna</string>
-    <string name="add_to_playlist">Aggiungi a playlist</string>
+    <string name="add_to_playlist">Aggiungi a una playlist</string>
     <string name="view_artist">Visualizza artista</string>
     <string name="view_album">Visualizza l\'album</string>
     <string name="view_all">Visualizza tutto</string>
@@ -486,7 +486,7 @@
     <string name="top_results">Risultati principali</string>
     <string name="change_playlist_cover">Cambia la copertina della playlist</string>
     <string name="music_recognition">Riconoscimento musicale</string>
-    <string name="pin_to_speed_dial">Aggiungi ai preferiti</string>
+    <string name="pin_to_speed_dial">Aggiungi a Riproduzione Veloce</string>
     <string name="remove_from_speed_dial">Rimuovi dai preferiti</string>
     <string name="together_participants">Partecipanti</string>
     <string name="together_connected_count">%1$d connesso</string>
@@ -1147,18 +1147,18 @@
     <string name="interface_and_visuals_desc">Sfocatura, luminosità e stili di sfondo</string>
     <string name="start_radio_title">Avvia Radio</string>
     <string name="start_radio_desc">Radio da brano corrente</string>
-    <string name="add_to_playlist_title">Aggiungi alla Playlist</string>
-    <string name="add_to_playlist_desc">Aggiungi a Playlist personalizzata</string>
+    <string name="add_to_playlist_title">Aggiungi a una Playlist</string>
+    <string name="add_to_playlist_desc">Aggiungi a una Playlist personalizzata</string>
     <string name="stream_to_chromecast">Stream to Chromecast</string>
     <string name="save_track_offline">Salva brano offline</string>
-    <string name="track_details">Dettagli Brano</string>
+    <string name="track_details">Dettagli del Brano</string>
     <string name="track_details_desc">Codec, velocità in bit, info del file</string>
     <string name="system_audio_effects">Effetti audio di sistema</string>
     <string name="playback_speed_desc">Impostazioni di velocità e intonazione</string>
-    <string name="unpin_track">Rimuovi pin al Brano</string>
+    <string name="unpin_track">Rimuovi pin dal Brano</string>
     <string name="pin_track">Metti pin al Brano</string>
     <string name="remove_from_speed_dial_title">Rimuovi da Riproduzione Veloce</string>
-    <string name="pin_to_speed_dial_title">Metti pin a Riproduzione Veloce</string>
+    <string name="pin_to_speed_dial_title">Aggiungi a Riproduzione Veloce</string>
     <string name="sleep_timer_title">Timer Spegnimento</string>
     <string name="minutes_unit">minuti</string>
     <string name="stop_timer">Ferma Timer</string>
@@ -1217,4 +1217,11 @@
     <string name="unlink_cookie_and_enable">Scollega cookie e abilita</string>
     <string name="continue_with_visitor_data">Continua coi dati dei visitatori</string>
     <string name="voice_search">Ricerca vocale</string>
+    <string name="automix_ready">Pronto</string>
+    <string name="automix_analyzing">Analizzando…</string>
+    <string name="automix_transition_length">Durata transizione</string>
+    <string name="automix_duration_auto">Auto</string>
+    <string name="automix_duration_4s">4s</string>
+    <string name="automix_duration_8s">8s</string>
+    <string name="automix_duration_12s">12s</string>
 </resources>
