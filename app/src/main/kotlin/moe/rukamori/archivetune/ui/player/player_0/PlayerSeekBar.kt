@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
+import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -36,6 +38,24 @@ import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.TimeUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
+// The marker has to sit exactly where the ear hears the effect begin, so it comes from the same
+// planner the service uses rather than the raw mixOutTime, which the service is free to reject.
+internal fun resolveTransitionMarkerMs(
+    analysis: TrackAnalysisResult?,
+    durationMs: Long,
+    currentPositionMs: Long,
+): Long? {
+    if (analysis == null || durationMs <= 0L) return null
+    val plan = TransitionPlanner.planSmartTransition(
+        outgoingAnalysis = analysis,
+        incomingAnalysis = null,
+        currentDurationMs = durationMs,
+        aggressiveness = CrossfadeConstants.Aggressiveness.STANDARD.name.lowercase(),
+        currentPositionMs = currentPositionMs,
+    )
+    return plan.triggerAtMs?.takeIf { it > 0L && it < durationMs }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,6 +141,12 @@ fun PlayerSeekBar(
         else -> progressMs.toFloat()
     }
 
+    val markerAnalysis = trackAnalysis ?: state.trackAnalysis ?: dynamicAnalysis
+        ?: TrackAnalyzer.getCached(state.trackUrl)
+    val markerMs = remember(markerAnalysis, durationMs, progressMs) {
+        resolveTransitionMarkerMs(markerAnalysis, durationMs, progressMs)
+    }
+
     val shouldSnap = isDragging || baseProgress <= 500f
     val animatedProgress by animateFloatAsState(
         targetValue = baseProgress.coerceIn(0f, maxRange),
@@ -160,13 +186,10 @@ fun PlayerSeekBar(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.2f))
                         .drawBehind {
-                            val analysis = trackAnalysis ?: state.trackAnalysis ?: dynamicAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
-                            val mixOutSec = analysis?.mixOutTime ?: 0.0
-                            if (mixOutSec > 0.0 && durationMs > 0L) {
-                                val mixOutMs = (mixOutSec * 1000.0).toFloat()
-                                val mixOutFraction = (mixOutMs / maxRange).coerceIn(0f, 1f)
-                                if (mixOutFraction < 1f) {
-                                    val startX = size.width * mixOutFraction
+                            if (markerMs != null && durationMs > 0L) {
+                                val markerFraction = (markerMs / maxRange).coerceIn(0f, 1f)
+                                if (markerFraction < 1f) {
+                                    val startX = size.width * markerFraction
                                     val tailWidth = size.width - startX
                                     drawRoundRect(
                                         color = animatedAccentColor.copy(alpha = 0.45f),

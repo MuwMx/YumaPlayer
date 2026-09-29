@@ -69,23 +69,45 @@ private fun MusicService.isPlanGenerationCurrent(
     return true
 }
 
+internal fun resolveCrossfadeTriggerAt(
+    automixEnabled: Boolean,
+    outgoingAnalysis: TrackAnalysisResult?,
+    durationMs: Long,
+    triggerOffsetMs: Long,
+    planTriggerAtMs: Long?,
+): Long {
+    if (automixEnabled && planTriggerAtMs != null) {
+        return planTriggerAtMs
+    }
+    val contentEndMs = outgoingAnalysis?.contentEndTime
+        ?.takeIf { it > 0.0 }
+        ?.let { (it * 1000.0).roundToLong() }
+        ?.coerceAtMost(durationMs)
+        ?: durationMs
+    val mixOutMs = outgoingAnalysis?.mixOutTime
+        ?.takeIf { it > 0.0 }
+        ?.let { (it * 1000.0).roundToLong() }
+        ?.let { TransitionPlanner.sanitizeOutroMs(it, contentEndMs) }
+        ?.coerceAtMost(durationMs)
+    return if (automixEnabled && mixOutMs != null) {
+        mixOutMs
+    } else {
+        contentEndMs - triggerOffsetMs
+    }
+}
+
 private fun MusicService.computeCrossfadeTriggerAt(
     outgoingAnalysis: TrackAnalysisResult?,
     duration: Long,
     triggerOffset: Long,
     automixPlanTriggerAtMs: Long?,
-): Long {
-    if (automixEnabled && automixPlanTriggerAtMs != null) {
-        return automixPlanTriggerAtMs
-    }
-    val mixOutSec = outgoingAnalysis?.mixOutTime ?: 0.0
-    return if (automixEnabled && mixOutSec > 0.0) {
-        val mixOutTimeMs = (mixOutSec * 1000.0).roundToLong()
-        mixOutTimeMs - (crossfadeDurationMs / 2L)
-    } else {
-        automixPlanTriggerAtMs ?: (duration - triggerOffset - MusicService.CROSSFADE_END_GUARD_MS)
-    }
-}
+): Long = resolveCrossfadeTriggerAt(
+    automixEnabled = automixEnabled,
+    outgoingAnalysis = outgoingAnalysis,
+    durationMs = duration,
+    triggerOffsetMs = triggerOffset,
+    planTriggerAtMs = automixPlanTriggerAtMs,
+)
 
 private fun Player.audioTrackDescription(): String {
     val audioFormat = currentTracks.groups
