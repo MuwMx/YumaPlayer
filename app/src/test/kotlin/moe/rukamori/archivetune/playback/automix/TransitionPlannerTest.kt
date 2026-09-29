@@ -160,23 +160,16 @@ class TransitionPlannerTest {
     }
 
     @Test
-    fun resolveBassSwap_plainCrossfade_neverDrivesTheFilter() {
-        for (aggressiveness in listOf("soft", "standard", "club")) {
-            assertFalse(TransitionPlanner.resolveBassSwap(TransitionStyle.PLAIN_CROSSFADE, aggressiveness))
+    fun resolveBassSwap_isUnboundFromStyle_andOnlySoftDisablesIt() {
+        for (style in TransitionStyle.entries) {
+            assertTrue("plain style must still filter: $style", TransitionPlanner.resolveBassSwap("standard"))
         }
+        assertTrue(TransitionPlanner.resolveBassSwap("club"))
+        assertFalse(TransitionPlanner.resolveBassSwap("soft"))
     }
 
     @Test
-    fun resolveBassSwap_djStyles_followAggressiveness() {
-        for (style in listOf(TransitionStyle.DJ_ASSISTED, TransitionStyle.BEATMATCHED)) {
-            assertTrue(TransitionPlanner.resolveBassSwap(style, "standard"))
-            assertTrue(TransitionPlanner.resolveBassSwap(style, "club"))
-            assertFalse(TransitionPlanner.resolveBassSwap(style, "soft"))
-        }
-    }
-
-    @Test
-    fun planSmartTransition_unanalysedIncoming_staysPlainWithoutBassSwap() {
+    fun planSmartTransition_unanalysedIncoming_stillDrivesTheFilter() {
         val outgoing = TrackAnalysisResult(bpm = 120.0, mixOutTime = 170.0, contentEndTime = 178.0)
 
         val plan = TransitionPlanner.planSmartTransition(
@@ -189,7 +182,7 @@ class TransitionPlannerTest {
             TransitionStyle.PLAIN_CROSSFADE,
             TransitionPlanner.resolveTransitionStyle(120.0, null),
         )
-        assertFalse(plan.enableBassSwap)
+        assertTrue(plan.enableBassSwap)
     }
 
     @Test

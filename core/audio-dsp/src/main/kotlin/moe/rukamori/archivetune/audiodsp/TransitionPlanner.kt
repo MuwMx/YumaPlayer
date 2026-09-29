@@ -39,11 +39,7 @@ object TransitionPlanner {
     fun maxSecondsFor(aggressiveness: String): Double =
         CrossfadeConstants.Aggressiveness.fromString(aggressiveness).maxSeconds
 
-    fun resolveBassSwap(style: TransitionStyle, aggressiveness: String): Boolean = when {
-        style == TransitionStyle.PLAIN_CROSSFADE -> false
-        aggressiveness.lowercase() == "soft" -> false
-        else -> true
-    }
+    fun resolveBassSwap(aggressiveness: String): Boolean = aggressiveness.lowercase() != "soft"
 
     fun resolveForcedDurationMs(preset: String): Long? = when (preset.lowercase()) {
         "4" -> 4L * MS_PER_SECOND
@@ -156,8 +152,7 @@ object TransitionPlanner {
     ): AutomixPlan {
         val durationMs = calculateAdaptiveDurationMs(currentBpm, nextBpm, preferredDurationMs, aggressiveness)
             .coerceAtMost(maxOf(0L, currentDurationMs))
-        val style = resolveTransitionStyle(currentBpm, nextBpm)
-        val enableBassSwap = resolveBassSwap(style, aggressiveness)
+        val enableBassSwap = resolveBassSwap(aggressiveness)
 
         return AutomixPlan(
             triggerOffsetMs = durationMs,
@@ -190,8 +185,7 @@ object TransitionPlanner {
         val tier = if (canBeatmatch) TransitionTier.SMART_BEATMATCH else TransitionTier.PLAIN_CROSSFADE
         val incomingTempoRatio = if (canBeatmatch) (outgoingBpm / nextBpm).toFloat() else 1.0f
 
-        val style = resolveTransitionStyle(outgoingBpm, nextBpm)
-        val enableBassSwap = resolveBassSwap(style, aggressiveness)
+        val enableBassSwap = resolveBassSwap(aggressiveness)
 
         val incomingStartMs = if (canBeatmatch) {
             (incomingAnalysis?.mixInTime?.takeIf { it > 0.0 }
