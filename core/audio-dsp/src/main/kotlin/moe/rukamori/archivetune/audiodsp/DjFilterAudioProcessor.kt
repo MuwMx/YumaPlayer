@@ -6,6 +6,7 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import timber.log.Timber
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -84,12 +85,11 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         return inputAudioFormat
     }
 
-    override fun isActive(): Boolean = sampleRate != 0 && channelCount != 0
-
     override fun queueInput(inputBuffer: ByteBuffer) {
         if (!isActive) {
             if (inputBuffer.hasRemaining()) {
                 val output = replaceOutputBuffer(inputBuffer.remaining())
+                output.order(ByteOrder.nativeOrder())
                 output.put(inputBuffer)
                 output.flip()
             }
@@ -99,6 +99,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         val frames = inputBuffer.remaining() / (bytesPerSample * channelCount)
         if (frames == 0) return
         val output = replaceOutputBuffer(frames * bytesPerSample * channelCount)
+        output.order(ByteOrder.nativeOrder())
         // Coefficients are snapshotted once per block and the whole block runs on them, so a
         // parameter can never change halfway through the samples it is filtering. Recomputing
         // mid-block is what the reference avoids and what this loop used to do every 64 frames.
@@ -147,13 +148,19 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         when (sampleEncoding) {
             C.ENCODING_PCM_FLOAT -> buffer.putFloat(clamped.toFloat())
             ENCODING_24BIT_PACKED -> {
-                val packed = (clamped * PCM_24BIT_SCALE).toInt()
+                val packed = (clamped * 8388607.0).toInt().coerceIn(-8388608, 8388607)
                 buffer.put((packed and 0xFF).toByte())
                 buffer.put(((packed shr 8) and 0xFF).toByte())
                 buffer.put(((packed shr 16) and 0xFF).toByte())
             }
-            ENCODING_32BIT -> buffer.putInt((clamped * PCM_32BIT_SCALE).toInt())
-            else -> buffer.putShort((clamped * PCM_16BIT_SCALE).toInt().toShort())
+            ENCODING_32BIT -> {
+                val packed = (clamped * 2147483647.0).toLong().coerceIn(-2147483648L, 2147483647L).toInt()
+                buffer.putInt(packed)
+            }
+            else -> {
+                val packed = (clamped * 32767.0).toInt().coerceIn(-32768, 32767)
+                buffer.putShort(packed.toShort())
+            }
         }
     }
 
@@ -264,8 +271,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         // Mirror android.media.AudioFormat; these are compile-time constants absent from media3 C.
         private const val ENCODING_24BIT_PACKED = 21
         private const val ENCODING_32BIT = 22
-        private const val BYTES_PER_SAMPLE = 2
-        private const val BYTES_PER_FLOAT_SAMPLE = 4
         private const val PCM_16BIT_SCALE = 32768.0
         private const val PCM_24BIT_SCALE = 8388608.0
         private const val PCM_32BIT_SCALE = 2147483648.0

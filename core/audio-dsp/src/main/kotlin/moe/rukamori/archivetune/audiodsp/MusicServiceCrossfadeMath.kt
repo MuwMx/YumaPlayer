@@ -38,15 +38,14 @@ private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val MID_DUCK_MAX_DB = 6.0
 const val STAGE_HOLD_PROGRESS = 0.35f
-const val SWEEP_HOLD_PROGRESS = 0.35f
+const val SWEEP_HOLD_PROGRESS = 0.05f
 
 fun outgoingLowPassHz(progress: Float): Double {
     val clamped = progress.coerceIn(0f, 1f)
     val bypass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-    // The corner is held open until the fade is underway, then it never enters the kick band.
-    // A corner moving through 60-200 Hz phase-smears every low transient it passes.
     if (clamped <= SWEEP_HOLD_PROGRESS) return bypass
     val depth = ((clamped - SWEEP_HOLD_PROGRESS) / (1f - SWEEP_HOLD_PROGRESS)).toDouble()
+    // Экспоненциальный спуск от 20000 к 1200 Гц
     return bypass * (DjFilterAudioProcessor.SWEEP_TARGET_HZ / bypass).pow(depth)
 }
 
@@ -89,14 +88,28 @@ fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(pr
  * attenuates while its low-pass closes, so the filter is heard on a near-unity track with no
  * second track competing, which is what makes the effect read cleanly.
  */
-fun outgoingStageGain(progress: Float): Float = stagedGain(progress, 0.95f, 1.0f, 0.0f)
-
+fun outgoingStageGain(progress: Float): Float {
+    val p = progress.coerceIn(0f, 1f)
+    return if (p <= 0.35f) {
+        1.0f
+    } else {
+        val t = (p - 0.35f) / 0.65f
+        1.0f - smoothStep(t)
+    }
+}
 /**
  * Incoming deck counterpart: (0.0, 0.0) -> (0.35, 0.38) -> (1.0, 1.0). The second track stays
  * near-silent through the first third and arrives only once the outgoing is already dark.
  */
-fun incomingStageGain(progress: Float): Float = stagedGain(progress, 0.38f, 0.0f, 1.0f)
-
+fun incomingStageGain(progress: Float): Float {
+    val p = progress.coerceIn(0f, 1f)
+    return if (p < 0.35f) {
+        0f
+    } else {
+        val t = (p - 0.35f) / 0.65f
+        smoothStep(t)
+    }
+}
 private fun stagedGain(progress: Float, holdValue: Float, atStart: Float, atEnd: Float): Float {
     val p = progress.coerceIn(0f, 1f)
     return if (p <= STAGE_HOLD_PROGRESS) {
