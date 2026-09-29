@@ -4199,10 +4199,21 @@ class MusicService :
                 enableAudioTrackPlaybackParams: Boolean,
             ) = DefaultAudioSink
                 .Builder(context)
-                .setAudioProcessors(arrayOf(djFilter))
-                .setEnableFloatOutput(true)
+                .setEnableFloatOutput(false)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .build()
+                .setAudioProcessorChain(
+                    DefaultAudioSink.DefaultAudioProcessorChain(
+                        SilenceSkippingAudioProcessor(
+                            1_500_000L,
+                            0.35f,
+                            500_000L,
+                            10,
+                            150.toShort(),
+                        ),
+                        SonicAudioProcessor(),
+                        djFilter,
+                    ),
+                ).build()
         }
 
     internal fun djFilterFor(player: ExoPlayer?): DjFilterAudioProcessor? = player?.let { djFilterByPlayer[it] }
