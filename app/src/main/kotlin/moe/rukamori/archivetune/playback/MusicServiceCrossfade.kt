@@ -541,8 +541,16 @@ internal fun MusicService.startCrossfade(
                                 lastSyncLogMs = nowMs
                                 val outPos = runCatching { player.currentPosition }.getOrDefault(-1L)
                                 val inPos = runCatching { standbyPlayer.currentPosition }.getOrDefault(-1L)
+                                val outVol = activeDeck.player.volume
+                                val inVol = transitionDeck?.player?.volume ?: 0f
+                                val outDuck = activeDeck.djFilter.gain
+                                val inDuck = transitionDeck?.djFilter?.gain ?: 1.0
+                                val sum = outVol * outDuck + inVol * inDuck
                                 Timber.tag("MusicServiceCrossfade").d(
-                                    "Sync p=${"%.2f".format(crossfadeProgress)} out=$outPos in=$inPos delta=${inPos - outPos}",
+                                    "Sync p=${"%.2f".format(crossfadeProgress)} out=$outPos in=$inPos delta=${inPos - outPos}" +
+                                        " outVol=${"%.3f".format(outVol)} inVol=${"%.3f".format(inVol)}" +
+                                        " outDuck=${"%.3f".format(outDuck)} inDuck=${"%.3f".format(inDuck)}" +
+                                        " sum=${"%.3f".format(sum)}",
                                 )
                             }
                         } else {
