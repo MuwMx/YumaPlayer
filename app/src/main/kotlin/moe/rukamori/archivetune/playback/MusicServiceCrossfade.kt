@@ -478,8 +478,17 @@ internal fun MusicService.startCrossfade(
                 } else if (standbyPlayer.currentPosition > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
                     standbyPlayer.seekTo(target.index, 0L)
                 }
+                val outDurationMs = runCatching { player.duration }.getOrDefault(-1L)
+                val outPositionMs = runCatching { player.currentPosition }.getOrDefault(-1L)
+                val outRemainingMs = if (outDurationMs > 0L && outPositionMs >= 0L) {
+                    outDurationMs - outPositionMs
+                } else {
+                    -1L
+                }
                 Timber.tag("MusicServiceCrossfade").d(
                     "Fade start: foldMs=$elapsedBeforeStartMs cueMs=$effectiveCueMs" +
+                        " outPos=$outPositionMs outDuration=$outDurationMs outRemaining=$outRemainingMs" +
+                        " pauseAtEnd=${localPlayer.pauseAtEndOfMediaItems} plannedMs=$durationMs" +
                         " outgoing=${player.audioTrackDescription()} incoming=${standbyPlayer.audioTrackDescription()}",
                 )
                 if (crossfadePlaybackRequested) {
@@ -494,8 +503,16 @@ internal fun MusicService.startCrossfade(
                 var stalledTotalMs = 0L
                 var maxTickGapMs = 0L
                 var lastSyncLogMs = 0L
+                var outgoingEndedLogged = false
                 val fadeStartedMs = nowMs
                 while (isActive && elapsedMs < durationMs) {
+                    if (!outgoingEndedLogged && player.playbackState == Player.STATE_ENDED) {
+                        outgoingEndedLogged = true
+                        Timber.tag("MusicServiceCrossfade").w(
+                            "Outgoing reached STATE_ENDED mid-fade at p=${"%.2f".format(crossfadeProgress)} " +
+                                "elapsedMs=$elapsedMs of $durationMs volume=${player.volume}",
+                        )
+                    }
                     if (player.currentMediaItem?.mediaId != outgoingMediaId) {
                         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
                         return@launch
