@@ -106,13 +106,19 @@ class ExoDeckController(
         val incoming = transitionDeck ?: return
         val outgoing = activeDeck
 
+        // Unity is the ceiling during a crossfade, not the normalisation bound: two decks sound at
+        // once, so anything above unity on a single deck already overflows the pair. The reference
+        // clamps to 1f here and keeps its normalisation off by default.
         outgoing.isIncoming = false
         outgoing.baseVolume = service.crossfadeBaseVolume
-        outgoing.maxGainFactor = service.maxSafeGainFactor
+        outgoing.maxGainFactor = 1f
 
         incoming.isIncoming = true
         incoming.baseVolume = service.crossfadeIncomingBaseVolume
-        incoming.maxGainFactor = service.maxSafeGainFactor
+        incoming.maxGainFactor = 1f
+
+        outgoing.partner = incoming
+        incoming.partner = outgoing
 
         outgoing.player.pauseAtEndOfMediaItems = true
 

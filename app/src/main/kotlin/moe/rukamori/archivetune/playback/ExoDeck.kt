@@ -14,6 +14,7 @@ import timber.log.Timber
 class ExoDeck(
     override val player: ExoPlayer,
     override val djFilter: DjFilterAudioProcessor,
+    var partner: ExoDeck? = null,
     var isIncoming: Boolean = false,
     var baseVolume: Float = 1f,
     var maxGainFactor: Float = 1f,
@@ -32,7 +33,16 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         } else {
-            player.volume = (baseVolume * outgoingStageGain(clamped)).coerceIn(0f, maxGainFactor)
+            // Both decks are audible during the overlap, so their gains must sum to at most unity or
+            // the mix clips on the loudest transients. The reference bounds this with a fixed -6 dB
+            // mid duck, but that is sized for its equal-power curves, where the sum peaks at 1.414.
+            // Our staged curves overlap more broadly and reach 1.33, so the outgoing deck is capped by
+            // whatever the incoming deck has already taken.
+            val partnerGain = (partner?.baseVolume ?: 0f) * incomingStageGain(clamped)
+            val sumCap = (1f - partnerGain).coerceIn(0f, 1f)
+            player.volume = (baseVolume * outgoingStageGain(clamped))
+                .coerceIn(0f, maxGainFactor)
+                .coerceAtMost(sumCap)
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
                 djFilter.bassGainDb = outgoingBassGainDb(clamped)
