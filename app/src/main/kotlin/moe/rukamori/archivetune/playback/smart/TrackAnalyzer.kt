@@ -337,8 +337,6 @@ object TrackAnalyzer : AnalysisStore {
                                 .getOrDefault(AudioDecoder.TARGET_SAMPLE_RATE)
                             val duration = if (durationSeconds != null && durationSeconds > 0.0) {
                                 durationSeconds
-                            } else if (targetSampleRate > 0.0) {
-                                headSamples.size / targetSampleRate
                             } else {
                                 0.0
                             }
@@ -385,23 +383,39 @@ object TrackAnalyzer : AnalysisStore {
                                 decodeFullSamples = decodeFullSamples,
                                 trackId = trackId,
                             )
+
+                            val isFullDurationKnown = durationSeconds != null && durationSeconds > 45.0
+
+                            val sanitizedResult = if (!isFullDurationKnown) {
+                                cliffedResult.copy(
+                                    mixOutTime = 0.0,
+                                    contentEndTime = 0.0 ,
+                                    rawJson = ""
+                                )
+                            } else {
+                                cliffedResult
+                            }
+
                             Timber.tag("TrackAnalyzer").d(
                                 "Analysed $trackId in ${System.currentTimeMillis() - startedMs}ms " +
-                                    "bpm=${cliffedResult.bpm} mixOut=${cliffedResult.mixOutTime}",
+                                        "bpm=${sanitizedResult.bpm} mixOut=${sanitizedResult.mixOutTime}",
                             )
-                            memoryCache[trackId] = cliffedResult
-                            _analysisEvents.tryEmit(trackId to cliffedResult)
-                            logCues(trackId, cliffedResult)
-                            if (durationSeconds != null && durationSeconds > 45.0) {
+
+                            if (isFullDurationKnown) {
+                                memoryCache[trackId] = sanitizedResult
                                 analyzerScope.launch(Dispatchers.IO) {
                                     runCatching {
-                                        database?.trackAnalysisDao()?.upsert(fromResult(trackId, cliffedResult))
+                                        database?.trackAnalysisDao()?.upsert(fromResult(trackId, sanitizedResult))
                                     }
                                 }
                             } else {
-                                Timber.tag("TrackAnalyzer").w("Not saving cues to Room for $trackId: duration is unknown or too short ($durationSeconds)")
+                                Timber.tag("TrackAnalyzer").w("Not saving cues to Room or permanent cache for $trackId: duration is unknown or too short ($durationSeconds)")
                             }
-                            cliffedResult
+
+                            _analysisEvents.tryEmit(trackId to sanitizedResult)
+                            logCues(trackId, sanitizedResult)
+
+                            sanitizedResult
                         }
                     } catch (e: Exception) {
                         Timber.tag("TrackAnalyzer").e(e, "Analysis crashed trackId=$trackId source=$source")

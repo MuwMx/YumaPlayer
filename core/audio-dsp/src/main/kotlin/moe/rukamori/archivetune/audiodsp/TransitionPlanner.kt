@@ -6,16 +6,9 @@ import org.json.JSONObject
 
 object TransitionPlanner {
     private const val MAX_STRETCH_DEVIATION = 0.04f
-
-    const val AUTO_MIN_SECONDS = CrossfadeConstants.STANDARD_MIN_S
     const val AUTO_FAST_TRACK_MIN_SECONDS = 6.0
     const val AUTO_MAX_SECONDS = CrossfadeConstants.STANDARD_MAX_S
     const val AUTO_FALLBACK_SECONDS = 8.0
-
-    const val SOFT_MIN_SECONDS = CrossfadeConstants.SOFT_MIN_S
-    const val SOFT_MAX_SECONDS = CrossfadeConstants.SOFT_MAX_S
-    const val CLUB_MIN_SECONDS = CrossfadeConstants.CLUB_MIN_S
-    const val CLUB_MAX_SECONDS = CrossfadeConstants.CLUB_MAX_S
 
     const val FAST_TRACK_BPM_THRESHOLD = 140.0
     const val OCTAVE_UPPER_BOUND = 1.5
