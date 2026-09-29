@@ -52,6 +52,7 @@ import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -190,17 +191,22 @@ fun QueueScreen(
                 modifier =
                     modifier
                         .fillMaxSize()
-                        // No Offscreen layer here: the edge fade is drawn over the
-                        // content with SrcOver, so the list never allocates an FBO.
+                        .graphicsLayer {
+                            compositingStrategy = if (queueFractionProvider() > 0.05f) {
+                                CompositingStrategy.Offscreen
+                            } else {
+                                CompositingStrategy.Auto
+                            }
+                        }
                         .drawWithCache {
                             val fadeHeightPx = fadeHeight.toPx()
-                            val topFade = Brush.verticalGradient(
-                                colors = listOf(Color.Black, Color.Transparent),
+                            val topMask = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
                                 startY = 0f,
                                 endY = fadeHeightPx,
                             )
-                            val bottomFade = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black),
+                            val bottomMask = Brush.verticalGradient(
+                                colors = listOf(Color.Black, Color.Transparent),
                                 startY = (size.height - fadeHeightPx).coerceAtLeast(0f),
                                 endY = size.height,
                             )
@@ -209,8 +215,8 @@ fun QueueScreen(
                                 drawContent()
                                 if (queueFractionProvider() <= 0f) return@onDrawWithContent
                                 if (size.height > 0f && fadeHeightPx > 0f) {
-                                    drawRect(brush = topFade, alpha = 0.85f)
-                                    drawRect(brush = bottomFade, alpha = 0.85f)
+                                    drawRect(brush = topMask, blendMode = BlendMode.DstIn)
+                                    drawRect(brush = bottomMask, blendMode = BlendMode.DstIn)
                                 }
                             }
                         },
