@@ -109,10 +109,13 @@ internal fun MusicService.scheduleCrossfade() {
     }
 
     val currentGeneration = bumpCrossfadePlanGeneration()
-    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade: enabled=$crossfadeEnabled, durationMs=$crossfadeDurationMs, automix=$automixEnabled")
     crossfadeTriggerJob?.cancel()
     crossfadeTriggerJob = null
-    activeCrossfadeScheduledKey = null
+    activeCrossfadeScheduledKey = if (earlyTarget != null && earlyMediaId != null) {
+        earlyMediaId to earlyTarget
+    } else {
+        null
+    }
 
     val target = resolveCrossfadeTarget()
     val duration = player.duration
@@ -122,8 +125,10 @@ internal fun MusicService.scheduleCrossfade() {
         localPlayer.pauseAtEndOfMediaItems = false
         releaseSecondaryCrossfadePlayer()
         activeAutomixPlan = null
+        activeCrossfadeScheduledKey = null
         return
     }
+    Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade: enabled=$crossfadeEnabled, durationMs=$crossfadeDurationMs, automix=$automixEnabled")
     Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade armed for target: ${target.mediaId} at index ${target.index}")
 
     val currentMediaId = player.currentMediaItem?.mediaId ?: return

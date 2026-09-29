@@ -22,11 +22,6 @@ class ExoDeck(
 
     override fun applyAutomation(progress: Float, plan: AutomixPlan) {
         val clamped = progress.coerceIn(0f, 1f)
-        val quarter = (clamped * 4f).toInt().coerceIn(0, 4)
-        if (plan.enableBassSwap && quarter != lastLoggedQuarter) {
-            lastLoggedQuarter = quarter
-            Timber.tag("DjFilter").d("automation incoming=$isIncoming p=${"%.2f".format(clamped)} cutoff=${"%.0f".format(djFilter.lowPassCutoffHz)} bass=${"%.1f".format(djFilter.bassGainDb)}")
-        }
         if (isIncoming) {
             player.volume = (baseVolume * RISE(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
@@ -43,6 +38,16 @@ class ExoDeck(
             } else {
                 djFilter.clearAutomation()
             }
+        }
+        val quarter = (clamped * 4f).toInt().coerceIn(0, 4)
+        if (plan.enableBassSwap && quarter != lastLoggedQuarter) {
+            lastLoggedQuarter = quarter
+            Timber.tag("DjFilter").d(
+                "automation incoming=$isIncoming p=${"%.2f".format(clamped)}" +
+                    " lp=${"%.0f".format(djFilter.lowPassCutoffHz)}" +
+                    " hp=${"%.0f".format(djFilter.highPassHz)}" +
+                    " bass=${"%.1f".format(djFilter.bassGainDb)}",
+            )
         }
     }
 
