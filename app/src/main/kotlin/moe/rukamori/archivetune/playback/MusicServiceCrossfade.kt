@@ -517,6 +517,11 @@ internal fun MusicService.startCrossfade(
                             crossfadeProgress = fadeProgress(elapsedMs, elapsedBeforeStartMs, durationMs)
                             activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
                             transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
+                            val outPos = runCatching { player.currentPosition }.getOrDefault(-1L)
+                            val inPos = runCatching { standbyPlayer.currentPosition }.getOrDefault(-1L)
+                            Timber.tag("MusicServiceCrossfade").d(
+                                "Sync p=${"%.2f".format(crossfadeProgress)} out=$outPos in=$inPos delta=${inPos - outPos}",
+                            )
                         } else {
                             val stallStart = bufferingStartMs ?: nowMs.also {
                                 bufferingStartMs = it
