@@ -9,11 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -36,8 +31,7 @@ import coil3.compose.AsyncImage
 import coil3.request.allowHardware
 
 val MiniPlayerHeight = 64.dp
-private val MiniArtworkSize = 42.dp
-private val MiniProgressRingSize = 48.dp
+
 @Composable
 internal fun MiniPlayerContentInternal(
     state: PlayerUiState,
@@ -74,105 +68,78 @@ internal fun MiniPlayerContentInternal(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // ==========================================
-        // 1. ЛЕВАЯ ЧАСТЬ: Обложка
-        // ==========================================
         val context = androidx.compose.ui.platform.LocalContext.current
-        val trackProgress = remember(state.durationMs) {
-            {
-                val duration = state.durationMs
-                if (duration <= 0L) 0f
-                else (progressMsProvider().toFloat() / duration).coerceIn(0f, 1f)
-            }
-        }
 
-        // Progress ring lives outside the spinning layer: an arc that rotated with
-        // the disc would be unreadable, and drawing it separately keeps the arc off
-        // the per-frame rotation path.
         Box(
             modifier = Modifier
-                .size(MiniProgressRingSize)
+                .size(52.dp)
                 .graphicsLayer {
                     val fraction = expansionFractionProvider()
-                    scaleX = lerp(1.07f, 1f, fraction)
-                    scaleY = lerp(1.07f, 1f, fraction)
-                }
-                .drawBehind {
-                    val stroke = 2.dp.toPx()
-                    val inset = stroke / 2f
-                    val arcSize = Size(size.width - stroke, size.height - stroke)
-                    val topLeft = Offset(inset, inset)
-                    drawArc(
-                        color = Color.White.copy(alpha = 0.22f),
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(width = stroke, cap = StrokeCap.Round)
-                    )
-                    val sweep = trackProgress() * 360f
-                    if (sweep > 0f) {
-                        drawArc(
-                            color = Color.White.copy(alpha = 0.92f),
-                            startAngle = -90f,
-                            sweepAngle = sweep,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = Stroke(width = stroke, cap = StrokeCap.Round)
-                        )
-                    }
+                    val s = lerp(1.07f, 1f, fraction)
+                    scaleX = s
+                    scaleY = s
                 },
             contentAlignment = Alignment.Center
         ) {
-            val albumArtModifier = Modifier
-                .size(MiniArtworkSize)
-                .graphicsLayer { rotationZ = rotation.value }
-                .clip(CircleShape)
+            androidx.compose.material3.CircularWavyProgressIndicator(
+                progress = {
+                    val duration = state.durationMs
+                    if (duration > 0L) {
+                        (progressMsProvider().toFloat() / duration).coerceIn(0f, 1f)
+                    } else 0f
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .aspectRatio(1f),
+                trackColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            )
 
-            androidx.compose.animation.Crossfade(
-                targetState = state.coverUrl.takeIf { it.isNotEmpty() },
-                animationSpec = tween(500),
-                label = "MiniCoverCrossfade"
-            ) { targetUrl ->
-                if (targetUrl == null) {
-                    Image(
-                        painter = painterResource(id = state.placeholderResId),
-                        contentDescription = stringResource(R.string.mini_album_art),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    val request = remember(targetUrl) {
-                        coil3.request.ImageRequest.Builder(context)
-                            .data(targetUrl)
-                            .size(96)
-                            .allowHardware(true)
-                            .apply { memoryCacheKey("mini:$targetUrl") }
-                            .build()
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .aspectRatio(1f)
+                    .graphicsLayer { rotationZ = rotation.value }
+                    .clip(CircleShape)
+            ) {
+                androidx.compose.animation.Crossfade(
+                    targetState = state.coverUrl.takeIf { it.isNotEmpty() },
+                    animationSpec = tween(500),
+                    label = "MiniCoverCrossfade"
+                ) { targetUrl ->
+                    if (targetUrl == null) {
+                        Image(
+                            painter = painterResource(id = state.placeholderResId),
+                            contentDescription = stringResource(R.string.mini_album_art),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        val request = remember(targetUrl) {
+                            coil3.request.ImageRequest.Builder(context)
+                                .data(targetUrl)
+                                .size(96)
+                                .allowHardware(true)
+                                .apply { memoryCacheKey("mini:$targetUrl") }
+                                .build()
+                        }
+                        AsyncImage(
+                            model = request,
+                            contentDescription = stringResource(R.string.mini_album_art),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            error = painterResource(id = state.placeholderResId)
+                        )
                     }
-                    AsyncImage(
-                        model = request,
-                        contentDescription = stringResource(R.string.mini_album_art),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        error = painterResource(id = state.placeholderResId)
-                    )
                 }
             }
         }
 
-        // ==========================================
-        // 2. ЦЕНТРАЛЬНАЯ ЧАСТЬ: Бегущий текст по канонам SRP
-        // ==========================================
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 14.dp, end = 8.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            // Название трека
             MarqueeText(
                 text = state.title,
                 style = TextStyle(
@@ -186,7 +153,6 @@ internal fun MiniPlayerContentInternal(
                 isVisible = isVisible
             )
 
-            // Исполнитель
             MarqueeText(
                 text = state.artist,
                 style = TextStyle(
@@ -200,9 +166,6 @@ internal fun MiniPlayerContentInternal(
             )
         }
 
-        // ==========================================
-        // 3. ПРАВАЯ ЧАСТЬ: Кнопки управления
-        // ==========================================
         MiniPlayerButtons(
             state = state,
             onAction = onAction
