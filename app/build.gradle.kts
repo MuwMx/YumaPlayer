@@ -56,8 +56,10 @@ android {
         versionCode = 5
         versionName = "1.2.0-Beta.4"
 
+        manifestPlaceholders["appName"] = "@string/app_name"
+
         val nightlyVersionName = findProperty("nightlyVersionName")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
-        val canaryDate = nightlyVersionName?.filter { it.isDigit() }?.takeIf { it.isNotEmpty() }
+        val canaryDate = nightlyVersionName?.replace(Regex("[^0-9]"), "")?.takeIf { it.isNotEmpty() }
         if (nightlyVersionName != null) {
             versionName = nightlyVersionName
             val dateCode = (if (canaryDate != null && canaryDate.length > 8) canaryDate.take(8) else canaryDate)
@@ -196,9 +198,9 @@ android {
         release {
             if (isCanary) {
                 applicationIdSuffix = ".canary"
-            }
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
+                manifestPlaceholders["appName"] = "Yuma Canary"
+            } else {
+                manifestPlaceholders["appName"] = "@string/app_name"
             }
             isMinifyEnabled = true
             isShrinkResources = true

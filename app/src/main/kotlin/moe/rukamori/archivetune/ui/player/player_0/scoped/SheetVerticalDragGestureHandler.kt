@@ -96,7 +96,6 @@ internal class SheetVerticalDragGestureHandler(
 
     fun onVerticalDrag(
         uptimeMillis: Long,
-        position: Offset,
         dragAmount: Float
     ) {
         accumulatedDragYSinceStart += dragAmount
@@ -112,44 +111,38 @@ internal class SheetVerticalDragGestureHandler(
         val otherFractionAnimatable = if (activeDragSheet == ActiveDragSheet.LYRICS) queueFraction else lyricsFraction
         val currentTargetFraction = targetFractionAnimatable.value
 
-        if (dragAmount < 0) {
-            if (currentY > expandedY) {
-                val dragFrame = computeSheetVerticalDragFrame(
-                    currentTranslationY = currentY,
-                    dragAmount = dragAmount,
-                    expandedY = expandedY,
-                    collapsedY = collapsedY,
-                    miniHeightPx = miniHeightPx,
-                    initialFractionOnDragStart = initialFractionOnDragStart,
-                    initialYOnDragStart = initialYOnDragStart
-                )
-                if (dragFrame.translationY < expandedY) {
-                    val overshootPx = expandedY - dragFrame.translationY
-                    val delta = overshootPx / layerTwoDistance
-                    val newFraction = (currentTargetFraction + delta).coerceIn(0f, 1f)
-                    dragSnapJob?.cancel()
-                    dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+        dragSnapJob?.cancel()
+        dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (dragAmount < 0) {
+                if (currentY > expandedY) {
+                    val dragFrame = computeSheetVerticalDragFrame(
+                        currentTranslationY = currentY,
+                        dragAmount = dragAmount,
+                        expandedY = expandedY,
+                        collapsedY = collapsedY,
+                        miniHeightPx = miniHeightPx,
+                        initialFractionOnDragStart = initialFractionOnDragStart,
+                        initialYOnDragStart = initialYOnDragStart
+                    )
+                    if (dragFrame.translationY < expandedY) {
+                        val overshootPx = expandedY - dragFrame.translationY
+                        val delta = overshootPx / layerTwoDistance
+                        val newFraction = (currentTargetFraction + delta).coerceIn(0f, 1f)
                         sheetMotionController.snapTo(expandedY, 1f)
                         targetFractionAnimatable.snapTo(newFraction)
                         if (otherFractionAnimatable.value > 0f) {
                             otherFractionAnimatable.snapTo(0f)
                         }
-                    }
-                } else {
-                    val safeTranslationY = dragFrame.translationY.coerceAtLeast(expandedY)
-                    val safeExpansionFraction = dragFrame.expansionFraction.coerceIn(0f, 1f)
-                    dragSnapJob?.cancel()
-                    dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    } else {
+                        val safeTranslationY = dragFrame.translationY.coerceAtLeast(expandedY)
+                        val safeExpansionFraction = dragFrame.expansionFraction.coerceIn(0f, 1f)
                         sheetMotionController.snapTo(safeTranslationY, safeExpansionFraction)
                         if (lyricsFraction.value > 0f) lyricsFraction.snapTo(0f)
                         if (queueFraction.value > 0f) queueFraction.snapTo(0f)
                     }
-                }
-            } else {
-                val delta = -dragAmount / layerTwoDistance
-                val newFraction = (currentTargetFraction + delta).coerceIn(0f, 1f)
-                dragSnapJob?.cancel()
-                dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                } else {
+                    val delta = -dragAmount / layerTwoDistance
+                    val newFraction = (currentTargetFraction + delta).coerceIn(0f, 1f)
                     if (currentY != expandedY || playerContentExpansionFraction.value != 1f) {
                         sheetMotionController.snapTo(expandedY, 1f)
                     }
@@ -158,14 +151,11 @@ internal class SheetVerticalDragGestureHandler(
                         otherFractionAnimatable.snapTo(0f)
                     }
                 }
-            }
-        } else {
-            if (currentTargetFraction > 0f) {
-                val delta = dragAmount / layerTwoDistance
-                if (currentTargetFraction >= delta) {
-                    val newFraction = (currentTargetFraction - delta).coerceIn(0f, 1f)
-                    dragSnapJob?.cancel()
-                    dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            } else {
+                if (currentTargetFraction > 0f) {
+                    val delta = dragAmount / layerTwoDistance
+                    if (currentTargetFraction >= delta) {
+                        val newFraction = (currentTargetFraction - delta).coerceIn(0f, 1f)
                         if (currentY != expandedY || playerContentExpansionFraction.value != 1f) {
                             sheetMotionController.snapTo(expandedY, 1f)
                         }
@@ -173,44 +163,25 @@ internal class SheetVerticalDragGestureHandler(
                         if (otherFractionAnimatable.value > 0f) {
                             otherFractionAnimatable.snapTo(0f)
                         }
-                    }
-                } else {
-                    val consumedPx = currentTargetFraction * layerTwoDistance
-                    val remainingDrag = dragAmount - consumedPx
-                    val dragFrame = computeSheetVerticalDragFrame(
-                        currentTranslationY = expandedY,
-                        dragAmount = remainingDrag,
-                        expandedY = expandedY,
-                        collapsedY = collapsedY,
-                        miniHeightPx = miniHeightPx,
-                        initialFractionOnDragStart = 1f,
-                        initialYOnDragStart = expandedY
-                    )
-                    val safeTranslationY = dragFrame.translationY.coerceAtLeast(expandedY)
-                    val safeExpansionFraction = dragFrame.expansionFraction.coerceIn(0f, 1f)
-                    dragSnapJob?.cancel()
-                    dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    } else {
                         targetFractionAnimatable.snapTo(0f)
                         if (otherFractionAnimatable.value > 0f) {
                             otherFractionAnimatable.snapTo(0f)
                         }
-                        sheetMotionController.snapTo(safeTranslationY, safeExpansionFraction)
+                        sheetMotionController.snapTo(expandedY, 1f)
                     }
-                }
-            } else {
-                val dragFrame = computeSheetVerticalDragFrame(
-                    currentTranslationY = currentY,
-                    dragAmount = dragAmount,
-                    expandedY = expandedY,
-                    collapsedY = collapsedY,
-                    miniHeightPx = miniHeightPx,
-                    initialFractionOnDragStart = initialFractionOnDragStart,
-                    initialYOnDragStart = initialYOnDragStart
-                )
-                val safeTranslationY = dragFrame.translationY.coerceAtLeast(expandedY)
-                val safeExpansionFraction = dragFrame.expansionFraction.coerceIn(0f, 1f)
-                dragSnapJob?.cancel()
-                dragSnapJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                } else {
+                    val dragFrame = computeSheetVerticalDragFrame(
+                        currentTranslationY = currentY,
+                        dragAmount = dragAmount,
+                        expandedY = expandedY,
+                        collapsedY = collapsedY,
+                        miniHeightPx = miniHeightPx,
+                        initialFractionOnDragStart = initialFractionOnDragStart,
+                        initialYOnDragStart = initialYOnDragStart
+                    )
+                    val safeTranslationY = dragFrame.translationY.coerceAtLeast(expandedY)
+                    val safeExpansionFraction = dragFrame.expansionFraction.coerceIn(0f, 1f)
                     if (lyricsFraction.value > 0f) lyricsFraction.snapTo(0f)
                     if (queueFraction.value > 0f) queueFraction.snapTo(0f)
                     sheetMotionController.snapTo(safeTranslationY, safeExpansionFraction)
@@ -450,7 +421,6 @@ internal class SheetVerticalDragGestureHandler(
                     accumulatedListDrag += available.y
                     onVerticalDrag(
                         uptimeMillis = System.currentTimeMillis(),
-                        position = Offset.Zero,
                         dragAmount = available.y
                     )
                     return available
@@ -467,7 +437,6 @@ internal class SheetVerticalDragGestureHandler(
                     accumulatedListDrag += available.y
                     onVerticalDrag(
                         uptimeMillis = System.currentTimeMillis(),
-                        position = Offset.Zero,
                         dragAmount = available.y
                     )
                     return Offset(0f, available.y)
@@ -511,7 +480,6 @@ internal class SheetVerticalDragGestureHandler(
                     accumulatedListDrag += available.y
                     onVerticalDrag(
                         uptimeMillis = System.currentTimeMillis(),
-                        position = Offset.Zero,
                         dragAmount = available.y
                     )
                     return Offset(0f, available.y)
@@ -548,7 +516,6 @@ internal fun Modifier.playerSheetVerticalDragGesture(
                 change.consume()
                 handler.onVerticalDrag(
                     uptimeMillis = change.uptimeMillis,
-                    position = change.position,
                     dragAmount = dragAmount
                 )
             },

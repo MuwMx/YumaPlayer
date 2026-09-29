@@ -72,13 +72,6 @@ internal class SheetMotionController(
         }
     }
 
-    suspend fun snapCollapsed(collapsedY: Float) {
-        snapTo(
-            translationYValue = collapsedY,
-            expansionFractionValue = 0f
-        )
-    }
-
     suspend fun syncToExpansion(collapsedY: Float) {
         val adjustedY = collapsedY + (expandedY - collapsedY) * expansionFraction.value
         if (translationY.value == adjustedY && !translationY.isRunning) return

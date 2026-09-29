@@ -169,9 +169,8 @@ fun FullPlayer(
                         .fillMaxSize()
                         .padding(horizontal = 22.dp)
                         .graphicsLayer {
-                            alpha = immersiveCoverAlpha
-                            scaleX = immersiveCoverScale
-                            scaleY = immersiveCoverScale
+                            val isCoverVisible = !state.isImmersiveEnabled && !isOverlayVisible
+                            alpha = if (isCoverVisible) 1f else 0f
                         }
                 ) {
                     PlayerCoverCard(
