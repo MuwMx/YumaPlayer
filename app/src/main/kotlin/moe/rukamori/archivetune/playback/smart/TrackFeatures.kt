@@ -11,9 +11,13 @@ object TrackFeatures {
         }
     }
 
+    @JvmStatic
     private external fun nativeAnalyze(samples: FloatArray, sampleRate: Double, duration: Double): String
+    @JvmStatic
     private external fun nativeEnergyCliff(samples: FloatArray, sampleRate: Double, duration: Double): Double
+    @JvmStatic
     private external fun nativeSampleRate(): Double
+    @JvmStatic
     private external fun nativeResample(input: FloatArray, inRate: Double, outRate: Double): FloatArray
 
     fun sampleRate(): Double = nativeSampleRate()

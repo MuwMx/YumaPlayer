@@ -63,9 +63,11 @@ class ExoDeck(
         if (plan.enableBassSwap && quarter != lastLoggedQuarter) {
             lastLoggedQuarter = quarter
             Timber.tag("DjFilter").d(
-                "automation incoming=$isIncoming p=${"%.2f".format(clamped)}" +
-                    " lp=${"%.0f".format(djFilter.lowPassCutoffHz)}" +
-                    " bass=${"%.1f".format(djFilter.bassGainDb)}",
+                "automation incoming=%b p=%.2f lp=%.0f bass=%.1f",
+                isIncoming,
+                clamped,
+                djFilter.lowPassCutoffHz,
+                djFilter.bassGainDb
             )
         }
     }
