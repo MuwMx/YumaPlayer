@@ -79,11 +79,13 @@ internal fun resolveCrossfadeTriggerAt(
     if (automixEnabled && planTriggerAtMs != null) {
         return planTriggerAtMs
     }
-    val contentEndMs = outgoingAnalysis?.contentEndTime
-        ?.takeIf { it > 0.0 }
-        ?.let { (it * 1000.0).roundToLong() }
-        ?.coerceAtMost(durationMs)
-        ?: durationMs
+    val contentEndMs = TransitionPlanner.resolveTrustedContentEndMs(
+        reportedContentEndMs = outgoingAnalysis?.contentEndTime
+            ?.takeIf { it > 0.0 }
+            ?.let { (it * 1000.0).roundToLong() }
+            ?: 0L,
+        currentDurationMs = durationMs,
+    )
     val mixOutMs = outgoingAnalysis?.mixOutTime
         ?.takeIf { it > 0.0 }
         ?.let { (it * 1000.0).roundToLong() }

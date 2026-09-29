@@ -37,6 +37,11 @@ object TransitionPlanner {
     const val OUTRO_MIN_TRACK_FRACTION = 0.65
     const val OUTRO_MAX_LEAD_MS = 30_000L
 
+    // The analyzer infers duration from the decoded head window when the real one is unknown, so
+    // it can report that slice as the whole track. A content end this much below the real duration
+    // is that artefact, not a genuine outro.
+    const val ANALYSIS_DURATION_TRUST_RATIO = 0.8
+
     private const val FALLBACK_LEAD_BEAT_MULTIPLIER = 2
 
     fun minSecondsFor(aggressiveness: String): Double =
@@ -157,6 +162,15 @@ object TransitionPlanner {
         return if (candidateMs >= earliest) candidateMs else null
     }
 
+    fun resolveTrustedContentEndMs(reportedContentEndMs: Long, currentDurationMs: Long): Long {
+        if (currentDurationMs <= 0L) return maxOf(0L, reportedContentEndMs)
+        if (reportedContentEndMs <= 0L) return currentDurationMs
+        if (reportedContentEndMs < currentDurationMs * ANALYSIS_DURATION_TRUST_RATIO) {
+            return currentDurationMs
+        }
+        return reportedContentEndMs.coerceAtMost(currentDurationMs)
+    }
+
     fun planTransition(
         currentDurationMs: Long,
         currentBpm: Double? = null,
@@ -211,11 +225,12 @@ object TransitionPlanner {
             0L
         }
 
-        val contentEndMs = if (outgoingAnalysis.contentEndTime > 0.0) {
+        val reportedContentEndMs = if (outgoingAnalysis.contentEndTime > 0.0) {
             (outgoingAnalysis.contentEndTime * MS_PER_SECOND).roundToLong()
         } else {
             currentDurationMs
-        }.coerceIn(0L, currentDurationMs)
+        }
+        val contentEndMs = resolveTrustedContentEndMs(reportedContentEndMs, currentDurationMs)
 
         val rawMixOutMs = if (outgoingAnalysis.mixOutTime > 0.0) {
             (outgoingAnalysis.mixOutTime * MS_PER_SECOND).roundToLong()

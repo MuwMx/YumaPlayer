@@ -305,4 +305,53 @@ class TransitionPlannerTest {
         assertTrue("remaining would be negative: $triggerAt - 90000", triggerAt >= 90_000L)
         assertTrue(plan.durationMs > 0L)
     }
+    @Test
+    fun resolveTrustedContentEndMs_distrustsAHeadWindowReportedAsTheWholeTrack() {
+        val durationMs = 93_901L
+        val floor = (durationMs * 0.8).toLong()
+
+        assertEquals(
+            "a 30s head window must not pass as a 94s track",
+            durationMs,
+            TransitionPlanner.resolveTrustedContentEndMs(30_000L, durationMs),
+        )
+        assertEquals(
+            "at the 80% floor the reported end is no longer trusted",
+            durationMs,
+            TransitionPlanner.resolveTrustedContentEndMs(floor, durationMs),
+        )
+        assertEquals(
+            "above the floor it is trusted",
+            floor + 1L,
+            TransitionPlanner.resolveTrustedContentEndMs(floor + 1L, durationMs),
+        )
+    }
+
+    @Test
+    fun resolveTrustedContentEndMs_keepsACloseEnoughContentEnd() {
+        val durationMs = 100_000L
+
+        assertEquals(95_000L, TransitionPlanner.resolveTrustedContentEndMs(95_000L, durationMs))
+        assertEquals(80_000L, TransitionPlanner.resolveTrustedContentEndMs(80_000L, durationMs))
+        assertEquals(durationMs, TransitionPlanner.resolveTrustedContentEndMs(120_000L, durationMs))
+        assertEquals(durationMs, TransitionPlanner.resolveTrustedContentEndMs(0L, durationMs))
+    }
+
+    @Test
+    fun planSmartTransition_headWindowContentEndDoesNotTruncateTheTrack() {
+        val outgoing = TrackAnalysisResult(bpm = 142.2, mixOutTime = 30.0, contentEndTime = 30.0)
+
+        val plan = TransitionPlanner.planSmartTransition(
+            outgoingAnalysis = outgoing,
+            incomingAnalysis = null,
+            currentDurationMs = 93_901L,
+        )
+
+        val triggerAt = plan.triggerAtMs ?: error("plan must carry a trigger")
+        assertTrue(
+            "fade must not start inside the decoded head window, was \$triggerAt",
+            triggerAt >= 55_000L,
+        )
+        assertTrue("fade must fit inside the real track", plan.durationMs <= 93_901L - triggerAt)
+    }
 }
