@@ -7,6 +7,7 @@ import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.log10
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import org.junit.Assert.assertEquals
@@ -31,17 +32,30 @@ class DjFilterAudioProcessorTest {
     }
 
     @Test
-    fun lowPass_isFourthOrderAndMinusThreeDbAtCutoff() {
+    fun lowPass_isSecondOrderButterworth() {
         val processor = configuredProcessor()
-        processor.lowPassCutoffHz = probeHz
+        val cutoff = 1000.0
+        processor.lowPassCutoffHz = cutoff
+        val passband = amplitude(processor, 40.0)
+        // |H| for an nth-order Butterworth is 1/sqrt(1 + (f/fc)^(2n)); n = 2 here.
+        for ((octaves, expected) in listOf(0.0 to -3.01, 1.0 to -12.30, 2.0 to -24.08)) {
+            val db = 20.0 * log10(amplitude(processor, cutoff * 2.0.pow(octaves.toInt())) / passband)
+            assertEquals("butterworth mismatch at +$octaves octaves", expected, db, 0.8)
+        }
+    }
 
-        assertEquals(0.707, amplitude(processor, probeHz), 0.02)
-        val oneOctaveUp = amplitude(processor, 2_000.0)
-        val twoOctavesUp = amplitude(processor, 4_000.0)
-        val firstSlope = -20.0 * log10(oneOctaveUp / 0.707)
-        val secondSlope = -20.0 * log10(twoOctavesUp / oneOctaveUp)
-        assertTrue("expected ~24 dB/octave, got $firstSlope", firstSlope in 20.0..28.0)
-        assertTrue("expected ~24 dB/octave, got $secondSlope", secondSlope in 20.0..28.0)
+    @Test
+    fun lowPass_neverRisesAboveItsPassbandAcrossTheSweep() {
+        val processor = configuredProcessor()
+        processor.lowPassCutoffHz = 2000.0
+        val passband = amplitude(processor, 40.0)
+        var previous = Double.MAX_VALUE
+        for (hz in 40..10_000 step 40) {
+            val level = amplitude(processor, hz.toDouble())
+            assertTrue("response rose at $hz Hz: $level > $previous", level <= previous + 1e-9)
+            assertTrue("response exceeded the passband at $hz Hz", level <= passband + 1e-6)
+            previous = level
+        }
     }
 
     @Test

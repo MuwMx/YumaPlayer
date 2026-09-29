@@ -8,9 +8,7 @@ import org.junit.Test
 import moe.rukamori.archivetune.audiodsp.BASS_SWAP_WINDOW_END
 import moe.rukamori.archivetune.audiodsp.BASS_SWAP_WINDOW_START
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
-import moe.rukamori.archivetune.audiodsp.ENTRY_HIGH_PASS_HZ
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
-import moe.rukamori.archivetune.audiodsp.incomingHighPassHz
 import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
 
@@ -56,39 +54,38 @@ class BassSwapCurveTest {
     }
 
     @Test
-    fun filterSweep_bothDecksCloseMonotonicallyDownward() {
-        var previousLowPass = Double.MAX_VALUE
-        var previousHighPass = Double.MAX_VALUE
+    fun filterSweep_outgoingCornerClosesMonotonicallyDownward() {
+        var previous = Double.MAX_VALUE
         for (step in 0..100) {
             val progress = step / 100f
             val lowPass = outgoingLowPassHz(progress)
-            val highPass = incomingHighPassHz(progress)
-            assertTrue("outgoing low-pass rose at p=$progress", lowPass <= previousLowPass + 1e-6)
-            assertTrue("incoming high-pass rose at p=$progress", highPass <= previousHighPass + 1e-6)
-            previousLowPass = lowPass
-            previousHighPass = highPass
+            assertTrue("outgoing low-pass rose at p=$progress", lowPass <= previous + 1e-6)
+            previous = lowPass
         }
     }
 
     @Test
-    fun filterSweep_spansFullRangeOnBothDecks() {
+    fun filterSweep_holdsCornerOpenBeforeTheFadeGetsUnderway() {
+        for (step in 0..35) {
+            val progress = step / 100f
+            assertEquals(
+                "corner moved too early at p=$progress",
+                DjFilterAudioProcessor.BYPASS_CUTOFF_HZ,
+                outgoingLowPassHz(progress),
+                1.0,
+            )
+        }
+    }
+
+    @Test
+    fun filterSweep_spansFullRangeOnOutgoingDeck() {
         assertEquals(DjFilterAudioProcessor.BYPASS_CUTOFF_HZ, outgoingLowPassHz(0f), 1.0)
         assertEquals(DjFilterAudioProcessor.SWEEP_TARGET_HZ, outgoingLowPassHz(1f), 1.0)
-        assertEquals(ENTRY_HIGH_PASS_HZ.toDouble(), incomingHighPassHz(0f), 1.0)
-        assertEquals(DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ, incomingHighPassHz(1f), 1.0)
     }
 
     @Test
-    fun filterSweep_outgoingClosesAtTheSameRateIncomingOpens() {
-        val bypassLowPass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-        val bypassHighPass = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
-        val lowPassSpan = ln(bypassLowPass / DjFilterAudioProcessor.SWEEP_TARGET_HZ)
-        val highPassSpan = ln(ENTRY_HIGH_PASS_HZ / bypassHighPass)
-        for (step in 1..99) {
-            val progress = step / 100f
-            val closedFraction = ln(bypassLowPass / outgoingLowPassHz(progress)) / lowPassSpan
-            val openedFraction = ln(ENTRY_HIGH_PASS_HZ / incomingHighPassHz(progress)) / highPassSpan
-            assertEquals("fractions diverged at p=$progress", closedFraction, openedFraction, 1e-9)
-        }
+    fun filterSweep_neverEntersTheKickBand() {
+        assertTrue("corner must stay above the kick band", DjFilterAudioProcessor.SWEEP_TARGET_HZ >= 1000.0)
     }
+
 }

@@ -7,7 +7,6 @@ import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.FALL
 import moe.rukamori.archivetune.audiodsp.RISE
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
-import moe.rukamori.archivetune.audiodsp.incomingHighPassHz
 import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
 import moe.rukamori.archivetune.audiodsp.outgoingMidDuckGain
@@ -27,8 +26,8 @@ class ExoDeck(
         if (isIncoming) {
             player.volume = (baseVolume * RISE(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
-                djFilter.lowPassCutoffHz = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
-                djFilter.highPassHz = incomingHighPassHz(clamped)
+                // No entry high-pass: a corner sweeping down to 20 Hz phase-smears the kick.
+                djFilter.highPassHz = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
                 djFilter.bassGainDb = incomingBassGainDb(clamped)
             } else {
                 djFilter.clearAutomation()
@@ -49,7 +48,6 @@ class ExoDeck(
             Timber.tag("DjFilter").d(
                 "automation incoming=$isIncoming p=${"%.2f".format(clamped)}" +
                     " lp=${"%.0f".format(djFilter.lowPassCutoffHz)}" +
-                    " hp=${"%.0f".format(djFilter.highPassHz)}" +
                     " bass=${"%.1f".format(djFilter.bassGainDb)}",
             )
         }

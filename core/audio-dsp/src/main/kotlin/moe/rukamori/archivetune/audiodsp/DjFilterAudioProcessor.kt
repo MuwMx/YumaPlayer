@@ -46,11 +46,9 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     private var sampleRate = 0
     private var encoding = C.ENCODING_INVALID
     private var lowPassState = Array(0) { DoubleArray(4) }
-    private var lowPassStateAlt = Array(0) { DoubleArray(4) }
     private var highPassState = Array(0) { DoubleArray(4) }
     private var shelfState = Array(0) { DoubleArray(4) }
     private val lowPassCoeff = DoubleArray(5)
-    private val lowPassCoeffAlt = DoubleArray(5)
     private val highPassCoeff = DoubleArray(5)
     private val shelfCoeff = DoubleArray(5)
     private var cachedCutoffHz = -1.0
@@ -84,7 +82,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         sampleRate = inputAudioFormat.sampleRate
         encoding = inputAudioFormat.encoding
         lowPassState = Array(channelCount) { DoubleArray(4) }
-        lowPassStateAlt = Array(channelCount) { DoubleArray(4) }
         highPassState = Array(channelCount) { DoubleArray(4) }
         shelfState = Array(channelCount) { DoubleArray(4) }
         resetCoefficientTracking()
@@ -122,7 +119,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
             for (channel in 0 until channelCount) {
                 var sample = readSample(inputBuffer, encoding)
                 if (filtering) {
-                    sample = runBiquad(lowPassCoeffAlt, lowPassStateAlt[channel], sample)
                     sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
                 }
                 if (highPassing) sample = runBiquad(highPassCoeff, highPassState[channel], sample)
@@ -195,7 +191,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
 
     private fun resetDelayLines() {
         for (state in lowPassState) state.fill(0.0)
-        for (state in lowPassStateAlt) state.fill(0.0)
         for (state in highPassState) state.fill(0.0)
         for (state in shelfState) state.fill(0.0)
     }
@@ -241,8 +236,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     private fun refreshLowPass(hz: Double) {
         if (abs(hz - cachedCutoffHz) < 1.0) return
         cachedCutoffHz = hz
-        computeLowPass(lowPassCoeff, hz, BUTTERWORTH_Q_STAGE_ONE)
-        computeLowPass(lowPassCoeffAlt, hz, BUTTERWORTH_Q_STAGE_TWO)
+        computeLowPass(lowPassCoeff, hz, BUTTERWORTH_Q)
     }
 
     private fun refreshHighPass(hz: Double) {
@@ -298,7 +292,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         const val BYPASS_CUTOFF_HZ = 20_000.0
         const val BYPASS_HIGH_PASS_HZ = 20.0
         const val MIN_ACTIVE_HIGH_PASS_HZ = 30.0
-        const val SWEEP_TARGET_HZ = 300.0
+        const val SWEEP_TARGET_HZ = 1200.0
         const val FULL_CUT_DB = -24.0
         const val BASS_CROSSOVER_HZ = 200.0
         // Mirror android.media.AudioFormat; these are compile-time constants absent from media3 C.
@@ -312,8 +306,6 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         private const val PCM_24BIT_SIGN = 0x800000
         private const val PCM_24BIT_SIGN_MASK = -0x1000000
         private const val BUTTERWORTH_Q = 0.70710678
-        private const val BUTTERWORTH_Q_STAGE_ONE = 0.54119610
-        private const val BUTTERWORTH_Q_STAGE_TWO = 1.30656296
         private const val SHELF_SLOPE = 1.0
         private const val MIN_GLIDE_HZ = 10.0
         private const val GLIDE_FRAMES = 64

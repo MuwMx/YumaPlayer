@@ -37,24 +37,19 @@ const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val MID_DUCK_MAX_DB = 6.0
-const val ENTRY_HIGH_PASS_HZ = 1200f
-private const val SWEEP_DEPTH_EXPONENT = 0.65
-
-fun incomingHighPassHz(progress: Float): Double {
-    val depth = sweepDepth(progress)
-    val bypass = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
-    return ENTRY_HIGH_PASS_HZ.toDouble() * (bypass / ENTRY_HIGH_PASS_HZ).pow(depth)
-}
+const val SWEEP_HOLD_PROGRESS = 0.35f
 
 fun outgoingLowPassHz(progress: Float): Double {
-    val depth = sweepDepth(progress)
+    val clamped = progress.coerceIn(0f, 1f)
     val bypass = DjFilterAudioProcessor.BYPASS_CUTOFF_HZ
+    // The corner is held open until the fade is underway, then it never enters the kick band.
+    // A corner moving through 60-200 Hz phase-smears every low transient it passes.
+    if (clamped <= SWEEP_HOLD_PROGRESS) return bypass
+    val depth = ((clamped - SWEEP_HOLD_PROGRESS) / (1f - SWEEP_HOLD_PROGRESS)).toDouble()
     return bypass * (DjFilterAudioProcessor.SWEEP_TARGET_HZ / bypass).pow(depth)
 }
 
 // Shared depth curve keeps the outgoing close and the incoming open perceptually mirrored.
-private fun sweepDepth(progress: Float): Double = progress.coerceIn(0f, 1f).toDouble().pow(SWEEP_DEPTH_EXPONENT)
-
 private val bassFloorLinear = 10.0.pow(DjFilterAudioProcessor.FULL_CUT_DB / 20.0)
 
 private fun bassSwapIncomingLinear(progress: Float): Double {
