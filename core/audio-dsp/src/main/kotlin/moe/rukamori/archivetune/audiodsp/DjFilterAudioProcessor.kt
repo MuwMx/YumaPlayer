@@ -63,7 +63,9 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
-            inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
+            inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT &&
+            inputAudioFormat.encoding != ENCODING_24BIT_PACKED &&
+            inputAudioFormat.encoding != ENCODING_32BIT
         ) {
             Timber.tag("DjFilter").d("bypass: unsupported encoding=${inputAudioFormat.encoding}")
             channelCount = 0
@@ -100,8 +102,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
             }
             return
         }
-        val isFloat = encoding == C.ENCODING_PCM_FLOAT
-        val bytesPerSample = if (isFloat) BYTES_PER_FLOAT_SAMPLE else BYTES_PER_SAMPLE
+        val bytesPerSample = bytesPerSampleFor(encoding)
         val frames = inputBuffer.remaining() / (bytesPerSample * channelCount)
         if (frames == 0) return
         val output = replaceOutputBuffer(frames * bytesPerSample * channelCount)
@@ -119,31 +120,53 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         if (shelving) refreshLowShelf(bassDb)
         for (frame in 0 until frames) {
             for (channel in 0 until channelCount) {
-                if (isFloat) {
-                    var sample = inputBuffer.float.toDouble()
-                    if (filtering) {
-                        sample = runBiquad(lowPassCoeffAlt, lowPassStateAlt[channel], sample)
-                        sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
-                    }
-                    if (highPassing) sample = runBiquad(highPassCoeff, highPassState[channel], sample)
-                    if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
-                    if (applyGain) sample *= level
-                    output.putFloat(sample.coerceIn(-1.0, 1.0).toFloat())
-                } else {
-                    var sample = inputBuffer.short.toDouble() / 32768.0
-                    if (filtering) {
-                        sample = runBiquad(lowPassCoeffAlt, lowPassStateAlt[channel], sample)
-                        sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
-                    }
-                    if (highPassing) sample = runBiquad(highPassCoeff, highPassState[channel], sample)
-                    if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
-                    if (applyGain) sample *= level
-                    output.putShort((sample.coerceIn(-1.0, 1.0) * 32767.0).toInt().toShort())
+                var sample = readSample(inputBuffer, encoding)
+                if (filtering) {
+                    sample = runBiquad(lowPassCoeffAlt, lowPassStateAlt[channel], sample)
+                    sample = runBiquad(lowPassCoeff, lowPassState[channel], sample)
                 }
+                if (highPassing) sample = runBiquad(highPassCoeff, highPassState[channel], sample)
+                if (shelving) sample = runBiquad(shelfCoeff, shelfState[channel], sample)
+                if (applyGain) sample *= level
+                writeSample(output, encoding, sample)
             }
         }
         inputBuffer.position(inputBuffer.limit())
         output.flip()
+    }
+
+    private fun readSample(buffer: ByteBuffer, sampleEncoding: Int): Double = when (sampleEncoding) {
+        C.ENCODING_PCM_FLOAT -> buffer.float.toDouble()
+        ENCODING_24BIT_PACKED -> {
+            val low = buffer.get().toInt() and 0xFF
+            val mid = buffer.get().toInt() and 0xFF
+            val high = buffer.get().toInt()
+            val packed = low or (mid shl 8) or (high shl 16)
+            (if (packed and PCM_24BIT_SIGN != 0) packed or PCM_24BIT_SIGN_MASK else packed) / PCM_24BIT_SCALE
+        }
+        ENCODING_32BIT -> buffer.int.toDouble() / PCM_32BIT_SCALE
+        else -> buffer.short.toDouble() / PCM_16BIT_SCALE
+    }
+
+    private fun writeSample(buffer: ByteBuffer, sampleEncoding: Int, sample: Double) {
+        val clamped = sample.coerceIn(-1.0, 1.0)
+        when (sampleEncoding) {
+            C.ENCODING_PCM_FLOAT -> buffer.putFloat(clamped.toFloat())
+            ENCODING_24BIT_PACKED -> {
+                val packed = (clamped * PCM_24BIT_SCALE).toInt()
+                buffer.put((packed and 0xFF).toByte())
+                buffer.put(((packed shr 8) and 0xFF).toByte())
+                buffer.put(((packed shr 16) and 0xFF).toByte())
+            }
+            ENCODING_32BIT -> buffer.putInt((clamped * PCM_32BIT_SCALE).toInt())
+            else -> buffer.putShort((clamped * PCM_16BIT_SCALE).toInt().toShort())
+        }
+    }
+
+    private fun bytesPerSampleFor(sampleEncoding: Int): Int = when (sampleEncoding) {
+        C.ENCODING_PCM_FLOAT, ENCODING_32BIT -> 4
+        ENCODING_24BIT_PACKED -> 3
+        else -> 2
     }
 
     override fun onFlush() {
@@ -278,8 +301,16 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         const val SWEEP_TARGET_HZ = 300.0
         const val FULL_CUT_DB = -24.0
         const val BASS_CROSSOVER_HZ = 200.0
+        // Mirror android.media.AudioFormat; these are compile-time constants absent from media3 C.
+        private const val ENCODING_24BIT_PACKED = 21
+        private const val ENCODING_32BIT = 22
         private const val BYTES_PER_SAMPLE = 2
         private const val BYTES_PER_FLOAT_SAMPLE = 4
+        private const val PCM_16BIT_SCALE = 32768.0
+        private const val PCM_24BIT_SCALE = 8388608.0
+        private const val PCM_32BIT_SCALE = 2147483648.0
+        private const val PCM_24BIT_SIGN = 0x800000
+        private const val PCM_24BIT_SIGN_MASK = -0x1000000
         private const val BUTTERWORTH_Q = 0.70710678
         private const val BUTTERWORTH_Q_STAGE_ONE = 0.54119610
         private const val BUTTERWORTH_Q_STAGE_TWO = 1.30656296

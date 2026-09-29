@@ -471,6 +471,9 @@ internal fun MusicService.startCrossfade(
                 var elapsedMs = elapsedBeforeStartMs
                 var lastTickMs = nowMs
                 var bufferingStartMs: Long? = null
+                var stallLogged = false
+                var maxTickGapMs = 0L
+                val fadeStartedMs = nowMs
                 while (isActive && elapsedMs < durationMs) {
                     if (player.currentMediaItem?.mediaId != outgoingMediaId) {
                         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
@@ -478,6 +481,7 @@ internal fun MusicService.startCrossfade(
                     }
 
                     val nowMs = android.os.SystemClock.elapsedRealtime()
+                    maxTickGapMs = maxOf(maxTickGapMs, nowMs - lastTickMs)
                     if (crossfadePlaybackRequested) {
                         standbyPlayer.playWhenReady = true
                         if (standbyPlayer.playerError != null || standbyPlayer.playbackState == Player.STATE_ENDED) {
@@ -487,16 +491,42 @@ internal fun MusicService.startCrossfade(
                         if (standbyPlayer.playbackState == Player.STATE_IDLE) {
                             standbyPlayer.prepare()
                         }
-                        elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
-                        crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                        activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
-                        transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
+                        val incomingProducing = standbyPlayer.playbackState == Player.STATE_READY && standbyPlayer.isPlaying
+                        if (incomingProducing) {
+                            bufferingStartMs = null
+                            stallLogged = false
+                            elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
+                            crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                            activeDeck.applyAutomation(crossfadeProgress, effectivePlan)
+                            transitionDeck?.applyAutomation(crossfadeProgress, effectivePlan)
+                        } else {
+                            val stallStart = bufferingStartMs ?: nowMs.also { bufferingStartMs = it }
+                            if (!stallLogged) {
+                                stallLogged = true
+                                Timber.tag("MusicServiceCrossfade").w(
+                                    "Incoming stalled mid-fade at p=%.2f state=%d error=%s; holding progress",
+                                    crossfadeProgress,
+                                    standbyPlayer.playbackState,
+                                    standbyPlayer.playerError?.errorCodeName,
+                                )
+                            }
+                            if (nowMs - stallStart >= MusicService.CROSSFADE_BUFFERING_TIMEOUT_MS) {
+                                Timber.tag("MusicServiceCrossfade").w("Incoming stalled for the whole timeout; cancelling crossfade")
+                                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                                return@launch
+                            }
+                        }
                     } else {
                         standbyPlayer.pause()
+                        bufferingStartMs = null
                     }
                     lastTickMs = nowMs
                     delay(MusicService.CROSSFADE_FRAME_MS)
                 }
+                Timber.tag("MusicServiceCrossfade").d(
+                    "Crossfade closed: plannedMs=$durationMs wallMs=${android.os.SystemClock.elapsedRealtime() - fadeStartedMs}" +
+                        " maxTickGapMs=$maxTickGapMs stalled=$stallLogged",
+                )
 
                 finishCrossfade(target, incomingPlayer, plan)
             } catch (error: CancellationException) {
