@@ -74,6 +74,14 @@ private fun MusicService.computeCrossfadeTriggerAt(
     }
 }
 
+private fun Player.audioTrackDescription(): String {
+    val audioFormat = currentTracks.groups
+        .firstOrNull { it.type == C.TRACK_TYPE_AUDIO }
+        ?.getTrackFormat(0)
+        ?: return "audio=none"
+    return "audio=${audioFormat.sampleRate}Hz/${audioFormat.channelCount}ch"
+}
+
 private fun resolveIncomingCueInMs(
     automixPlan: AutomixPlan?,
     incomingAnalysis: TrackAnalysisResult?,
@@ -458,12 +466,18 @@ internal fun MusicService.startCrossfade(
                 val effectiveCueMs = advanceCueForLateStart(standbyPlayer, cueInMs, elapsedBeforeStartMs)
 
                 if (effectiveCueMs > 0L) {
-                    if (standbyPlayer.currentPosition != effectiveCueMs) {
+                    val driftMs = (standbyPlayer.currentPosition - effectiveCueMs).let { if (it < 0L) -it else it }
+                    if (driftMs > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
+                        Timber.tag("MusicServiceCrossfade").d("Incoming cue drift ${driftMs}ms over tolerance, seeking")
                         standbyPlayer.seekTo(target.index, effectiveCueMs)
                     }
-                } else if (standbyPlayer.currentPosition > 0L) {
+                } else if (standbyPlayer.currentPosition > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
                     standbyPlayer.seekTo(target.index, 0L)
                 }
+                Timber.tag("MusicServiceCrossfade").d(
+                    "Fade start: foldMs=$elapsedBeforeStartMs cueMs=$effectiveCueMs" +
+                        " outgoing=${player.audioTrackDescription()} incoming=${standbyPlayer.audioTrackDescription()}",
+                )
                 if (crossfadePlaybackRequested) {
                     standbyPlayer.play()
                 }
