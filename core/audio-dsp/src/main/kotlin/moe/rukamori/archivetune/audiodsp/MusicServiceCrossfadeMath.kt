@@ -36,6 +36,7 @@ const val BASS_SWAP_WINDOW_START = 0.45f
 const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
+const val MID_DUCK_MAX_DB = 6.0
 const val ENTRY_HIGH_PASS_HZ = 1200f
 private const val SWEEP_DEPTH_EXPONENT = 0.65
 
@@ -72,6 +73,19 @@ private fun linearToBassDb(linear: Double): Double =
 fun incomingBassGainDb(progress: Float): Double = linearToBassDb(bassSwapIncomingLinear(progress))
 
 fun outgoingBassGainDb(progress: Float): Double = linearToBassDb(1.0 - bassSwapIncomingLinear(progress))
+
+/**
+ * Extra attenuation of the outgoing deck, applied on top of the equal-power fade.
+ * RISE/FALL are equal-power, so their coherent sum reaches +3 dB in the middle of the fade;
+ * this keeps the summed level at or below unity and leaves the low end to the bass-swap curves.
+ */
+fun outgoingMidDuckDb(progress: Float): Double {
+    val clamped = progress.coerceIn(0f, 1f)
+    val s = sin((clamped * PI / 2.0).toDouble())
+    return -MID_DUCK_MAX_DB * s * s
+}
+
+fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(progress) / 20.0)
 
 fun advanceCueForElapsed(cueInMs: Long, elapsedMs: Long, maxPositionMs: Long?): Long {
     if (cueInMs <= 0L || elapsedMs <= 0L) return cueInMs
