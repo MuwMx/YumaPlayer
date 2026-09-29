@@ -395,11 +395,12 @@ fun LyricsEnhanced(
         }
     }
 
-    LaunchedEffect(player, lyricsSessionKey, animationsDisabled, playbackParameters.speed, isReadyToParse) {
+    LaunchedEffect(player, lyricsSessionKey, animationsDisabled, playbackParameters.speed, isReadyToParse, isLyricsVisible) {
         if (!isReadyToParse) {
             playbackPositionMs.longValue = player.currentPosition.coerceAtLeast(0L)
             return@LaunchedEffect
         }
+        if (!isLyricsVisible) return@LaunchedEffect
         var wasSliderActive = false
         var anchorPlayerPositionMs = player.currentPosition.coerceAtLeast(0L)
         var anchorFrameNanos = 0L
@@ -534,8 +535,9 @@ fun LyricsEnhanced(
         }
     }
 
-    LaunchedEffect(lyricsSessionKey, syncedLyrics, isSynced, isReadyToParse) {
-        if (!isReadyToParse || !isSynced || syncedLyrics.lines.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(lyricsSessionKey, syncedLyrics, isSynced, isReadyToParse, isLyricsVisible) {
+        if (!isReadyToParse || !isSynced || !isLyricsVisible) return@LaunchedEffect
+        if (syncedLyrics.lines.isEmpty()) return@LaunchedEffect
         snapshotFlow {
             listState.layoutInfo.viewportEndOffset > listState.layoutInfo.viewportStartOffset
         }.first { it }

@@ -71,6 +71,7 @@ fun LyricsContentCard(
     lazyListState: LazyListState = rememberLazyListState(),
     onLineClick: (Long) -> Unit = {},
     isReadyToParse: Boolean = true,
+    isVisible: Boolean = true,
 ) {
     val (showPlayerControls) = rememberPreference(ShowLyricsPlayerControlsKey, defaultValue = true)
 
@@ -80,7 +81,7 @@ fun LyricsContentCard(
             lyricsSyncOffset = state.lyricsSyncOffset,
             textColorOverride = Color.White,
             isReadyToParse = isReadyToParse,
-            isLyricsVisible = state.isLyricsVisible,
+            isLyricsVisible = isVisible,
             lazyListState = lazyListState,
             modifier = Modifier.fillMaxSize(),
         )
@@ -145,7 +146,7 @@ fun LyricsContentCard(
                                 slideOffset = { 1f },
                                 onSeek = onSeek,
                                 onSeekStarted = onSeekStarted,
-                                isVisible = state.isLyricsVisible,
+                                isVisible = isVisible,
                             )
 
                             Row(

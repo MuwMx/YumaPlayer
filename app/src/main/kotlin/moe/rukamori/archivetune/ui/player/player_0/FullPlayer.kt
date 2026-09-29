@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,16 +74,34 @@ fun FullPlayer(
     val isExitingLyrics = prevLyricsVisible && !state.isLyricsVisible
     LaunchedEffect(state.isLyricsVisible) { prevLyricsVisible = state.isLyricsVisible }
 
-    val isOverlayVisible = state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+    // Fractions arrive from Animatables, so reading them in the body would
+    // recompose the whole player on every frame of the sheet gesture.
+    val isOverlayVisible by remember {
+        derivedStateOf {
+            state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+        }
+    }
 
-    val isSheetExpanded = slideOffset() > 0.95f
-    val canPlayCanvas = state.isPlaying &&
-        !state.isImmersiveEnabled &&
-        isSheetExpanded &&
-        !state.isLyricsVisible &&
-        !state.isQueueVisible &&
-        lyricsFractionProvider() < 0.05f &&
-        queueFractionProvider() < 0.05f
+    val isSheetExpanded by remember { derivedStateOf { slideOffset() > 0.95f } }
+
+    val coverGestureEnabled by remember {
+        derivedStateOf {
+            !state.isImmersiveEnabled && !state.isLyricsVisible &&
+                lyricsFractionProvider() < 0.05f && queueFractionProvider() < 0.05f
+        }
+    }
+
+    val canPlayCanvas by remember {
+        derivedStateOf {
+            state.isPlaying &&
+                !state.isImmersiveEnabled &&
+                isSheetExpanded &&
+                !state.isLyricsVisible &&
+                !state.isQueueVisible &&
+                lyricsFractionProvider() < 0.05f &&
+                queueFractionProvider() < 0.05f
+        }
+    }
 
     val immersiveCoverAlpha by animateFloatAsState(
         targetValue = if (state.isImmersiveEnabled) {
@@ -160,7 +179,7 @@ fun FullPlayer(
                         placeholderResId = state.placeholderResId,
                         isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
                         vibrantColor = Color(state.vibrantColor),
-                        gestureEnabled = !state.isImmersiveEnabled && !state.isLyricsVisible && lyricsFractionProvider() < 0.05f && queueFractionProvider() < 0.05f,
+                        gestureEnabled = coverGestureEnabled,
                         mediaId = state.trackUrl,
                         songTitle = state.title,
                         artistName = state.artist,

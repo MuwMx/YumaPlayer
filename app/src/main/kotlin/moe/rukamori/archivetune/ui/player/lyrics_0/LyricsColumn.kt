@@ -33,6 +33,12 @@ fun LyricsColumn(
         derivedStateOf { animateProgressProvider() > 0.99f }
     }
 
+    // state.isLyricsVisible is user intent and outlives the sheet closing, so gating
+    // idle work on it keeps the seek bar and the scroll loop running while parked.
+    val isSheetActive by remember(animateProgressProvider) {
+        derivedStateOf { animateProgressProvider() > 0.05f }
+    }
+
     key(state.isLyricsVisible) {
         BackHandler(enabled = state.isLyricsVisible) {
             onCloseClick()
@@ -52,7 +58,8 @@ fun LyricsColumn(
             onAction = onAction,
             onSeek = onSeek,
             onSeekStarted = onSeekStarted,
-            isReadyToParse = isReadyToParse
+            isReadyToParse = isReadyToParse,
+            isVisible = isSheetActive,
         )
     }
 }

@@ -173,7 +173,11 @@ internal fun UnifiedPlayerSheetLayers(
             derivedStateOf { expansionFractionProvider() < 0.05f }
         }
 
-        if (expansionFractionProvider() < 1f) {
+        val showMiniPlayer by remember {
+            derivedStateOf { expansionFractionProvider() < 1f }
+        }
+
+        if (showMiniPlayer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

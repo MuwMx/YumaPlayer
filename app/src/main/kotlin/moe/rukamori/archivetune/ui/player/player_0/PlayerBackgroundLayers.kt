@@ -284,6 +284,9 @@ fun PlayerBackgroundLayers(
                     endY = size.height
                 )
                 onDrawBehind {
+                    // The blurred artwork above is opaque once the fade completes, so
+                    // this full-screen rect would rasterize for nothing.
+                    if (blurOverlayAlpha >= 0.99f) return@onDrawBehind
                     drawRect(brush = brush)
                 }
             }
@@ -392,6 +395,7 @@ private fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
             endY = size.height
         )
         onDrawWithContent {
+            if (alpha < 0.01f) return@onDrawWithContent
             drawContent()
             drawRect(
                 brush = maskBrush,
