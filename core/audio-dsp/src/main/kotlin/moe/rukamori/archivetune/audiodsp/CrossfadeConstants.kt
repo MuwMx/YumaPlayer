@@ -5,8 +5,9 @@ object CrossfadeConstants {
     const val END_GUARD_MS = 150L
     const val DEFAULT_MS = 2000L
 
-    // Incoming deck spins up muted this long before the fade so its decoder and AudioTrack are hot at the boundary.
-    const val PRIME_LEAD_MS = 1000L
+    // Must exceed the standby load control's min-buffer-before-start, otherwise the deck is still
+    // buffering when the fade opens and the incoming track arrives a beat late.
+    const val PRIME_LEAD_MS = 3000L
     const val PRIME_MAX_DRIFT_MS = 40L
     const val CLAMP_MIN_S = 1
     const val CLAMP_MAX_S = 12
