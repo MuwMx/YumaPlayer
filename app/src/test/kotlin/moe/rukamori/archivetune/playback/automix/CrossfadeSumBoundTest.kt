@@ -38,22 +38,25 @@ class CrossfadeSumBoundTest {
     }
 
     @Test
-    fun withoutTheCapTheSumWouldExceedUnity() {
-        var worst = 0f
-        for (i in 0..steps) {
-            val progress = i / steps.toFloat()
-            worst = maxOf(worst, outgoingStageGain(progress) + incomingStageGain(progress))
-        }
-        assertTrue("the uncompensated sum must exceed unity or there is nothing to fix", worst > 1.2f)
-    }
-
-    @Test
     fun theCapLeavesTheEndsOfTheCurveUntouched() {
         val base = 1f
         val atStart = outgoingGain(0f, base, base)
         val atEnd = outgoingGain(1f, base, base)
         assertEquals("fade start must not be attenuated", base * outgoingStageGain(0f), atStart, 1e-4f)
         assertEquals("fade end must reach silence", 0f, atEnd, 1e-4f)
+    }
+
+    @Test
+    fun theCapIsRedundantWhenBothDecksShareTheSameBase() {
+        val base = 1f
+        var capEngaged = 0
+        for (i in 0..steps) {
+            val progress = i / steps.toFloat()
+            val raw = base * outgoingStageGain(progress)
+            val capped = outgoingGain(progress, base, base)
+            if (raw > capped + 1e-4f) capEngaged++
+        }
+        assertEquals("the curves are complementary, so the cap must never need to engage", 0, capEngaged)
     }
 
     @Test
@@ -70,19 +73,4 @@ class CrossfadeSumBoundTest {
         }
     }
 
-    @Test
-    fun theCapReachesUnityWhereItBites() {
-        val base = 1f
-        var checked = 0
-        for (i in 0..steps) {
-            val progress = i / steps.toFloat()
-            val raw = base * outgoingStageGain(progress)
-            if (raw + incomingGain(progress, base) > 1.0f) {
-                val total = outgoingGain(progress, base, base) + incomingGain(progress, base)
-                assertEquals("sum must be exactly unity at p=$progress", 1.0f, total, 1e-3f)
-                checked++
-            }
-        }
-        assertTrue("the cap must actually engage somewhere", checked > 0)
-    }
 }

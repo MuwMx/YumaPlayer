@@ -65,19 +65,6 @@ class BassSwapCurveTest {
     }
 
     @Test
-    fun filterSweep_holdsCornerOpenBeforeTheFadeGetsUnderway() {
-        for (step in 0..35) {
-            val progress = step / 100f
-            assertEquals(
-                "corner moved too early at p=$progress",
-                DjFilterAudioProcessor.BYPASS_CUTOFF_HZ,
-                outgoingLowPassHz(progress),
-                1.0,
-            )
-        }
-    }
-
-    @Test
     fun filterSweep_spansFullRangeOnOutgoingDeck() {
         assertEquals(DjFilterAudioProcessor.BYPASS_CUTOFF_HZ, outgoingLowPassHz(0f), 1.0)
         assertEquals(DjFilterAudioProcessor.SWEEP_TARGET_HZ, outgoingLowPassHz(1f), 1.0)

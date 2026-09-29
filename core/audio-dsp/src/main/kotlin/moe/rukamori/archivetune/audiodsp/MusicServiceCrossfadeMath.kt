@@ -37,7 +37,7 @@ const val BASS_SWAP_WINDOW_END = 0.55f
 private const val BASS_SWAP_DOMINANCE = 0.55
 
 const val MID_DUCK_MAX_DB = 6.0
-const val STAGE_HOLD_PROGRESS = 0.35f
+const val SOLO_OUTGOING_PROGRESS = 0.35f
 const val SWEEP_HOLD_PROGRESS = 0.05f
 
 fun outgoingLowPassHz(progress: Float): Double {
@@ -90,10 +90,10 @@ fun outgoingMidDuckGain(progress: Float): Double = 10.0.pow(outgoingMidDuckDb(pr
  */
 fun outgoingStageGain(progress: Float): Float {
     val p = progress.coerceIn(0f, 1f)
-    return if (p <= 0.35f) {
+    return if (p <= SOLO_OUTGOING_PROGRESS) {
         1.0f
     } else {
-        val t = (p - 0.35f) / 0.65f
+        val t = (p - SOLO_OUTGOING_PROGRESS) / (1f - SOLO_OUTGOING_PROGRESS)
         1.0f - smoothStep(t)
     }
 }
@@ -103,24 +103,13 @@ fun outgoingStageGain(progress: Float): Float {
  */
 fun incomingStageGain(progress: Float): Float {
     val p = progress.coerceIn(0f, 1f)
-    return if (p < 0.35f) {
+    return if (p < SOLO_OUTGOING_PROGRESS) {
         0f
     } else {
-        val t = (p - 0.35f) / 0.65f
+        val t = (p - SOLO_OUTGOING_PROGRESS) / (1f - SOLO_OUTGOING_PROGRESS)
         smoothStep(t)
     }
 }
-private fun stagedGain(progress: Float, holdValue: Float, atStart: Float, atEnd: Float): Float {
-    val p = progress.coerceIn(0f, 1f)
-    return if (p <= STAGE_HOLD_PROGRESS) {
-        val t = p / STAGE_HOLD_PROGRESS
-        atStart + (holdValue - atStart) * smoothStep(t)
-    } else {
-        val t = (p - STAGE_HOLD_PROGRESS) / (1f - STAGE_HOLD_PROGRESS)
-        holdValue + (atEnd - holdValue) * smoothStep(t)
-    }
-}
-
 private fun smoothStep(t: Float): Float {
     val clamped = t.coerceIn(0f, 1f)
     return clamped * clamped * (3f - 2f * clamped)
