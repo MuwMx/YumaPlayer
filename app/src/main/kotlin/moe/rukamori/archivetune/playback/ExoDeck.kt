@@ -18,14 +18,13 @@ class ExoDeck(
     var isIncoming: Boolean = false,
     var baseVolume: Float = 1f,
     var maxGainFactor: Float = 1f,
-    var gainCompensation: Float = 1f,
 ) : AudioDeck {
     private var lastLoggedQuarter = -1
 
     override fun applyAutomation(progress: Float, plan: AutomixPlan) {
         val clamped = progress.coerceIn(0f, 1f)
         if (isIncoming) {
-            player.volume = (baseVolume * gainCompensation * RISE(clamped)).coerceIn(0f, maxGainFactor)
+            player.volume = (baseVolume * RISE(clamped)).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 // No entry high-pass: a corner sweeping down to 20 Hz phase-smears the kick.
                 djFilter.highPassHz = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
@@ -34,9 +33,8 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         } else {
-            player.volume = (
-                baseVolume * gainCompensation * FALL(clamped) * outgoingMidDuckGain(clamped).toFloat()
-                ).coerceIn(0f, maxGainFactor)
+            player.volume = (baseVolume * FALL(clamped) * outgoingMidDuckGain(clamped).toFloat())
+                .coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
                 djFilter.bassGainDb = outgoingBassGainDb(clamped)

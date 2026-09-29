@@ -3,7 +3,6 @@ package moe.rukamori.archivetune.playback
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.exoplayer.ExoPlayer
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
-import moe.rukamori.archivetune.audiodsp.crossfadePairCompensation
 import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 import moe.rukamori.archivetune.audiodsp.DeckController
@@ -114,13 +113,6 @@ class ExoDeckController(
         incoming.isIncoming = true
         incoming.baseVolume = service.crossfadeIncomingBaseVolume
         incoming.maxGainFactor = service.maxSafeGainFactor
-
-        val compensation = crossfadePairCompensation(outgoing.baseVolume, incoming.baseVolume)
-        outgoing.gainCompensation = compensation
-        incoming.gainCompensation = compensation
-        Timber.tag("DjFilter").d(
-            "pair out=${outgoing.baseVolume} in=${incoming.baseVolume} compensation=$compensation",
-        )
 
         outgoing.player.pauseAtEndOfMediaItems = true
 
