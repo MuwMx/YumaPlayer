@@ -61,6 +61,7 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
     private val lowPassCoeff = DoubleArray(5)
     private val highPassCoeff = DoubleArray(5)
     private val shelfCoeff = DoubleArray(5)
+    private var bypassLogged = false
     private var cachedCutoffHz = -1.0
     private var cachedHighPassHz = -1.0
     private var cachedBassDb = Double.NaN
@@ -91,11 +92,18 @@ class DjFilterAudioProcessor : BaseAudioProcessor() {
         highPassState = Array(channelCount) { DoubleArray(4) }
         shelfState = Array(channelCount) { DoubleArray(4) }
         resetCoefficientTracking()
+        bypassLogged = false
         return inputAudioFormat
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         if (!isActive) {
+            if (!bypassLogged) {
+                bypassLogged = true
+                Timber.tag("DjFilter").w(
+                    "bypass: processor never received a supported format, copying audio unfiltered",
+                )
+            }
             if (inputBuffer.hasRemaining()) {
                 val output = replaceOutputBuffer(inputBuffer.remaining())
                 output.order(ByteOrder.nativeOrder())
