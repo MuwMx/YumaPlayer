@@ -26,7 +26,7 @@ val discordApplicationId =
         ).trim()
 val discordApplicationIdLong = discordApplicationId.toLongOrNull() ?: 1165706613961789445L
 val discordRedirectScheme = "discord-$discordApplicationId"
-val releaseKeystoreFile = file("keystore/release.keystore")
+val releaseKeystoreFile = rootProject.file("app/keystore/release.keystore")
 val releaseStorePassword =
     localProperties.getProperty("STORE_PASSWORD")?.takeIf { it.isNotBlank() }
         ?: System.getenv("STORE_PASSWORD")?.takeIf { it.isNotBlank() }
@@ -203,10 +203,10 @@ android {
                 manifestPlaceholders["appName"] = "@string/app_name"
             }
 
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
             } else {
-                signingConfig = signingConfigs.getByName("debug")
+                signingConfigs.getByName("debug")
             }
 
             isMinifyEnabled = true
