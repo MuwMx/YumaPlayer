@@ -198,10 +198,17 @@ android {
         release {
             if (isCanary) {
                 applicationIdSuffix = ".canary"
-                manifestPlaceholders["appName"] = "Yuma Canary"
+                manifestPlaceholders["appName"] = "@string/app_name_canary"
             } else {
                 manifestPlaceholders["appName"] = "@string/app_name"
             }
+
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
