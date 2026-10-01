@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -279,7 +280,6 @@ fun PlayerBackgroundLayers(
                 .fillMaxSize()
                 .graphicsLayer { alpha = 1f - blurOverlayAlpha }
                 .drawWithCache {
-                    // Оставляем цвет сочным: подмешиваем всего 50-65% темного, а не 92%
                     val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
                     val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
 
@@ -332,7 +332,7 @@ fun PlayerBackgroundLayers(
                         .hazeEffect(
                             state = playerHazeState,
                             style = HazeDefaults.style(
-                                backgroundColor = Color.Black,
+                                backgroundColor = Color.Transparent,
                                 blurRadius = 32.dp,
                             )
                         ) {
@@ -380,7 +380,7 @@ fun PlayerBackgroundLayers(
             .drawWithCache {
                 val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f)
 
-                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.35f else 0.50f
+                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.18f else 0.25f
 
                 val veilBrush = Brush.verticalGradient(
                     0.0f to Color.Transparent,

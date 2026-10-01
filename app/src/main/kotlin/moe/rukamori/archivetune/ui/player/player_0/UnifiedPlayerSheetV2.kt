@@ -429,14 +429,6 @@ fun UnifiedPlayerSheetV2(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = (expansionFraction.value * 0.6f).coerceIn(0f, 0.6f)
-                }
-                .background(Color.Black)
-        )
 
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
         val fixedTintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
@@ -488,7 +480,7 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             ) {
                                 inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                                blurEnabled = expansionFraction.value < 0.85f
+                                blurEnabled = expansionFraction.value < 0.15f
                             }
                         } else {
                             Modifier.background(backgroundGradient)
@@ -506,8 +498,8 @@ fun UnifiedPlayerSheetV2(
                         onDrawWithContent {
                             val fraction = expansionFraction.value
 
-                            if (hazeState != null && fraction > 0f) {
-                                val bgAlpha = (fraction / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)
+                            if (hazeState != null && fraction > 0.15f) {
+                                val bgAlpha = ((fraction - 0.15f) / 0.25f).coerceIn(0f, 1f)
                                 if (bgAlpha > 0f) {
                                     drawRect(brush = backgroundGradient, alpha = bgAlpha)
                                 }
