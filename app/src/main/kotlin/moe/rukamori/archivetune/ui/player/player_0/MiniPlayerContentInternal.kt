@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -59,13 +60,14 @@ internal fun MiniPlayerContentInternal(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
+            .background(Color(state.gradientColor))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
                 onMediaAreaClick()
             }
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -137,7 +139,7 @@ internal fun MiniPlayerContentInternal(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 14.dp, end = 8.dp),
+                .padding(start = 16.dp, end = 12.dp),
             verticalArrangement = Arrangement.Center
         ) {
             MarqueeText(
