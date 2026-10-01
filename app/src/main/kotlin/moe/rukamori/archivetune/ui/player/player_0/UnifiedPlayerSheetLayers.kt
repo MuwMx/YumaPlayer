@@ -220,9 +220,8 @@ internal fun UnifiedPlayerSheetLayers(
                     .graphicsLayer {
                         val maxFraction = maxOf(lyricsFractionProvider(), queueFractionProvider())
                         val expansionFraction = expansionFractionProvider()
-                        val baseAlpha = if (expansionFraction < 0.005f) 0f else fullPlayerVisualState.contentAlpha
-                        alpha = baseAlpha * (1f - maxFraction)
-                        translationY = fullPlayerVisualState.translationY - (200f * density * maxFraction)
+                        alpha = expansionFraction.coerceIn(0f, 1f) * (1f - maxFraction)
+                        translationY = (1f - expansionFraction) * (150f * density) - (200f * density * maxFraction)
                     }
             ) {
                 FullPlayer(

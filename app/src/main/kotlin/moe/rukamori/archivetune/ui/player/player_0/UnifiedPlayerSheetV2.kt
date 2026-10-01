@@ -269,7 +269,6 @@ fun UnifiedPlayerSheetV2(
             }
         }
 
-        // Сворачивание по внешнему запросу из состояния
         LaunchedEffect(state.isSheetCollapseRequested) {
             if (state.isSheetCollapseRequested) {
                 if (currentSheetState == PlayerSheetState.EXPANDED || expansionFraction.value > 0.01f) {
@@ -306,20 +305,25 @@ fun UnifiedPlayerSheetV2(
                     layoutDirection: LayoutDirection,
                     density: Density
                 ): Outline {
-                    val expansionFractionVal = expansionFraction.value
-                    if (expansionFractionVal >= 0.99f) {
-                        return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
-                    }
-                    val dynamicHeight = sheetVisualState.playerContentAreaHeightPxProvider()
-                    if (size.width <= 0f || dynamicHeight <= 0f) {
+                    if (size.width <= 0f || size.height <= 0f) {
                         return Outline.Rectangle(Rect.Zero)
                     }
+                    val fraction = expansionFraction.value
+                    if (fraction >= 0.99f) {
+                        return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+                    }
+
                     val radiusTop = with(density) {
                         sheetVisualState.overallSheetTopCornerRadiusProvider().toPx()
                     }
                     val radiusBottom = with(density) {
                         sheetVisualState.playerContentActualBottomRadiusProvider().toPx()
                     }
+
+                    val miniHeightPx = with(density) { MiniPlayerHeight.toPx() }
+                    val measuredHeight = sheetVisualState.playerContentAreaHeightPxProvider()
+                    val dynamicHeight = if (measuredHeight > 0f) measuredHeight else miniHeightPx
+
                     return Outline.Rounded(
                         RoundRect(
                             left = 0f,
@@ -484,7 +488,7 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             ) {
                                 inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                                blurEnabled = expansionFraction.value < 0.05f
+                                blurEnabled = expansionFraction.value < 0.85f
                             }
                         } else {
                             Modifier.background(backgroundGradient)
@@ -500,14 +504,17 @@ fun UnifiedPlayerSheetV2(
                         )
 
                         onDrawWithContent {
-                            drawContent()
                             val fraction = expansionFraction.value
+
                             if (hazeState != null && fraction > 0f) {
                                 val bgAlpha = (fraction / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)
                                 if (bgAlpha > 0f) {
                                     drawRect(brush = backgroundGradient, alpha = bgAlpha)
                                 }
                             }
+
+                            drawContent()
+
                             if (fraction < SettingsDimensions.FullyExpandedThreshold) {
                                 val borderFade = (1f - (fraction / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
                                 if (borderFade > 0f) {
