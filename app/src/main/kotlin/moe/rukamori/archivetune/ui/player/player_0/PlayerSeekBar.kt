@@ -6,23 +6,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -57,7 +46,6 @@ internal fun resolveTransitionMarkerMs(
     return plan.triggerAtMs?.takeIf { it > 0L && it < durationMs }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSeekBar(
     state: PlayerUiState,
@@ -108,21 +96,10 @@ fun PlayerSeekBar(
         }
     }
 
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val isDragged by interactionSource.collectIsDraggedAsState()
-    val isInteracting = isPressed || isDragged
-
     val animatedAccentColor by animateColorAsState(
         targetValue = vibrantColor,
         animationSpec = tween(500),
         label = "AccentPaletteColor"
-    )
-
-    val trackHeight by animateDpAsState(
-        targetValue = if (isInteracting) 7.dp else 4.dp,
-        animationSpec = tween(durationMillis = 250),
-        label = "TrackHeightAnimation"
     )
 
     LaunchedEffect(progressMs) {
@@ -163,12 +140,17 @@ fun PlayerSeekBar(
             (animatedProgress / maxRange).coerceIn(0f, 1f)
         }
 
-        Slider(
+        PlayerProgressSlider(
             value = baseProgress.coerceIn(0f, maxRange),
+            valueRange = 0f..maxRange,
             onValueChange = {
                 isDragging = true
                 localSeekTarget = null
                 sliderPosition = it
+            },
+            onValueChangeStarted = {
+                isDragging = true
+                localSeekTarget = null
                 onSeekStarted()
             },
             onValueChangeFinished = {
@@ -176,47 +158,11 @@ fun PlayerSeekBar(
                 isDragging = false
                 onSeek(sliderPosition)
             },
-            valueRange = 0f..maxRange,
-            interactionSource = interactionSource,
-            track = { _ ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(trackHeight)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .drawBehind {
-                            if (markerMs != null && durationMs > 0L) {
-                                val markerFraction = (markerMs / maxRange).coerceIn(0f, 1f)
-                                if (markerFraction < 1f) {
-                                    val startX = size.width * markerFraction
-                                    val tailWidth = size.width - startX
-                                    drawRoundRect(
-                                        color = animatedAccentColor.copy(alpha = 0.45f),
-                                        topLeft = Offset(startX, 0f),
-                                        size = Size(tailWidth, size.height),
-                                        cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
-                                    )
-                                }
-                            }
-
-                            val fraction = progressFractionProvider()
-                            val fillWidth = size.width * fraction
-                            drawRoundRect(
-                                color = if (isInteracting) animatedAccentColor else Color.White,
-                                size = Size(fillWidth, size.height),
-                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
-                            )
-                        }
-                )
-            },
-            thumb = { Box(modifier = Modifier.size(0.dp)) },
-            colors = SliderDefaults.colors(
-                thumbColor = Color.Transparent,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent,
-                disabledThumbColor = Color.Transparent
-            ),
+            accentColor = animatedAccentColor,
+            progressFractionProvider = progressFractionProvider,
+            markerMs = markerMs,
+            durationMs = durationMs,
+            maxRange = maxRange,
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
