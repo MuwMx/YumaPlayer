@@ -53,7 +53,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
-import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
@@ -429,105 +428,108 @@ fun PlayerOverlayHost(
         val navSlideDistance =
             floatingToolbarBottomPadding + navVisibleHeight
 
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .height(navSlideDistance)
-                    .offset {
-                        if (bottomNavigationBarHeight == 0.dp) {
-                            IntOffset(
-                                x = 0,
-                                y = navSlideDistance.roundToPx(),
-                            )
-                        } else {
-                            val slideOffset =
-                                navSlideDistance.toPx() *
-                                        playerExpansionAnimatable.value.coerceIn(
-                                            0f,
-                                            1f,
-                                        )
-                            val hideOffset =
-                                navSlideDistance.toPx() *
-                                        (
-                                                1f -
-                                                        bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) /
-                                                        navVisibleHeight
+        PlayerDockContainer(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            miniPlayerSlot = {},
+            barSlot = {
+                Box(
+                    modifier =
+                        Modifier
+                            .height(navSlideDistance)
+                            .offset {
+                                if (bottomNavigationBarHeight == 0.dp) {
+                                    IntOffset(
+                                        x = 0,
+                                        y = navSlideDistance.roundToPx(),
+                                    )
+                                } else {
+                                    val slideOffset =
+                                        navSlideDistance.toPx() *
+                                                playerExpansionAnimatable.value.coerceIn(
+                                                    0f,
+                                                    1f,
                                                 )
-                            IntOffset(
-                                x = 0,
-                                y = (slideOffset + hideOffset).roundToInt(),
-                            )
-                        }
-                    },
-        ) {
-            FloatingNavigationToolbar(
-                items = navigationItems,
-                pureBlack = pureBlack,
-                hazeState = hazeState,
-                blurRadius = blurRadius,
-                showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
-                blurEnabled = playerExpansionAnimatable.value < 0.01f,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(
-                            start = FloatingToolbarHorizontalPadding,
-                            end = FloatingToolbarHorizontalPadding,
-                            bottom = floatingToolbarBottomPadding,
-                        ).height(navVisibleHeight),
-                onShuffleClick =
-                    if (shouldShowHomeShuffleButton) {
-                        {
-                            launchHomeShuffle(
-                                coroutineScope = coroutineScope,
-                                homeViewModel = homeViewModel,
-                                playerConnection = playerConnection,
-                                database = database,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                shuffleIconRes = if (shouldShowHomeShuffleButton) R.drawable.shuffle else null,
-                shuffleContentDescription =
-                    if (shouldShowHomeShuffleButton) {
-                        stringResource(
-                            R.string.shuffle,
-                        )
-                    } else {
-                        ""
-                    },
-                onMusicRecognitionClick =
-                    if (shouldShowHomeShuffleButton) {
-                        { navController.navigate(MusicRecognitionRoute) }
-                    } else {
-                        null
-                    },
-                musicRecognitionContentDescription =
-                    if (shouldShowHomeShuffleButton) {
-                        stringResource(
-                            R.string.music_recognition,
-                        )
-                    } else {
-                        ""
-                    },
-                onMusicTogetherClick =
-                    if (shouldShowHomeShuffleButton) {
-                        { navController.navigate("settings/music_together") }
-                    } else {
-                        null
-                    },
-                isSelected = { screen ->
-                    navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
-                        true
-                },
-                onItemClick = { screen, isSelected ->
-                    handlePrimaryNavigationClick(screen, isSelected)
-                },
-                onSearchItemDoubleClick = onSearchItemDoubleClick,
-            )
-        }
+                                    val hideOffset =
+                                        navSlideDistance.toPx() *
+                                                (
+                                                        1f -
+                                                                bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) /
+                                                                navVisibleHeight
+                                                        )
+                                    IntOffset(
+                                        x = 0,
+                                        y = (slideOffset + hideOffset).roundToInt(),
+                                    )
+                                }
+                            },
+                ) {
+                    FloatingNavigationToolbar(
+                        items = navigationItems,
+                        pureBlack = pureBlack,
+                        hazeState = hazeState,
+                        blurRadius = blurRadius,
+                        showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
+                        blurEnabled = playerExpansionAnimatable.value < 0.01f,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(
+                                    bottom = floatingToolbarBottomPadding,
+                                ).height(navVisibleHeight),
+                        onShuffleClick =
+                            if (shouldShowHomeShuffleButton) {
+                                {
+                                    launchHomeShuffle(
+                                        coroutineScope = coroutineScope,
+                                        homeViewModel = homeViewModel,
+                                        playerConnection = playerConnection,
+                                        database = database,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                        shuffleIconRes = if (shouldShowHomeShuffleButton) R.drawable.shuffle else null,
+                        shuffleContentDescription =
+                            if (shouldShowHomeShuffleButton) {
+                                stringResource(
+                                    R.string.shuffle,
+                                )
+                            } else {
+                                ""
+                            },
+                        onMusicRecognitionClick =
+                            if (shouldShowHomeShuffleButton) {
+                                { navController.navigate(MusicRecognitionRoute) }
+                            } else {
+                                null
+                            },
+                        musicRecognitionContentDescription =
+                            if (shouldShowHomeShuffleButton) {
+                                stringResource(
+                                    R.string.music_recognition,
+                                )
+                            } else {
+                                ""
+                            },
+                        onMusicTogetherClick =
+                            if (shouldShowHomeShuffleButton) {
+                                { navController.navigate("settings/music_together") }
+                            } else {
+                                null
+                            },
+                        isSelected = { screen ->
+                            navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
+                                true
+                        },
+                        onItemClick = { screen, isSelected ->
+                            handlePrimaryNavigationClick(screen, isSelected)
+                        },
+                        onSearchItemDoubleClick = onSearchItemDoubleClick,
+                    )
+                }
+            },
+        )
     }
 }
 

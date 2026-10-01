@@ -79,7 +79,7 @@ import kotlin.math.abs
 private val BarHeight = 68.dp
 private val PillHeight = 32.dp
 private val PillWidth = 56.dp
-private val CornerRadius = 24.dp
+private val CornerRadius = 28.dp
 private val IconSize = 24.dp
 private val LabelFontSize = 11.sp
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,8 +160,7 @@ fun FloatingNavigationToolbar(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 16.dp)
-            .widthIn(max = 460.dp)
+            .widthIn(max = 380.dp)
             .fillMaxWidth()
             .height(BarHeight)
             .drawBehind {
