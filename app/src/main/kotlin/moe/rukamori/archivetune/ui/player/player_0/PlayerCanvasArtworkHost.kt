@@ -52,22 +52,21 @@ internal fun PlayerCanvasArtworkHost(
         }
     }
 
-    val canPlayImmersiveCanvas by remember {
+    val canPlayCanvas by remember {
         derivedStateOf {
             state.isPlaying &&
-                    state.isImmersiveEnabled &&
-                    immersiveTransitionAlpha > 0.05f &&
                     lyricsFractionProvider() < 0.05f &&
-                    queueFractionProvider() < 0.05f
+                    queueFractionProvider() < 0.05f &&
+                    (!state.isImmersiveEnabled || immersiveTransitionAlpha > 0.05f)
         }
     }
 
-    if (state.isImmersiveEnabled && isCanvasEnabled && canvasArtwork != null) {
+    if (isCanvasEnabled && canvasArtwork != null) {
         key(state.trackUrl) {
             CanvasArtworkPlayer(
                 primaryUrl = canvasArtwork?.preferredAnimationUrl,
                 fallbackUrl = canvasArtwork?.fallbackUrl,
-                isPlaying = canPlayImmersiveCanvas,
+                isPlaying = canPlayCanvas,
                 modifier = modifier,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             )
