@@ -491,6 +491,14 @@ fun UnifiedPlayerSheetV2(
                         }
                     )
                     .drawWithCache {
+                        val strokeWidthPx = SettingsDimensions.GlassBorderThickness.toPx()
+                        val halfStroke = strokeWidthPx / 2f
+                        val cornerRadiusPx = 32.dp.toPx()
+                        val borderBrush = Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = SettingsDimensions.GlassBorderTopAlpha),
+                            1.0f to Color.Black.copy(alpha = SettingsDimensions.GlassBorderBottomAlpha)
+                        )
+
                         onDrawWithContent {
                             drawContent()
                             val fraction = expansionFraction.value
@@ -503,15 +511,9 @@ fun UnifiedPlayerSheetV2(
                             if (fraction < SettingsDimensions.FullyExpandedThreshold) {
                                 val borderFade = (1f - (fraction / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
                                 if (borderFade > 0f) {
-                                    val strokeWidthPx = SettingsDimensions.GlassBorderThickness.toPx()
-                                    val halfStroke = strokeWidthPx / 2f
-                                    val borderBrush = Brush.verticalGradient(
-                                        0.0f to Color.White.copy(alpha = SettingsDimensions.GlassBorderTopAlpha * borderFade),
-                                        1.0f to Color.Black.copy(alpha = SettingsDimensions.GlassBorderBottomAlpha * borderFade)
-                                    )
-                                    val cornerRadiusPx = 32.dp.toPx()
                                     drawRoundRect(
                                         brush = borderBrush,
+                                        alpha = borderFade,
                                         topLeft = Offset(halfStroke, halfStroke),
                                         size = Size(size.width - strokeWidthPx, size.height - strokeWidthPx),
                                         cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
@@ -620,7 +622,6 @@ fun UnifiedPlayerSheetV2(
             )
         }
 
-        // Диалог Скорости воспроизведения
         if (showPitchTempoDialog) {
             TempoPitchDialog(onDismiss = { showPitchTempoDialog = false })
         }

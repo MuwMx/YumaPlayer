@@ -1,6 +1,5 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +42,12 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.allowHardware
 import coil3.toBitmap
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,11 +57,13 @@ import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.ExtractedColors
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberPreference
 
+@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun PlayerBackgroundLayers(
     state: PlayerUiState,
@@ -267,73 +273,88 @@ fun PlayerBackgroundLayers(
         label = "VibrantGradientColor"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer { alpha = 1f - blurOverlayAlpha }
-            .drawWithCache {
-                // Оставляем цвет сочным: подмешиваем всего 50-65% темного, а не 92%
-                val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
-                val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
+    if (!needsBlur || blurOverlayAlpha < 0.99f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = 1f - blurOverlayAlpha }
+                .drawWithCache {
+                    // Оставляем цвет сочным: подмешиваем всего 50-65% темного, а не 92%
+                    val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
+                    val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
 
-                val brush = Brush.verticalGradient(
-                    0.0f to animatedBgColor,
-                    0.50f to midTone,
-                    1.0f to deepTone,
-                    startY = 0f,
-                    endY = size.height
-                )
-                onDrawBehind {
-                    // The blurred artwork above is opaque once the fade completes, so
-                    // this full-screen rect would rasterize for nothing.
-                    if (blurOverlayAlpha >= 0.99f) return@onDrawBehind
-                    drawRect(brush = brush)
+                    val brush = Brush.verticalGradient(
+                        0.0f to animatedBgColor,
+                        0.50f to midTone,
+                        1.0f to deepTone,
+                        startY = 0f,
+                        endY = size.height
+                    )
+                    onDrawBehind {
+                        // The blurred artwork above is opaque once the fade completes, so
+                        // this full-screen rect would rasterize for nothing.
+                        if (blurOverlayAlpha >= 0.99f) return@onDrawBehind
+                        drawRect(brush = brush)
+                    }
                 }
-            }
-    )
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clipToBounds()
     ) {
+        val playerHazeState = remember { HazeState() }
         val activeBlurPainter = blurPainter
         if (needsBlur && activeBlurPainter != null) {
-            // One blurred layer only. A Crossfade here kept two full-screen blurred
-            // layers on screen at once, which is what drove the GPU peak on track change.
-            Image(
-                painter = activeBlurPainter,
-                contentDescription = null,
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .hazeSource(playerHazeState)
+            ) {
+                Image(
+                    painter = activeBlurPainter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = if (needsBlur) blurOverlayAlpha else 0f
+                        },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeEffect(
+                        state = playerHazeState,
+                        style = HazeDefaults.style(
+                            backgroundColor = Color.Transparent,
+                            blurRadius = 32.dp,
+                        )
+                    ) {
+                        inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+                    }
                     .graphicsLayer {
-                        scaleX = 1.15f
-                        scaleY = 1.15f
                         alpha = if (needsBlur) blurOverlayAlpha else 0f
                     }
-                    .blur(48.dp),
-                contentScale = ContentScale.Crop
             )
         }
 
-        Crossfade(
-            targetState = currentClearPainter,
-            animationSpec = tween(500),
-            label = "ClearCrossfade"
-        ) { painter ->
-            if (painter != null) {
-                Image(
-                    painter = painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(0.75f)
-                        .align(Alignment.TopCenter)
-                        .artworkBottomFade(immersiveTransitionAlpha),
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter
-                )
-            }
+        val painter = currentClearPainter
+        if (painter != null) {
+            Image(
+                painter = painter,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .align(Alignment.TopCenter)
+                    .artworkBottomFade(immersiveTransitionAlpha),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter
+            )
         }
 
         if (state.isImmersiveEnabled && isCanvasEnabled && canvasArtwork != null) {
