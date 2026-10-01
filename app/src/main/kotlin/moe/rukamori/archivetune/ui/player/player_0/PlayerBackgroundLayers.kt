@@ -47,6 +47,7 @@ import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import java.util.concurrent.ConcurrentHashMap
@@ -274,11 +275,9 @@ fun PlayerBackgroundLayers(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = if (currentBlurPainter != null) 1f - blurOverlayAlpha else 1f }
                 .drawWithCache {
                     val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
                     val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
-
                     val brush = Brush.verticalGradient(
                         0.0f to animatedBgColor,
                         0.50f to midTone,
@@ -287,7 +286,6 @@ fun PlayerBackgroundLayers(
                         endY = size.height
                     )
                     onDrawBehind {
-                        if (isBlurReady) return@onDrawBehind
                         drawRect(brush = brush)
                     }
                 }
@@ -314,8 +312,7 @@ fun PlayerBackgroundLayers(
                         painter = currentBlurPainter,
                         contentDescription = null,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
+                            .fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -327,6 +324,7 @@ fun PlayerBackgroundLayers(
                             state = playerHazeState,
                             style = HazeDefaults.style(
                                 backgroundColor = Color.Transparent,
+                                tint = HazeTint(Color.Transparent),
                                 blurRadius = 56.dp,
                                 noiseFactor = SettingsDimensions.HazeNoiseFactor,
                             )
