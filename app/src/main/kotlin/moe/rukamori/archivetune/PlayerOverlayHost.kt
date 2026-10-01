@@ -202,7 +202,7 @@ fun PlayerOverlayHost(
     playerConnection: PlayerConnection? = null,
     database: MusicDatabase? = null,
     systemBarController: SystemBarController? = null,
-    window: Window? = (LocalContext.current as? Activity)?.window,
+    window: Window? = null,
     sheetState: BottomSheetState = rememberPlayerBottomSheetState(
         maxHeight = maxHeight,
         bottomInset = bottomInset,
