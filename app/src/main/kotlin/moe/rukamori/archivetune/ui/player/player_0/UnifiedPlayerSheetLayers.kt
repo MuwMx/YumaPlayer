@@ -1,38 +1,18 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
-import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
-import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
-import moe.rukamori.archivetune.ui.player.player_0.scoped.ActiveDragSheet
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
-import moe.rukamori.archivetune.ui.player.queue_0.QueueScreen
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import moe.rukamori.archivetune.ui.state.UpdateState
@@ -64,41 +44,7 @@ internal fun UnifiedPlayerSheetLayers(
     onSeekStarted: () -> Unit,
     dragHandler: SheetVerticalDragGestureHandler? = null
 ) {
-    val haptics = rememberYumaHaptics()
     val density = LocalDensity.current.density
-
-    val lyricsListState = rememberLazyListState()
-    val canDragLyrics by remember(lyricsListState) {
-        derivedStateOf {
-            lyricsFractionProvider() > 0.05f &&
-                    lyricsListState.firstVisibleItemIndex == 0 &&
-                    lyricsListState.firstVisibleItemScrollOffset == 0
-        }
-    }
-    val lyricsNestedScrollConnection = remember(dragHandler) {
-        dragHandler?.createNestedScrollConnection(
-            canDragProvider = { canDragLyrics },
-            targetSheet = ActiveDragSheet.LYRICS
-        )
-    }
-
-    var isQueueReordering by remember { mutableStateOf(false) }
-    val queueListState = rememberLazyListState()
-    val canDragQueue by remember(queueListState, isQueueReordering) {
-        derivedStateOf {
-            queueFractionProvider() > 0.05f &&
-                    !isQueueReordering &&
-                    queueListState.firstVisibleItemIndex == 0 &&
-                    queueListState.firstVisibleItemScrollOffset == 0
-        }
-    }
-    val queueNestedScrollConnection = remember(dragHandler) {
-        dragHandler?.createNestedScrollConnection(
-            canDragProvider = { canDragQueue },
-            targetSheet = ActiveDragSheet.QUEUE
-        )
-    }
-
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -111,7 +57,7 @@ internal fun UnifiedPlayerSheetLayers(
                     alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
                 }
         ) {
-            moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
+            PlayerBackgroundLayers(
                 state = state,
                 expansionFractionProvider = expansionFractionProvider,
                 lyricsFractionProvider = lyricsFractionProvider,
@@ -160,12 +106,6 @@ internal fun UnifiedPlayerSheetLayers(
                     expansionFractionProvider() > 0.005f && maxOf(lyricsFractionProvider(), queueFractionProvider()) < 1f
                 }
             }
-            val isLyricsVisible by remember {
-                derivedStateOf { lyricsFractionProvider() > 0.05f }
-            }
-            val isQueueVisible by remember {
-                derivedStateOf { queueFractionProvider() > 0.05f }
-            }
 
             Box(
                 modifier = Modifier
@@ -197,160 +137,28 @@ internal fun UnifiedPlayerSheetLayers(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val fraction = lyricsFractionProvider()
-                        alpha = fraction
-                        translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
-                    }
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    LyricsHeader(
-                        state = state,
-                        animateProgressProvider = lyricsFractionProvider,
-                        onCloseClick = onCloseLyricsClick,
-                        onMoreClick = {
-                            haptics.click()
-                            onMoreLyricsClick()
-                        },
-                        isVisible = isLyricsVisible
-                    )
+            PlayerLyricsLayer(
+                state = state,
+                lyricsFractionProvider = lyricsFractionProvider,
+                progressMsProvider = progressMsProvider,
+                onAction = onAction,
+                onCloseLyricsClick = onCloseLyricsClick,
+                onMoreLyricsClick = onMoreLyricsClick,
+                onSearchLyricsClick = onSearchLyricsClick,
+                onSeek = onSeek,
+                onSeekStarted = onSeekStarted,
+                dragHandler = dragHandler,
+            )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .then(
-                                if (lyricsNestedScrollConnection != null) {
-                                    Modifier.nestedScroll(lyricsNestedScrollConnection)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .clipToBounds()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .layout { measurable, constraints ->
-                                    if (!constraints.hasBoundedWidth) {
-                                        val placeable = measurable.measure(constraints)
-                                        return@layout layout(placeable.width, placeable.height) {
-                                            placeable.placeRelative(0, 0)
-                                        }
-                                    }
-                                    val borderPx = 1.dp.roundToPx()
-                                    val expandedConstraints = constraints.copy(
-                                        minWidth = constraints.maxWidth + (borderPx * 2),
-                                        maxWidth = constraints.maxWidth + (borderPx * 2),
-                                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
-                                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
-                                    )
-                                    val placeable = measurable.measure(expandedConstraints)
-                                    layout(constraints.maxWidth, placeable.height) {
-                                        placeable.placeRelative(-borderPx, 0)
-                                    }
-                                }
-                                .sheetBackground(state)
-                        )
-                        LyricsColumn(
-                            state = state,
-                            animateProgressProvider = lyricsFractionProvider,
-                            progressMsProvider = progressMsProvider,
-                            onCloseClick = onCloseLyricsClick,
-                            onMoreClick = onMoreLyricsClick,
-                            onSearchClick = onSearchLyricsClick,
-                            lazyListState = lyricsListState,
-                            onAction = onAction,
-                            onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
-                            onSeek = onSeek,
-                            onSeekStarted = onSeekStarted,
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val fraction = queueFractionProvider()
-                        alpha = fraction
-                        translationY = if (fraction <= 0f) size.height else (1f - fraction) * (200f * density)
-                    }
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    QueueSheetHeader(
-                        queueState = queueState,
-                        queueFractionProvider = queueFractionProvider,
-                        onCloseClick = onCloseQueueClick,
-                        onMoreQueueClick = onMoreQueueClick,
-                        onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
-                        isAutoMixEnabled = state.isAutoMixEnabled,
-                        state = state,
-                        isVisible = isQueueVisible
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .then(
-                                if (queueNestedScrollConnection != null && !isQueueReordering) {
-                                    Modifier.nestedScroll(queueNestedScrollConnection)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .clipToBounds()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .layout { measurable, constraints ->
-                                    if (!constraints.hasBoundedWidth) {
-                                        val placeable = measurable.measure(constraints)
-                                        return@layout layout(placeable.width, placeable.height) {
-                                            placeable.placeRelative(0, 0)
-                                        }
-                                    }
-                                    val borderPx = 1.dp.roundToPx()
-                                    val expandedConstraints = constraints.copy(
-                                        minWidth = constraints.maxWidth + (borderPx * 2),
-                                        maxWidth = constraints.maxWidth + (borderPx * 2),
-                                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
-                                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
-                                    )
-                                    val placeable = measurable.measure(expandedConstraints)
-                                    layout(constraints.maxWidth, placeable.height) {
-                                        placeable.placeRelative(-borderPx, 0)
-                                    }
-                                }
-                                .sheetBackground(state)
-                        )
-                        QueueScreen(
-                            state = queueState,
-                            onAction = onAction,
-                            queueFractionProvider = queueFractionProvider,
-                            isSheetActive = isQueueVisible,
-                            onCloseClick = onCloseQueueClick,
-                            lazyListState = queueListState,
-                            contentPadding = PaddingValues(
-                                top = 8.dp,
-                                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
-                            ),
-                            onReorderStateChange = { isQueueReordering = it },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-            }
+            PlayerQueueLayer(
+                state = state,
+                queueState = queueState,
+                queueFractionProvider = queueFractionProvider,
+                onAction = onAction,
+                onCloseQueueClick = onCloseQueueClick,
+                onMoreQueueClick = onMoreQueueClick,
+                dragHandler = dragHandler,
+            )
         }
     }
 }

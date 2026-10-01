@@ -4,15 +4,21 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -58,3 +64,45 @@ internal fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
             }
         )
 }
+
+@Composable
+internal fun ColumnScope.PlayerSheetBorderContainer(
+    state: PlayerUiState,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .then(modifier)
+            .clipToBounds()
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .layout { measurable, constraints ->
+                    if (!constraints.hasBoundedWidth) {
+                        val placeable = measurable.measure(constraints)
+                        return@layout layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(0, 0)
+                        }
+                    }
+                    val borderPx = 1.dp.roundToPx()
+                    val expandedConstraints = constraints.copy(
+                        minWidth = constraints.maxWidth + (borderPx * 2),
+                        maxWidth = constraints.maxWidth + (borderPx * 2),
+                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
+                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
+                    )
+                    val placeable = measurable.measure(expandedConstraints)
+                    layout(constraints.maxWidth, placeable.height) {
+                        placeable.placeRelative(-borderPx, 0)
+                    }
+                }
+                .sheetBackground(state)
+        )
+        content()
+    }
+}
+

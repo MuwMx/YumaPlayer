@@ -55,6 +55,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -198,7 +199,7 @@ fun ArtistSongsScreen(
         )
 
         HideOnScrollFAB(
-            lazyListState = lazyListState,
+            scrollContract = lazyListState.asScrollContract(),
             icon = R.drawable.shuffle,
             label = context.getString(R.string.shuffle),
             hazeState = fabHazeState,

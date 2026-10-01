@@ -107,6 +107,7 @@ import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
+import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
@@ -555,7 +556,7 @@ fun StatsScreen(
         if (mostPlayedSongs.isNotEmpty()) {
             HideOnScrollFAB(
                 visible = true,
-                lazyListState = lazyListState,
+                scrollContract = lazyListState.asScrollContract(),
                 icon = R.drawable.shuffle,
                 label = stringResource(R.string.shuffle),
                 hazeState = fabHazeState,

@@ -63,6 +63,7 @@ import moe.rukamori.archivetune.ui.component.HeaderType
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -265,7 +266,7 @@ fun ArtistScreen(
 
         HideOnScrollFAB(
             visible = uiState.librarySongs.isNotEmpty() && uiState.libraryArtist?.artist?.isLocal != true,
-            lazyListState = lazyListState,
+            scrollContract = lazyListState.asScrollContract(),
             icon = if (showLocal) R.drawable.language else R.drawable.library_music,
             label = if (showLocal) stringResource(R.string.together_online) else stringResource(R.string.filter_library),
             hazeState = fabHazeState,

@@ -77,6 +77,7 @@ import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton as AppIconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.TopSearch
+import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionMediaMetadataMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
@@ -492,7 +493,7 @@ fun HistoryScreen(
         floatingActionButton = {
             HideOnScrollFAB(
                 visible = !showSearchBar && selectionCount == 0 && currentVisibleCount > 0,
-                lazyListState = activeListState,
+                scrollContract = activeListState.asScrollContract(),
                 icon = R.drawable.shuffle,
                 label = stringResource(R.string.shuffle),
                 hazeState = fabHazeState,

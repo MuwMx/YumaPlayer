@@ -11,12 +11,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,7 +21,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,50 +47,28 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import dev.chrisbanes.haze.HazeState
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
-import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
-import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
-import moe.rukamori.archivetune.constants.MiniPlayerOnlyOffset
-import moe.rukamori.archivetune.constants.MiniPlayerWithNavBarOffset
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.db.MusicDatabase
-import moe.rukamori.archivetune.db.entities.Album
-import moe.rukamori.archivetune.db.entities.Artist
-import moe.rukamori.archivetune.db.entities.Playlist
-import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
-import moe.rukamori.archivetune.innertube.models.PlaylistItem
-import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
-import moe.rukamori.archivetune.playback.queues.YouTubeAlbumRadio
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.COLLAPSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.DISMISSED_ANCHOR
 import moe.rukamori.archivetune.ui.component.EXPANDED_ANCHOR
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
-import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.player.player_0.UnifiedPlayerSheetV2
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -106,85 +79,6 @@ import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 import kotlin.math.roundToInt
-import kotlin.random.Random
-
-@Composable
-fun rememberPlayerBottomSheetState(
-    maxHeight: Dp,
-    bottomInset: Dp,
-    shouldShowNav: Boolean,
-    useRail: Boolean,
-): BottomSheetState =
-    rememberBottomSheetState(
-        dismissedBound = 0.dp,
-        collapsedBound = bottomInset + if (shouldShowNav && !useRail) {
-            MiniPlayerWithNavBarOffset
-        } else {
-            MiniPlayerOnlyOffset
-        },
-        expandedBound = maxHeight,
-    )
-
-@Composable
-fun rememberPlayerAwareWindowInsets(
-    useRail: Boolean,
-    bottomInset: Dp,
-    shouldShowNavigationBar: Boolean,
-    isMiniPlayerVisible: Boolean,
-    floatingToolbarBottomPadding: Dp,
-    windowsInsets: WindowInsets,
-): WindowInsets =
-    remember(
-        useRail,
-        bottomInset,
-        shouldShowNavigationBar,
-        isMiniPlayerVisible,
-        floatingToolbarBottomPadding,
-        windowsInsets,
-    ) {
-        var bottom = bottomInset
-        if (shouldShowNavigationBar && !useRail) {
-            bottom = floatingToolbarBottomPadding + FloatingToolbarHeight
-        }
-        if (isMiniPlayerVisible) {
-            bottom += MiniPlayerHeight + MiniPlayerBottomSpacing
-        }
-        windowsInsets
-            .only(
-                (
-                    if (useRail) {
-                        WindowInsetsSides.Right
-                    } else {
-                        WindowInsetsSides.Horizontal
-                    }
-                ) + WindowInsetsSides.Top,
-            ).add(WindowInsets(top = AppBarHeight, bottom = bottom))
-    }
-
-@Composable
-fun rememberPlayerAwareWindowInsets(
-    playerViewModel: PlayerViewModel,
-    useRail: Boolean,
-    bottomInset: Dp,
-    shouldShowNavigationBar: Boolean,
-    floatingToolbarBottomPadding: Dp,
-    windowsInsets: WindowInsets,
-): WindowInsets {
-    val isMiniPlayerVisible by remember(playerViewModel) {
-        playerViewModel.uiState
-            .map { it.trackUrl.isNotEmpty() }
-            .distinctUntilChanged()
-    }.collectAsStateWithLifecycle(initialValue = false)
-
-    return rememberPlayerAwareWindowInsets(
-        useRail = useRail,
-        bottomInset = bottomInset,
-        shouldShowNavigationBar = shouldShowNavigationBar,
-        isMiniPlayerVisible = isMiniPlayerVisible,
-        floatingToolbarBottomPadding = floatingToolbarBottomPadding,
-        windowsInsets = windowsInsets,
-    )
-}
 
 @Composable
 fun PlayerOverlayHost(
@@ -585,81 +479,12 @@ fun PlayerOverlayHost(
                 onShuffleClick =
                     if (shouldShowHomeShuffleButton) {
                         {
-                            val localItems = homeViewModel.allLocalItems.value
-                            val ytItems = homeViewModel.allYtItems.value
-                            val useLocalSource =
-                                when {
-                                    localItems.isNotEmpty() && ytItems.isNotEmpty() -> {
-                                        Random.nextFloat() < 0.5f
-                                    }
-
-                                    localItems.isNotEmpty() -> {
-                                        true
-                                    }
-
-                                    else -> {
-                                        false
-                                    }
-                                }
-
-                            coroutineScope.launch(Dispatchers.Main) {
-                                if (useLocalSource) {
-                                    when (val luckyItem = localItems.random()) {
-                                        is Song -> {
-                                            playerConnection?.playQueue(
-                                                if (luckyItem.song.isLocal) {
-                                                    ListQueue(items = listOf(luckyItem.toMediaItem()))
-                                                } else {
-                                                    YouTubeQueue.radio(luckyItem.toMediaMetadata())
-                                                },
-                                            )
-                                        }
-
-                                        is Album -> {
-                                            val albumWithSongs =
-                                                if (database != null) {
-                                                    withContext(Dispatchers.IO) {
-                                                        database.albumWithSongs(luckyItem.id).first()
-                                                    }
-                                                } else {
-                                                    null
-                                                }
-
-                                            albumWithSongs?.let {
-                                                playerConnection?.playQueue(LocalAlbumRadio(it))
-                                            }
-                                        }
-
-                                        is Artist, is Playlist -> {}
-                                    }
-                                } else {
-                                    when (val luckyItem = ytItems.random()) {
-                                        is SongItem -> {
-                                            playerConnection?.playQueue(
-                                                YouTubeQueue.radio(luckyItem.toMediaMetadata()),
-                                            )
-                                        }
-
-                                        is AlbumItem -> {
-                                            playerConnection?.playQueue(
-                                                YouTubeAlbumRadio(luckyItem.playlistId),
-                                            )
-                                        }
-
-                                        is ArtistItem -> {
-                                            luckyItem.radioEndpoint?.let {
-                                                playerConnection?.playQueue(YouTubeQueue(it))
-                                            }
-                                        }
-
-                                        is PlaylistItem -> {
-                                            luckyItem.playEndpoint?.let {
-                                                playerConnection?.playQueue(YouTubeQueue.playlist(it))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            launchHomeShuffle(
+                                coroutineScope = coroutineScope,
+                                homeViewModel = homeViewModel,
+                                playerConnection = playerConnection,
+                                database = database,
+                            )
                         }
                     } else {
                         null
