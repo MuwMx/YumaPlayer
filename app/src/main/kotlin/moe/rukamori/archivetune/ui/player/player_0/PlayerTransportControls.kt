@@ -39,7 +39,6 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
-import moe.rukamori.archivetune.ui.theme.transparentIconShadow
 import moe.rukamori.archivetune.ui.utils.bounceClick
 
 private val ContainerHorizontalPad = 0.dp // Прижимаем shuffle/repeat ближе к краям экрана
@@ -55,8 +54,6 @@ private val OuterIconSize          = 22.dp
 // Кнопки переключения внутри капсулы (Previous / Next) — крупнее внешних
 private val SkipButtonSize         = 52.dp
 private val SkipIconSize           = 34.dp
-private val SideShadowAlpha        = 0.1f
-private val SideShadowRadius       = 15.dp
 
 // Центральная кнопка (Play / Pause)
 private val CenterButtonSize       = 74.dp
@@ -163,7 +160,6 @@ fun PlayerTransportControls(
                             onAction(PlayerAction.Previous)
                         }
                         .size(SkipButtonSize)
-                        .transparentIconShadow(alpha = SideShadowAlpha, shadowRadius = SideShadowRadius)
                         .clip(CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -214,7 +210,6 @@ fun PlayerTransportControls(
                             onAction(PlayerAction.Next)
                         }
                         .size(SkipButtonSize)
-                        .transparentIconShadow(alpha = SideShadowAlpha, shadowRadius = SideShadowRadius)
                         .clip(CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {

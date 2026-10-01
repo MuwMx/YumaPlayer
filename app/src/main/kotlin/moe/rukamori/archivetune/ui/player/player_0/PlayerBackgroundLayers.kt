@@ -311,35 +311,35 @@ fun PlayerBackgroundLayers(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(playerHazeState)
+                    .graphicsLayer { alpha = blurOverlayAlpha }
             ) {
-                Image(
-                    painter = activeBlurPainter,
-                    contentDescription = null,
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = if (needsBlur) blurOverlayAlpha else 0f
-                        },
-                    contentScale = ContentScale.Crop
+                        .hazeSource(playerHazeState)
+                ) {
+                    Image(
+                        painter = activeBlurPainter,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeEffect(
+                            state = playerHazeState,
+                            style = HazeDefaults.style(
+                                backgroundColor = Color.Black,
+                                blurRadius = 32.dp,
+                            )
+                        ) {
+                            inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+                        }
                 )
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .hazeEffect(
-                        state = playerHazeState,
-                        style = HazeDefaults.style(
-                            backgroundColor = Color.Transparent,
-                            blurRadius = 32.dp,
-                        )
-                    ) {
-                        inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                    }
-                    .graphicsLayer {
-                        alpha = if (needsBlur) blurOverlayAlpha else 0f
-                    }
-            )
         }
 
         val painter = currentClearPainter

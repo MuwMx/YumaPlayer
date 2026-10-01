@@ -169,14 +169,15 @@ fun PlayerCoverCard(
             .aspectRatio(1f, matchHeightConstraintsFirst = true)
             .graphicsLayer {
                 translationX = offsetX.value
+                val isDraggingCover = abs(offsetX.value) > 1f
                 if (isAlbumCoverGlowEnabled) {
-                    shadowElevation = 48.dp.toPx()
+                    shadowElevation = if (isDraggingCover) 8.dp.toPx() else 48.dp.toPx()
                     shape = RoundedCornerShape(24.dp)
                     clip = false
-                    ambientShadowColor = animatedVibrantColor.copy(alpha = 0.8f)
-                    spotShadowColor = animatedVibrantColor
+                    ambientShadowColor = if (isDraggingCover) shadowColor else animatedVibrantColor.copy(alpha = 0.8f)
+                    spotShadowColor = if (isDraggingCover) shadowColor.copy(alpha = 0.5f) else animatedVibrantColor
                 } else {
-                    shadowElevation = 24.dp.toPx()
+                    shadowElevation = if (isDraggingCover) 8.dp.toPx() else 24.dp.toPx()
                     shape = RoundedCornerShape(24.dp)
                     clip = false
                     ambientShadowColor = shadowColor
