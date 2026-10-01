@@ -52,11 +52,7 @@ fun PlayerDockContainer(
         label = "DockJunctionRadius",
     )
 
-    val animatedBarHeight by animateDpAsState(
-        targetValue = if (isBarVisible) barHeight else 0.dp,
-        animationSpec = NavigationBarAnimationSpec,
-        label = "DockBarHeight",
-    )
+    val animatedBarHeight = barHeight
 
     val pillShape = remember(junctionRadius) {
         RoundedCornerShape(
