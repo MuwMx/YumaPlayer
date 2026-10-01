@@ -193,7 +193,6 @@ fun PlayerBackgroundLayers(
         }
     }
 
-    var activeGradientColor by remember { mutableStateOf(gradientColor) }
     var activeBlurPainter by remember { mutableStateOf<Painter?>(null) }
 
     val blurPainter = if (needsBlur) {
@@ -263,16 +262,19 @@ fun PlayerBackgroundLayers(
     }
 
     val animatedBgColor by animateColorAsState(
-        targetValue = activeGradientColor,
+        targetValue = gradientColor,
         animationSpec = tween(500),
         label = "VibrantGradientColor"
     )
 
-    if (!needsBlur || blurOverlayAlpha < 0.99f) {
+    val currentBlurPainter = activeBlurPainter ?: currentClearPainter
+    val isBlurReady = currentBlurPainter != null && blurOverlayAlpha >= 0.99f
+
+    if (!isBlurReady) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = 1f - blurOverlayAlpha }
+                .graphicsLayer { alpha = if (currentBlurPainter != null) 1f - blurOverlayAlpha else 1f }
                 .drawWithCache {
                     val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
                     val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
@@ -285,9 +287,7 @@ fun PlayerBackgroundLayers(
                         endY = size.height
                     )
                     onDrawBehind {
-                        // The blurred artwork above is opaque once the fade completes, so
-                        // this full-screen rect would rasterize for nothing.
-                        if (blurOverlayAlpha >= 0.99f) return@onDrawBehind
+                        if (isBlurReady) return@onDrawBehind
                         drawRect(brush = brush)
                     }
                 }
@@ -300,7 +300,6 @@ fun PlayerBackgroundLayers(
             .clipToBounds()
     ) {
         val playerHazeState = remember { HazeState() }
-        val currentBlurPainter = activeBlurPainter
         if (needsBlur && currentBlurPainter != null) {
             Box(
                 modifier = Modifier
