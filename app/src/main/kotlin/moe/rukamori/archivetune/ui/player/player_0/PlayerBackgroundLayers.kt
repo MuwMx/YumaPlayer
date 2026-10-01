@@ -269,28 +269,25 @@ fun PlayerBackgroundLayers(
     )
 
     val currentBlurPainter = activeBlurPainter ?: currentClearPainter
-    val isBlurReady = currentBlurPainter != null && blurOverlayAlpha >= 0.99f
 
-    if (!isBlurReady) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
-                    val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
-                    val brush = Brush.verticalGradient(
-                        0.0f to animatedBgColor,
-                        0.50f to midTone,
-                        1.0f to deepTone,
-                        startY = 0f,
-                        endY = size.height
-                    )
-                    onDrawBehind {
-                        drawRect(brush = brush)
-                    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawWithCache {
+                val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
+                val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
+                val brush = Brush.verticalGradient(
+                    0.0f to animatedBgColor,
+                    0.50f to midTone,
+                    1.0f to deepTone,
+                    startY = 0f,
+                    endY = size.height
+                )
+                onDrawBehind {
+                    drawRect(brush = brush)
                 }
-        )
-    }
+            }
+    )
 
     Box(
         modifier = Modifier

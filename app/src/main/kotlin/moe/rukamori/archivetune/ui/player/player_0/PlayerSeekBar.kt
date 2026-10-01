@@ -92,7 +92,7 @@ fun PlayerSeekBar(
                     dynamicAnalysis = cached
                 }
             }
-            delay(250)
+            delay(if (isVisible) 250L else 1000L)
         }
     }
 

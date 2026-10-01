@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune
 
 import android.app.Activity
+import android.content.ContextWrapper
 import android.content.Intent
 import android.view.Window
 import android.view.WindowManager
@@ -237,7 +238,7 @@ fun PlayerOverlayHost(
 
     val targetWindow = window ?: remember(context) {
         var ctx = context
-        while (ctx is android.content.ContextWrapper) {
+        while (ctx is ContextWrapper) {
             if (ctx is Activity) return@remember ctx.window
             ctx = ctx.baseContext
         }

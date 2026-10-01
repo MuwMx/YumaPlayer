@@ -2,25 +2,16 @@ package moe.rukamori.archivetune.ui.player.player_0
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.content.Intent
-import android.media.audiofx.AudioEffect
-import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
-import androidx.compose.ui.layout.layout
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,59 +22,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.FloatingToolbarBottomPadding
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
-import moe.rukamori.archivetune.extensions.metadata
-import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
-import moe.rukamori.archivetune.ui.menu.EqualizerDialog
-import moe.rukamori.archivetune.ui.menu.TempoPitchDialog
-import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsOptionsMenu
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.PlayerSheetPredictiveBackHandler
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetMotionController
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
-import moe.rukamori.archivetune.ui.player.player_0.scoped.playerSheetVerticalDragGesture
 import moe.rukamori.archivetune.ui.player.player_0.scoped.rememberFullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.rememberSheetVisualState
-import moe.rukamori.archivetune.ui.player.player_0.sett.FullPlayerOptionsMenu
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
-import moe.rukamori.archivetune.ui.player.queue_0.QueueOptionsMenu
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerSheetState
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
@@ -116,21 +75,13 @@ fun UnifiedPlayerSheetV2(
     onCloseQueueClick: () -> Unit = {},
 ) {
     val density = LocalDensity.current
-    val context = LocalContext.current
     val view = LocalView.current
     val (hapticFeedbackEnabled) = rememberPreference(EnableHapticFeedbackKey, true)
-    val playerConnection = LocalPlayerConnection.current
-
-    val activityResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
 
     var isLyricsMenuVisible by remember { mutableStateOf(false) }
     var isQueueMenuVisible by remember { mutableStateOf(false) }
     var showSettingsMenu by remember { mutableStateOf(false) }
     var menuInitialScreen by remember { mutableStateOf(PlayerMenuScreen.SETTINGS) }
-    var showEqualizerDialog by remember { mutableStateOf(false) }
-    var showPitchTempoDialog by remember { mutableStateOf(false) }
-    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
-    var showQueueAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val screenHeightDp = maxHeight
@@ -299,36 +250,6 @@ fun UnifiedPlayerSheetV2(
             initialOffsetY = 150f
         )
 
-        val pillShape = remember(density) {
-            object : Shape {
-                override fun createOutline(
-                    size: Size,
-                    layoutDirection: LayoutDirection,
-                    density: Density
-                ): Outline {
-                    if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(Rect.Zero)
-                    val fraction = expansionFraction.value
-                    if (fraction >= 0.99f) return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
-                    val radiusPx = with(density) {
-                        androidx.compose.ui.unit.lerp(32.dp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
-                    }
-                    val corner = CornerRadius(radiusPx, radiusPx)
-                    return Outline.Rounded(
-                        RoundRect(
-                            left = 0f,
-                            top = 0f,
-                            right = size.width,
-                            bottom = size.height,
-                            topLeftCornerRadius = corner,
-                            topRightCornerRadius = corner,
-                            bottomRightCornerRadius = corner,
-                            bottomLeftCornerRadius = corner
-                        )
-                    )
-                }
-            }
-        }
-
         val dragHandler = remember(motionController, sheetVisualState, screenHeightPx, screenWidthPx) {
             SheetVerticalDragGestureHandler(
                 scope = scope,
@@ -409,254 +330,86 @@ fun UnifiedPlayerSheetV2(
             registrationKey = currentSheetState
         )
 
-        val backgroundGradient = remember(state.gradientColor) {
-            Brush.verticalGradient(
-                listOf(
-                    Color(state.gradientColor),
-                    Color(0xFF121212)
-                )
-            )
-        }
+        val pillShape = rememberPlayerSheetPillShape(
+            density = density,
+            expansionFraction = expansionFraction
+        )
 
-
-        val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-        val fixedTintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
-        val miniHazeStyle = remember(containerColor, blurRadius, pureBlack) {
-            HazeDefaults.style(
-                backgroundColor = containerColor,
-                tint = HazeTint(containerColor.copy(alpha = fixedTintAlpha)),
-                blurRadius = blurRadius.dp,
-                noiseFactor = SettingsDimensions.HazeNoiseFactor,
-            )
-        }
-
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .offset {
-                    IntOffset(
-                        x = 0,
-                        y = sheetVisualState.visualSheetTranslationYProvider().roundToInt()
+        PlayerSheetScaffold(
+            sheetVisualState = sheetVisualState,
+            currentSheetState = currentSheetState,
+            expansionFraction = expansionFraction,
+            offsetAnimatable = offsetAnimatable,
+            visualOvershootScaleY = visualOvershootScaleY,
+            miniDismissGestureHandler = miniDismissGestureHandler,
+            dragHandler = dragHandler,
+            screenHeightPx = screenHeightPx,
+            screenWidthPx = screenWidthPx,
+            density = density,
+            pillShape = pillShape,
+            content = {
+                Box(
+                    modifier = Modifier.playerSheetGlassBorder(
+                        expansionFractionProvider = { expansionFraction.value },
+                        density = density
+                    )
+                ) {
+                    UnifiedPlayerSheetLayers(
+                        state = state,
+                        queueState = queueState,
+                        updateState = updateState,
+                        expansionFractionProvider = { expansionFraction.value },
+                        lyricsFractionProvider = lyricsFractionProvider,
+                        queueFractionProvider = queueFractionProvider,
+                        progressMsProvider = progressMsProvider,
+                        fullPlayerVisualState = fullPlayerVisualState,
+                        onAction = onAction,
+                        onCloseLyricsClick = onCloseLyricsClick,
+                        onCloseQueueClick = handleCloseQueue,
+                        onMoreQueueClick = { isQueueMenuVisible = true },
+                        onOpenQueue = handleOpenQueue,
+                        onMoreLyricsClick = { isLyricsMenuVisible = true },
+                        onSearchLyricsClick = onSearchLyricsClick,
+                        onCollapseClick = {
+                            scope.launch {
+                                motionController.animateTo(false, true, collapsedY)
+                                currentSheetState = PlayerSheetState.COLLAPSED
+                            }
+                        },
+                        onExpandClick = {
+                            scope.launch {
+                                motionController.animateTo(true, true, collapsedY)
+                                currentSheetState = PlayerSheetState.EXPANDED
+                            }
+                        },
+                        onSeek = onSeek,
+                        onSeekStarted = onSeekStarted,
+                        onBackgroundStyleChanged = onBackgroundStyleChanged,
+                        onImmersiveChanged = onImmersiveChanged,
+                        onOpenSettingsMenu = { screen ->
+                            menuInitialScreen = screen
+                            showSettingsMenu = true
+                        },
+                        dragHandler = dragHandler
                     )
                 }
-                .graphicsLayer {
-                    translationX = if (currentSheetState == PlayerSheetState.COLLAPSED || expansionFraction.value < 0.01f) offsetAnimatable.value else 0f
-                    scaleY = visualOvershootScaleY.value
-                }
-                .miniPlayerDismissHorizontalGesture(
-                    enabled = currentSheetState == PlayerSheetState.COLLAPSED,
-                    handler = miniDismissGestureHandler
-                )
-                .playerSheetVerticalDragGesture(
-                    enabled = true,
-                    handler = dragHandler
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .layout { measurable, constraints ->
-                        val targetHeightPx = sheetVisualState.playerContentAreaHeightPxProvider().toInt().coerceAtLeast(0)
-                        val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
-                        val endPaddingPx = sheetVisualState.currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
-                        val innerWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
-
-                        val placeable = measurable.measure(
-                            constraints.copy(
-                                minWidth = innerWidth,
-                                maxWidth = innerWidth,
-                                minHeight = targetHeightPx,
-                                maxHeight = targetHeightPx
-                            )
-                        )
-                        layout(constraints.maxWidth, targetHeightPx) {
-                            placeable.placeRelative(startPaddingPx, 0)
-                        }
-                    }
-                    .graphicsLayer {
-                        shape = pillShape
-                        clip = expansionFraction.value < 0.99f
-                    }
-                    .background(backgroundGradient)
-                    .layout { measurable, constraints ->
-                        val targetContentHeightPx = screenHeightPx.roundToInt()
-                        val fraction = expansionFraction.value
-                        val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt()
-                        val measureWidth = if (fraction > 0f) screenWidthPx.roundToInt() else constraints.maxWidth
-                        val placeable = measurable.measure(
-                            constraints.copy(
-                                minWidth = measureWidth,
-                                maxWidth = measureWidth,
-                                minHeight = targetContentHeightPx,
-                                maxHeight = targetContentHeightPx
-                            )
-                        )
-                        layout(constraints.maxWidth, constraints.maxHeight) {
-                            val xOffset = if (fraction > 0f) -startPaddingPx else 0
-                            placeable.placeRelative(xOffset, 0)
-                        }
-                    }
-                    .drawWithCache {
-                        val strokeWidthPx = SettingsDimensions.GlassBorderThickness.toPx()
-                        val halfStroke = strokeWidthPx / 2f
-                        val borderBrush = Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = SettingsDimensions.GlassBorderTopAlpha),
-                            1.0f to Color.Black.copy(alpha = SettingsDimensions.GlassBorderBottomAlpha)
-                        )
-
-                        onDrawWithContent {
-                            val fraction = expansionFraction.value
-                            drawContent()
-
-                            if (fraction < SettingsDimensions.FullyExpandedThreshold) {
-                                val borderFade = (1f - (fraction / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
-                                if (borderFade > 0f) {
-                                    val radiusPx = with(density) {
-                                        androidx.compose.ui.unit.lerp(32.dp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
-                                    }
-                                    drawRoundRect(
-                                        brush = borderBrush,
-                                        alpha = borderFade,
-                                        topLeft = Offset(halfStroke, halfStroke),
-                                        size = Size(size.width - strokeWidthPx, size.height - strokeWidthPx),
-                                        cornerRadius = CornerRadius(radiusPx, radiusPx),
-                                        style = Stroke(width = strokeWidthPx)
-                                    )
-                                }
-                            }
-                        }
-                    }
-            ) {
-                UnifiedPlayerSheetLayers(
-                    state = state,
-                    queueState = queueState,
-                    updateState = updateState,
-                    expansionFractionProvider = { expansionFraction.value },
-                    lyricsFractionProvider = lyricsFractionProvider,
-                    queueFractionProvider = queueFractionProvider,
-                    progressMsProvider = progressMsProvider,
-                    fullPlayerVisualState = fullPlayerVisualState,
-                    onAction = onAction,
-                    onCloseLyricsClick = onCloseLyricsClick,
-                    onCloseQueueClick = handleCloseQueue,
-                    onMoreQueueClick = { isQueueMenuVisible = true },
-                    onOpenQueue = handleOpenQueue,
-                    onMoreLyricsClick = { isLyricsMenuVisible = true },
-                    onSearchLyricsClick = onSearchLyricsClick,
-                    onCollapseClick = {
-                        scope.launch {
-                            motionController.animateTo(false, true, collapsedY)
-                            currentSheetState = PlayerSheetState.COLLAPSED
-                        }
-                    },
-                    onExpandClick = {
-                        scope.launch {
-                            motionController.animateTo(true, true, collapsedY)
-                            currentSheetState = PlayerSheetState.EXPANDED
-                        }
-                    },
-                    onSeek = onSeek,
-                    onSeekStarted = onSeekStarted,
-                    onBackgroundStyleChanged = onBackgroundStyleChanged,
-                    onImmersiveChanged = onImmersiveChanged,
-                    onOpenSettingsMenu = { screen ->
-                        menuInitialScreen = screen
-                        showSettingsMenu = true
-                    },
-                    dragHandler = dragHandler
-                )
             }
-        }
-
-        LyricsOptionsMenu(
-            isVisible = isLyricsMenuVisible,
-            onDismiss = { isLyricsMenuVisible = false },
-            onAction = onAction,
-            state = state
         )
 
-        QueueOptionsMenu(
-            isVisible = isQueueMenuVisible,
-            onDismiss = { isQueueMenuVisible = false },
-            onAction = onAction,
-            onSaveAsPlaylist = {
-                isQueueMenuVisible = false
-                showQueueAddToPlaylistDialog = true
-            },
-            state = state
-        )
-
-        FullPlayerOptionsMenu(
-            expanded = showSettingsMenu,
-            initialScreen = menuInitialScreen,
-            onDismissRequest = { showSettingsMenu = false },
+        PlayerSheetDialogs(
             state = state,
+            queueState = queueState,
             updateState = updateState,
+            onAction = onAction,
             onBackgroundStyleChanged = onBackgroundStyleChanged,
             onImmersiveChanged = onImmersiveChanged,
-            onOpenEqualizer = { showSettingsMenu = false; showEqualizerDialog = true },
-            onOpenPlaybackSpeed = { showSettingsMenu = false; showPitchTempoDialog = true },
-            onOpenAddToPlaylist = { showSettingsMenu = false; showAddToPlaylistDialog = true },
-            onAction = onAction
+            isLyricsMenuVisible = isLyricsMenuVisible,
+            onDismissLyricsMenu = { isLyricsMenuVisible = false },
+            isQueueMenuVisible = isQueueMenuVisible,
+            onDismissQueueMenu = { isQueueMenuVisible = false },
+            showSettingsMenu = showSettingsMenu,
+            menuInitialScreen = menuInitialScreen,
+            onDismissSettingsMenu = { showSettingsMenu = false }
         )
-
-        // Диалог Эквалайзера
-        if (showEqualizerDialog) {
-            EqualizerDialog(
-                onDismiss = { showEqualizerDialog = false },
-                openSystemEqualizer = {
-                    try {
-                        val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                            playerConnection?.localPlayer?.audioSessionId?.let {
-                                extra -> putExtra(AudioEffect.EXTRA_AUDIO_SESSION, extra)
-                            }
-                            putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                            putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                        }
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            activityResultLauncher.launch(intent)
-                        } else {
-                            Toast.makeText(context, context.getString(R.string.system_equalizer_not_found), Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (_: Exception) {
-                        Toast.makeText(context, context.getString(R.string.system_equalizer_not_found), Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-        }
-
-        if (showPitchTempoDialog) {
-            TempoPitchDialog(onDismiss = { showPitchTempoDialog = false })
-        }
-
-        if (showAddToPlaylistDialog && state.trackUrl.isNotBlank()) {
-            AddToPlaylistDialog(
-                isVisible = showAddToPlaylistDialog,
-                onGetSong = { listOf(state.trackUrl) },
-                onDismiss = { showAddToPlaylistDialog = false }
-            )
-        }
-
-        if (showQueueAddToPlaylistDialog && queueState.queueWindows.isNotEmpty()) {
-            val database = LocalDatabase.current
-            AddToPlaylistDialog(
-                isVisible = showQueueAddToPlaylistDialog,
-                onGetSong = {
-                    val songIds = database.withTransaction {
-                        queueState.queueWindows.mapNotNull { window ->
-                            window.mediaItem.metadata?.also { insert(it) }?.id
-                        }
-                    }
-                    songIds
-                },
-                onDismiss = { showQueueAddToPlaylistDialog = false },
-                onAddComplete = { songCount, playlistNames ->
-                    val message = when {
-                        playlistNames.size == 1 -> context.getString(R.string.added_to_playlist, playlistNames.first())
-                        else -> context.getString(R.string.added_to_n_playlists, playlistNames.size)
-                    }
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                }
-            )
-        }
     }
 }
