@@ -113,6 +113,7 @@ fun FloatingNavigationToolbar(
     hazeState: HazeState? = null,
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     showBorder: Boolean = true,
+    blurEnabled: Boolean = true,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
     shuffleContentDescription: String = "",
@@ -184,6 +185,7 @@ fun FloatingNavigationToolbar(
                         style = hazeStyle,
                     ) {
                         inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+                        this.blurEnabled = blurEnabled
                     }
                 } else {
                     Modifier.background(containerColor)

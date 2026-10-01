@@ -297,7 +297,6 @@ fun PlayerBackgroundLayers(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clipToBounds()
     ) {
         val playerHazeState = remember { HazeState() }
         if (needsBlur && currentBlurPainter != null) {
@@ -314,7 +313,9 @@ fun PlayerBackgroundLayers(
                     Image(
                         painter = currentBlurPainter,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f },
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -398,7 +399,7 @@ private val CanvasArtwork.fallbackUrl: String?
 private fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
     .graphicsLayer {
         this.alpha = alpha
-        this.compositingStrategy = CompositingStrategy.Offscreen
+        this.compositingStrategy = if (alpha > 0.01f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
     }
     .drawWithCache {
         val maskBrush = Brush.verticalGradient(

@@ -480,7 +480,7 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             ) {
                                 inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                                blurEnabled = expansionFraction.value < 0.45f
+                                blurEnabled = expansionFraction.value < 0.01f
                             }
                         } else {
                             Modifier.background(backgroundGradient)
@@ -498,8 +498,8 @@ fun UnifiedPlayerSheetV2(
                         onDrawWithContent {
                             val fraction = expansionFraction.value
 
-                            if (hazeState != null && fraction > 0.15f) {
-                                val bgAlpha = ((fraction - 0.15f) / 0.25f).coerceIn(0f, 1f)
+                            if (hazeState != null && fraction > 0.01f) {
+                                val bgAlpha = (fraction / 0.15f).coerceIn(0f, 1f)
                                 if (bgAlpha > 0f) {
                                     drawRect(brush = backgroundGradient, alpha = bgAlpha)
                                 }

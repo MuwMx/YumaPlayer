@@ -563,6 +563,7 @@ fun PlayerOverlayHost(
                 hazeState = hazeState,
                 blurRadius = blurRadius,
                 showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
+                blurEnabled = playerExpansionAnimatable.value < 0.01f,
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
