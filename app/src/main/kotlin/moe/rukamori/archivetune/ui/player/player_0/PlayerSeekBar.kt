@@ -43,7 +43,7 @@ internal fun resolveTransitionMarkerMs(
         aggressiveness = CrossfadeConstants.Aggressiveness.STANDARD.name.lowercase(),
         currentPositionMs = currentPositionMs,
     )
-    return plan.triggerAtMs?.takeIf { it > 0L && it < durationMs }
+    return plan.triggerAtMs?.takeIf { it in 1L until durationMs }
 }
 
 @Composable

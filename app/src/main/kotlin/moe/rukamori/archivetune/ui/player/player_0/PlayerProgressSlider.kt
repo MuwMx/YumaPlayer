@@ -71,10 +71,10 @@ internal fun PlayerProgressSlider(
                 detectTapGestures(
                     onPress = {
                         isPressed = true
-                        try {
-                            tryAwaitRelease()
-                        } finally {
-                            isPressed = false
+                        val released = tryAwaitRelease()
+                        isPressed = false
+                        if (released) {
+                            currentOnValueChangeFinished()
                         }
                     },
                     onTap = { offset ->
@@ -91,6 +91,7 @@ internal fun PlayerProgressSlider(
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
+                        isPressed = false
                         isDragged = true
                         currentOnValueChangeStarted()
                         val range = currentValueRange
