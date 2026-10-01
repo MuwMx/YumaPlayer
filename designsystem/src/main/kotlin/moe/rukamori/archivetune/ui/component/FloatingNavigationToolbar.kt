@@ -15,7 +15,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,7 +55,9 @@ import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeInputScale
@@ -260,36 +264,23 @@ private fun FluidTabsContainer(
 
             val selectionFactor by animateFloatAsState(
                 targetValue = if (selected) 1f else 0f,
-                animationSpec = tween(
-                    durationMillis = 320,
-                    easing = LinearOutSlowInEasing,
-                ),
+                animationSpec = tween(durationMillis = 320, easing = LinearOutSlowInEasing),
                 label = "SelectionFactor_$index",
             )
 
-            val iconTint by animateColorAsState(
+            val contentColor by animateColorAsState(
                 targetValue = if (selected) {
                     NavBarColors.iconActive(pureBlack)
                 } else {
                     NavBarColors.iconInactive(pureBlack)
                 },
                 animationSpec = tween(250),
-                label = "IconTint_$index",
-            )
-
-            val iconScale by animateFloatAsState(
-                targetValue = if (selected) 1.08f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                ),
-                label = "IconScale_$index",
+                label = "ContentColor_$index",
             )
 
             val onClickLambda = remember(screen, selected, onItemClick) {
                 { onItemClick(screen, selected) }
             }
-
             val onDoubleClickLambda = remember(screen, onSearchItemDoubleClick) {
                 if (screen == Screens.Search) onSearchItemDoubleClick else null
             }
@@ -298,9 +289,10 @@ private fun FluidTabsContainer(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .padding(vertical = 4.dp, horizontal = 2.dp)
                     .clip(CircleShape)
                     .yumaCombinedClickable(
-                        pressedScale = 0.93f,
+                        pressedScale = 0.95f,
                         onClick = onClickLambda,
                         onDoubleClick = onDoubleClickLambda,
                     ),
@@ -311,30 +303,38 @@ private fun FluidTabsContainer(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                val scale = lerp(0.6f, 1.0f, selectionFactor)
+                                val scale = lerp(0.7f, 1.0f, selectionFactor)
                                 scaleX = scale
                                 scaleY = scale
+                                alpha = selectionFactor
                             }
                             .background(
-                                color = MaterialTheme.colorScheme.primary.copy(
-                                    alpha = 0.09f * selectionFactor,
-                                ),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f),
                                 shape = CircleShape,
-                            ),
+                            )
                     )
                 }
 
-                Icon(
-                    painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
-                    contentDescription = stringResource(screen.titleId),
-                    tint = iconTint,
-                    modifier = Modifier
-                        .size(IconSize)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        },
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
+                        contentDescription = stringResource(screen.titleId),
+                        tint = contentColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = stringResource(screen.titleId),
+                        color = contentColor,
+                        fontSize = 11.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                }
             }
         }
     }
