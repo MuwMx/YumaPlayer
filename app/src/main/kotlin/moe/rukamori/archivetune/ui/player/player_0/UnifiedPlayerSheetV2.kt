@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.layout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -298,42 +299,30 @@ fun UnifiedPlayerSheetV2(
             initialOffsetY = 150f
         )
 
-        val dynamicShape = remember(sheetVisualState) {
+        val pillShape = remember(density) {
             object : Shape {
                 override fun createOutline(
                     size: Size,
                     layoutDirection: LayoutDirection,
                     density: Density
                 ): Outline {
-                    if (size.width <= 0f || size.height <= 0f) {
-                        return Outline.Rectangle(Rect.Zero)
-                    }
+                    if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(Rect.Zero)
                     val fraction = expansionFraction.value
-                    if (fraction >= 0.99f) {
-                        return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+                    if (fraction >= 0.99f) return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+                    val radiusPx = with(density) {
+                        androidx.compose.ui.unit.lerp(32.dp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
                     }
-
-                    val radiusTop = with(density) {
-                        sheetVisualState.overallSheetTopCornerRadiusProvider().toPx()
-                    }
-                    val radiusBottom = with(density) {
-                        sheetVisualState.playerContentActualBottomRadiusProvider().toPx()
-                    }
-
-                    val miniHeightPx = with(density) { MiniPlayerHeight.toPx() }
-                    val measuredHeight = sheetVisualState.playerContentAreaHeightPxProvider()
-                    val dynamicHeight = if (measuredHeight > 0f) measuredHeight else miniHeightPx
-                    val bottomBound = dynamicHeight
-
+                    val corner = CornerRadius(radiusPx, radiusPx)
                     return Outline.Rounded(
                         RoundRect(
                             left = 0f,
                             top = 0f,
                             right = size.width,
-                            bottom = bottomBound,                            topLeftCornerRadius = CornerRadius(radiusTop, radiusTop),
-                            topRightCornerRadius = CornerRadius(radiusTop, radiusTop),
-                            bottomRightCornerRadius = CornerRadius(radiusBottom, radiusBottom),
-                            bottomLeftCornerRadius = CornerRadius(radiusBottom, radiusBottom)
+                            bottom = size.height,
+                            topLeftCornerRadius = corner,
+                            topRightCornerRadius = corner,
+                            bottomRightCornerRadius = corner,
+                            bottomLeftCornerRadius = corner
                         )
                     )
                 }
@@ -453,9 +442,6 @@ fun UnifiedPlayerSheetV2(
                 .graphicsLayer {
                     translationX = if (currentSheetState == PlayerSheetState.COLLAPSED || expansionFraction.value < 0.01f) offsetAnimatable.value else 0f
                     scaleY = visualOvershootScaleY.value
-                    val paddingX = sheetVisualState.currentHorizontalPaddingStartPxProvider()
-                    val currentWidth = size.width - (paddingX * 2)
-                    scaleX = currentWidth / size.width
                 }
                 .miniPlayerDismissHorizontalGesture(
                     enabled = currentSheetState == PlayerSheetState.COLLAPSED,
@@ -468,28 +454,50 @@ fun UnifiedPlayerSheetV2(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        shape = dynamicShape
-                        clip = true
-                    }
-                    .then(
-                        if (hazeState != null) {
-                            Modifier.hazeEffect(
-                                state = hazeState,
-                                style = miniHazeStyle,
-                            ) {
-                                inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                                blurEnabled = expansionFraction.value < 0.01f
-                            }
-                        } else {
-                            Modifier.background(backgroundGradient)
+                    .layout { measurable, constraints ->
+                        val targetHeightPx = sheetVisualState.playerContentAreaHeightPxProvider().toInt().coerceAtLeast(0)
+                        val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)
+                        val endPaddingPx = sheetVisualState.currentHorizontalPaddingEndPxProvider().toInt().coerceAtLeast(0)
+                        val innerWidth = (constraints.maxWidth - startPaddingPx - endPaddingPx).coerceAtLeast(0)
+
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = innerWidth,
+                                maxWidth = innerWidth,
+                                minHeight = targetHeightPx,
+                                maxHeight = targetHeightPx
+                            )
+                        )
+                        layout(constraints.maxWidth, targetHeightPx) {
+                            placeable.placeRelative(startPaddingPx, 0)
                         }
-                    )
+                    }
+                    .graphicsLayer {
+                        shape = pillShape
+                        clip = expansionFraction.value < 0.99f
+                    }
+                    .background(backgroundGradient)
+                    .layout { measurable, constraints ->
+                        val targetContentHeightPx = screenHeightPx.roundToInt()
+                        val fraction = expansionFraction.value
+                        val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt()
+                        val measureWidth = if (fraction > 0f) screenWidthPx.roundToInt() else constraints.maxWidth
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = measureWidth,
+                                maxWidth = measureWidth,
+                                minHeight = targetContentHeightPx,
+                                maxHeight = targetContentHeightPx
+                            )
+                        )
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val xOffset = if (fraction > 0f) -startPaddingPx else 0
+                            placeable.placeRelative(xOffset, 0)
+                        }
+                    }
                     .drawWithCache {
                         val strokeWidthPx = SettingsDimensions.GlassBorderThickness.toPx()
                         val halfStroke = strokeWidthPx / 2f
-                        val cornerRadiusPx = 32.dp.toPx()
                         val borderBrush = Brush.verticalGradient(
                             0.0f to Color.White.copy(alpha = SettingsDimensions.GlassBorderTopAlpha),
                             1.0f to Color.Black.copy(alpha = SettingsDimensions.GlassBorderBottomAlpha)
@@ -497,25 +505,20 @@ fun UnifiedPlayerSheetV2(
 
                         onDrawWithContent {
                             val fraction = expansionFraction.value
-
-                            if (hazeState != null && fraction > 0.01f) {
-                                val bgAlpha = (fraction / 0.15f).coerceIn(0f, 1f)
-                                if (bgAlpha > 0f) {
-                                    drawRect(brush = backgroundGradient, alpha = bgAlpha)
-                                }
-                            }
-
                             drawContent()
 
                             if (fraction < SettingsDimensions.FullyExpandedThreshold) {
                                 val borderFade = (1f - (fraction / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
                                 if (borderFade > 0f) {
+                                    val radiusPx = with(density) {
+                                        androidx.compose.ui.unit.lerp(32.dp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
+                                    }
                                     drawRoundRect(
                                         brush = borderBrush,
                                         alpha = borderFade,
                                         topLeft = Offset(halfStroke, halfStroke),
                                         size = Size(size.width - strokeWidthPx, size.height - strokeWidthPx),
-                                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                                        cornerRadius = CornerRadius(radiusPx, radiusPx),
                                         style = Stroke(width = strokeWidthPx)
                                     )
                                 }
