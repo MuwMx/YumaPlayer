@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,11 +30,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
@@ -52,7 +57,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.glassStroke
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalDatabase
@@ -134,7 +138,6 @@ fun UnifiedPlayerSheetV2(
         val screenWidthPx = with(density) { screenWidthDp.toPx() }
 
         val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val navigationBarsPx = with(density) { navigationBarsPadding.toPx() }
         val miniHeightPx = with(density) { MiniPlayerHeight.toPx() }
 
         val expandedY = 0f
@@ -143,14 +146,14 @@ fun UnifiedPlayerSheetV2(
             val progress = if (FloatingToolbarHeight > 0.dp) {
                 (bottomBarHeight / FloatingToolbarHeight).coerceIn(0f, 1f)
             } else 0f
-            val bottomToolbarPadding = FloatingToolbarBottomPadding * progress
-            (bottomBarHeight + bottomToolbarPadding + MiniPlayerBottomSpacing + MiniPlayerHeight).toPx()
+            val navContribution = (FloatingToolbarHeight + FloatingToolbarBottomPadding) * progress
+            (navigationBarsPadding + navContribution + MiniPlayerBottomSpacing + MiniPlayerHeight).toPx()
         }
 
         val collapsedY = if (state.trackUrl.isEmpty()) {
             screenHeightPx
         } else {
-            screenHeightPx - navigationBarsPx - totalOffsetPx
+            screenHeightPx - totalOffsetPx
         }
 
         val scope = rememberCoroutineScope()
@@ -304,30 +307,31 @@ fun UnifiedPlayerSheetV2(
                     density: Density
                 ): Outline {
                     val expansionFractionVal = expansionFraction.value
-                    // Фикс скругления при 99%+ раскрытии шторки
+                    if (expansionFractionVal >= 0.99f) {
+                        return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+                    }
+                    val dynamicHeight = sheetVisualState.playerContentAreaHeightPxProvider()
+                    if (size.width <= 0f || dynamicHeight <= 0f) {
+                        return Outline.Rectangle(Rect.Zero)
+                    }
                     val radiusTop = with(density) {
-                        if (expansionFractionVal > 0.99f) {
-                            0f
-                        } else {
-                            sheetVisualState.overallSheetTopCornerRadiusProvider().toPx()
-                        }
+                        sheetVisualState.overallSheetTopCornerRadiusProvider().toPx()
                     }
                     val radiusBottom = with(density) {
                         sheetVisualState.playerContentActualBottomRadiusProvider().toPx()
                     }
-                    val dynamicHeight = sheetVisualState.playerContentAreaHeightPxProvider()
-
-                    val targetSize = if (expansionFractionVal > 0.99f) {
-                        size
-                    } else {
-                        Size(size.width, dynamicHeight)
-                    }
-                    return RoundedCornerShape(
-                        topStart = radiusTop,
-                        topEnd = radiusTop,
-                        bottomStart = radiusBottom,
-                        bottomEnd = radiusBottom
-                    ).createOutline(targetSize, layoutDirection, density)
+                    return Outline.Rounded(
+                        RoundRect(
+                            left = 0f,
+                            top = 0f,
+                            right = size.width,
+                            bottom = dynamicHeight,
+                            topLeftCornerRadius = CornerRadius(radiusTop, radiusTop),
+                            topRightCornerRadius = CornerRadius(radiusTop, radiusTop),
+                            bottomRightCornerRadius = CornerRadius(radiusBottom, radiusBottom),
+                            bottomLeftCornerRadius = CornerRadius(radiusBottom, radiusBottom)
+                        )
+                    )
                 }
             }
         }
@@ -480,36 +484,43 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             ) {
                                 inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+                                blurEnabled = expansionFraction.value < 0.05f
                             }
                         } else {
                             Modifier.background(backgroundGradient)
                         }
                     )
-                    .then(
-                        if (hazeState != null && expansionFraction.value > 0f) {
-                            Modifier.background(
-                                brush = backgroundGradient,
-                                alpha = (expansionFraction.value / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)
-                            )
-                        } else {
-                            Modifier
+                    .drawWithCache {
+                        onDrawWithContent {
+                            drawContent()
+                            val fraction = expansionFraction.value
+                            if (hazeState != null && fraction > 0f) {
+                                val bgAlpha = (fraction / SettingsDimensions.ExpansionThresholdFraction).coerceIn(0f, 1f)
+                                if (bgAlpha > 0f) {
+                                    drawRect(brush = backgroundGradient, alpha = bgAlpha)
+                                }
+                            }
+                            if (fraction < SettingsDimensions.FullyExpandedThreshold) {
+                                val borderFade = (1f - (fraction / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
+                                if (borderFade > 0f) {
+                                    val strokeWidthPx = SettingsDimensions.GlassBorderThickness.toPx()
+                                    val halfStroke = strokeWidthPx / 2f
+                                    val borderBrush = Brush.verticalGradient(
+                                        0.0f to Color.White.copy(alpha = SettingsDimensions.GlassBorderTopAlpha * borderFade),
+                                        1.0f to Color.Black.copy(alpha = SettingsDimensions.GlassBorderBottomAlpha * borderFade)
+                                    )
+                                    val cornerRadiusPx = 32.dp.toPx()
+                                    drawRoundRect(
+                                        brush = borderBrush,
+                                        topLeft = Offset(halfStroke, halfStroke),
+                                        size = Size(size.width - strokeWidthPx, size.height - strokeWidthPx),
+                                        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                                        style = Stroke(width = strokeWidthPx)
+                                    )
+                                }
+                            }
                         }
-                    )
-                    .then(
-                        if (expansionFraction.value < SettingsDimensions.FullyExpandedThreshold) {
-                            val borderFade = (1f - (expansionFraction.value / SettingsDimensions.ExpansionThresholdFraction)).coerceIn(0f, 1f)
-                            Modifier.glassStroke(
-                                shape = dynamicShape,
-                                strokeWidth = SettingsDimensions.GlassBorderThickness,
-                                topAlpha = SettingsDimensions.GlassBorderTopAlpha * borderFade,
-                                bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha * borderFade,
-                                topColor = Color.White,
-                                bottomColor = Color.Black,
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
+                    }
             ) {
                 UnifiedPlayerSheetLayers(
                     state = state,
