@@ -2,7 +2,6 @@ package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -60,7 +59,6 @@ internal fun MiniPlayerContentInternal(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
-            .background(Color(state.gradientColor).copy(alpha = 0.55f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
