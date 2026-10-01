@@ -81,10 +81,10 @@ internal fun PlayerSheetPredictiveBackHandler(
                             onPredictiveBackFractionChanged(this.value)
                         }
 
-                        if (currentSheetState == PlayerSheetState.EXPANDED) {
-                            onExpand()
-                        } else {
+                        if (actualProgress > 0.5f) {
                             onCollapse()
+                        } else {
+                            onExpand()
                         }
 
                         onSwipeEdgeChanged(null)

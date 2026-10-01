@@ -98,7 +98,7 @@ internal fun rememberPlayerSheetGestures(
     }
 
     PlayerSheetPredictiveBackHandler(
-        enabled = motionScope.currentSheetState == PlayerSheetState.EXPANDED && !state.isLyricsVisible && !state.isQueueVisible,
+        enabled = motionScope.currentSheetState == PlayerSheetState.EXPANDED && !motionScope.isSheetSettling && !state.isLyricsVisible && !state.isQueueVisible,
         currentSheetState = motionScope.currentSheetState,
         predictiveBackFractionValue = motionScope.predictiveBackProgress,
         onPredictiveBackFractionChanged = { motionScope.predictiveBackProgress = it },

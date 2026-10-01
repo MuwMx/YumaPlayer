@@ -64,6 +64,7 @@ internal class PlayerSheetMotionScope(
     val fullPlayerVisualState: FullPlayerVisualState,
     private val currentSheetStateState: MutableState<PlayerSheetState>,
     private val predictiveBackProgressState: MutableState<Float>,
+    private val isSheetSettlingState: MutableState<Boolean>,
     val handleOpenQueue: () -> Unit,
     val handleCloseQueue: () -> Unit,
 ) {
@@ -79,17 +80,35 @@ internal class PlayerSheetMotionScope(
             predictiveBackProgressState.value = value
         }
 
+    var isSheetSettling: Boolean
+        get() = isSheetSettlingState.value
+        private set(value) {
+            isSheetSettlingState.value = value
+        }
+
     fun collapse() {
         scope.launch {
-            motionController.animateTo(false, true, collapsedY)
-            currentSheetState = PlayerSheetState.COLLAPSED
+            if (isSheetSettlingState.value) return@launch
+            isSheetSettlingState.value = true
+            try {
+                motionController.animateTo(false, true, collapsedY)
+                currentSheetState = PlayerSheetState.COLLAPSED
+            } finally {
+                isSheetSettlingState.value = false
+            }
         }
     }
 
     fun expand() {
         scope.launch {
-            motionController.animateTo(true, true, collapsedY)
-            currentSheetState = PlayerSheetState.EXPANDED
+            if (isSheetSettlingState.value) return@launch
+            isSheetSettlingState.value = true
+            try {
+                motionController.animateTo(true, true, collapsedY)
+                currentSheetState = PlayerSheetState.EXPANDED
+            } finally {
+                isSheetSettlingState.value = false
+            }
         }
     }
 }
@@ -140,6 +159,7 @@ internal fun rememberPlayerSheetMotionScope(
     val expansionFraction = remember { Animatable(0f) }
     val visualOvershootScaleY = remember { Animatable(1f) }
     val predictiveBackProgressState = remember { mutableStateOf(0f) }
+    val isSheetSettlingState = remember { mutableStateOf(false) }
     val predictiveBackProgress by predictiveBackProgressState
 
     val offsetAnimatable = remember { Animatable(0f) }
@@ -312,6 +332,7 @@ internal fun rememberPlayerSheetMotionScope(
             fullPlayerVisualState = fullPlayerVisualState,
             currentSheetStateState = currentSheetStateState,
             predictiveBackProgressState = predictiveBackProgressState,
+            isSheetSettlingState = isSheetSettlingState,
             handleOpenQueue = handleOpenQueue,
             handleCloseQueue = handleCloseQueue,
         )
