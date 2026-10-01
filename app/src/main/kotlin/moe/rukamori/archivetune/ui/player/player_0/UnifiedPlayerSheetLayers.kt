@@ -105,10 +105,9 @@ internal fun UnifiedPlayerSheetLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val expansion = expansionFractionProvider()
                     val isTranslucent = state.isBlurBackgroundEnabled || state.isImmersiveEnabled
                     val overlayFraction = if (isTranslucent) 0f else maxOf(lyricsFractionProvider(), queueFractionProvider())
-                    alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
+                    alpha = (1f - overlayFraction).coerceIn(0f, 1f)
                 }
         ) {
             moe.rukamori.archivetune.ui.player.player_0.PlayerBackgroundLayers(
