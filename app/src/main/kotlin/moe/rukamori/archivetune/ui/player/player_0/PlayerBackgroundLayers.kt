@@ -187,7 +187,7 @@ fun PlayerBackgroundLayers(
             .drawWithCache {
                 val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f)
 
-                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.18f else 0.25f
+                val bottomAlpha = if (immersiveTransitionAlpha > 0f) 0.22f else 0.25f
 
                 val veilBrush = Brush.verticalGradient(
                     0.0f to Color.Transparent,
