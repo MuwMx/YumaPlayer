@@ -60,7 +60,7 @@ internal fun MiniPlayerContentInternal(
         modifier = modifier
             .fillMaxWidth()
             .height(MiniPlayerHeight)
-            .background(Color(state.gradientColor))
+            .background(Color(state.gradientColor).copy(alpha = 0.55f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
