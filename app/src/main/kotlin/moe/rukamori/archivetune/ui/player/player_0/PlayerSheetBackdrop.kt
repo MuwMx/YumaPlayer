@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -61,17 +62,18 @@ internal fun rememberBackgroundGradient(gradientColor: Int): Brush {
 internal fun Modifier.playerSheetBackdrop(
     hazeState: HazeState?,
     hazeStyle: HazeStyle,
-    isDragging: Boolean = false,
-): Modifier = if (hazeState != null) {
-    this.hazeEffect(
+    backgroundBrush: Brush,
+    pureBlack: Boolean = false,
+): Modifier = when {
+    pureBlack -> this.background(Color.Black)
+    hazeState != null -> this.hazeEffect(
         state = hazeState,
         style = hazeStyle
     ) {
         inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-        this.blurEnabled = !isDragging
+        this.blurEnabled = true
     }
-} else {
-    this
+    else -> this.background(backgroundBrush)
 }
 
 internal fun Modifier.playerSheetGlassBorder(

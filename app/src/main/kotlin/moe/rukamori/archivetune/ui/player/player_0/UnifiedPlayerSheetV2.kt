@@ -93,6 +93,8 @@ fun UnifiedPlayerSheetV2(
         )
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
+        val backgroundGradient = rememberBackgroundGradient(state.gradientColor)
+
         PlayerSheetScaffold(
             sheetVisualState = motionScope.sheetVisualState,
             currentSheetState = motionScope.currentSheetState,
@@ -108,11 +110,11 @@ fun UnifiedPlayerSheetV2(
             content = {
                 Box(
                     modifier = Modifier
-                        .background(containerColor)
                         .playerSheetBackdrop(
                             hazeState = hazeState,
                             hazeStyle = miniHazeStyle,
-                            isDragging = motionScope.expansionFraction.value >= 0.01f
+                            backgroundBrush = backgroundGradient,
+                            pureBlack = pureBlack
                         )
                         .playerSheetGlassBorder(
                             expansionFractionProvider = { motionScope.expansionFraction.value },
