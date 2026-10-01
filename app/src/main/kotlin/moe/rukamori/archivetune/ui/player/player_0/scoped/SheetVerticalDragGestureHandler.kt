@@ -5,10 +5,8 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -17,15 +15,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.unit.Velocity
-
-internal enum class ActiveDragSheet {
-    LYRICS,
-    QUEUE
-}
 
 /**
  * Инкапсулирует состояние жеста вертикального перетаскивания и разрешение целевой точки для шторки плеера.
@@ -37,14 +26,14 @@ internal class SheetVerticalDragGestureHandler(
     private val densityProvider: () -> Density,
     private val sheetMotionController: SheetMotionController,
     private val playerContentExpansionFraction: Animatable<Float, AnimationVector1D>,
-    private val currentSheetTranslationY: Animatable<Float, AnimationVector1D>,
-    private val lyricsFraction: Animatable<Float, AnimationVector1D>,
-    private val queueFraction: Animatable<Float, AnimationVector1D>,
-    private val expandedYProvider: () -> Float,
+    internal val currentSheetTranslationY: Animatable<Float, AnimationVector1D>,
+    internal val lyricsFraction: Animatable<Float, AnimationVector1D>,
+    internal val queueFraction: Animatable<Float, AnimationVector1D>,
+    internal val expandedYProvider: () -> Float,
     private val collapsedYProvider: () -> Float,
     private val miniHeightPxProvider: () -> Float,
     private val screenHeightPxProvider: () -> Float,
-    private val screenWidthPxProvider: () -> Float,
+    internal val screenWidthPxProvider: () -> Float,
     private val currentSheetStateProvider: () -> PlayerSheetState,
     private val visualOvershootScaleY: Animatable<Float, AnimationVector1D>,
     private val onDraggingChange: (Boolean) -> Unit,
@@ -397,130 +386,9 @@ internal class SheetVerticalDragGestureHandler(
     fun createNestedScrollConnection(
         canDragProvider: () -> Boolean,
         targetSheet: ActiveDragSheet = ActiveDragSheet.LYRICS
-    ): NestedScrollConnection {
-        return object : NestedScrollConnection {
-            private var isDraggingFromList = false
-            private var accumulatedListDrag = 0f
-
-            private fun finalizeListDrag(velocity: Float = 0f) {
-                if (isDraggingFromList) {
-                    onDragEnd(velocity)
-                    isDraggingFromList = false
-                    accumulatedListDrag = 0f
-                }
-            }
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val targetFractionAnimatable = if (targetSheet == ActiveDragSheet.LYRICS) lyricsFraction else queueFraction
-
-                if (isDraggingFromList) {
-                    if (available.y < 0f && targetFractionAnimatable.value >= 0.99f && currentSheetTranslationY.value <= expandedYProvider()) {
-                        finalizeListDrag()
-                        return Offset.Zero
-                    }
-                    accumulatedListDrag += available.y
-                    onVerticalDrag(
-                        uptimeMillis = System.currentTimeMillis(),
-                        dragAmount = available.y
-                    )
-                    return available
-                }
-
-                if (available.y > 0f && canDragProvider()) {
-                    if (!isDraggingFromList) {
-                        isDraggingFromList = true
-                        accumulatedListDrag = 0f
-                        val screenWidth = screenWidthPxProvider()
-                        val startX = if (targetSheet == ActiveDragSheet.LYRICS) 0f else screenWidth
-                        onDragStart(position = Offset(startX, 0f))
-                    }
-                    accumulatedListDrag += available.y
-                    onVerticalDrag(
-                        uptimeMillis = System.currentTimeMillis(),
-                        dragAmount = available.y
-                    )
-                    return Offset(0f, available.y)
-                }
-
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (isDraggingFromList) {
-                    if (available.y < 0f) {
-                        finalizeListDrag(available.y)
-                        return Velocity.Zero
-                    }
-                    if (available.y > 0f) {
-                        finalizeListDrag(available.y)
-                        return available
-                    }
-                }
-
-                if (available.y > 0f && canDragProvider()) {
-                    if (!isDraggingFromList) {
-                        isDraggingFromList = true
-                        val screenWidth = screenWidthPxProvider()
-                        val startX = if (targetSheet == ActiveDragSheet.LYRICS) 0f else screenWidth
-                        onDragStart(position = Offset(startX, 0f))
-                    }
-                    finalizeListDrag(available.y)
-                    return available
-                }
-
-                return Velocity.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                if (isDraggingFromList && source == NestedScrollSource.UserInput && available.y != 0f) {
-                    accumulatedListDrag += available.y
-                    onVerticalDrag(
-                        uptimeMillis = System.currentTimeMillis(),
-                        dragAmount = available.y
-                    )
-                    return Offset(0f, available.y)
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPostFling(
-                consumed: Velocity,
-                available: Velocity
-            ): Velocity {
-                if (isDraggingFromList) {
-                    finalizeListDrag(available.y)
-                    return available
-                }
-                return Velocity.Zero
-            }
-        }
-    }
-}
-
-/**
- * Модификатор для привязки обработчика жестов к UI-компоненту.
- */
-internal fun Modifier.playerSheetVerticalDragGesture(
-    enabled: Boolean,
-    handler: SheetVerticalDragGestureHandler
-): Modifier {
-    if (!enabled) return this
-    return this.pointerInput(enabled, handler) {
-        detectVerticalDragGestures(
-            onDragStart = { offset -> handler.onDragStart(offset) },
-            onVerticalDrag = { change, dragAmount ->
-                change.consume()
-                handler.onVerticalDrag(
-                    uptimeMillis = change.uptimeMillis,
-                    dragAmount = dragAmount
-                )
-            },
-            onDragEnd = { handler.onDragEnd() },
-            onDragCancel = { handler.onDragCancel() }
-        )
-    }
+    ): NestedScrollConnection = createNestedScrollConnection(
+        handler = this,
+        canDragProvider = canDragProvider,
+        targetSheet = targetSheet
+    )
 }
