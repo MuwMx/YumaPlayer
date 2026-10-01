@@ -54,6 +54,7 @@ internal fun RowScope.NavigationTabItem(
     onClick: () -> Unit,
     onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    drawSelector: Boolean = true,
 ) {
     val selectionFactor by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
@@ -90,7 +91,7 @@ internal fun RowScope.NavigationTabItem(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (selectionFactor > NavigationTabSelectorVisibleThreshold) {
+        if (drawSelector && selectionFactor > NavigationTabSelectorVisibleThreshold) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -694,8 +695,14 @@ fun ScaffoldShell(
                 }
 
                 val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = blurNavBar)
+                val barScrollVisibility = rememberBarScrollVisibility()
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .nestedScroll(barScrollVisibility.nestedScrollConnection),
+                ) {
                     Scaffold(
                     topBar = {
                         if (shouldShowTopBar) {
@@ -1203,6 +1210,7 @@ fun ScaffoldShell(
                     navVisibleHeight = navVisibleHeight,
                     floatingToolbarBottomPadding = floatingToolbarBottomPadding,
                     onExpansionFraction = onExpansionFraction,
+                    scrollVisibilityFactor = barScrollVisibility.scrollVisibilityFactor,
                 )
 
                 GlobalDialogsHost(

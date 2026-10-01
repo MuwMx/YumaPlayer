@@ -87,6 +87,7 @@ fun PlayerOverlayHost(
     floatingToolbarBottomPadding: Dp = YdsInsets.floatingToolbarBottomPadding(),
     onExpansionFraction: (() -> Float) -> Unit = {},
     onExpansionState: (State<Float>) -> Unit = {},
+    scrollVisibilityFactor: Float = 1f,
 ) {
     val playerExpansionAnimatable = remember { Animatable(0f) }
     val expansionFraction: () -> Float = remember { { playerExpansionAnimatable.value } }
@@ -235,6 +236,7 @@ fun PlayerOverlayHost(
                         showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
                         blurEnabled = bottomNavigationBarHeight != 0.dp &&
                             playerExpansionAnimatable.value < bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) / navVisibleHeight,
+                        visibilityFactor = if (playerExpansionAnimatable.value < 0.01f) scrollVisibilityFactor else 1f,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomCenter)
