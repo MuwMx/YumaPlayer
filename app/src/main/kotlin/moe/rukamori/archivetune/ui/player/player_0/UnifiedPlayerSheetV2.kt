@@ -480,7 +480,7 @@ fun UnifiedPlayerSheetV2(
                                 style = miniHazeStyle,
                             ) {
                                 inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-                                blurEnabled = expansionFraction.value < 0.15f
+                                blurEnabled = expansionFraction.value < 0.45f
                             }
                         } else {
                             Modifier.background(backgroundGradient)

@@ -174,37 +174,53 @@ fun PlayerBackgroundLayers(
             .build()
     }
 
-    var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
-    var activeGradientColor by remember { mutableStateOf(gradientColor) }
-
-    val blurPainter =
-        if (needsBlur) {
-            val blurImageRequest = remember(targetUrl) {
-                ImageRequest.Builder(context)
-                    .data(targetUrl)
-                    .apply {
-                        if (targetUrl != null) {
-                            memoryCacheKey("blur:$targetUrl")
-                            diskCacheKey(targetUrl)
-                        }
-                    }
-                    .size(300)
-                    .allowHardware(true)
-                    .crossfade(400)
-                    .build()
-            }
-            rememberAsyncImagePainter(model = blurImageRequest)
-        } else {
-            null
-        }
-
     val clearPainter = rememberAsyncImagePainter(model = clearImageRequest)
+    var currentClearPainter by remember { mutableStateOf<Painter?>(null) }
 
-    LaunchedEffect(gradientColor, targetUrl) {
-        if (targetUrl == null) {
-            activeGradientColor = Color(0xFF121212)
-        } else {
-            activeGradientColor = gradientColor
+    LaunchedEffect(clearPainter, targetUrl) {
+        clearPainter.state.collect { s ->
+            when (s) {
+                is AsyncImagePainter.State.Success -> {
+                    if (targetUrl != null && s.result.request.data == targetUrl) {
+                        currentClearPainter = s.painter
+                    }
+                }
+                is AsyncImagePainter.State.Error -> {
+                    currentClearPainter = null
+                }
+                else -> {}
+            }
+        }
+    }
+
+    var activeGradientColor by remember { mutableStateOf(gradientColor) }
+    var activeBlurPainter by remember { mutableStateOf<Painter?>(null) }
+
+    val blurPainter = if (needsBlur) {
+        val blurImageRequest = remember(targetUrl) {
+            ImageRequest.Builder(context)
+                .data(targetUrl)
+                .apply {
+                    if (targetUrl != null) {
+                        memoryCacheKey("blur:$targetUrl")
+                        diskCacheKey(targetUrl)
+                    }
+                }
+                .size(300)
+                .allowHardware(true)
+                .crossfade(400)
+                .build()
+        }
+        rememberAsyncImagePainter(model = blurImageRequest)
+    } else {
+        null
+    }
+
+    LaunchedEffect(blurPainter) {
+        blurPainter?.state?.collect { s ->
+            if (s is AsyncImagePainter.State.Success) {
+                activeBlurPainter = s.painter
+            }
         }
     }
 
@@ -242,28 +258,6 @@ fun PlayerBackgroundLayers(
                         onColorsExtracted(colors.vibrant, colors.darkMuted, colors.gradient)
                     }
                 }
-            }
-        }
-
-        clearPainter.state.collect { s ->
-            when (s) {
-                is AsyncImagePainter.State.Success -> {
-                    if (targetUrl == requestedTargetUrl &&
-                        state.trackUrl == requestedTrackUrl &&
-                        s.result.request.data == requestedTargetUrl
-                    ) {
-                        currentClearPainter = s.painter
-                    }
-                }
-                is AsyncImagePainter.State.Error -> {
-                    if (targetUrl == requestedTargetUrl &&
-                        state.trackUrl == requestedTrackUrl &&
-                        s.result.request.data == requestedTargetUrl
-                    ) {
-                        currentClearPainter = null
-                    }
-                }
-                else -> {}
             }
         }
     }
@@ -306,8 +300,8 @@ fun PlayerBackgroundLayers(
             .clipToBounds()
     ) {
         val playerHazeState = remember { HazeState() }
-        val activeBlurPainter = blurPainter
-        if (needsBlur && activeBlurPainter != null) {
+        val currentBlurPainter = activeBlurPainter
+        if (needsBlur && currentBlurPainter != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -319,7 +313,7 @@ fun PlayerBackgroundLayers(
                         .hazeSource(playerHazeState)
                 ) {
                     Image(
-                        painter = activeBlurPainter,
+                        painter = currentBlurPainter,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -333,7 +327,7 @@ fun PlayerBackgroundLayers(
                             state = playerHazeState,
                             style = HazeDefaults.style(
                                 backgroundColor = Color.Transparent,
-                                blurRadius = 32.dp,
+                                blurRadius = 56.dp,
                                 noiseFactor = SettingsDimensions.HazeNoiseFactor,
                             )
                         ) {

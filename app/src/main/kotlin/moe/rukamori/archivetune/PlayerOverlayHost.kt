@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.Window
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -222,9 +223,9 @@ fun PlayerOverlayHost(
     onExpansionFraction: (() -> Float) -> Unit = {},
     onExpansionState: (State<Float>) -> Unit = {},
 ) {
-    var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
-    val expansionFraction: () -> Float = remember { { playerExpansionFraction } }
-    val expansionState: State<Float> = remember { derivedStateOf { playerExpansionFraction } }
+    val playerExpansionAnimatable = remember { Animatable(0f) }
+    val expansionFraction: () -> Float = remember { { playerExpansionAnimatable.value } }
+    val expansionState: State<Float> = remember { derivedStateOf { playerExpansionAnimatable.value } }
 
     SideEffect {
         onExpansionFraction(expansionFraction)
@@ -264,7 +265,7 @@ fun PlayerOverlayHost(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
 
-    BackHandler(enabled = playerExpansionFraction > 0.5f) {
+    BackHandler(enabled = playerExpansionAnimatable.value > 0.5f) {
         when {
             isPlayerLyricsVisible -> {
                 playerViewModel.setLyricsVisible(false)
@@ -513,7 +514,9 @@ fun PlayerOverlayHost(
             pureBlack = pureBlack,
             blurRadius = blurRadius,
             onExpansionFractionChanged = { fraction ->
-                playerExpansionFraction = fraction
+                coroutineScope.launch {
+                    playerExpansionAnimatable.snapTo(fraction)
+                }
             },
         )
 
@@ -536,17 +539,17 @@ fun PlayerOverlayHost(
                         } else {
                             val slideOffset =
                                 navSlideDistance.toPx() *
-                                    playerExpansionFraction.coerceIn(
-                                        0f,
-                                        1f,
-                                    )
+                                        playerExpansionAnimatable.value.coerceIn(
+                                            0f,
+                                            1f,
+                                        )
                             val hideOffset =
                                 navSlideDistance.toPx() *
-                                    (
-                                        1f -
-                                            bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) /
-                                            navVisibleHeight
-                                    )
+                                        (
+                                                1f -
+                                                        bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) /
+                                                        navVisibleHeight
+                                                )
                             IntOffset(
                                 x = 0,
                                 y = (slideOffset + hideOffset).roundToInt(),
@@ -559,7 +562,7 @@ fun PlayerOverlayHost(
                 pureBlack = pureBlack,
                 hazeState = hazeState,
                 blurRadius = blurRadius,
-                showBorder = !isMiniPlayerActive || playerExpansionFraction >= SettingsDimensions.FullyExpandedThreshold,
+                showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
@@ -738,6 +741,7 @@ private fun ScopedPlayerSheet(
         onSeekStarted = { playerViewModel.onSeekStarted() },
         onBackgroundStyleChanged = { playerViewModel.setBlurBackgroundEnabled(it) },
         onImmersiveChanged = { playerViewModel.setImmersiveEnabled(it) },
+
         bottomBarHeight = bottomNavigationBarHeight,
         hazeState = hazeState,
         pureBlack = pureBlack,
