@@ -334,6 +334,7 @@ fun PlayerBackgroundLayers(
                             style = HazeDefaults.style(
                                 backgroundColor = Color.Transparent,
                                 blurRadius = 32.dp,
+                                noiseFactor = SettingsDimensions.HazeNoiseFactor,
                             )
                         ) {
                             inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
