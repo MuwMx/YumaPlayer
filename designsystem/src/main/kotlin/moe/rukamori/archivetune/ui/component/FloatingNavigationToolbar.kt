@@ -7,18 +7,15 @@
 package moe.rukamori.archivetune.ui.component
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
@@ -40,9 +36,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,10 +53,8 @@ import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
@@ -73,36 +65,22 @@ import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassStroke
 import moe.rukamori.archivetune.ui.theme.yumaCombinedClickable
-import kotlin.math.abs
 
-// ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
-private val BarHeight = 68.dp
-private val PillHeight = 32.dp
-private val PillWidth = 56.dp
+private val BarHeight = 56.dp
+private val BarMaxWidth = 344.dp
 private val CornerRadius = 28.dp
+private val InnerPadding = 12.dp
 private val IconSize = 24.dp
-private val LabelFontSize = 11.sp
-// ─────────────────────────────────────────────────────────────────────────────
 
-// ─── ЦВЕТА (Готово под замену на DataStore в будущем) ───────────────────────
 private object NavBarColors {
     @Composable
     fun container(pureBlack: Boolean) = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
     @Composable
-    fun pill(pureBlack: Boolean) = if (pureBlack) Color.White.copy(alpha = 0.15f) else MaterialTheme.colorScheme.secondaryContainer
-
-    @Composable
-    fun iconActive(pureBlack: Boolean) = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+    fun iconActive(pureBlack: Boolean) = if (pureBlack) Color.White else MaterialTheme.colorScheme.primary
 
     @Composable
     fun iconInactive(pureBlack: Boolean) = if (pureBlack) Color.White.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant
-
-    @Composable
-    fun labelActive(pureBlack: Boolean) = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface
-
-    @Composable
-    fun labelInactive(pureBlack: Boolean) = if (pureBlack) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
@@ -114,6 +92,7 @@ fun FloatingNavigationToolbar(
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     showBorder: Boolean = true,
     blurEnabled: Boolean = true,
+    visibilityFactor: Float = 1f,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
     shuffleContentDescription: String = "",
@@ -158,9 +137,25 @@ fun FloatingNavigationToolbar(
         }
     }
 
+    val animatedVisibilityFactor by animateFloatAsState(
+        targetValue = visibilityFactor.coerceIn(0f, 1f),
+        animationSpec = tween(
+            durationMillis = 380,
+            easing = EaseOut,
+        ),
+        label = "FloatingToolbarVisibility",
+    )
+
     Box(
         modifier = modifier
-            .widthIn(max = 380.dp)
+            .graphicsLayer {
+                translationY = 40.dp.toPx() * (1f - animatedVisibilityFactor)
+                val scale = lerp(0.85f, 1.0f, animatedVisibilityFactor)
+                scaleX = scale
+                scaleY = scale
+                alpha = animatedVisibilityFactor
+            }
+            .widthIn(max = BarMaxWidth)
             .fillMaxWidth()
             .height(BarHeight)
             .drawBehind {
@@ -209,31 +204,29 @@ fun FloatingNavigationToolbar(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = InnerPadding),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Левая часть: Флюидный контейнер с табами
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterStart,
             ) {
                 FluidTabsContainer(
                     items = items,
                     pureBlack = pureBlack,
                     isSelected = isSelected,
                     onItemClick = onItemClick,
-                    onSearchItemDoubleClick = onSearchItemDoubleClick
+                    onSearchItemDoubleClick = onSearchItemDoubleClick,
                 )
             }
 
-            // Правая часть: Кнопка «Ещё» (FAB)
             if (hasOverflow) {
                 Box(
                     modifier = Modifier
                         .padding(start = 4.dp, end = 4.dp)
-                        .wrapContentSize()
+                        .wrapContentSize(),
                 ) {
                     ToolbarOverflowMenu(
                         pureBlack = pureBlack,
@@ -242,7 +235,7 @@ fun FloatingNavigationToolbar(
                         shuffleContentDescription = shuffleContentDescription,
                         onMusicRecognitionClick = onMusicRecognitionClick,
                         musicRecognitionContentDescription = musicRecognitionContentDescription,
-                        onMusicTogetherClick = onMusicTogetherClick
+                        onMusicTogetherClick = onMusicTogetherClick,
                     )
                 }
             }
@@ -256,148 +249,92 @@ private fun FluidTabsContainer(
     pureBlack: Boolean,
     isSelected: (Screens) -> Boolean,
     onItemClick: (Screens, Boolean) -> Unit,
-    onSearchItemDoubleClick: (() -> Unit)?
+    onSearchItemDoubleClick: (() -> Unit)?,
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxHeight()) {
-        val tabWidth = maxWidth / items.size
-        val activeIndex = items.indexOfFirst { isSelected(it) }.coerceAtLeast(0)
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEachIndexed { index, screen ->
+            val selected = isSelected(screen)
 
-        val density = LocalDensity.current
-
-        var previousIndex by remember { mutableIntStateOf(activeIndex) }
-        val movingRight = activeIndex > previousIndex
-        LaunchedEffect(activeIndex) {
-            previousIndex = activeIndex
-        }
-
-        val targetLeftPx = remember(tabWidth, activeIndex) {
-            with(density) { (tabWidth * activeIndex + (tabWidth - PillWidth) / 2).toPx() }
-        }
-        val targetRightPx = remember(tabWidth, activeIndex) {
-            with(density) { (tabWidth * activeIndex + (tabWidth + PillWidth) / 2).toPx() }
-        }
-
-        val animatedLeftPx by animateFloatAsState(
-            targetValue = targetLeftPx,
-            animationSpec = spring(
-                dampingRatio = if (movingRight) Spring.DampingRatioNoBouncy else Spring.DampingRatioLowBouncy,
-                stiffness = if (movingRight) Spring.StiffnessLow else Spring.StiffnessMediumLow
-            ),
-            label = "FluidPillLeft"
-        )
-
-        val animatedRightPx by animateFloatAsState(
-            targetValue = targetRightPx,
-            animationSpec = spring(
-                dampingRatio = if (movingRight) Spring.DampingRatioLowBouncy else Spring.DampingRatioNoBouncy,
-                stiffness = if (movingRight) Spring.StiffnessMediumLow else Spring.StiffnessLow
-            ),
-            label = "FluidPillRight"
-        )
-
-        val pillWidthPx = (animatedRightPx - animatedLeftPx).coerceAtLeast(with(density) { PillHeight.toPx() })
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer {
-                        translationX = animatedLeftPx
-                        translationY = 10.dp.toPx()
-                    }
-                    .width(with(density) { pillWidthPx.toDp() })
-                    .height(PillHeight)
-                    .background(
-                        color = NavBarColors.pill(pureBlack),
-                        shape = CircleShape
-                    )
+            val selectionFactor by animateFloatAsState(
+                targetValue = if (selected) 1f else 0f,
+                animationSpec = tween(
+                    durationMillis = 320,
+                    easing = LinearOutSlowInEasing,
+                ),
+                label = "SelectionFactor_$index",
             )
 
-            // Сами табы
-            Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.Top) {
-                items.forEachIndexed { index, screen ->
-                    val selected = isSelected(screen)
+            val iconTint by animateColorAsState(
+                targetValue = if (selected) {
+                    NavBarColors.iconActive(pureBlack)
+                } else {
+                    NavBarColors.iconInactive(pureBlack)
+                },
+                animationSpec = tween(250),
+                label = "IconTint_$index",
+            )
 
-                    val iconTint by animateColorAsState(
-                        targetValue = if (selected) NavBarColors.iconActive(pureBlack) else NavBarColors.iconInactive(pureBlack),
-                        animationSpec = tween(250),
-                        label = "IconTint_$index"
-                    )
+            val iconScale by animateFloatAsState(
+                targetValue = if (selected) 1.08f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium,
+                ),
+                label = "IconScale_$index",
+            )
 
-                    val labelColor by animateColorAsState(
-                        targetValue = if (selected) NavBarColors.labelActive(pureBlack) else NavBarColors.labelInactive(pureBlack),
-                        animationSpec = tween(250),
-                        label = "LabelTint_$index"
-                    )
+            val onClickLambda = remember(screen, selected, onItemClick) {
+                { onItemClick(screen, selected) }
+            }
 
-                    val iconScale by animateFloatAsState(
-                        targetValue = if (selected) 1.12f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        label = "IconScale_$index"
-                    )
+            val onDoubleClickLambda = remember(screen, onSearchItemDoubleClick) {
+                if (screen == Screens.Search) onSearchItemDoubleClick else null
+            }
 
-                    val neighborOffset = remember { Animatable(0f) }
-                    LaunchedEffect(activeIndex) {
-                        val distance = index - activeIndex
-                        if (!selected && abs(distance) == 1) {
-                            val direction = if (distance > 0) 1f else -1f
-                            val nudgePx = with(density) { 2.dp.toPx() } * direction
-                            neighborOffset.animateTo(nudgePx, tween(120, easing = FastOutSlowInEasing))
-                            neighborOffset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
-                        } else {
-                            neighborOffset.snapTo(0f)
-                        }
-                    }
-
-                    val onClickLambda = remember(screen, selected, onItemClick) {
-                        { onItemClick(screen, selected) }
-                    }
-
-                    val onDoubleClickLambda = remember(screen, onSearchItemDoubleClick) {
-                        if (screen == Screens.Search) onSearchItemDoubleClick else null
-                    }
-
-                    Column(
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .yumaCombinedClickable(
+                        pressedScale = 0.93f,
+                        onClick = onClickLambda,
+                        onDoubleClick = onDoubleClickLambda,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selectionFactor > 0.001f) {
+                    Box(
                         modifier = Modifier
-                            .width(tabWidth)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(18.dp))
+                            .fillMaxSize()
                             .graphicsLayer {
-                                translationX = neighborOffset.value
+                                val scale = lerp(0.6f, 1.0f, selectionFactor)
+                                scaleX = scale
+                                scaleY = scale
                             }
-                            .yumaCombinedClickable(
-                                pressedScale = 0.93f,
-                                onClick = onClickLambda,
-                                onDoubleClick = onDoubleClickLambda
-                            )
-                            .padding(top = 14.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
-                            contentDescription = stringResource(screen.titleId),
-                            tint = iconTint,
-                            modifier = Modifier
-                                .size(IconSize)
-                                .graphicsLayer {
-                                    scaleX = iconScale
-                                    scaleY = iconScale
-                                }
-                        )
-
-                        Text(
-                            text = stringResource(screen.titleId),
-                            color = labelColor,
-                            fontSize = LabelFontSize,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(
+                                    alpha = 0.09f * selectionFactor,
+                                ),
+                                shape = CircleShape,
+                            ),
+                    )
                 }
+
+                Icon(
+                    painter = painterResource(if (selected) screen.iconIdActive else screen.iconIdInactive),
+                    contentDescription = stringResource(screen.titleId),
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(IconSize)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                )
             }
         }
     }
@@ -421,12 +358,12 @@ private fun ToolbarOverflowMenu(
             modifier = Modifier.size(44.dp),
             colors = IconButtonDefaults.iconButtonColors(
                 containerColor = if (pureBlack) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.primaryContainer,
-                contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
-            )
+                contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
         ) {
             Icon(
                 painter = painterResource(R.drawable.more_horiz),
-                contentDescription = stringResource(R.string.more)
+                contentDescription = stringResource(R.string.more),
             )
         }
 
@@ -438,29 +375,38 @@ private fun ToolbarOverflowMenu(
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.music_recognition)) },
-                onClick = { expanded = false; onMusicRecognitionClick?.invoke() },
+                onClick = {
+                    expanded = false
+                    onMusicRecognitionClick?.invoke()
+                },
                 leadingIcon = {
                     Icon(painter = painterResource(R.drawable.mic), contentDescription = musicRecognitionContentDescription)
                 },
-                enabled = onMusicRecognitionClick != null
+                enabled = onMusicRecognitionClick != null,
             )
 
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.music_together)) },
-                onClick = { expanded = false; onMusicTogetherClick?.invoke() },
+                onClick = {
+                    expanded = false
+                    onMusicTogetherClick?.invoke()
+                },
                 leadingIcon = {
                     Icon(painter = painterResource(R.drawable.multi_user), contentDescription = null)
                 },
-                enabled = onMusicTogetherClick != null
+                enabled = onMusicTogetherClick != null,
             )
 
             if (onShuffleClick != null && shuffleIconRes != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.shuffle)) },
-                    onClick = { expanded = false; onShuffleClick() },
+                    onClick = {
+                        expanded = false
+                        onShuffleClick()
+                    },
                     leadingIcon = {
                         Icon(painter = painterResource(shuffleIconRes), contentDescription = shuffleContentDescription)
-                    }
+                    },
                 )
             }
         }
