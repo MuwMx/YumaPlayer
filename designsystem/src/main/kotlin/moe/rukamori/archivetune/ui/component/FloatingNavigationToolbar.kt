@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import dev.chrisbanes.haze.HazeDefaults
@@ -40,10 +41,18 @@ import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassStroke
 
-private val BarHeight = 56.dp
-private val BarMaxWidth = 344.dp
-private val CornerRadius = 28.dp
-private val InnerPadding = 12.dp
+import moe.rukamori.archivetune.constants.NavigationBarCornerRadius
+import moe.rukamori.archivetune.constants.NavigationBarHeight
+import moe.rukamori.archivetune.constants.NavigationBarHideMinScale
+import moe.rukamori.archivetune.constants.NavigationBarHideOffsetY
+import moe.rukamori.archivetune.constants.NavigationBarInnerPaddingHorizontal
+import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
+import moe.rukamori.archivetune.constants.NavigationBarOverflowPaddingHorizontal
+import moe.rukamori.archivetune.constants.NavigationBarShadowAlpha
+import moe.rukamori.archivetune.constants.NavigationBarShadowBlur
+import moe.rukamori.archivetune.constants.NavigationBarShadowDy
+import moe.rukamori.archivetune.constants.NavigationBarShadowLayerAlpha
+import moe.rukamori.archivetune.constants.NavigationBarVisibilityDurationMs
 
 internal object NavBarColors {
     @Composable
@@ -78,7 +87,7 @@ fun FloatingNavigationToolbar(
 ) {
     val hasOverflow = false
 
-    val capsuleShape = remember { RoundedCornerShape(CornerRadius) }
+    val capsuleShape = remember { RoundedCornerShape(NavigationBarCornerRadius) }
     val containerColor = NavBarColors.container(pureBlack)
 
     val fixedTintAlpha = if (pureBlack) SettingsDimensions.HazePureBlackTintAlpha else SettingsDimensions.HazeDefaultTintAlpha
@@ -92,19 +101,19 @@ fun FloatingNavigationToolbar(
     }
 
     val density = LocalDensity.current
-    val shadowDyPx = remember(density) { with(density) { 0.85.dp.toPx() } }
-    val shadowBlurPx = remember(density) { with(density) { 2.67.dp.toPx() } }
-    val cornerRadiusPx = remember(density) { with(density) { CornerRadius.toPx() } }
+    val shadowDyPx = remember(density) { with(density) { NavigationBarShadowDy.toPx() } }
+    val shadowBlurPx = remember(density) { with(density) { NavigationBarShadowBlur.toPx() } }
+    val cornerRadiusPx = remember(density) { with(density) { NavigationBarCornerRadius.toPx() } }
     val shadowPaint = remember(shadowDyPx, shadowBlurPx) {
         Paint().apply {
             nativePaint.apply {
                 isAntiAlias = true
-                color = android.graphics.Color.argb((0.15f * 255).toInt(), 0, 0, 0)
+                color = android.graphics.Color.argb((NavigationBarShadowAlpha * 255).toInt(), 0, 0, 0)
                 setShadowLayer(
                     shadowBlurPx,
                     0f,
                     shadowDyPx,
-                    android.graphics.Color.argb((0.20f * 255).toInt(), 0, 0, 0),
+                    android.graphics.Color.argb((NavigationBarShadowLayerAlpha * 255).toInt(), 0, 0, 0),
                 )
             }
         }
@@ -113,7 +122,7 @@ fun FloatingNavigationToolbar(
     val animatedVisibilityFactor by animateFloatAsState(
         targetValue = visibilityFactor.coerceIn(0f, 1f),
         animationSpec = tween(
-            durationMillis = 380,
+            durationMillis = NavigationBarVisibilityDurationMs,
             easing = EaseOut,
         ),
         label = "FloatingToolbarVisibility",
@@ -122,15 +131,15 @@ fun FloatingNavigationToolbar(
     Box(
         modifier = modifier
             .graphicsLayer {
-                translationY = 40.dp.toPx() * (1f - animatedVisibilityFactor)
-                val scale = lerp(0.85f, 1.0f, animatedVisibilityFactor)
+                translationY = NavigationBarHideOffsetY.toPx() * (1f - animatedVisibilityFactor)
+                val scale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
                 scaleX = scale
                 scaleY = scale
                 alpha = animatedVisibilityFactor
             }
-            .widthIn(max = BarMaxWidth)
+            .widthIn(max = NavigationBarMaxWidth)
             .fillMaxWidth()
-            .height(BarHeight)
+            .height(NavigationBarHeight)
             .drawBehind {
                 drawIntoCanvas { canvas ->
                     canvas.drawRoundRect(
@@ -177,7 +186,7 @@ fun FloatingNavigationToolbar(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = InnerPadding),
+                .padding(horizontal = NavigationBarInnerPaddingHorizontal),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEach { screen ->
@@ -198,7 +207,10 @@ fun FloatingNavigationToolbar(
             if (hasOverflow) {
                 Box(
                     modifier = Modifier
-                        .padding(start = 4.dp, end = 4.dp)
+                        .padding(
+                            start = NavigationBarOverflowPaddingHorizontal,
+                            end = NavigationBarOverflowPaddingHorizontal,
+                        )
                         .wrapContentSize(),
                 ) {
                     ToolbarOverflowMenu(
