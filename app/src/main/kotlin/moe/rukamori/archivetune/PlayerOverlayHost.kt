@@ -235,6 +235,15 @@ fun PlayerOverlayHost(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    val targetWindow = window ?: remember(context) {
+        var ctx = context
+        while (ctx is android.content.ContextWrapper) {
+            if (ctx is Activity) return@remember ctx.window
+            ctx = ctx.baseContext
+        }
+        null
+    }
+
     LaunchedEffect(playerViewModel) {
         playerViewModel.event.collect { event ->
             when (event) {
@@ -307,7 +316,7 @@ fun PlayerOverlayHost(
     }
 
     LaunchedEffect(aodModeEnabled) {
-        window?.let { win ->
+        targetWindow?.let { win ->
             val controller = WindowCompat.getInsetsController(win, win.decorView)
             if (aodModeEnabled) {
                 controller.systemBarsBehavior =
@@ -335,8 +344,8 @@ fun PlayerOverlayHost(
             }
         if (systemBarController != null) {
             systemBarController.setSystemBarAppearance(isDarkStatusBar)
-        } else if (window != null) {
-            setSystemBarAppearance(window, isDarkStatusBar)
+        } else if (targetWindow != null) {
+            setSystemBarAppearance(targetWindow, isDarkStatusBar)
         }
     }
 
@@ -376,8 +385,8 @@ fun PlayerOverlayHost(
         if (aodModeEnabled) return@LaunchedEffect
         if (systemBarController != null) {
             systemBarController.setStatusBarsHidden(shouldHideStatusBars)
-        } else if (window != null) {
-            setStatusBarsHidden(window, shouldHideStatusBars)
+        } else if (targetWindow != null) {
+            setStatusBarsHidden(targetWindow, shouldHideStatusBars)
         }
     }
 
