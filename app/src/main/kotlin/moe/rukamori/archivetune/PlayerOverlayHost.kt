@@ -223,9 +223,9 @@ fun PlayerOverlayHost(
     onExpansionFraction: (() -> Float) -> Unit = {},
     onExpansionState: (State<Float>) -> Unit = {},
 ) {
-    var playerExpansionFraction by remember { mutableFloatStateOf(0f) }
-    val expansionFraction: () -> Float = remember { { playerExpansionFraction } }
-    val expansionState: State<Float> = remember { derivedStateOf { playerExpansionFraction } }
+    val playerExpansionAnimatable = remember { Animatable(0f) }
+    val expansionFraction: () -> Float = remember { { playerExpansionAnimatable.value } }
+    val expansionState: State<Float> = remember { derivedStateOf { playerExpansionAnimatable.value } }
 
     SideEffect {
         onExpansionFraction(expansionFraction)
@@ -274,7 +274,7 @@ fun PlayerOverlayHost(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
 
-    BackHandler(enabled = playerExpansionFraction > 0.5f) {
+    BackHandler(enabled = playerExpansionAnimatable.value > 0.5f) {
         when {
             isPlayerLyricsVisible -> {
                 playerViewModel.setLyricsVisible(false)
@@ -523,7 +523,9 @@ fun PlayerOverlayHost(
             pureBlack = pureBlack,
             blurRadius = blurRadius,
             onExpansionFractionChanged = { fraction ->
-                playerExpansionFraction = fraction
+                coroutineScope.launch {
+                    playerExpansionAnimatable.snapTo(fraction)
+                }
             },
         )
 
@@ -546,7 +548,7 @@ fun PlayerOverlayHost(
                         } else {
                             val slideOffset =
                                 navSlideDistance.toPx() *
-                                        playerExpansionFraction.coerceIn(
+                                        playerExpansionAnimatable.value.coerceIn(
                                             0f,
                                             1f,
                                         )
@@ -569,8 +571,8 @@ fun PlayerOverlayHost(
                 pureBlack = pureBlack,
                 hazeState = hazeState,
                 blurRadius = blurRadius,
-                showBorder = !isMiniPlayerActive || playerExpansionFraction >= SettingsDimensions.FullyExpandedThreshold,
-                blurEnabled = playerExpansionFraction < 0.01f,
+                showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
+                blurEnabled = playerExpansionAnimatable.value < 0.01f,
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)

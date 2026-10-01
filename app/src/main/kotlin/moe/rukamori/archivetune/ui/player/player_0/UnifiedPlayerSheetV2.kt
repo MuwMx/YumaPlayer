@@ -320,7 +320,10 @@ fun UnifiedPlayerSheetV2(
                         sheetVisualState.playerContentActualBottomRadiusProvider().toPx()
                     }
 
-                    val bottomBound = if (fraction < 0.01f) with(density) { MiniPlayerHeight.toPx() } else size.height
+                    val miniHeightPx = with(density) { MiniPlayerHeight.toPx() }
+                    val measuredHeight = sheetVisualState.playerContentAreaHeightPxProvider()
+                    val dynamicHeight = if (measuredHeight > 0f) measuredHeight else miniHeightPx
+                    val bottomBound = dynamicHeight
 
                     return Outline.Rounded(
                         RoundRect(
@@ -452,8 +455,7 @@ fun UnifiedPlayerSheetV2(
                     scaleY = visualOvershootScaleY.value
                     val paddingX = sheetVisualState.currentHorizontalPaddingStartPxProvider()
                     val currentWidth = size.width - (paddingX * 2)
-                    val fraction = expansionFraction.value
-                    scaleX = if (fraction < 0.01f) currentWidth / size.width else 1f
+                    scaleX = currentWidth / size.width
                 }
                 .miniPlayerDismissHorizontalGesture(
                     enabled = currentSheetState == PlayerSheetState.COLLAPSED,
