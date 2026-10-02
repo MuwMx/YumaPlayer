@@ -233,21 +233,21 @@ object SplashSlots {
             contourIdx++
         } while (samplingMeasure.nextContour())
 
-        val centroid = if (slots.isNotEmpty()) {
-            var sumX = 0f
-            var sumY = 0f
-            for (s in slots) {
-                sumX += s.x
-                sumY += s.y
-            }
-            Offset(sumX / slots.size, sumY / slots.size)
-        } else {
-            Offset.Zero
-        }
+        var sumX = 0f; var sumY = 0f
+        for (s in slots) { sumX += s.x; sumY += s.y }
+        val centroid = if (slots.isNotEmpty()) Offset(sumX / slots.size, sumY / slots.size) else Offset.Zero
 
-        val tips = slots.sortedByDescending {
-            (it.x - centroid.x) * (it.x - centroid.x) + (it.y - centroid.y) * (it.y - centroid.y)
-        }.take(3)
+        val third = slots.size / 3
+        val tips = if (third > 0) {
+            (0..2).mapNotNull { i ->
+                val from = i * third
+                val to = if (i == 2) slots.size else (i + 1) * third
+                slots.subList(from, to).maxByOrNull {
+                    val dx = it.x - centroid.x; val dy = it.y - centroid.y
+                    dx * dx + dy * dy
+                }
+            }
+        } else slots.take(3)
 
         ShapeSlots(
             slots = slots,
