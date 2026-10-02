@@ -57,8 +57,8 @@ import java.util.concurrent.TimeUnit
 
 private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
 private const val CanvasPlaybackStallTimeoutMs = 5_000L
-private const val CanvasMaxVideoWidth = 1_920
-private const val CanvasMaxVideoHeight = 1_920
+private const val CanvasMaxVideoWidth = 4_096
+private const val CanvasMaxVideoHeight = 4_096
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -274,23 +274,26 @@ internal fun CanvasArtworkPlayer(
         val listener =
             object : Player.Listener {
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed")
+                    Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed on $currentUrl")
                     val next =
                         when (currentUrl) {
                             primary -> fallback?.takeIf { it != currentUrl }
                             else -> null
                         }
                     if (!next.isNullOrBlank()) {
+                        Timber.tag(CanvasPlaybackLogTag).i("Switching canvas to fallback URL: $next")
                         currentUrl = next
                         isVideoReady = false
                         hasPlaybackFailed = false
                     } else {
+                        Timber.tag(CanvasPlaybackLogTag).e("All canvas URLs failed, stopping canvas player")
                         hasPlaybackFailed = true
                         exoPlayer.stop()
                     }
                 }
 
                 override fun onRenderedFirstFrame() {
+                    Timber.tag(CanvasPlaybackLogTag).i("First video frame rendered on Canvas! isVideoReady = true")
                     isVideoReady = true
                     if (shouldPlay && !hasPlaybackFailed) {
                         exoPlayer.setCanvasPlayback(
@@ -301,6 +304,14 @@ internal fun CanvasArtworkPlayer(
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    val stateName = when (playbackState) {
+                        Player.STATE_IDLE -> "IDLE"
+                        Player.STATE_BUFFERING -> "BUFFERING"
+                        Player.STATE_READY -> "READY"
+                        Player.STATE_ENDED -> "ENDED"
+                        else -> "$playbackState"
+                    }
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas player playbackState: $stateName, playWhenReady=${exoPlayer.playWhenReady}, isPlaying=${exoPlayer.isPlaying}")
                     if (!shouldPlay || hasPlaybackFailed) return
                     exoPlayer.setCanvasPlayback(
                         isPlaying = true,
@@ -312,6 +323,7 @@ internal fun CanvasArtworkPlayer(
                     playWhenReady: Boolean,
                     reason: Int,
                 ) {
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onPlayWhenReadyChanged: playWhenReady=$playWhenReady, reason=$reason")
                     if (shouldPlay && !playWhenReady && !hasPlaybackFailed) {
                         exoPlayer.setCanvasPlayback(
                             isPlaying = true,
@@ -321,6 +333,7 @@ internal fun CanvasArtworkPlayer(
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onIsPlayingChanged: isPlaying=$isPlaying")
                     if (shouldPlay && !isPlaying && !hasPlaybackFailed) {
                         exoPlayer.setCanvasPlayback(
                             isPlaying = true,
@@ -347,6 +360,7 @@ internal fun CanvasArtworkPlayer(
                 else -> MimeTypes.APPLICATION_M3U8
             }
 
+        Timber.tag(CanvasPlaybackLogTag).d("Preparing mediaItem: url=$normalized, mimeType=$mimeType, isPlaying=$isPlaying")
         val mediaItem =
             MediaItem
                 .Builder()
@@ -356,10 +370,8 @@ internal fun CanvasArtworkPlayer(
 
         exoPlayer.stop()
         exoPlayer.setMediaItem(mediaItem)
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            exoPlayer.prepare()
-            exoPlayer.setCanvasPlayback(isPlaying, isStarted = true)
-        }
+        exoPlayer.prepare()
+        exoPlayer.setCanvasPlayback(isPlaying, isStarted = true)
     }
 
     DisposableEffect(exoPlayer) {
@@ -411,6 +423,6 @@ private fun ExoPlayer.setCanvasPlayback(
     }
 }
 
-private const val CanvasPlaybackLogTag = "CanvasPlayback"
+private const val CanvasPlaybackLogTag = "PlayerCanvas"
 private const val CanvasPlaybackUserAgent =
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36"
