@@ -98,7 +98,7 @@ fun FloatingNavigationToolbar(
         label = "FloatingToolbarVisibility",
     )
 
-    val dragState = rememberNavigationTabDragState(
+    val gestureState = rememberNavigationBarGestureState(
         items = items,
         isSelected = isSelected,
         onItemClick = onItemClick,
@@ -108,11 +108,11 @@ fun FloatingNavigationToolbar(
         modifier = modifier
             .graphicsLayer {
                 val hideOffsetY = NavigationBarHideOffsetY.toPx() * (1f - animatedVisibilityFactor)
-                translationY = hideOffsetY + dragState.barTranslationYAnimatable.value
-                translationX = dragState.barTranslationXAnimatable.value
+                translationY = hideOffsetY + gestureState.barTranslationYAnimatable.value
+                translationX = gestureState.barTranslationXAnimatable.value
 
                 val baseScale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
-                val scale = baseScale * dragState.barScaleAnimatable.value
+                val scale = baseScale * gestureState.barScaleAnimatable.value
                 scaleX = scale
                 scaleY = scale
                 alpha = animatedVisibilityFactor
@@ -156,12 +156,12 @@ fun FloatingNavigationToolbar(
                 .padding(horizontal = NavigationBarInnerPaddingHorizontal),
             contentAlignment = Alignment.CenterStart,
         ) {
-            NavigationDragSelectorOverlay(dragState)
+            NavigationDragSelectorOverlay(gestureState.selectorState)
 
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .navigationTabDragGestures(dragState),
+                    .navigationTabDragGestures(gestureState),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 items.forEach { screen ->
@@ -170,7 +170,7 @@ fun FloatingNavigationToolbar(
                         screen = screen,
                         selected = selected,
                         pureBlack = pureBlack,
-                        drawSelector = !dragState.isDragging,
+                        drawSelector = !gestureState.isDragging,
                         onClick = remember(screen, selected, onItemClick) {
                             { onItemClick(screen, selected) }
                         },
