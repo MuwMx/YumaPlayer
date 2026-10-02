@@ -25,7 +25,7 @@ val FloatingToolbarBottomPadding = 8.dp
 // --- Navigation Bar Tokens (Telegram-inspired) ---
 // Bar shell geometry
 val NavigationBarHeight = 56.dp
-val NavigationBarMaxWidth = 394.dp
+val NavigationBarMaxWidth = 392.dp
 val NavigationBarCornerRadius = 28.dp
 val NavigationBarInnerPaddingHorizontal = 4.dp
 val NavigationBarInnerPaddingVertical = 0.dp
