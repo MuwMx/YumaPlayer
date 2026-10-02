@@ -195,8 +195,11 @@ fun PlayerOverlayHost(
 
         PlayerDockContainer(
             modifier = Modifier.align(Alignment.BottomCenter),
+            isPillVisible = isMiniPlayerActive,
+            isBarVisible = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f,
+            barHeight = navSlideDistance,
             miniPlayerSlot = {},
-            barSlot = {
+            barSlot = { barShape ->
                 Box(
                     modifier =
                         Modifier
@@ -231,6 +234,7 @@ fun PlayerOverlayHost(
                     FloatingNavigationToolbar(
                         items = navigationItems,
                         pureBlack = pureBlack,
+                        capsuleShape = barShape,
                         hazeState = hazeState,
                         blurRadius = blurRadius,
                         showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
