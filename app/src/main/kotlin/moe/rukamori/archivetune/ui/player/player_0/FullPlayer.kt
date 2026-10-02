@@ -23,6 +23,7 @@ import moe.rukamori.archivetune.ui.state.UpdateState
 fun FullPlayer(
     state: PlayerUiState,
     progressMsProvider: () -> Long = { 0L },
+    canvasState: PlayerCanvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist),
     slideOffset: () -> Float,
     density: Float,
     onCollapseClick: () -> Unit,
@@ -91,6 +92,7 @@ fun FullPlayer(
                         songTitle = state.title,
                         artistName = state.artist,
                         isPlaying = motionState.canPlayCanvas,
+                        canvasState = canvasState,
                         onNext = { onAction(PlayerAction.Next) },
                         onPrevious = { onAction(PlayerAction.Previous) }
                     )

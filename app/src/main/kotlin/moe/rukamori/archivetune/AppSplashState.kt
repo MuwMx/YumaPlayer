@@ -52,8 +52,12 @@ fun rememberAppSplashState(
             }
         }
         val app = activity.application as? App
-        while (app != null && !app.isInitialized) {
-            delay(16)
+        if (app != null) {
+            withTimeoutOrNull(3000.milliseconds) {
+                while (!app.isInitialized) {
+                    delay(16.milliseconds)
+                }
+            }
         }
         onReadyChange(true)
     }

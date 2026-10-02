@@ -90,6 +90,7 @@ fun PlayerOverlayHost(
     val playerExpansionAnimatable = remember { Animatable(0f) }
     val expansionFraction: () -> Float = remember { { playerExpansionAnimatable.value } }
     val expansionState: State<Float> = remember { derivedStateOf { playerExpansionAnimatable.value } }
+    val isPlayerExpandedForZIndex by remember { derivedStateOf { playerExpansionAnimatable.value > 0.001f } }
 
     SideEffect {
         onExpansionFraction(expansionFraction)
@@ -168,7 +169,7 @@ fun PlayerOverlayHost(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .zIndex(if (playerExpansionAnimatable.value > 0.001f) 2f else 0f),
+                .zIndex(if (isPlayerExpandedForZIndex) 2f else 0f),
         ) {
             ScopedPlayerSheet(
                 playerViewModel = playerViewModel,
@@ -192,7 +193,7 @@ fun PlayerOverlayHost(
         PlayerDockContainer(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .zIndex(if (playerExpansionAnimatable.value > 0.001f) 0f else 1f),
+                .zIndex(if (isPlayerExpandedForZIndex) 0f else 1f),
             isPillVisible = isMiniPlayerActive,
             isBarVisible = dropState.isDocked,
             barHeight = navSlideDistance,

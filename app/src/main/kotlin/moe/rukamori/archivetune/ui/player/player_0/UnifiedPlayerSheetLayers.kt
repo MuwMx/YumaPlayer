@@ -45,6 +45,7 @@ internal fun UnifiedPlayerSheetLayers(
     dragHandler: SheetVerticalDragGestureHandler? = null,
 ) {
     val density = LocalDensity.current.density
+    val canvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist)
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -59,6 +60,7 @@ internal fun UnifiedPlayerSheetLayers(
         ) {
             PlayerBackgroundLayers(
                 state = state,
+                canvasState = canvasState,
                 expansionFractionProvider = expansionFractionProvider,
                 lyricsFractionProvider = lyricsFractionProvider,
                 queueFractionProvider = queueFractionProvider,
@@ -119,6 +121,7 @@ internal fun UnifiedPlayerSheetLayers(
             ) {
                 FullPlayer(
                     state = state,
+                    canvasState = canvasState,
                     progressMsProvider = progressMsProvider,
                     updateState = updateState,
                     slideOffset = expansionFractionProvider,

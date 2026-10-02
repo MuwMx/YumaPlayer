@@ -18,6 +18,7 @@ import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.utils.rememberPreference
+import timber.log.Timber
 
 @Stable
 class PlayerCanvasState internal constructor(
@@ -47,16 +48,24 @@ fun rememberPlayerCanvasState(
 
     LaunchedEffect(isCanvasEnabled, mediaId, songTitle, artistName) {
         canvasState.artwork = null
-        if (!isCanvasEnabled || mediaId.isNullOrBlank()) {
+        Timber.tag("PlayerCanvas").d("Lookup trigger: isCanvasEnabled=$isCanvasEnabled, mediaId=$mediaId, title=$songTitle, artist=$artistName")
+        if (!isCanvasEnabled) {
+            Timber.tag("PlayerCanvas").d("Canvas is disabled in settings (archiveTuneCanvas = false)")
+            return@LaunchedEffect
+        }
+        if (mediaId.isNullOrBlank()) {
+            Timber.tag("PlayerCanvas").d("mediaId is null or blank, skipping lookup")
             return@LaunchedEffect
         }
 
         CanvasArtworkPlaybackCache.get(mediaId)?.let { cached ->
+            Timber.tag("PlayerCanvas").d("Cache hit for $mediaId: primaryUrl=${cached.preferredAnimationUrl}, fallbackUrl=${cached.videoUrl}")
             canvasState.artwork = cached
             return@LaunchedEffect
         }
 
         val requestedMediaId = mediaId
+        Timber.tag("PlayerCanvas").d("Cache miss, resolving from network for '$songTitle' by '$artistName' (mediaId=$mediaId)...")
         val resolved =
             resolveCanvasArtworkForPlayback(
                 mediaId = mediaId,
@@ -66,6 +75,7 @@ fun rememberPlayerCanvasState(
                 requireVertical = false,
                 allowNetwork = true,
             )
+        Timber.tag("PlayerCanvas").i("Resolved result for $mediaId: ${if (resolved != null) "primaryUrl=${resolved.preferredAnimationUrl}, videoUrl=${resolved.videoUrl}" else "null"}")
         if (mediaId == requestedMediaId) {
             canvasState.artwork = resolved
         }
