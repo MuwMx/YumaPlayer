@@ -14,12 +14,14 @@ package moe.rukamori.archivetune.ui.screens.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +49,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
 import moe.rukamori.archivetune.viewmodels.AboutContributorsUiState
 
@@ -58,53 +62,81 @@ internal fun ContributorsSection(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalYumaColors.current
+
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         AboutSectionHeader(title = stringResource(R.string.about_contributors))
 
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors =
-                androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            when (state) {
-                AboutContributorsUiState.Loading -> {
+        when (state) {
+            AboutContributorsUiState.Loading -> {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .yumaGlassCard(
+                                shape = RoundedCornerShape(18.dp),
+                                backgroundColor = colors.glassBackground,
+                                borderColor = colors.glassBorder,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            ),
+                ) {
                     ContributorStatusContent(
                         message = stringResource(R.string.loading),
                         showRetry = false,
                         onRetry = onRetry,
                     )
                 }
+            }
 
-                AboutContributorsUiState.Empty -> {
+            AboutContributorsUiState.Empty -> {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .yumaGlassCard(
+                                shape = RoundedCornerShape(18.dp),
+                                backgroundColor = colors.glassBackground,
+                                borderColor = colors.glassBorder,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            ),
+                ) {
                     ContributorStatusContent(
                         message = stringResource(R.string.no_results_found),
                         showRetry = true,
                         onRetry = onRetry,
                     )
                 }
+            }
 
-                is AboutContributorsUiState.Error -> {
+            is AboutContributorsUiState.Error -> {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .yumaGlassCard(
+                                shape = RoundedCornerShape(18.dp),
+                                backgroundColor = colors.glassBackground,
+                                borderColor = colors.glassBorder,
+                                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                            ),
+                ) {
                     ContributorStatusContent(
                         message = stringResource(state.messageResId),
                         showRetry = true,
                         onRetry = onRetry,
                     )
                 }
+            }
 
-                is AboutContributorsUiState.Success -> {
-                    ContributorList(
-                        contributors = state.contributors,
-                        readMoreUrl = readMoreUrl,
-                        onOpenProfile = onOpenProfile,
-                    )
-                }
+            is AboutContributorsUiState.Success -> {
+                ContributorList(
+                    contributors = state.contributors,
+                    readMoreUrl = readMoreUrl,
+                    onOpenProfile = onOpenProfile,
+                )
             }
         }
     }

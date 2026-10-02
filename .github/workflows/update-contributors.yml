@@ -1,0 +1,47 @@
+name: Update Contributors
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:     
+
+permissions:
+  contents: write
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch and format contributors
+        run: |
+          mkdir -p .github
+          RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/MuwMix/YumaPlayer/contributors?per_page=20")
+
+          PARSED=$(echo "$RESPONSE" | jq '[.[] | select(.type != "Bot" and (.login | endswith("[bot]") | not)) | {login: .login, avatar_url: .avatar_url, html_url: .html_url}]')
+
+          COUNT=$(echo "$PARSED" | jq 'length')
+          if [ -n "$COUNT" ] && [ "$COUNT" -gt 0 ]; then
+            echo "$PARSED" > .github/contributors.json
+            echo "Successfully parsed $COUNT contributors."
+          else
+            echo "Error: contributors list is empty or API returned an error"
+            exit 1
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/contributors.json
+          if git diff --staged --quiet; then
+            echo "No changes detected."
+          else
+            git commit -m "chore: update contributors.json [skip ci]"
+            git push
+          fi
