@@ -311,11 +311,18 @@ class App :
                     val sw = StringWriter()
                     val pw = PrintWriter(sw)
                     throwable.printStackTrace(pw)
-                    val stack = sw.toString()
+                    val rawStack = sw.toString()
+
+                    val maxPayloadChars = 65_536
+                    val safeStack = if (rawStack.length > maxPayloadChars) {
+                        rawStack.take(maxPayloadChars) + "\n\n... [TRUNCATED DUE TO BINDER IPC LIMIT]"
+                    } else {
+                        rawStack
+                    }
 
                     val intent =
                         Intent(this@App, DebugActivity::class.java).apply {
-                            putExtra(DebugActivity.EXTRA_STACK_TRACE, stack)
+                            putExtra(DebugActivity.EXTRA_STACK_TRACE, safeStack)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                         }
                     startActivity(intent)

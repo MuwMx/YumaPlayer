@@ -9,29 +9,21 @@
 package moe.rukamori.archivetune.ui.menu
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -39,8 +31,6 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
-import moe.rukamori.archivetune.db.entities.PlaylistSongMap
-import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import java.time.LocalDateTime
 
@@ -172,155 +162,16 @@ fun ImportPlaylistDialog(
     }
 
     if (showDuplicateDialog && existingPlaylistId != null) {
-        DefaultDialog(
-            onDismiss = {
-                if (!isProcessingDuplicate) {
-                    resetState()
-                }
-            },
-            title = { Text(text = stringResource(R.string.import_playlist)) },
-            content = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = stringResource(R.string.already_in_playlist))
-                    if (isProcessingDuplicate) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CircularWavyProgressIndicator()
-                    }
-                }
-            },
-            buttons = {
-                TextButton(
-                    enabled = !isProcessingDuplicate,
-                    onClick = {
-                        resetState()
-                        onDismiss()
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text(text = stringResource(android.R.string.cancel)) }
-
-                TextButton(
-                    enabled = !isProcessingDuplicate,
-                    onClick = {
-                        isProcessingDuplicate = true
-                        coroutineScope.launch(Dispatchers.IO) {
-                            try {
-                                val ids = songIds ?: onGetSong()
-                                if (ids.isEmpty()) {
-                                    showMessage(context.getString(R.string.import_failed))
-                                    withContext(Dispatchers.Main) {
-                                        resetState()
-                                        onDismiss()
-                                    }
-                                    return@launch
-                                }
-
-                                val playlist = database.playlist(existingPlaylistId!!).firstOrNull()
-                                if (playlist != null) {
-                                    if (playlist.playlist.bookmarkedAt == null) {
-                                        database.query {
-                                            update(
-                                                playlist.playlist.copy(
-                                                    bookmarkedAt = LocalDateTime.now(),
-                                                    lastUpdateTime = LocalDateTime.now(),
-                                                ),
-                                            )
-                                        }
-                                    }
-                                    val existingSongIds =
-                                        database
-                                            .playlistSongs(playlist.id)
-                                            .firstOrNull()
-                                            ?.map { it.song.id }
-                                            ?.toSet() ?: emptySet()
-                                    val newSongIds = ids.filterNot { it in existingSongIds }
-
-                                    if (newSongIds.isEmpty()) {
-                                        showMessage(context.getString(R.string.playlist_synced))
-                                    } else {
-                                        database.transaction {
-                                            var position = playlist.songCount
-                                            newSongIds.forEach { songId ->
-                                                insert(
-                                                    PlaylistSongMap(
-                                                        songId = songId,
-                                                        playlistId = playlist.id,
-                                                        position = position++,
-                                                    ),
-                                                )
-                                            }
-                                        }
-                                        showMessage(context.getString(R.string.playlist_synced))
-                                    }
-                                } else {
-                                    showMessage(context.getString(R.string.import_failed))
-                                }
-
-                                withContext(Dispatchers.Main) {
-                                    resetState()
-                                    onDismiss()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                showMessage(context.getString(R.string.import_failed) + ": ${e.message ?: "Unknown error"}")
-                                withContext(Dispatchers.Main) {
-                                    resetState()
-                                    onDismiss()
-                                }
-                            }
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text(text = stringResource(R.string.update_button)) }
-
-                TextButton(
-                    enabled = !isProcessingDuplicate,
-                    onClick = {
-                        isProcessingDuplicate = true
-                        coroutineScope.launch(Dispatchers.IO) {
-                            try {
-                                val ids = songIds ?: onGetSong()
-                                if (ids.isEmpty()) {
-                                    showMessage(context.getString(R.string.import_failed))
-                                    withContext(Dispatchers.Main) {
-                                        resetState()
-                                        onDismiss()
-                                    }
-                                    return@launch
-                                }
-
-                                val newPlaylist =
-                                    PlaylistEntity(
-                                        name = currentPlaylistName,
-                                        browseId = null,
-                                        bookmarkedAt = LocalDateTime.now(),
-                                    )
-                                database.query { insert(newPlaylist) }
-
-                                val playlist = database.playlist(newPlaylist.id).firstOrNull()
-                                if (playlist != null) {
-                                    database.addSongToPlaylist(playlist, ids)
-                                    showMessage(context.getString(R.string.playlist_synced))
-                                } else {
-                                    showMessage(context.getString(R.string.import_failed))
-                                }
-
-                                withContext(Dispatchers.Main) {
-                                    resetState()
-                                    onDismiss()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                showMessage(context.getString(R.string.import_failed) + ": ${e.message ?: "Unknown error"}")
-                                withContext(Dispatchers.Main) {
-                                    resetState()
-                                    onDismiss()
-                                }
-                            }
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text(text = stringResource(R.string.import_playlist)) }
-            },
+        ImportPlaylistDuplicateDialog(
+            existingPlaylistId = existingPlaylistId!!,
+            currentPlaylistName = currentPlaylistName,
+            songIds = songIds,
+            isProcessingDuplicate = isProcessingDuplicate,
+            onProcessingChange = { isProcessingDuplicate = it },
+            onGetSong = onGetSong,
+            onReset = { resetState() },
+            onMessage = { showMessage(it) },
+            onDismiss = onDismiss,
         )
     }
 }

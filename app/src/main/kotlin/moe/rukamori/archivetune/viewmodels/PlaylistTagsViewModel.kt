@@ -6,8 +6,6 @@
 
 package moe.rukamori.archivetune.viewmodels
 
-import androidx.annotation.StringRes
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.common.collect.ImmutableList
@@ -26,84 +24,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.playlisttags.AddTagsToPlaylistsUseCase
 import moe.rukamori.archivetune.playlisttags.CreatePlaylistTagUseCase
 import moe.rukamori.archivetune.playlisttags.DeletePlaylistTagUseCase
 import moe.rukamori.archivetune.playlisttags.ObservePlaylistTagsUseCase
-import moe.rukamori.archivetune.playlisttags.PlaylistTagModel
-import moe.rukamori.archivetune.playlisttags.PlaylistTagPlaylistModel
 import moe.rukamori.archivetune.playlisttags.SavePlaylistTagsUseCase
 import moe.rukamori.archivetune.playlisttags.UpdatePlaylistTagColorUseCase
 import moe.rukamori.archivetune.playlisttags.UpdatePlaylistTagUseCase
 import javax.inject.Inject
-
-sealed interface PlaylistTagsScreenState {
-    data object Loading : PlaylistTagsScreenState
-
-    @Immutable
-    data class Success(
-        val tags: ImmutableList<PlaylistTagUiModel>,
-        val selectedTagIds: ImmutableSet<String>,
-        val playlists: ImmutableList<PlaylistTagPlaylistUiModel>,
-        val selectedBulkTagIds: ImmutableSet<String>,
-        val selectedBulkPlaylistIds: ImmutableSet<String>,
-        val isBulkAssignVisible: Boolean,
-    ) : PlaylistTagsScreenState
-
-    data object Empty : PlaylistTagsScreenState
-
-    @Immutable
-    data class Error(
-        @StringRes val messageResId: Int,
-    ) : PlaylistTagsScreenState
-}
-
-@Immutable
-data class PlaylistTagUiModel(
-    val id: String,
-    val name: String,
-    val color: String,
-)
-
-@Immutable
-data class PlaylistTagPlaylistUiModel(
-    val id: String,
-    val name: String,
-    val songCount: Int,
-)
-
-sealed interface PlaylistTagEditorState {
-    data object Hidden : PlaylistTagEditorState
-
-    @Immutable
-    data class Visible(
-        val tagId: String?,
-        val name: String,
-        val color: String,
-        val canSave: Boolean,
-    ) : PlaylistTagEditorState
-}
-
-sealed interface PlaylistTagColorPickerState {
-    data object Hidden : PlaylistTagColorPickerState
-
-    @Immutable
-    data class Visible(
-        val selectedColor: String,
-        val tagId: String?,
-        val isEditorTarget: Boolean,
-        val colors: ImmutableList<String>,
-    ) : PlaylistTagColorPickerState
-}
-
-private data class PlaylistTagsControls(
-    val selectedTagIds: Set<String>?,
-    val selectedBulkTagIds: Set<String>,
-    val selectedBulkPlaylistIds: Set<String>,
-    val isBulkAssignVisible: Boolean,
-    @StringRes val operationErrorResId: Int?,
-)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -111,10 +39,10 @@ class PlaylistTagsViewModel
     @Inject
     constructor(
         private val observePlaylistTags: ObservePlaylistTagsUseCase,
-        private val createPlaylistTag: CreatePlaylistTagUseCase,
-        private val updatePlaylistTag: UpdatePlaylistTagUseCase,
-        private val updatePlaylistTagColor: UpdatePlaylistTagColorUseCase,
-        private val deletePlaylistTag: DeletePlaylistTagUseCase,
+        internal val createPlaylistTag: CreatePlaylistTagUseCase,
+        internal val updatePlaylistTag: UpdatePlaylistTagUseCase,
+        internal val updatePlaylistTagColor: UpdatePlaylistTagColorUseCase,
+        internal val deletePlaylistTag: DeletePlaylistTagUseCase,
         private val savePlaylistTags: SavePlaylistTagsUseCase,
         private val addTagsToPlaylists: AddTagsToPlaylistsUseCase,
     ) : ViewModel() {
@@ -125,8 +53,8 @@ class PlaylistTagsViewModel
         private val isBulkAssignVisible = MutableStateFlow(false)
         private val isManagementVisible = MutableStateFlow(false)
         private val operationError = MutableStateFlow<Int?>(null)
-        private val editor = MutableStateFlow<PlaylistTagEditorState>(PlaylistTagEditorState.Hidden)
-        private val colorPicker = MutableStateFlow<PlaylistTagColorPickerState>(PlaylistTagColorPickerState.Hidden)
+        internal val editor = MutableStateFlow<PlaylistTagEditorState>(PlaylistTagEditorState.Hidden)
+        internal val colorPicker = MutableStateFlow<PlaylistTagColorPickerState>(PlaylistTagColorPickerState.Hidden)
         private var writeJob: Job? = null
 
         private val controls =
@@ -259,122 +187,27 @@ class PlaylistTagsViewModel
             }
         }
 
-        fun openCreateEditor() {
-            editor.value =
-                PlaylistTagEditorState.Visible(
-                    tagId = null,
-                    name = "",
-                    color = TagEntity.DEFAULT_COLORS.first(),
-                    canSave = false,
-                )
-        }
+        fun openCreateEditor() = handleOpenCreateEditor()
 
-        fun openEditEditor(tagId: String) {
-            val tag = currentTags().firstOrNull { currentTag -> currentTag.id == tagId } ?: return
-            editor.value =
-                PlaylistTagEditorState.Visible(
-                    tagId = tag.id,
-                    name = tag.name,
-                    color = tag.color,
-                    canSave = tag.name.isNotBlank(),
-                )
-        }
+        fun openEditEditor(tagId: String) = handleOpenEditEditor(tagId)
 
-        fun updateEditorName(name: String) {
-            editor.update { current ->
-                when (current) {
-                    PlaylistTagEditorState.Hidden -> {
-                        current
-                    }
+        fun updateEditorName(name: String) = handleUpdateEditorName(name)
 
-                    is PlaylistTagEditorState.Visible -> {
-                        current.copy(
-                            name = name,
-                            canSave = name.trim().isNotEmpty(),
-                        )
-                    }
-                }
-            }
-        }
+        fun dismissEditor() = handleDismissEditor()
 
-        fun dismissEditor() {
-            editor.value = PlaylistTagEditorState.Hidden
-        }
+        fun saveEditor() = handleSaveEditor()
 
-        fun saveEditor() {
-            val current = editor.value as? PlaylistTagEditorState.Visible ?: return
-            if (!current.canSave) return
+        fun deleteTag(tagId: String) = handleDeleteTag(tagId)
 
-            launchWrite {
-                if (current.tagId == null) {
-                    createPlaylistTag(name = current.name, color = current.color)
-                } else {
-                    updatePlaylistTag(
-                        tagId = current.tagId,
-                        name = current.name,
-                        color = current.color,
-                    )
-                }
-                editor.value = PlaylistTagEditorState.Hidden
-            }
-        }
+        fun openEditorColorPicker() = handleOpenEditorColorPicker()
 
-        fun deleteTag(tagId: String) {
-            launchWrite {
-                deletePlaylistTag(tagId = tagId)
-            }
-        }
+        fun openTagColorPicker(tagId: String) = handleOpenTagColorPicker(tagId)
 
-        fun openEditorColorPicker() {
-            val current = editor.value as? PlaylistTagEditorState.Visible ?: return
-            colorPicker.value =
-                PlaylistTagColorPickerState.Visible(
-                    selectedColor = current.color,
-                    tagId = current.tagId,
-                    isEditorTarget = true,
-                    colors = ImmutableList.copyOf(TagEntity.DEFAULT_COLORS),
-                )
-        }
+        fun selectColor(color: String) = handleSelectColor(color)
 
-        fun openTagColorPicker(tagId: String) {
-            val tag = currentTags().firstOrNull { currentTag -> currentTag.id == tagId } ?: return
-            colorPicker.value =
-                PlaylistTagColorPickerState.Visible(
-                    selectedColor = tag.color,
-                    tagId = tag.id,
-                    isEditorTarget = false,
-                    colors = ImmutableList.copyOf(TagEntity.DEFAULT_COLORS),
-                )
-        }
+        fun dismissColorPicker() = handleDismissColorPicker()
 
-        fun selectColor(color: String) {
-            val current = colorPicker.value as? PlaylistTagColorPickerState.Visible ?: return
-            if (current.isEditorTarget) {
-                editor.update { editorState ->
-                    when (editorState) {
-                        PlaylistTagEditorState.Hidden -> editorState
-                        is PlaylistTagEditorState.Visible -> editorState.copy(color = color)
-                    }
-                }
-                colorPicker.value = PlaylistTagColorPickerState.Hidden
-                return
-            }
-
-            val tagId = current.tagId ?: return
-            launchWrite {
-                updatePlaylistTagColor(
-                    tagId = tagId,
-                    color = color,
-                )
-                colorPicker.value = PlaylistTagColorPickerState.Hidden
-            }
-        }
-
-        fun dismissColorPicker() {
-            colorPicker.value = PlaylistTagColorPickerState.Hidden
-        }
-
-        private fun launchWrite(block: suspend () -> Unit) {
+        internal fun launchWrite(block: suspend () -> Unit) {
             if (writeJob?.isActive == true) return
             writeJob =
                 viewModelScope.launch {
@@ -389,7 +222,7 @@ class PlaylistTagsViewModel
                 }
         }
 
-        private fun currentTags(): List<PlaylistTagUiModel> =
+        internal fun currentTags(): List<PlaylistTagUiModel> =
             when (val state = screenState.value) {
                 is PlaylistTagsScreenState.Success -> state.tags
 
@@ -398,31 +231,4 @@ class PlaylistTagsViewModel
                 PlaylistTagsScreenState.Loading,
                 -> emptyList()
             }
-
-        private fun List<PlaylistTagModel>.mapTagsToUiModels(): List<PlaylistTagUiModel> =
-            map { tag ->
-                PlaylistTagUiModel(
-                    id = tag.id,
-                    name = tag.name,
-                    color = tag.color,
-                )
-            }
-
-        private fun List<PlaylistTagPlaylistModel>.mapPlaylistsToUiModels(): List<PlaylistTagPlaylistUiModel> =
-            map { playlist ->
-                PlaylistTagPlaylistUiModel(
-                    id = playlist.id,
-                    name = playlist.name,
-                    songCount = playlist.songCount,
-                )
-            }
-
-        private fun Set<String>.toggle(value: String): Set<String> =
-            if (value in this) {
-                this - value
-            } else {
-                this + value
-            }
-
-        private fun Set<String>.sanitize(validIds: Set<String>): Set<String> = filterTo(LinkedHashSet()) { id -> id in validIds }
     }

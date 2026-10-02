@@ -8,36 +8,10 @@
 
 package moe.rukamori.archivetune.ui.menu
 
-import android.content.Intent
-import android.content.res.Configuration
-import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,21 +20,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadService
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -70,48 +37,14 @@ import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.extensions.isSyncEnabled
-import moe.rukamori.archivetune.extensions.isUserLoggedIn
-import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.playback.ExoDownloadService
-import moe.rukamori.archivetune.playback.queues.ListQueue
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.AssignTagsDialog
-import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EditPlaylistDialog
-import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
-import moe.rukamori.archivetune.ui.component.NewAction
-import moe.rukamori.archivetune.ui.component.NewActionGrid
-import moe.rukamori.archivetune.ui.component.NewMenuItem
-import moe.rukamori.archivetune.ui.component.PlaylistListItem
-import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
-import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.utils.serializeSpeedDialPins
-import moe.rukamori.archivetune.utils.toggleSpeedDialPin
-import timber.log.Timber
 import java.time.LocalDateTime
-import kotlin.math.roundToInt
-
-@Immutable
-private data class PlaylistSyncProgressUi(
-    val completedSongs: Int,
-    val totalSongs: Int,
-) {
-    val percent: Int
-        get() =
-            if (totalSongs <= 0) {
-                0
-            } else {
-                (completedSongs.coerceIn(0, totalSongs).toFloat() / totalSongs.toFloat() * 100f)
-                    .roundToInt()
-                    .coerceIn(0, 100)
-            }
-}
 
 @Composable
 fun PlaylistMenu(
@@ -135,9 +68,7 @@ fun PlaylistMenu(
         remember(speedDialPins, playlistPin) {
             speedDialPins.any { it.type == playlistPin.type && it.id == playlistPin.id }
         }
-    var songs by remember {
-        mutableStateOf(emptyList<Song>())
-    }
+    var songs by remember { mutableStateOf(emptyList<Song>()) }
 
     LaunchedEffect(Unit) {
         if (autoPlaylist == false) {
@@ -151,144 +82,10 @@ fun PlaylistMenu(
         }
     }
 
-    var downloadState by remember {
-        mutableIntStateOf(Download.STATE_STOPPED)
-    }
-    var syncProgress by remember {
-        mutableStateOf<PlaylistSyncProgressUi?>(null)
-    }
-    var syncJob by remember {
-        mutableStateOf<Job?>(null)
-    }
-
+    var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
+    var syncProgress by remember { mutableStateOf<PlaylistSyncProgressUi?>(null) }
+    var syncJob by remember { mutableStateOf<Job?>(null) }
     val editable: Boolean = playlist.playlist.isEditable == true
-
-    fun syncPlaylistToYouTube() {
-        syncJob?.cancel()
-        syncJob =
-            coroutineScope.launch(Dispatchers.IO) {
-                var lastProgressPercent = -1
-                var lastProgressCompleted = -1
-
-                fun updateProgress(
-                    completedSongs: Int,
-                    totalSongs: Int,
-                ) {
-                    val nextProgressPercent =
-                        if (totalSongs <= 0) {
-                            -1
-                        } else {
-                            (completedSongs.coerceIn(0, totalSongs).toFloat() / totalSongs.toFloat() * 100f)
-                                .roundToInt()
-                                .coerceIn(0, 100)
-                        }
-                    val shouldUpdate =
-                        totalSongs <= 0 ||
-                            completedSongs == totalSongs ||
-                            nextProgressPercent != lastProgressPercent ||
-                            completedSongs - lastProgressCompleted >= 25
-
-                    if (!shouldUpdate) return
-
-                    lastProgressPercent = nextProgressPercent
-                    lastProgressCompleted = completedSongs
-
-                    coroutineScope.launch(Dispatchers.Main) {
-                        syncProgress =
-                            PlaylistSyncProgressUi(
-                                completedSongs = completedSongs,
-                                totalSongs = totalSongs,
-                            )
-                    }
-                }
-
-                try {
-                    if (!context.isSyncEnabled()) {
-                        withContext(Dispatchers.Main) {
-                            Toast
-                                .makeText(
-                                    context,
-                                    context.getString(
-                                        if (context.isUserLoggedIn()) {
-                                            R.string.sync_disabled
-                                        } else {
-                                            R.string.not_logged_in_youtube
-                                        },
-                                    ),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                        }
-                        return@launch
-                    }
-
-                    val browseId = playlist.playlist.browseId ?: YouTube.createPlaylist(playlist.playlist.name).getOrThrow()
-                    if (playlist.playlist.browseId == null) {
-                        updateProgress(completedSongs = 0, totalSongs = songs.size)
-                        YouTube
-                            .addSongsToPlaylist(
-                                playlistId = browseId,
-                                videoIds = songs.map(Song::id),
-                                onProgress = ::updateProgress,
-                            ).getOrThrow()
-                        database.query {
-                            update(
-                                playlist.playlist.copy(
-                                    browseId = browseId,
-                                    lastUpdateTime = LocalDateTime.now(),
-                                    remoteSongCount = songs.size,
-                                ),
-                            )
-                        }
-                    } else {
-                        updateProgress(completedSongs = 0, totalSongs = 0)
-                        syncUtils.syncPlaylistNow(
-                            browseId = browseId,
-                            playlistId = playlist.id,
-                            propagateFailures = true,
-                        ) { completedSongs, totalSongs ->
-                            updateProgress(
-                                completedSongs = completedSongs,
-                                totalSongs = totalSongs,
-                            )
-                        }
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        syncProgress = null
-                        Toast
-                            .makeText(
-                                context,
-                                context.getString(R.string.playlist_synced),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        onDismiss()
-                    }
-                } catch (e: CancellationException) {
-                    withContext(NonCancellable) {
-                        withContext(Dispatchers.Main) {
-                            syncProgress = null
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to sync playlist ${playlist.playlist.name}")
-                    withContext(Dispatchers.Main) {
-                        syncProgress = null
-                        Toast
-                            .makeText(
-                                context,
-                                context.getString(R.string.playlist_sync_failed, e.syncErrorDetail(context)),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                    }
-                } finally {
-                    withContext(NonCancellable) {
-                        withContext(Dispatchers.Main) {
-                            syncProgress = null
-                        }
-                    }
-                }
-            }
-    }
 
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect
@@ -309,9 +106,11 @@ fun PlaylistMenu(
         }
     }
 
-    var showEditDialog by remember {
-        mutableStateOf(false)
-    }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showRemoveDownloadDialog by remember { mutableStateOf(false) }
+    var showHidePlaylistDialog by remember { mutableStateOf(false) }
+    var showDeletePlaylistDialog by remember { mutableStateOf(false) }
+    var showAssignTagsDialog by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         EditPlaylistDialog(
@@ -334,65 +133,13 @@ fun PlaylistMenu(
         )
     }
 
-    var showRemoveDownloadDialog by remember {
-        mutableStateOf(false)
-    }
-
-    if (showRemoveDownloadDialog) {
-        DefaultDialog(
-            onDismiss = { showRemoveDownloadDialog = false },
-            content = {
-                Text(
-                    text =
-                        stringResource(
-                            R.string.remove_download_playlist_confirm,
-                            playlist.playlist.name,
-                        ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                )
-            },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        showRemoveDownloadDialog = false
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.cancel))
-                }
-
-                TextButton(
-                    onClick = {
-                        showRemoveDownloadDialog = false
-                        songs.forEach { song ->
-                            DownloadService.sendRemoveDownload(
-                                context,
-                                ExoDownloadService::class.java,
-                                song.id,
-                                false,
-                            )
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.ok))
-                }
-            },
-        )
-    }
-
-    var showHidePlaylistDialog by remember {
-        mutableStateOf(false)
-    }
-
-    var showDeletePlaylistDialog by remember {
-        mutableStateOf(false)
-    }
-
-    var showAssignTagsDialog by remember {
-        mutableStateOf(false)
-    }
+    PlaylistMenuRemoveDownloadDialog(
+        isVisible = showRemoveDownloadDialog,
+        playlistName = playlist.playlist.name,
+        songs = songs,
+        context = context,
+        onDismiss = { showRemoveDownloadDialog = false },
+    )
 
     if (showAssignTagsDialog) {
         AssignTagsDialog(
@@ -404,569 +151,74 @@ fun PlaylistMenu(
         )
     }
 
-    if (showHidePlaylistDialog) {
-        DefaultDialog(
-            onDismiss = { showHidePlaylistDialog = false },
-            content = {
-                Text(
-                    text = stringResource(R.string.hide_playlist_confirm, playlist.playlist.name),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                )
-            },
-            buttons = {
-                TextButton(
-                    onClick = { showHidePlaylistDialog = false },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.cancel))
-                }
+    PlaylistMenuHideDialog(
+        isVisible = showHidePlaylistDialog,
+        playlist = playlist,
+        database = database,
+        onDismiss = { showHidePlaylistDialog = false },
+        onDismissMenu = onDismiss,
+    )
 
-                TextButton(
-                    onClick = {
-                        showHidePlaylistDialog = false
-                        onDismiss()
-                        database.query {
-                            update(playlist.playlist.copy(isHidden = true))
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.ok))
-                }
-            },
-        )
-    }
+    PlaylistMenuDeleteDialog(
+        isVisible = showDeletePlaylistDialog,
+        playlist = playlist,
+        database = database,
+        coroutineScope = coroutineScope,
+        onDismiss = { showDeletePlaylistDialog = false },
+        onDismissMenu = onDismiss,
+    )
 
-    if (showDeletePlaylistDialog) {
-        DefaultDialog(
-            onDismiss = { showDeletePlaylistDialog = false },
-            content = {
-                Text(
-                    text = stringResource(R.string.delete_playlist_confirm, playlist.playlist.name),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                )
-            },
-            buttons = {
-                TextButton(
-                    onClick = {
-                        showDeletePlaylistDialog = false
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.cancel))
-                }
-
-                TextButton(
-                    onClick = {
-                        showDeletePlaylistDialog = false
-                        onDismiss()
-                        database.transaction {
-                            if (playlist.playlist.bookmarkedAt != null) {
-                                update(playlist.playlist.toggleLike())
-                            }
-                            delete(playlist.playlist)
-                        }
-
-                        coroutineScope.launch(Dispatchers.IO) {
-                            playlist.playlist.browseId?.let { YouTube.deletePlaylist(it) }
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                ) {
-                    Text(text = stringResource(android.R.string.ok))
-                }
-            },
-        )
-    }
-
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        PlaylistListItem(
-            playlist = playlist,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            trailingContent = {
-                if (playlist.playlist.isEditable != true) {
-                    IconButton(
-                        onClick = {
-                            database.query {
-                                dbPlaylist?.playlist?.toggleLike()?.let { update(it) }
-                            }
-                        },
-                    ) {
-                        Icon(
-                            painter =
-                                painterResource(
-                                    if (dbPlaylist?.playlist?.bookmarkedAt !=
-                                        null
-                                    ) {
-                                        R.drawable.favorite
-                                    } else {
-                                        R.drawable.favorite_border
-                                    },
-                                ),
-                            tint =
-                                if (dbPlaylist?.playlist?.bookmarkedAt !=
-                                    null
-                                ) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    LocalContentColor.current
-                                },
-                            contentDescription = null,
-                        )
-                    }
-                }
-            },
-        )
-    }
+    PlaylistMenuHeader(
+        playlist = playlist,
+        dbPlaylist = dbPlaylist,
+        database = database,
+    )
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    val configuration = LocalConfiguration.current
-    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-    val startRadioText = stringResource(R.string.start_radio)
-    val playText = stringResource(R.string.play)
-    val shuffleText = stringResource(R.string.shuffle)
-    val playNextText = stringResource(R.string.play_next)
-    val addToQueueText = stringResource(R.string.add_to_queue)
-    val shareText = stringResource(R.string.share)
-
-    val primaryActions =
-        remember(
-            songs,
-            playText,
-            shuffleText,
-            shareText,
-            playlist.playlist.name,
-            dbPlaylist?.playlist?.browseId,
-            onDismiss,
-            playerConnection,
-        ) {
-            listOf(
-                NewAction(
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.play),
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    text = playText,
-                    onClick = {
-                        onDismiss()
-                        if (songs.isNotEmpty()) {
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = playlist.playlist.name,
-                                    items = songs.map(Song::toMediaItem),
-                                ),
-                            )
-                        }
-                    },
-                ),
-                NewAction(
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.shuffle),
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    text = shuffleText,
-                    onClick = {
-                        onDismiss()
-                        if (songs.isNotEmpty()) {
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = playlist.playlist.name,
-                                    items = songs.shuffled().map(Song::toMediaItem),
-                                ),
-                            )
-                        }
-                    },
-                ),
-                NewAction(
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_share),
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    text = shareText,
-                    onClick = {
-                        onDismiss()
-                        val intent =
-                            Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${dbPlaylist?.playlist?.browseId}")
-                            }
-                        context.startActivity(Intent.createChooser(intent, null))
-                    },
-                ),
-            )
-        }
-
-    LazyColumn(
-        userScrollEnabled = true,
-        contentPadding =
-            PaddingValues(
-                start = 0.dp,
-                top = 0.dp,
-                end = 0.dp,
-                bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
-            ),
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        item {
-            MenuSurfaceSection {
-                NewActionGrid(
-                    actions = primaryActions,
+    PlaylistMenuContent(
+        playlist = playlist,
+        dbPlaylist = dbPlaylist,
+        songs = songs,
+        isInSpeedDial = isInSpeedDial,
+        playlistPin = playlistPin,
+        speedDialPins = speedDialPins,
+        editable = editable,
+        autoPlaylist = autoPlaylist,
+        downloadPlaylist = downloadPlaylist,
+        downloadState = downloadState,
+        syncProgress = syncProgress,
+        playerConnection = playerConnection,
+        coroutineScope = coroutineScope,
+        context = context,
+        onSpeedDialSongIdsChange = onSpeedDialSongIdsChange,
+        onDismiss = onDismiss,
+        onShowEditDialog = { showEditDialog = true },
+        onShowAssignTagsDialog = { showAssignTagsDialog = true },
+        onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
+        onSyncPlaylist = {
+            syncJob?.cancel()
+            syncJob =
+                startPlaylistSyncToYouTube(
+                    coroutineScope = coroutineScope,
+                    context = context,
+                    playlist = playlist,
+                    songs = songs,
+                    database = database,
+                    syncUtils = syncUtils,
+                    onProgressUpdate = { syncProgress = it },
+                    onSuccess = onDismiss,
                 )
+        },
+        onShowHidePlaylistDialog = { showHidePlaylistDialog = true },
+        onShowDeletePlaylistDialog = { showDeletePlaylistDialog = true },
+        onUnhidePlaylist = {
+            onDismiss()
+            database.query {
+                update(playlist.playlist.copy(isHidden = false))
             }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            val actionItemCount =
-                (if (playlist.playlist.browseId != null) 1 else 0) +
-                    1 +
-                    1 +
-                    1 +
-                    (if (editable && autoPlaylist != true) 1 else 0) +
-                    (if (autoPlaylist != true && downloadPlaylist != true) 1 else 0)
-            val browseIdOffset = if (playlist.playlist.browseId != null) 1 else 0
-            MenuSurfaceSection {
-                playlist.playlist.browseId?.let { browseId ->
-                    NewMenuItem(
-                        headlineContent = { Text(text = startRadioText) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.radio),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                YouTube.playlist(browseId).getOrNull()?.playlist?.let { playlistItem ->
-                                    playlistItem.radioEndpoint?.let { radioEndpoint ->
-                                        withContext(Dispatchers.Main) {
-                                            playerConnection.playQueue(YouTubeQueue(radioEndpoint))
-                                        }
-                                    }
-                                }
-                            }
-                            onDismiss()
-                        },
-                        index = 0,
-                        count = actionItemCount,
-                    )
-                }
-
-                NewMenuItem(
-                    headlineContent = { Text(text = playNextText) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.playlist_play),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        coroutineScope.launch {
-                            playerConnection.playNext(songs.map { it.toMediaItem() })
-                        }
-                        onDismiss()
-                    },
-                    index = browseIdOffset,
-                    count = actionItemCount,
-                )
-
-                NewMenuItem(
-                    headlineContent = { Text(text = addToQueueText) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.queue_music),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        onDismiss()
-                        playerConnection.addToQueue(songs.map { it.toMediaItem() })
-                    },
-                    index = browseIdOffset + 1,
-                    count = actionItemCount,
-                )
-
-                NewMenuItem(
-                    headlineContent = {
-                        Text(
-                            text =
-                                stringResource(
-                                    if (isInSpeedDial) {
-                                        R.string.remove_from_speed_dial
-                                    } else {
-                                        R.string.pin_to_speed_dial
-                                    },
-                                ),
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(if (isInSpeedDial) R.drawable.bookmark_filled else R.drawable.bookmark),
-                            contentDescription = null,
-                        )
-                    },
-                    onClick = {
-                        val updatedPins = toggleSpeedDialPin(speedDialPins, playlistPin)
-                        onSpeedDialSongIdsChange(serializeSpeedDialPins(updatedPins))
-                        onDismiss()
-                    },
-                    index = browseIdOffset + 2,
-                    count = actionItemCount,
-                )
-
-                if (editable && autoPlaylist != true) {
-                    NewMenuItem(
-                        headlineContent = { Text(text = stringResource(R.string.edit)) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.edit),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            showEditDialog = true
-                        },
-                        index = browseIdOffset + 3,
-                        count = actionItemCount,
-                    )
-                }
-
-                if (autoPlaylist != true && downloadPlaylist != true) {
-                    NewMenuItem(
-                        headlineContent = { Text(text = stringResource(R.string.manage_tags)) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.style),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            showAssignTagsDialog = true
-                        },
-                        index = browseIdOffset + 3 + (if (editable && autoPlaylist != true) 1 else 0),
-                        count = actionItemCount,
-                    )
-                }
-            }
-        }
-
-        if (downloadPlaylist != true) {
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            item {
-                MenuSurfaceSection {
-                    when (downloadState) {
-                        Download.STATE_COMPLETED -> {
-                            NewMenuItem(
-                                headlineContent = {
-                                    Text(
-                                        text = stringResource(R.string.remove_download),
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                },
-                                onClick = {
-                                    showRemoveDownloadDialog = true
-                                },
-                                index = 0,
-                                count = 1,
-                            )
-                        }
-
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            NewMenuItem(
-                                headlineContent = { Text(text = stringResource(R.string.downloading)) },
-                                leadingContent = {
-                                    CircularWavyProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = {
-                                    showRemoveDownloadDialog = true
-                                },
-                                index = 0,
-                                count = 1,
-                            )
-                        }
-
-                        else -> {
-                            NewMenuItem(
-                                headlineContent = { Text(text = stringResource(R.string.action_download)) },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    sendAddMissingDownloads(
-                                        context = context,
-                                        songs =
-                                            songs.map { song ->
-                                                HeaderDownloadItem(
-                                                    id = song.id,
-                                                    title = song.song.title,
-                                                )
-                                            },
-                                        downloads = downloadUtil.downloads.value,
-                                    )
-                                },
-                                index = 0,
-                                count = 1,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        if (autoPlaylist != true) {
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            item {
-                MenuSurfaceSection {
-                    NewMenuItem(
-                        headlineContent = { Text(text = stringResource(R.string.sync_playlist)) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.sync),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            if (syncProgress == null) {
-                                syncPlaylistToYouTube()
-                            }
-                        },
-                        index = 0,
-                        count = 3,
-                    )
-
-                    NewMenuItem(
-                        headlineContent = {
-                            Text(
-                                text =
-                                    stringResource(
-                                        if (playlist.playlist.isHidden) {
-                                            R.string.unhide_playlist
-                                        } else {
-                                            R.string.hide_playlist
-                                        },
-                                    ),
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.visibility_off),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            if (playlist.playlist.isHidden) {
-                                onDismiss()
-                                database.query {
-                                    update(playlist.playlist.copy(isHidden = false))
-                                }
-                            } else {
-                                showHidePlaylistDialog = true
-                            }
-                        },
-                        index = 1,
-                        count = 3,
-                    )
-
-                    NewMenuItem(
-                        headlineContent = {
-                            Text(
-                                text = stringResource(R.string.delete),
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.delete),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        },
-                        onClick = {
-                            showDeletePlaylistDialog = true
-                        },
-                        index = 2,
-                        count = 3,
-                    )
-                }
-            }
-        }
-
-        playlist.playlist.shareLink?.let { shareLink ->
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            item {
-                MenuSurfaceSection {
-                    NewMenuItem(
-                        headlineContent = { Text(text = shareText) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_share),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            val intent =
-                                Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareLink)
-                                }
-                            context.startActivity(Intent.createChooser(intent, null))
-                            onDismiss()
-                        },
-                        index = 0,
-                        count = 1,
-                    )
-                }
-            }
-        }
-    }
+        },
+    )
 
     syncProgress?.let { progress ->
         LoadingScreen(
@@ -992,9 +244,3 @@ fun PlaylistMenu(
         )
     }
 }
-
-private fun Throwable.syncErrorDetail(context: android.content.Context): String =
-    localizedMessage
-        ?.takeIf(String::isNotBlank)
-        ?: javaClass.simpleName.takeIf(String::isNotBlank)
-        ?: context.getString(R.string.error_unknown)

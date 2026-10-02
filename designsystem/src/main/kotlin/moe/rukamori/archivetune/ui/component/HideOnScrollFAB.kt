@@ -140,6 +140,57 @@ fun HideOnScrollFAB(
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     onClick: () -> Unit,
 ) {
+    HideOnScrollFabImpl(
+        scrollContract = scrollContract,
+        icon = icon,
+        label = label,
+        modifier = modifier,
+        visible = visible,
+        hazeState = hazeState,
+        pureBlack = pureBlack,
+        blurRadius = blurRadius,
+        onClick = onClick,
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BoxScope.HideOnScrollFAB(
+    scrollContract: ScrollContract,
+    @DrawableRes icon: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    visible: Boolean = true,
+    hazeState: HazeState? = null,
+    pureBlack: Boolean = false,
+    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
+    onClick: () -> Unit,
+) {
+    HideOnScrollFabImpl(
+        scrollContract = scrollContract,
+        icon = icon,
+        label = label,
+        modifier = modifier.align(Alignment.BottomEnd),
+        visible = visible,
+        hazeState = hazeState,
+        pureBlack = pureBlack,
+        blurRadius = blurRadius,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun HideOnScrollFabImpl(
+    scrollContract: ScrollContract,
+    @DrawableRes icon: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    visible: Boolean = true,
+    hazeState: HazeState? = null,
+    pureBlack: Boolean = false,
+    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
+    onClick: () -> Unit,
+) {
     val animationsDisabled = LocalAnimationsDisabled.current
     AnimatedVisibility(
         visible = visible && scrollContract.isScrollingUp(),
@@ -160,32 +211,6 @@ fun HideOnScrollFAB(
             onClick = onClick,
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun BoxScope.HideOnScrollFAB(
-    scrollContract: ScrollContract,
-    @DrawableRes icon: Int,
-    label: String,
-    modifier: Modifier = Modifier,
-    visible: Boolean = true,
-    hazeState: HazeState? = null,
-    pureBlack: Boolean = false,
-    blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
-    onClick: () -> Unit,
-) {
-    HideOnScrollFAB(
-        scrollContract = scrollContract,
-        icon = icon,
-        label = label,
-        modifier = modifier.align(Alignment.BottomEnd),
-        visible = visible,
-        hazeState = hazeState,
-        pureBlack = pureBlack,
-        blurRadius = blurRadius,
-        onClick = onClick,
-    )
 }
 
 @Composable
