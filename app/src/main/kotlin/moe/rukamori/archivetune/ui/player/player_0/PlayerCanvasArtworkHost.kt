@@ -30,7 +30,7 @@ internal fun PlayerCanvasArtworkHost(
             state.isPlaying &&
                 lyricsFractionProvider() < 0.05f &&
                 queueFractionProvider() < 0.05f &&
-                (!state.isImmersiveEnabled || immersiveTransitionAlpha > 0.05f)
+                    (state.isImmersiveEnabled && immersiveTransitionAlpha > 0.05f)
         }
     }
 
