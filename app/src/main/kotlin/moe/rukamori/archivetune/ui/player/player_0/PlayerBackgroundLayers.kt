@@ -149,8 +149,9 @@ fun PlayerBackgroundLayers(
             }
         }
 
+        val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
         val painter = painters.currentClearPainter
-        if (painter != null) {
+        if (painter != null && !isCanvasActive) {
             Image(
                 painter = painter,
                 contentDescription = null,
@@ -164,18 +165,20 @@ fun PlayerBackgroundLayers(
             )
         }
 
-        PlayerCanvasArtworkHost(
-            state = state,
-            canvasState = canvasState,
-            immersiveTransitionAlpha = immersiveTransitionAlpha,
-            lyricsFractionProvider = lyricsFractionProvider,
-            queueFractionProvider = queueFractionProvider,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.75f)
-                .align(Alignment.TopCenter)
-                .artworkBottomFade(immersiveTransitionAlpha)
-        )
+        if (isCanvasActive) {
+            PlayerCanvasArtworkHost(
+                state = state,
+                canvasState = canvasState,
+                immersiveTransitionAlpha = immersiveTransitionAlpha,
+                lyricsFractionProvider = lyricsFractionProvider,
+                queueFractionProvider = queueFractionProvider,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .align(Alignment.TopCenter)
+                    .artworkBottomFade(immersiveTransitionAlpha)
+            )
+        }
     }
 }
 
