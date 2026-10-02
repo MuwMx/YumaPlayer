@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -55,19 +55,6 @@ internal fun CommitItem(
 ) {
     val colors = LocalYumaColors.current
     val itemShape = remember(index, count) { segmentedSettingsItemShape(index, count) }
-    val cardModifier =
-        if (index == 0) {
-            Modifier.yumaGlassCard(
-                shape = itemShape,
-                backgroundColor = colors.glassBackground,
-                borderColor = colors.glassBorder,
-                strokeWidth = SettingsDimensions.GlassBorderThickness,
-            )
-        } else {
-            Modifier
-                .clip(itemShape)
-                .background(colors.glassBackground)
-        }
 
     Box(
         modifier =
@@ -77,7 +64,12 @@ internal fun CommitItem(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
                 )
-                .then(cardModifier)
+                .yumaGlassCard(
+                    shape = itemShape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = if (index == 0) colors.glassBorder else Color.Transparent,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
                 .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
@@ -146,8 +138,11 @@ internal fun CommitAvatar(avatarUrl: String?) {
         modifier =
             Modifier
                 .size(38.dp)
-                .clip(CircleShape)
-                .background(colors.glassBackground),
+                .yumaGlassCard(
+                    shape = CircleShape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = Color.Transparent,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         if (!avatarUrl.isNullOrBlank()) {
@@ -155,7 +150,7 @@ internal fun CommitAvatar(avatarUrl: String?) {
                 model = avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
             )
         } else {
             Icon(
