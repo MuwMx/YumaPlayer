@@ -139,4 +139,50 @@ object SplashPhysics {
         }
         return p
     }
+
+    fun updateParticles(
+        engine: SplashEngine,
+        dt: Float,
+        currentTimeMs: Long,
+        step: Float
+    ) {
+        val isTransit = engine.currentPhase == SplashPhase.Transit
+        val isForming = engine.currentPhase == SplashPhase.Gather || engine.currentPhase == SplashPhase.Ignite
+        val isProcessing = engine.currentPhase == SplashPhase.Error || engine.currentPhase == SplashPhase.Transit
+        val isBursting = engine.currentPhase == SplashPhase.Burst || engine.postBurstFrames > 0
+        val timeSec = currentTimeMs / 1000f
+        val center = SplashSlots.center(engine.width, engine.height)
+
+        val dampMember = SplashConfig.Physics.DAMPING_FORMING.pow(step)
+        val dampFloater = SplashConfig.Physics.DAMPING_FREE.pow(step)
+
+        val particles = engine.particles
+        for (i in particles.indices) {
+            val p = particles[i]
+            applyFormationForces(
+                p = p,
+                dt = dt,
+                isTransit = isTransit,
+                isForming = isForming,
+                formStrength = engine.formStrength,
+                isBursting = isBursting,
+                isProcessing = isProcessing,
+                time = timeSec,
+                centerX = center.x,
+                centerY = center.y,
+                dampMember = dampMember,
+                dampFloater = dampFloater
+            )
+
+            p.radius = p.baseRadius * (1f + sin(timeSec * p.pulse + p.phase) * p.breath) * engine.particleScale
+
+            if ((!isForming && !isProcessing) || !p.isMember) {
+                val pad = 40f
+                if (p.x < -pad) p.x = engine.width + pad
+                if (p.x > engine.width + pad) p.x = -pad
+                if (p.y < -pad) p.y = engine.height + pad
+                if (p.y > engine.height + pad) p.y = -pad
+            }
+        }
+    }
 }

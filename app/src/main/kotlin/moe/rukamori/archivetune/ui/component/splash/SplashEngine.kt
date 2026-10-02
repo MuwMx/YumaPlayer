@@ -1,25 +1,9 @@
 package moe.rukamori.archivetune.ui.component.splash
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.core.graphics.PathParser
-import kotlin.math.cos
 import kotlin.math.hypot
-import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.random.Random
-
-object Fu {
-    data class ColorScheme(val r: Int, val g: Int, val b: Int, val coreHex: Long) {
-        val color: Color = Color(r, g, b)
-        val coreColor: Color = Color(coreHex)
-    }
-
-    val ok: ColorScheme = ColorScheme(255, 236, 203, 0xFFFFFAF0)
-    val fail: ColorScheme = ColorScheme(255, 120, 110, 0xFFFFDEDB)
-}
 
 class SplashEngine {
     val particles = ArrayList<SplashParticle>(MAX_MEMBERS)
@@ -64,8 +48,15 @@ class SplashEngine {
     var particleAlpha: Float = 1f
     var currentShapeData: SplashSlots.ShapeSlots =
         SplashSlots.ShapeSlots(emptyList(), listOf(0 until SplashSlots.SLOT_COUNT), emptyList(), android.graphics.Path())
-    private var slots: List<Offset> = emptyList()
+    internal var slots: List<Offset> = emptyList()
     var phaseElapsedMs: Float = 0f
+        private set
+
+    var memberCount: Int = 0
+        private set
+    var totalMemberDist: Float = 0f
+        private set
+    var avgDist: Float = 0f
         private set
 
     fun init(w: Float, h: Float) {
@@ -73,127 +64,13 @@ class SplashEngine {
     }
 
     fun init(w: Float, h: Float, d: Float) {
-        width = w
-        height = h
-        density = d
-        particles.clear()
-
-        rebuildSlots()
-
-        val center = SplashSlots.center(w, h)
-        val activeMembers = SplashConfig.getSlotCount(shape).coerceIn(12, MAX_MEMBERS)
-
-        for (i in 0 until activeMembers) {
-            val r = SplashConfig.Spawn.RING_INNER + Random.nextFloat() * SplashConfig.Spawn.RING_WIDTH
-            val angle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
-            val cosA = cos(angle)
-            val sinA = sin(angle)
-            val startX = center.x + cosA * r
-            val startY = center.y + sinA * r
-
-            val speed = SplashConfig.Spawn.SPEED_BASE + Random.nextFloat() * SplashConfig.Spawn.SPEED_VAR
-            val startVx = cosA * speed
-            val startVy = sinA * speed
-
-            val depth = Random.nextFloat()
-            val seed = Random.nextFloat()
-            val isRare = Random.nextFloat() < SplashParticle.wD
-            val baseRadius = SplashParticle.baseRadiusFor(depth, seed, isRare)
-            val pulse = SplashParticle.pulseFor(seed)
-            val breath = SplashParticle.breathFor(pulse)
-            val lum = SplashParticle.lumFor(seed, isRare)
-            val phaseAngle = Random.nextFloat() * (Math.PI.toFloat() * 2f)
-
-            particles.add(
-                SplashParticle(
-                    x = startX,
-                    y = startY,
-                    vx = startVx,
-                    vy = startVy,
-                    baseRadius = baseRadius,
-                    radius = baseRadius,
-                    depth = depth,
-                    seed = seed,
-                    pulse = pulse,
-                    phase = phaseAngle,
-                    breath = breath,
-                    lum = lum,
-                    ring = i % 2,
-                    isMember = true,
-                    isRare = isRare
-                )
-            )
-        }
-        bindSlots()
-        setPhase(SplashPhase.Gather)
+        spawnParticles(w, h, d)
     }
 
     fun rebuildSlots() {
         if (width <= 0f || height <= 0f) return
         currentShapeData = SplashSlots.build(shape, width, height, density)
         bindSlots()
-    }
-
-    fun setShapeFromPathData(pathData: String) {
-        if (pathData.isBlank() || width <= 0f || height <= 0f) return
-        val size = SplashSlots.boxSize(shape, width, height)
-        val center = SplashSlots.center(width, height)
-        val svgSlots = SplashSlots.fromSvgPath(pathData, SplashSlots.SLOT_COUNT, center.x, center.y, size)
-        if (svgSlots.isEmpty()) return
-
-        val path = try {
-            PathParser.createPathFromPathData(pathData)
-        } catch (_: Exception) {
-            android.graphics.Path()
-        }
-
-        currentShapeData = SplashSlots.ShapeSlots(
-            slots = svgSlots,
-            loops = listOf(0 until SplashSlots.SLOT_COUNT),
-            tips = emptyList(),
-            outlinePath = path
-        )
-
-        for (i in particles.indices) {
-            val p = particles[i]
-            p.vx *= SplashConfig.Physics.DAMP_ON_RESHAPE
-            p.vy *= SplashConfig.Physics.DAMP_ON_RESHAPE
-        }
-        bindSlots()
-        setPhase(SplashPhase.Gather)
-    }
-
-    private fun bindSlots() {
-        slots = currentShapeData.slots
-        if (slots.isEmpty()) return
-
-        val targetMemberCount = minOf(slots.size, MAX_MEMBERS)
-        for (i in 0 until minOf(particles.size, MAX_MEMBERS)) {
-            particles[i].isMember = (i < targetMemberCount)
-            if (i >= targetMemberCount) {
-                particles[i].slotIndex = -1
-            }
-        }
-
-        val memberIndices = (0 until minOf(particles.size, targetMemberCount)).toList()
-        if (memberIndices.isEmpty()) return
-
-        val memberPositions = memberIndices.map { Offset(particles[it].x, particles[it].y) }
-        val assignment = SplashSlots.zdGreedyCompile(memberPositions, slots)
-
-        for (i in memberIndices.indices) {
-            val pIdx = memberIndices[i]
-            val slotIdx = assignment.getOrElse(i) { -1 }
-            val target = if (slotIdx in slots.indices) {
-                slots[slotIdx]
-            } else {
-                SplashSlots.center(width, height)
-            }
-            val p = particles[pIdx]
-            p.targetX = target.x
-            p.targetY = target.y
-            p.slotIndex = slotIdx
-        }
     }
 
     fun setPhase(newPhase: SplashPhase) {
@@ -221,10 +98,7 @@ class SplashEngine {
             SplashPhase.Idle -> {
                 formStrength = 0f
             }
-            SplashPhase.Transit, SplashPhase.Success -> {
-                formStrength = 1f
-            }
-            SplashPhase.Error -> {
+            SplashPhase.Transit, SplashPhase.Success, SplashPhase.Error -> {
                 formStrength = 1f
             }
         }
@@ -252,16 +126,20 @@ class SplashEngine {
                     else -> SplashConfig.Timings.GATHER_BOLT_MS
                 }
                 formStrength = min(1f, phaseElapsedMs / gatherLimit)
-                var memberCount = 0
-                var totalDist = 0f
+                var currentMemberCount = 0
+                var currentTotalDist = 0f
                 for (i in particles.indices) {
                     val p = particles[i]
                     if (p.isMember && p.slotIndex >= 0) {
-                        memberCount++
-                        totalDist += hypot(p.x - p.targetX, p.y - p.targetY)
+                        currentMemberCount++
+                        currentTotalDist += hypot(p.x - p.targetX, p.y - p.targetY)
                     }
                 }
-                val converged = memberCount > 0 && (totalDist / memberCount) < SplashConfig.Settle.CONVERGE_DIST
+                memberCount = currentMemberCount
+                totalMemberDist = currentTotalDist
+                val currentAvgDist = if (currentMemberCount > 0) currentTotalDist / currentMemberCount else 0f
+                avgDist = currentAvgDist
+                val converged = currentMemberCount > 0 && currentAvgDist < SplashConfig.Settle.CONVERGE_DIST
                 if (converged || phaseElapsedMs >= gatherLimit) {
                     if (shape == SplashSlots.SHAPE_CROSS) {
                         setPhase(SplashPhase.Error)
@@ -278,20 +156,21 @@ class SplashEngine {
                 val c = SplashSlots.center(width, height)
                 for (i in particles.indices) {
                     val p = particles[i]
-                    if (!p.isMember || p.slotIndex !in slots.indices) continue
-                    val baseSlot = slots[p.slotIndex]
-                    p.targetX = c.x + (baseSlot.x - c.x) * pinch
-                    p.targetY = c.y + (baseSlot.y - c.y) * pinch
+                    if (p.isMember && p.slotIndex >= 0) {
+                        p.targetX = c.x + (p.targetX - c.x) * pinch
+                        p.targetY = c.y + (p.targetY - c.y) * pinch
+                    }
                 }
                 if (phaseElapsedMs >= igniteLimit) {
                     setPhase(SplashPhase.Burst)
                 }
             }
             SplashPhase.Burst -> {
-                formStrength = max(0f, 1f - phaseElapsedMs / 200f)
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                val snap = if (phaseElapsedMs <= SplashConfig.Burst.SNAP_MS) SplashConfig.Burst.SNAP_SCALE else 1f
-                particleScale = max(0.2f, 1f - phaseElapsedMs / burstLimit) * snap
+                val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
+                particleScale = 1f - progress * 0.35f
+                particleAlpha = (1f - progress).coerceIn(0f, 1f)
+                formStrength = 1f - progress
                 if (phaseElapsedMs >= burstLimit) {
                     formStrength = 0f
                     setPhase(SplashPhase.Idle)
@@ -326,68 +205,7 @@ class SplashEngine {
             pulseWave = (pulseWave + dt * SplashConfig.Effects.PULSE_WAVE_SPEED) % 1.0f
         }
 
-        val isTransit = currentPhase == SplashPhase.Transit
-        val isForming = currentPhase == SplashPhase.Gather || currentPhase == SplashPhase.Ignite
-        val isProcessing = currentPhase == SplashPhase.Error || currentPhase == SplashPhase.Transit
-        val isBursting = currentPhase == SplashPhase.Burst || postBurstFrames > 0
-        val timeSec = currentTimeMs / 1000f
-        val center = SplashSlots.center(width, height)
-
-        val dampMember = SplashConfig.Physics.DAMPING_FORMING.pow(step)
-        val dampFloater = SplashConfig.Physics.DAMPING_FREE.pow(step)
-
-        for (i in particles.indices) {
-            val p = particles[i]
-            SplashPhysics.applyFormationForces(
-                p = p,
-                dt = dt,
-                isTransit = isTransit,
-                isForming = isForming,
-                formStrength = formStrength,
-                isBursting = isBursting,
-                isProcessing = isProcessing,
-                time = timeSec,
-                centerX = center.x,
-                centerY = center.y,
-                dampMember = dampMember,
-                dampFloater = dampFloater
-            )
-
-            p.radius = p.baseRadius * (1f + sin(timeSec * p.pulse + p.phase) * p.breath) * particleScale
-
-            if ((!isForming && !isProcessing) || !p.isMember) {
-                val pad = 40f
-                if (p.x < -pad) p.x = width + pad
-                if (p.x > width + pad) p.x = -pad
-                if (p.y < -pad) p.y = height + pad
-                if (p.y > height + pad) p.y = -pad
-            }
-        }
-    }
-
-    fun explode(center: Offset, power: Float = SplashConfig.Burst.EXPLODE_POWER, memberBoost: Boolean = true) {
-        postBurstFrames = SplashConfig.Burst.POST_BURST_FRAMES
-        for (i in particles.indices) {
-            val p = particles[i]
-            val dx = p.x - center.x
-            val dy = p.y - center.y
-            val dist = hypot(dx, dy) + 0.1f
-            val mult = if (memberBoost && p.isMember) SplashConfig.Burst.MEMBER_BOOST else SplashConfig.Burst.FLOATER_BOOST
-            val m = power * mult * (0.5f + Random.nextFloat() * 1.1f)
-            p.vx = (dx / dist) * m + (Random.nextFloat() - 0.5f)
-            p.vy = (dy / dist) * m + (Random.nextFloat() - 0.5f)
-        }
-    }
-
-    fun shock(cx: Float, cy: Float, alpha: Float = 1f) {
-        val maxR = hypot(width, height) * SplashConfig.Burst.SHOCKWAVE_RADIUS_FACTOR
-        shockwave = SplashShockwave(
-            x = cx,
-            y = cy,
-            maxRadius = maxR,
-            radius = 0f,
-            alpha = alpha
-        )
+        SplashPhysics.updateParticles(this, dt, currentTimeMs, step)
     }
 
     fun triggerBurst() {
