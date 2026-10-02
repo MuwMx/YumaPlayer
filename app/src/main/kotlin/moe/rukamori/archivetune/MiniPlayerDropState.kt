@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 
 @Stable
 class MiniPlayerDropState(
@@ -56,8 +57,8 @@ fun rememberMiniPlayerDropState(
     )
 
     val isDocked = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f
-    val dropDistance = if (navSlideDistance > 0.dp) {
-        bottomNavigationBarHeight.coerceAtLeast(0.dp)
+    val dropDistance = if (navSlideDistance > 0.dp && bottomNavigationBarHeight > 0.dp) {
+        bottomNavigationBarHeight + MiniPlayerBottomSpacing
     } else {
         0.dp
     }

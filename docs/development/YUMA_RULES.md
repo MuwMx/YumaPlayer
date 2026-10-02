@@ -47,6 +47,8 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **Explicit Lazy Layout Keys:** Every item in `LazyColumn`, `LazyRow`, and `LazyVerticalGrid` must define an explicit unique `key`.
 - **Compose Stability:** UI state models should be immutable whenever practical. Use `@Immutable` or `@Stable` where appropriate. Collect flows using `collectAsStateWithLifecycle()`.
 - **No State Mutation in Composition:** Side effects and state changes inside Composable functions are strictly prohibited.
+- **No Prop Drilling & Deep Parameter Cascades:** Passing state, offsets, or callbacks through more than two intermediate Composable layers is strictly forbidden. Cohesive UI parameters must be encapsulated within a dedicated `@Stable` state holder class or supplied via a scoped `CompositionLocal`.
+- **Phase-Isolated Recomposition Guard:** Continuously changing values (gesture deltas, scroll progress, animation fractions) must never be read directly in the composition body or passed as static dimension values (`Dp`, `Float`). Pass them as state holders or lambda providers (`() -> Float`) and consume them strictly inside the Draw or Layout phase (`Modifier.graphicsLayer`, `Modifier.drawWithContent`, or `Modifier.offset { ... }`).
 
 ---
 
@@ -96,3 +98,5 @@ If a rule conflicts with an implementation, the rule takes precedence.
   - **Isolated MatchParentSize Underlays:** Background styling with border shifts must be isolated to a dedicated underlay `Box(Modifier.matchParentSize().layout { placeRelative(-borderPx, 0) }.sheetBackground())`. Content composables (`QueueScreen`, `LyricsColumn`) render as siblings on top with standard `Modifier.fillMaxSize()`.
   - **Agent Freeze Policy:** AI agents are strictly forbidden from modifying or refactoring gesture kinematics, swipe physics, animation controllers, and sheet layers (`UnifiedPlayerSheetV2`, `UnifiedPlayerSheetLayers`, `QueueScreen`, `LyricsColumn`) without explicit, direct user instructions.
 - **Diff Cleanliness:** Zero trailing whitespace. Verify that any newly added modifier produces a verifiable layout or visual change before finalizing changes.
+- **Zero-Remeasurement Kinematics:** Dynamic motion, sliding, collapsing, or docking of UI elements must never modify container layout constraints, bounds, or dimension multipliers (e.g. `height * factor`) during active interaction. All real-time movement must be purely transform-based via GPU-accelerated draw properties (`graphicsLayer { translationX/Y, scaleX/Y }`).
+- **Deferred Routing & State Commits in Gestures:** Continuous touch gestures (swipes, drags) must remain entirely decoupled from structural navigation or heavy composition tree changes. Visual feedback during a gesture must be lightweight and isolated. Route changes, screen navigations, and heavy state commits are permitted exclusively upon gesture completion (`onDragEnd`, `onFling`).
