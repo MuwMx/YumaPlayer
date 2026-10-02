@@ -9,8 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
@@ -45,7 +43,6 @@ internal fun UnifiedPlayerSheetLayers(
     modifier: Modifier = Modifier,
     onSeekStarted: () -> Unit,
     dragHandler: SheetVerticalDragGestureHandler? = null,
-    miniPlayerSlideOffset: Dp = 0.dp
 ) {
     val density = LocalDensity.current.density
 

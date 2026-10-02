@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
+import moe.rukamori.archivetune.MiniPlayerDropState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.playerSheetVerticalDragGesture
@@ -31,7 +32,7 @@ internal fun PlayerSheetScaffold(
     density: Density,
     pillShape: Shape,
     modifier: Modifier = Modifier,
-    isDocked: Boolean = true,
+    dropState: MiniPlayerDropState = MiniPlayerDropState.Default,
     content: @Composable () -> Unit,
 ) {
     Box(
@@ -53,6 +54,10 @@ internal fun PlayerSheetScaffold(
     ) {
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    val fraction = expansionFraction.value
+                    translationY = with(density) { dropState.slideOffset.toPx() } * (1f - fraction)
+                }
                 .layout { measurable, constraints ->
                     val targetHeightPx = sheetVisualState.playerContentAreaHeightPxProvider().toInt().coerceAtLeast(0)
                     val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)

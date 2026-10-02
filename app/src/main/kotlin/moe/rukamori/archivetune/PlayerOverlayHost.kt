@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -172,10 +173,13 @@ fun PlayerOverlayHost(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
 
-    val isDocked = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f
     val navSlideDistance =
         floatingToolbarBottomPadding + navVisibleHeight
-    val miniPlayerSlideOffset = navSlideDistance * (1f - scrollVisibilityFactor)
+    val dropState = rememberMiniPlayerDropState(
+        navSlideDistance = navSlideDistance,
+        scrollVisibilityFactor = scrollVisibilityFactor,
+        bottomNavigationBarHeight = bottomNavigationBarHeight,
+    )
 
     Box(modifier = modifier) {
         ScopedPlayerSheet(
@@ -183,11 +187,10 @@ fun PlayerOverlayHost(
             playerConnection = playerConnection,
             navController = navController,
             bottomNavigationBarHeight = bottomNavigationBarHeight,
-            miniPlayerSlideOffset = miniPlayerSlideOffset,
+            dropState = dropState,
             hazeState = hazeState,
             pureBlack = pureBlack,
             blurRadius = blurRadius,
-            isDocked = isDocked,
             onExpansionFractionChanged = { fraction ->
                 coroutineScope.launch {
                     playerExpansionAnimatable.snapTo(fraction)
@@ -200,7 +203,7 @@ fun PlayerOverlayHost(
         PlayerDockContainer(
             modifier = Modifier.align(Alignment.BottomCenter),
             isPillVisible = isMiniPlayerActive,
-            isBarVisible = isDocked,
+            isBarVisible = dropState.isDocked,
             barHeight = navSlideDistance,
             scrollVisibilityFactor = scrollVisibilityFactor,
             miniPlayerSlot = {},
@@ -208,6 +211,7 @@ fun PlayerOverlayHost(
                 Box(
                     modifier =
                         Modifier
+                            .fillMaxWidth()
                             .height(navSlideDistance)
                             .offset {
                                 if (bottomNavigationBarHeight == 0.dp) {
@@ -248,6 +252,7 @@ fun PlayerOverlayHost(
                         visibilityFactor = if (playerExpansionAnimatable.value < 0.01f) scrollVisibilityFactor else 1f,
                         modifier =
                             Modifier
+                                .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
                                 .padding(
                                     bottom = floatingToolbarBottomPadding,

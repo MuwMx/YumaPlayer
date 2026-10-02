@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
+import moe.rukamori.archivetune.MiniPlayerDropState
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
@@ -52,8 +53,7 @@ fun UnifiedPlayerSheetV2(
     onLyricsClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onCloseQueueClick: () -> Unit = {},
-    isDocked: Boolean = true,
-    miniPlayerSlideOffset: Dp = 0.dp,
+    dropState: MiniPlayerDropState = MiniPlayerDropState.Default,
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -89,7 +89,7 @@ fun UnifiedPlayerSheetV2(
         val pillShape = rememberPlayerSheetPillShape(
             density = density,
             expansionFraction = motionScope.expansionFraction,
-            isDocked = isDocked,
+            isDocked = dropState.isDocked,
         )
         val miniHazeStyle = rememberMiniHazeStyle(
             pureBlack = pureBlack,
@@ -111,14 +111,10 @@ fun UnifiedPlayerSheetV2(
             screenWidthPx = motionScope.screenWidthPx,
             density = density,
             pillShape = pillShape,
-            isDocked = isDocked,
+            dropState = dropState,
             content = {
                 Box(
                     modifier = Modifier
-                        .graphicsLayer {
-                            val fraction = motionScope.expansionFraction.value
-                            translationY = miniPlayerSlideOffset.toPx() * (1f - fraction)
-                        }
                         .playerSheetBackdrop(
                             hazeState = hazeState,
                             hazeStyle = miniHazeStyle,
@@ -157,7 +153,6 @@ fun UnifiedPlayerSheetV2(
                             showSettingsMenu = true
                         },
                         dragHandler = gestures.dragHandler,
-                        miniPlayerSlideOffset = miniPlayerSlideOffset
                     )
                 }
             }

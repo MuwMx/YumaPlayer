@@ -115,7 +115,6 @@ fun FloatingNavigationToolbar(
                 scaleY = scale
                 alpha = animatedVisibilityFactor
             }
-            .widthIn(max = NavigationBarMaxWidth)
             .fillMaxWidth()
             .height(NavigationBarHeight)
             .navigationShapeShadow(capsuleShape, shadowPaint)
