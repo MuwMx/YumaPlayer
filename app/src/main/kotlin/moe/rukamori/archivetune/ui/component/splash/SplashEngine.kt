@@ -85,7 +85,7 @@ class SplashEngine {
                 globalOpacity = 0f
             }
             SplashPhase.Gather -> {
-                formStrength = if (shape == SplashSlots.SHAPE_CROSS) SplashConfig.Physics.FORM_CROSS else SplashConfig.Physics.FORM_GATHER
+                formStrength = SplashConfig.Physics.FORM_GATHER
             }
             SplashPhase.Ignite -> {
                 formStrength = 1f
@@ -141,11 +141,7 @@ class SplashEngine {
                 avgDist = currentAvgDist
                 val converged = currentMemberCount > 0 && currentAvgDist < SplashConfig.Settle.CONVERGE_DIST
                 if (converged || phaseElapsedMs >= gatherLimit) {
-                    if (shape == SplashSlots.SHAPE_CROSS) {
-                        setPhase(SplashPhase.Error)
-                    } else {
-                        setPhase(SplashPhase.Ignite)
-                    }
+                    setPhase(SplashPhase.Ignite)
                 }
             }
             SplashPhase.Ignite -> {
@@ -156,9 +152,10 @@ class SplashEngine {
                 val c = SplashSlots.center(width, height)
                 for (i in particles.indices) {
                     val p = particles[i]
-                    if (p.isMember && p.slotIndex >= 0) {
-                        p.targetX = c.x + (p.targetX - c.x) * pinch
-                        p.targetY = c.y + (p.targetY - c.y) * pinch
+                    if (p.isMember && p.slotIndex in slots.indices) {
+                        val baseSlot = slots[p.slotIndex]
+                        p.targetX = c.x + (baseSlot.x - c.x) * pinch
+                        p.targetY = c.y + (baseSlot.y - c.y) * pinch
                     }
                 }
                 if (phaseElapsedMs >= igniteLimit) {

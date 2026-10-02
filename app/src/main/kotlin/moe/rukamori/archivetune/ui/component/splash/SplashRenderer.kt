@@ -395,7 +395,7 @@ class SplashRenderer {
         primaryColor: Color = Color.White
     ) {
         val coreColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.coreColor else contentColor
-        val haloColor = if (isDark) Color.White else primaryColor
+        val haloColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else if (isDark) Color.White else primaryColor
 
         val elapsed = engine.phaseElapsedMs
         val limit = if (engine.isShort) SplashConfig.Timings.IGNITE_SHORT_MS else SplashConfig.Timings.IGNITE_FULL_MS

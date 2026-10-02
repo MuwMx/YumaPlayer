@@ -133,7 +133,7 @@ object SplashConfig {
         }
 
         object Halo {
-            var STAR_BASE_HEIGHT_FACTOR: Float = 0.035f
+            var STAR_BASE_HEIGHT_FACTOR: Float = 0.024f
             var STAR_HALO_FACTOR: Float = 1.8f
             var STAR_BODY_HALO_FACTOR: Float = 1.6f
             var STAR_FLARE_ALPHA: Float = 0.35f
