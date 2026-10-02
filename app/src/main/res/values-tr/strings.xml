@@ -609,4 +609,22 @@
     <string name="widget_no_genres">Henüz tür yok</string>
     <string name="widget_no_recommendations">Henüz öneri yok</string>
     <string name="download_flac">FLAC İndir</string>
+    <string name="flac_download_failed">FLAC indirmesi başarısız</string>
+    <string name="flac_download_saved">Kaydedildi: %1$s</string>
+    <string name="flac_download_deleted">Kaldırıldı: %1$s</string>
+    <string name="download_progress_percent">%1$d%%</string>
+    <string name="add">Ekle</string>
+    <string name="add_to_n_playlists">%1$d\'ya ekle</string>
+    <string name="no_playlists_yet">Henüz bir oynatma listesi yok</string>
+    <string name="pin_to_speed_dial">Speed dial\'a sabitleyin</string>
+    <string name="hide_playlist">Oynatma listesini gizle</string>
+    <string name="unhide_playlist">Oynatma listesini saklama</string>
+    <string name="show_hidden_playlists">Gizleneni göster</string>
+    <string name="hide_playlist_confirm">\"%1$s\" kütüphaneden saklamak istermisiniz?</string>
+    <string name="together_participants">Katılanlar</string>
+    <string name="together_connected_count">%1$d bağlanıldı</string>
+    <string name="together_role_host">Sahip</string>
+    <string name="together_role_guest">Misafir</string>
+    <string name="together_pending_approval">Onay hazırlanıyor</string>
+    <string name="together_waiting_approval">Onay bekleniyor</string>
 </resources>
