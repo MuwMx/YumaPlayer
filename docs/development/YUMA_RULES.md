@@ -16,6 +16,7 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **Root Cause First:** Fix the underlying cause of an issue instead of introducing workarounds.
 - **No Duplicate Implementations:** Reuse existing abstractions, helpers, and components before creating new ones.
 - **Fail Gracefully:** Errors must be mapped to structured UI states (`Error`), never swallowed silently or causing unhandled crashes.
+- **File Length Limit:** Any production source file must not exceed 250 lines. Large files must be decomposed into SRP-compliant subcomponents, coordinators, and state holders without compromising architecture.
 
 ---
 
@@ -49,6 +50,9 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **No State Mutation in Composition:** Side effects and state changes inside Composable functions are strictly prohibited.
 - **No Prop Drilling & Deep Parameter Cascades:** Passing state, offsets, or callbacks through more than two intermediate Composable layers is strictly forbidden. Cohesive UI parameters must be encapsulated within a dedicated `@Stable` state holder class or supplied via a scoped `CompositionLocal`.
 - **Phase-Isolated Recomposition Guard:** Continuously changing values (gesture deltas, scroll progress, animation fractions) must never be read directly in the composition body or passed as static dimension values (`Dp`, `Float`). Pass them as state holders or lambda providers (`() -> Float`) and consume them strictly inside the Draw or Layout phase (`Modifier.graphicsLayer`, `Modifier.drawWithContent`, or `Modifier.offset { ... }`).
+- **Screen Coordinator (Wiring) Pattern:** Every decomposed screen or complex module must have a single top-level coordinator (`*Screen.kt` or `*Wiring.kt`). The coordinator is exclusively responsible for UDF state collection (`collectAsStateWithLifecycle`), launching side-effects (`*Effects.kt`), and preparing event handlers.
+- **No Infrastructure Leaks in Leaf UI:** Passing infrastructure objects (`NavController`, `PlayerConnection`, `CoroutineScope`, `MenuState`, or `ViewModel`) into leaf items (`LazyItemScope.*Row`, `*Item`, small cards) is strictly forbidden. Leaf components must be pure stateless layouts accepting domain data models and primitive click/action lambdas (`onClick`, `onMenuClick`).
+- **Action & Media Context Encapsulation:** When a component requires more than 3–4 callbacks or shared infrastructure instances across sub-sections, encapsulate them into a dedicated `@Immutable data class` (e.g. `AlbumActions` or `HomeFeedMediaContext`).
 
 ---
 
