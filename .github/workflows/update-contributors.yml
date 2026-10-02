@@ -3,7 +3,7 @@ name: Update Contributors
 on:
   schedule:
     - cron: '0 0 * * 0'
-  workflow_dispatch:     
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,34 +16,34 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Fetch and format contributors
-              run: |
-                mkdir -p .github
-                RESPONSE=$(curl -sSL \
-                  -H "Accept: application/vnd.github+json" \
-                  -H "User-Agent: GitHub-Actions" \
-                  "https://api.github.com/repos/MuwMix/YumaPlayer/contributors?per_page=20")
-      
-                echo "Response preview:"
-                echo "$RESPONSE" | head -n 20
-      
-                IS_ARRAY=$(echo "$RESPONSE" | jq 'if type=="array" then "yes" else "no" end' 2>/dev/null || echo "no")
-      
-                if [ "$IS_ARRAY" != "yes" ]; then
-                  echo "Error: GitHub API did not return an array. Full response:"
-                  echo "$RESPONSE"
-                  exit 1
-                fi
-      
-                PARSED=$(echo "$RESPONSE" | jq '[.[] | select((.type // "") != "Bot" and ((.login // "") | endswith("[bot]") | not)) | {login: .login, avatar_url: .avatar_url, html_url: .html_url}]')
-      
-                COUNT=$(echo "$PARSED" | jq 'length')
-                if [ -n "$COUNT" ] && [ "$COUNT" -gt 0 ]; then
-                  echo "$PARSED" > .github/contributors.json
-                  echo "Successfully parsed $COUNT contributors."
-                else
-                  echo "Error: contributors list is empty"
-                  exit 1
-                fi
+        run: |
+          mkdir -p .github
+          RESPONSE=$(curl -sSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: GitHub-Actions" \
+            "https://api.github.com/repos/MuwMx/YumaPlayer/contributors?per_page=20")
+
+          echo "Response preview:"
+          echo "$RESPONSE" | head -n 20
+
+          IS_ARRAY=$(echo "$RESPONSE" | jq 'if type=="array" then "yes" else "no" end' 2>/dev/null || echo "no")
+
+          if [ "$IS_ARRAY" != "yes" ]; then
+            echo "Error: GitHub API did not return an array. Full response:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          PARSED=$(echo "$RESPONSE" | jq '[.[] | select((.type // "") != "Bot" and ((.login // "") | endswith("[bot]") | not)) | {login: .login, avatar_url: .avatar_url, html_url: .html_url}]')
+
+          COUNT=$(echo "$PARSED" | jq 'length')
+          if [ -n "$COUNT" ] && [ "$COUNT" -gt 0 ]; then
+            echo "$PARSED" > .github/contributors.json
+            echo "Successfully parsed $COUNT contributors."
+          else
+            echo "Error: contributors list is empty"
+            exit 1
+          fi
 
       - name: Commit and push changes
         run: |
