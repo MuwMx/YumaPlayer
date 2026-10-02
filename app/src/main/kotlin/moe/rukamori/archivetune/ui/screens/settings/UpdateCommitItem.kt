@@ -7,7 +7,6 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +55,19 @@ internal fun CommitItem(
 ) {
     val colors = LocalYumaColors.current
     val itemShape = remember(index, count) { segmentedSettingsItemShape(index, count) }
+    val cardModifier =
+        if (index == 0) {
+            Modifier.yumaGlassCard(
+                shape = itemShape,
+                backgroundColor = colors.glassBackground,
+                borderColor = colors.glassBorder,
+                strokeWidth = SettingsDimensions.GlassBorderThickness,
+            )
+        } else {
+            Modifier
+                .clip(itemShape)
+                .background(colors.glassBackground)
+        }
 
     Box(
         modifier =
@@ -65,12 +77,7 @@ internal fun CommitItem(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
                 )
-                .yumaGlassCard(
-                    shape = itemShape,
-                    backgroundColor = colors.glassBackground,
-                    borderColor = colors.glassBorder,
-                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                )
+                .then(cardModifier)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
@@ -140,12 +147,7 @@ internal fun CommitAvatar(avatarUrl: String?) {
             Modifier
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(colors.glassBackground)
-                .border(
-                    width = SettingsDimensions.GlassBorderThickness,
-                    color = colors.glassBorder,
-                    shape = CircleShape,
-                ),
+                .background(colors.glassBackground),
         contentAlignment = Alignment.Center,
     ) {
         if (!avatarUrl.isNullOrBlank()) {
