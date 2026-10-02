@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +36,6 @@ import moe.rukamori.archivetune.constants.NavigationBarHeight
 import moe.rukamori.archivetune.constants.NavigationBarHideMinScale
 import moe.rukamori.archivetune.constants.NavigationBarHideOffsetY
 import moe.rukamori.archivetune.constants.NavigationBarInnerPaddingHorizontal
-import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.constants.NavigationBarOverflowPaddingHorizontal
 import moe.rukamori.archivetune.constants.NavigationBarVisibilityDurationMs
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -109,8 +107,12 @@ fun FloatingNavigationToolbar(
     Box(
         modifier = modifier
             .graphicsLayer {
-                translationY = NavigationBarHideOffsetY.toPx() * (1f - animatedVisibilityFactor)
-                val scale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
+                val hideOffsetY = NavigationBarHideOffsetY.toPx() * (1f - animatedVisibilityFactor)
+                translationY = hideOffsetY + dragState.barTranslationYAnimatable.value
+                translationX = dragState.barTranslationXAnimatable.value
+
+                val baseScale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
+                val scale = baseScale * dragState.barScaleAnimatable.value
                 scaleX = scale
                 scaleY = scale
                 alpha = animatedVisibilityFactor
