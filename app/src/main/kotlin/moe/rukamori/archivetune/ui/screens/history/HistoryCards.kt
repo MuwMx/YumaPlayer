@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -90,7 +89,6 @@ internal fun HistoryOverviewCard(
         }
     }
 }
-
 @Composable
 internal fun HistorySourceSelector(
     currentSource: HistorySource,
@@ -178,80 +176,6 @@ internal fun HistorySourceSelector(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun HistoryStateCard(
-    title: String,
-    description: String,
-    modifier: Modifier = Modifier,
-    actionLabel: String? = null,
-    onActionClick: (() -> Unit)? = null,
-    loading: Boolean = false,
-) {
-    val cardShape = remember { RoundedCornerShape(SettingsDimensions.LibraryCardRadius) }
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .yumaGlassCard(
-                    shape = cardShape,
-                    backgroundColor = LocalYumaColors.current.glassBackground,
-                )
-                .clip(cardShape),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.Start,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-        ) {
-            if (loading) {
-                CircularWavyProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (actionLabel != null && onActionClick != null) {
-                Box(
-                    modifier =
-                        Modifier
-                            .height(48.dp)
-                            .yumaClickable(
-                                pressedScale = SettingsAnimations.PressScale,
-                                onClick = onActionClick,
-                            )
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = CircleShape,
-                            )
-                            .clip(CircleShape)
-                            .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = actionLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
             }
         }
     }

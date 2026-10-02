@@ -188,26 +188,7 @@ fun OnlineSearchResult(
                         key = "section_header_${summary.title}_$index",
                         contentType = "section_header",
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .width(3.dp)
-                                        .height(18.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(MaterialTheme.colorScheme.primary),
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = summary.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
+                        OnlineSearchSectionHeader(summary = summary)
                     }
 
                     itemsIndexed(
@@ -228,10 +209,7 @@ fun OnlineSearchResult(
 
                 if (allModeSections.isEmpty() && isAllModeLoaded) {
                     item(key = "empty_all", contentType = "empty") {
-                        EmptyPlaceholder(
-                            icon = R.drawable.ic_search,
-                            text = stringResource(R.string.no_results_found),
-                        )
+                        OnlineSearchEmptyBlock()
                     }
                 }
             } else {
@@ -244,20 +222,13 @@ fun OnlineSearchResult(
 
                 if (itemsPage?.continuation != null) {
                     item(key = "loading", contentType = "loading") {
-                        ShimmerHost {
-                            repeat(3) {
-                                ListItemPlaceHolder()
-                            }
-                        }
+                        OnlineSearchLoadingBlock()
                     }
                 }
 
                 if (itemsPage?.items?.isEmpty() == true) {
                     item(key = "empty_filtered", contentType = "empty") {
-                        EmptyPlaceholder(
-                            icon = R.drawable.ic_search,
-                            text = stringResource(R.string.no_results_found),
-                        )
+                        OnlineSearchEmptyBlock()
                     }
                 }
             }

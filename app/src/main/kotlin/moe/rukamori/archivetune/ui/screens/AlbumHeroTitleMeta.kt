@@ -56,63 +56,91 @@ import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.utils.makeTimeString
 
 @Composable
-internal fun AlbumHeroHeader(
+internal fun AlbumHeroTitleMeta(
     albumWithSongs: AlbumWithSongs,
     songCount: Int,
-    downloadState: HeaderDownloadState,
-    actions: AlbumActions,
-    topPadding: Dp,
-    heroSpacerHeight: Dp,
     onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = topPadding),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.height(heroSpacerHeight))
-
-        AlbumHeroTitleMeta(
-            albumWithSongs = albumWithSongs,
-            songCount = songCount,
-            onArtistClick = onArtistClick,
+        Text(
+            text = albumWithSongs.album.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 32.dp),
         )
 
-        // Action Buttons Row
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text =
+                buildAnnotatedString {
+                    withStyle(
+                        style =
+                            MaterialTheme.typography.titleMedium
+                                .copy(
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.primary,
+                                ).toSpanStyle(),
+                    ) {
+                        albumWithSongs.artists.fastForEachIndexed { index, artist ->
+                            val link =
+                                LinkAnnotation.Clickable(artist.id) {
+                                    onArtistClick(artist.id)
+                                }
+                            withLink(link) {
+                                append(artist.name)
+                            }
+                            if (index != albumWithSongs.artists.lastIndex) {
+                                append(", ")
+                            }
+                        }
+                    }
+                },
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(vertical = 16.dp, horizontal = SettingsDimensions.ScreenHorizontalPadding),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AlbumHeroLikeButton(
-                albumWithSongs = albumWithSongs,
-                actions = actions,
+            albumWithSongs.album.year?.let { year ->
+                MetadataChip(
+                    icon = R.drawable.calendar_today,
+                    text = year.toString(),
+                )
+            }
+
+            MetadataChip(
+                icon = R.drawable.music_note,
+                text =
+                    pluralStringResource(
+                        R.plurals.n_song,
+                        songCount,
+                        songCount,
+                    ),
             )
 
-            AlbumHeroPlayButton(
-                actions = actions,
-            )
-
-            AlbumHeroShuffleButton(
-                actions = actions,
-            )
-
-            AlbumHeroDownloadButton(
-                downloadState = downloadState,
-                actions = actions,
-            )
-
-            AlbumHeroMenuButton(
-                actions = actions,
-            )
+            val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
+            if (totalDuration > 0) {
+                MetadataChip(
+                    icon = R.drawable.timer,
+                    text = makeTimeString(totalDuration * 1000L),
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

@@ -45,9 +45,6 @@ import moe.rukamori.archivetune.ui.screens.QuickPicksSection
 import moe.rukamori.archivetune.ui.screens.SpeedDialSection
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 
-private val HomeFeedMaxWidth = 1_200.dp
-private val HomeSectionSpacing = 18.dp
-
 @OptIn(
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3ExpressiveApi::class,
@@ -207,123 +204,35 @@ internal fun HomeContent(
                         }
                     }
 
-                    if (uiState.forgottenFavorites.isNotEmpty()) {
-                        sectionSpacer("forgotten_favorites")
-                        item(
-                            key = "home_forgotten_favorites_header",
-                            contentType = "section_header",
-                        ) {
-                            HomeSectionHeader(
-                                title = stringResource(R.string.forgotten_favorites),
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_forgotten_favorites",
-                            contentType = "song_shelf",
-                        ) {
-                            ForgottenFavoritesSection(
-                                forgottenFavorites = uiState.forgottenFavorites,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                horizontalLazyGridItemWidth = forgottenItemWidth,
-                                lazyGridState = forgottenFavoritesGridState,
-                                snapLayoutInfoProvider = forgottenSnapLayoutInfoProvider,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
+                    homeForgottenFavoritesSection(
+                        uiState = uiState,
+                        mediaMetadata = mediaMetadata,
+                        isPlaying = isPlaying,
+                        forgottenItemWidth = forgottenItemWidth,
+                        forgottenFavoritesGridState = forgottenFavoritesGridState,
+                        forgottenSnapLayoutInfoProvider = forgottenSnapLayoutInfoProvider,
+                        navController = navController,
+                        playerConnection = playerConnection,
+                        menuState = menuState,
+                    )
 
-                    uiState.similarRecommendations.forEach { recommendation ->
-                        sectionSpacer("similar_${recommendation.title.id}")
-                        item(
-                            key = "home_similar_header_${recommendation.title.id}",
-                            contentType = "section_header",
-                        ) {
-                            SimilarRecommendationsTitle(
-                                recommendation = recommendation,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_similar_${recommendation.title.id}",
-                            contentType = "media_shelf",
-                        ) {
-                            SimilarRecommendationsSection(
-                                recommendation = recommendation,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                scope = scope,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
+                    homeSimilarAndRemoteSections(
+                        uiState = uiState,
+                        mediaMetadata = mediaMetadata,
+                        isPlaying = isPlaying,
+                        navController = navController,
+                        playerConnection = playerConnection,
+                        menuState = menuState,
+                        scope = scope,
+                    )
 
-                    uiState.homePage?.sections.orEmpty().forEachIndexed { index, section ->
-                        val sectionKey = "${section.endpoint?.browseId ?: section.title}_$index"
-                        sectionSpacer("remote_$sectionKey")
-                        item(
-                            key = "home_remote_header_$sectionKey",
-                            contentType = "section_header",
-                        ) {
-                            HomePageSectionTitle(
-                                section = section,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_remote_$sectionKey",
-                            contentType = "media_shelf",
-                        ) {
-                            HomePageSectionContent(
-                                section = section,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                scope = scope,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
-
-                    if (uiState.isLoadingMore) {
-                        item(
-                            key = "home_loading_more",
-                            contentType = "loading",
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp)
-                                        .animateItem(),
-                            ) {
-                                LoadingIndicator()
-                            }
-                        }
-                    }
+                    homeLoadingMoreItem(
+                        isLoadingMore = uiState.isLoadingMore,
+                    )
                 }
             }
         }
     }
 }
 
-internal fun LazyListScope.sectionSpacer(key: String) {
-    item(
-        key = "home_section_spacer_$key",
-        contentType = "section_spacer",
-    ) {
-        Spacer(Modifier.height(HomeSectionSpacing))
-    }
-}
+

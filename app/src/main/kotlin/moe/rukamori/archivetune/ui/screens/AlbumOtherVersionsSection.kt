@@ -24,10 +24,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.valentinilk.shimmer.shimmer
@@ -92,7 +88,6 @@ fun LazyListScope.albumOtherVersionsSection(
         }
     }
 }
-
 fun LazyListScope.albumStatePlaceholders(
     uiState: AlbumUiState,
     topPadding: Dp,
@@ -108,7 +103,6 @@ fun LazyListScope.albumStatePlaceholders(
         is AlbumUiState.Error -> albumErrorPlaceholder(uiState, topPadding, onRetry)
     }
 }
-
 fun LazyListScope.albumShimmerPlaceholder(
     topPadding: Dp,
 ) {
@@ -116,7 +110,6 @@ fun LazyListScope.albumShimmerPlaceholder(
         AlbumShimmerContent(topPadding = topPadding)
     }
 }
-
 fun LazyListScope.albumEmptyPlaceholder(
     topPadding: Dp,
 ) {
@@ -124,7 +117,6 @@ fun LazyListScope.albumEmptyPlaceholder(
         AlbumEmptyContent(topPadding = topPadding)
     }
 }
-
 fun LazyListScope.albumErrorPlaceholder(
     state: AlbumUiState.Error,
     topPadding: Dp,
@@ -138,7 +130,6 @@ fun LazyListScope.albumErrorPlaceholder(
         )
     }
 }
-
 @Composable
 internal fun AlbumShimmerContent(
     topPadding: Dp,
@@ -238,79 +229,6 @@ internal fun AlbumShimmerContent(
 
         repeat(6) {
             ListItemPlaceHolder()
-        }
-    }
-}
-
-@Composable
-internal fun AlbumEmptyContent(
-    topPadding: Dp,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = topPadding)
-                .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.empty_album),
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.empty_album_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-internal fun AlbumErrorContent(
-    isNotFound: Boolean,
-    topPadding: Dp,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = topPadding)
-                .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text =
-                if (isNotFound) {
-                    stringResource(R.string.album_not_found)
-                } else {
-                    stringResource(R.string.error_unknown)
-                },
-            style = MaterialTheme.typography.titleLarge,
-            color = if (isNotFound) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text =
-                if (isNotFound) {
-                    stringResource(R.string.album_not_found_desc)
-                } else {
-                    stringResource(R.string.error_unknown)
-                },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry, shapes = ButtonDefaults.shapes()) {
-            Text(stringResource(R.string.retry))
         }
     }
 }

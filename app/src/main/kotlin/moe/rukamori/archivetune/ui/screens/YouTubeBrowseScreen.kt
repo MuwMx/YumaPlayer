@@ -137,66 +137,16 @@ fun YouTubeBrowseScreen(
                         }
                     }
                     if (it.items.all { item -> item is SongItem }) {
-                        item {
-                            LazyHorizontalGrid(
-                                state = lazyGridState,
-                                rows = GridCells.Fixed(4),
-                                flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
-                                contentPadding =
-                                    WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(ListItemHeight * 4)
-                                        .animateItem(),
-                            ) {
-                                items(
-                                    items = it.items,
-                                ) { song ->
-                                    Box(Modifier.width(350.dp)) {
-                                        YouTubeListItem(
-                                            item = song as SongItem,
-                                            isActive = mediaMetadata?.id == song.id,
-                                            isPlaying = isPlaying,
-                                            isSwipeable = false,
-                                            trailingContent = {
-                                                IconButton(
-                                                    onClick = {
-                                                        menuState.show {
-                                                            YouTubeSongMenu(
-                                                                song = song,
-                                                                navController = navController,
-                                                                onDismiss = menuState::dismiss,
-                                                            )
-                                                        }
-                                                    },
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.more_vert),
-                                                        contentDescription = null,
-                                                    )
-                                                }
-                                            },
-                                            modifier =
-                                                Modifier
-                                                    .clickable {
-                                                        if (song.id == mediaMetadata?.id) {
-                                                            playerConnection.player.togglePlayPause()
-                                                        } else {
-                                                            playerConnection.playQueue(
-                                                                YouTubeQueue.radio(
-                                                                    song.toMediaMetadata(),
-                                                                ),
-                                                            )
-                                                        }
-                                                    }.animateItem(),
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        youtubeBrowseSongGridItem(
+                            sectionItems = it.items,
+                            lazyGridState = lazyGridState,
+                            snapLayoutInfoProvider = snapLayoutInfoProvider,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            menuState = menuState,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                        )
                     } else {
                         item {
                             LazyRow {
