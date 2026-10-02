@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
@@ -39,6 +40,7 @@ fun PlayerDockContainer(
     isPillVisible: Boolean = false,
     isBarVisible: Boolean = true,
     barHeight: Dp = NavigationBarHeight,
+    scrollVisibilityFactor: Float = 1f,
     miniPlayerSlot: @Composable (pillShape: RoundedCornerShape) -> Unit = {},
     barSlot: @Composable (barShape: RoundedCornerShape) -> Unit = {},
 ) {
@@ -80,7 +82,13 @@ fun PlayerDockContainer(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(PlayerDockDefaults.SlotGap),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationY = barHeight.toPx() * (1f - scrollVisibilityFactor)
+                },
+        ) {
             miniPlayerSlot(pillShape)
         }
         Box(

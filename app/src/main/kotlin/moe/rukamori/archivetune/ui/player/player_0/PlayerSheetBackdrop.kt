@@ -114,7 +114,8 @@ internal fun Modifier.playerSheetGlassBorder(
 internal fun rememberPlayerSheetPillShape(
     density: Density,
     expansionFraction: Animatable<Float, *>,
-): Shape = remember(density) {
+    isDocked: Boolean = true,
+): Shape = remember(density, isDocked) {
     object : Shape {
         override fun createOutline(
             size: Size,
@@ -124,20 +125,25 @@ internal fun rememberPlayerSheetPillShape(
             if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(Rect.Zero)
             val fraction = expansionFraction.value
             if (fraction >= 0.99f) return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
-            val radiusPx = with(density) {
+            val topRadiusPx = with(density) {
                 androidx.compose.ui.unit.lerp(32.dp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
             }
-            val corner = CornerRadius(radiusPx, radiusPx)
+            val bottomCornerDp = if (isDocked) 10.dp else 28.dp
+            val bottomRadiusPx = with(density) {
+                androidx.compose.ui.unit.lerp(bottomCornerDp, 0.dp, fraction.coerceIn(0f, 1f)).toPx()
+            }
+            val topCorner = CornerRadius(topRadiusPx, topRadiusPx)
+            val bottomCorner = CornerRadius(bottomRadiusPx, bottomRadiusPx)
             return Outline.Rounded(
                 RoundRect(
                     left = 0f,
                     top = 0f,
                     right = size.width,
                     bottom = size.height,
-                    topLeftCornerRadius = corner,
-                    topRightCornerRadius = corner,
-                    bottomRightCornerRadius = corner,
-                    bottomLeftCornerRadius = corner
+                    topLeftCornerRadius = topCorner,
+                    topRightCornerRadius = topCorner,
+                    bottomRightCornerRadius = bottomCorner,
+                    bottomLeftCornerRadius = bottomCorner
                 )
             )
         }

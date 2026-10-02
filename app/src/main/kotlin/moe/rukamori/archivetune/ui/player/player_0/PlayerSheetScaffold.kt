@@ -31,6 +31,7 @@ internal fun PlayerSheetScaffold(
     density: Density,
     pillShape: Shape,
     modifier: Modifier = Modifier,
+    isDocked: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Box(

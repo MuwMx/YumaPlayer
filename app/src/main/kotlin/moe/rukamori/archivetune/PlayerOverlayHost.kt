@@ -172,6 +172,8 @@ fun PlayerOverlayHost(
             .distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = false)
 
+    val isDocked = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f
+
     Box(modifier = modifier) {
         ScopedPlayerSheet(
             playerViewModel = playerViewModel,
@@ -181,6 +183,7 @@ fun PlayerOverlayHost(
             hazeState = hazeState,
             pureBlack = pureBlack,
             blurRadius = blurRadius,
+            isDocked = isDocked,
             onExpansionFractionChanged = { fraction ->
                 coroutineScope.launch {
                     playerExpansionAnimatable.snapTo(fraction)
@@ -196,8 +199,9 @@ fun PlayerOverlayHost(
         PlayerDockContainer(
             modifier = Modifier.align(Alignment.BottomCenter),
             isPillVisible = isMiniPlayerActive,
-            isBarVisible = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f,
+            isBarVisible = isDocked,
             barHeight = navSlideDistance,
+            scrollVisibilityFactor = scrollVisibilityFactor,
             miniPlayerSlot = {},
             barSlot = { barShape ->
                 Box(

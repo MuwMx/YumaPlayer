@@ -20,6 +20,7 @@ internal fun ScopedPlayerSheet(
     hazeState: HazeState?,
     pureBlack: Boolean,
     blurRadius: Float,
+    isDocked: Boolean = true,
     onExpansionFractionChanged: (Float) -> Unit,
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
@@ -62,6 +63,7 @@ internal fun ScopedPlayerSheet(
         hazeState = hazeState,
         pureBlack = pureBlack,
         blurRadius = blurRadius,
+        isDocked = isDocked,
         onExpansionFractionChanged = onExpansionFractionChanged,
     )
 }

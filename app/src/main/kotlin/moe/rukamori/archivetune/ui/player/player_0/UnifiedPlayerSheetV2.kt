@@ -51,6 +51,7 @@ fun UnifiedPlayerSheetV2(
     onLyricsClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onCloseQueueClick: () -> Unit = {},
+    isDocked: Boolean = true,
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -85,7 +86,8 @@ fun UnifiedPlayerSheetV2(
 
         val pillShape = rememberPlayerSheetPillShape(
             density = density,
-            expansionFraction = motionScope.expansionFraction
+            expansionFraction = motionScope.expansionFraction,
+            isDocked = isDocked,
         )
         val miniHazeStyle = rememberMiniHazeStyle(
             pureBlack = pureBlack,
@@ -107,6 +109,7 @@ fun UnifiedPlayerSheetV2(
             screenWidthPx = motionScope.screenWidthPx,
             density = density,
             pillShape = pillShape,
+            isDocked = isDocked,
             content = {
                 Box(
                     modifier = Modifier
