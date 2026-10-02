@@ -45,14 +45,20 @@ jobs:
             exit 1
           fi
 
-      - name: Commit and push changes
+      - name: Fetch and format contributors
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/contributors.json
-          if git diff --staged --quiet; then
-            echo "No changes detected."
+          mkdir -p .github
+          RESPONSE=$(curl -sSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: GitHub-Actions" \
+            "https://api.github.com/repos/MuwMx/YumaPlayer/contributors?per_page=20")
+
+          echo "$RESPONSE" | jq '[.[] | select((.type // "") != "Bot" and ((.login // "") | endswith("[bot]") | not)) | {login: .login, avatar_url: .avatar_url, html_url: .html_url}]' > .github/contributors.json
+
+          COUNT=$(jq 'length' .github/contributors.json)
+          if [ -n "$COUNT" ] && [ "$COUNT" -gt 0 ]; then
+            echo "Successfully saved $COUNT contributors."
           else
-            git commit -m "chore: update contributors.json [skip ci]"
-            git push
+            echo "Error: contributors list is empty"
+            exit 1
           fi
