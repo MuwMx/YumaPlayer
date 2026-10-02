@@ -153,7 +153,18 @@ class SplashRenderer {
         isDark: Boolean = true,
         primaryColor: Color = Color.White
     ) {
-        if (engine.formStrength <= SplashConfig.Look.Cutoffs.FORM_GLOW || size.height <= 0f) return
+        val effectiveForm = if (engine.shape == SplashSlots.SHAPE_CROSS) {
+            val threshold = maxOf(30f, engine.width * 0.15f)
+            val convergence = if (engine.memberCount > 0) {
+                (1f - (engine.totalMemberDist / (engine.memberCount * threshold))).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            if (engine.currentPhase == SplashPhase.Error) 1f else (engine.formStrength * convergence).coerceIn(0f, 1f)
+        } else {
+            engine.formStrength
+        }
+        if (effectiveForm <= SplashConfig.Look.Cutoffs.FORM_GLOW || size.height <= 0f) return
         val baseColor = if (engine.shape == SplashSlots.SHAPE_CROSS) {
             Fu.fail.color
         } else if (isDark) {
@@ -164,7 +175,7 @@ class SplashRenderer {
         val r = size.height * SplashConfig.Look.Glow.HEIGHT_FACTOR
         if (r <= 0f) return
         val c = center
-        val strength = (engine.formStrength * 20f).toInt() / 20f
+        val strength = (effectiveForm * 20f).toInt() / 20f
         if (cachedGlowBrush == null || cachedGlowRadius != r || cachedGlowColor != baseColor || cachedGlowStrength != strength) {
             cachedGlowRadius = r
             cachedGlowColor = baseColor
@@ -226,8 +237,20 @@ class SplashRenderer {
 
                 val conv1 = if (dist1Sq < maxDistSq) max(0f, 1f - kotlin.math.sqrt(dist1Sq) * invMaxDist) else 0f
                 val conv2 = if (dist2Sq < maxDistSq) max(0f, 1f - kotlin.math.sqrt(dist2Sq) * invMaxDist) else 0f
+                val isCross = engine.shape == SplashSlots.SHAPE_CROSS
+                val crossAlpha = if (isCross) {
+                    val threshold = maxOf(30f, engine.width * 0.15f)
+                    val convergence = if (engine.memberCount > 0) {
+                        (1f - (engine.totalMemberDist / (engine.memberCount * threshold))).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    if (engine.currentPhase == SplashPhase.Error) 1f else (engine.formStrength * convergence).coerceIn(0f, 1f)
+                } else {
+                    1f
+                }
                 val appearFactor = ((engine.formStrength - SplashConfig.Look.Links.APPEAR_MIN_FORM) / SplashConfig.Look.Links.APPEAR_RANGE).coerceIn(0f, 1f)
-                val rawAlpha = appearFactor * min(conv1, conv2) * SplashConfig.Look.Links.RAW_ALPHA_FACTOR
+                val rawAlpha = appearFactor * min(conv1, conv2) * SplashConfig.Look.Links.RAW_ALPHA_FACTOR * crossAlpha
 
                 if (rawAlpha > SplashConfig.Look.Cutoffs.RAW_ALPHA_LINKS) {
                     val segNorm = (idx1 + 0.5f) / slotCount.toFloat()

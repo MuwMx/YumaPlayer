@@ -16,7 +16,7 @@ object SplashConfig {
         var DUST_DURATION_MS: Float = 0f
         var GATHER_BOLT_MS: Float = 850f
         var GATHER_LOGO_MS: Float = 800f
-        var GATHER_CROSS_MS: Float = 450f
+        var GATHER_CROSS_MS: Float = 700f
         var GATHER_SHORT_MS: Float = 400f
         var ERROR_HOLD_MS: Float = 350f
         var IGNITE_FULL_MS: Float = 200f
