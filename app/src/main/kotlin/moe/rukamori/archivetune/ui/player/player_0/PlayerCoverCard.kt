@@ -212,6 +212,23 @@ fun PlayerCoverCard(
         contentAlignment = Alignment.Center
     ) {
         val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
+
+        // 1. Статичная обложка лежит всегда — как основной арт и как бэкдроп под видео
+        androidx.compose.animation.Crossfade(
+            targetState = currentPainter,
+            animationSpec = tween(500),
+            label = "CoverCrossfade",
+        ) { targetPainter ->
+            val painter = targetPainter ?: painterResource(id = placeholderResId)
+            androidx.compose.foundation.Image(
+                painter = painter,
+                contentDescription = stringResource(R.string.album_art_large),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        // 2. Канвас монтируется поверх обложки, перекрывая её без единого чёрного кадра
         if (isCanvasActive) {
             key(mediaId) {
                 CanvasArtworkPlayer(
@@ -220,20 +237,6 @@ fun PlayerCoverCard(
                     isPlaying = isPlaying,
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                     modifier = Modifier.fillMaxSize(),
-                )
-            }
-        } else {
-            androidx.compose.animation.Crossfade(
-                targetState = currentPainter,
-                animationSpec = tween(500),
-                label = "CoverCrossfade",
-            ) { targetPainter ->
-                val painter = targetPainter ?: painterResource(id = placeholderResId)
-                androidx.compose.foundation.Image(
-                    painter = painter,
-                    contentDescription = stringResource(R.string.album_art_large),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
                 )
             }
         }
