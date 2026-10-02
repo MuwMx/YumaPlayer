@@ -175,7 +175,7 @@ constructor(
 
     private companion object {
         const val ContributorsLimit = 20
-        const val GitHubOwner = "MuwMix"
+        const val GitHubOwner = "MuwMx"
         const val GitHubRepo = "YumaPlayer"
     }
 }
