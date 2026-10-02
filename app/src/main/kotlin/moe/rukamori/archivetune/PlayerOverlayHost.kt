@@ -173,13 +173,14 @@ fun PlayerOverlayHost(
     }.collectAsStateWithLifecycle(initialValue = false)
 
     val isDocked = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f
+    val effectiveNavHeight = bottomNavigationBarHeight * scrollVisibilityFactor
 
     Box(modifier = modifier) {
         ScopedPlayerSheet(
             playerViewModel = playerViewModel,
             playerConnection = playerConnection,
             navController = navController,
-            bottomNavigationBarHeight = bottomNavigationBarHeight,
+            bottomNavigationBarHeight = effectiveNavHeight,
             hazeState = hazeState,
             pureBlack = pureBlack,
             blurRadius = blurRadius,

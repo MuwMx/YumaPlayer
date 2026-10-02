@@ -23,11 +23,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.NavigationBarHeight
+import moe.rukamori.archivetune.constants.NavigationBarMaxWidth
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
 
 object PlayerDockDefaults {
-    val MaxWidth: Dp = 380.dp
+    val MaxWidth: Dp = NavigationBarMaxWidth
     val HorizontalPadding: Dp = 16.dp
     val SlotGap: Dp = 2.dp
     val SoloCornerRadius: Dp = 28.dp
