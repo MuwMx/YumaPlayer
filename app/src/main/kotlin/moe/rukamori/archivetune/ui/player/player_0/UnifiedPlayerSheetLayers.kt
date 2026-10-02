@@ -80,16 +80,15 @@ internal fun UnifiedPlayerSheetLayers(
         }
 
         if (showMiniPlayer) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            val fraction = expansionFractionProvider()
-                            alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
-                            translationY = miniPlayerSlideOffset.toPx() * (1f - fraction)
-                        }
-                ) {
-                    MiniPlayerContentInternal(
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val fraction = expansionFractionProvider()
+                        alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
+                    }
+            ) {
+                MiniPlayerContentInternal(
                     state = state,
                     expansionFractionProvider = expansionFractionProvider,
                     progressMsProvider = progressMsProvider,

@@ -2,8 +2,10 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,8 +19,11 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,7 @@ import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.NavigationBarCornerRadius
 import moe.rukamori.archivetune.constants.NavigationBarHeight
 import moe.rukamori.archivetune.constants.NavigationBarHideMinScale
@@ -106,11 +112,46 @@ fun FloatingNavigationToolbar(
         onItemClick = onItemClick,
     )
 
+    val selectedIndex = remember(items, isSelected) {
+        items.indexOfFirst { isSelected(it) }
+    }
+    var prevSelectedIndex by remember { mutableIntStateOf(selectedIndex) }
+    val barPulseScale = remember { Animatable(1.0f) }
+
+    LaunchedEffect(selectedIndex) {
+        if (prevSelectedIndex != -1 && selectedIndex != -1 && selectedIndex != prevSelectedIndex) {
+            prevSelectedIndex = selectedIndex
+            try {
+                withTimeoutOrNull(380L) {
+                    barPulseScale.animateTo(
+                        targetValue = 1.019f,
+                        animationSpec = spring(
+                            dampingRatio = 0.25f,
+                            stiffness = 250f,
+                        ),
+                    )
+                    barPulseScale.animateTo(
+                        targetValue = 1.0f,
+                        animationSpec = tween(
+                            durationMillis = 180,
+                            easing = EaseOut,
+                        ),
+                    )
+                }
+            } finally {
+                barPulseScale.snapTo(1.0f)
+            }
+        } else {
+            prevSelectedIndex = selectedIndex
+        }
+    }
+
     Box(
         modifier = modifier
             .graphicsLayer {
                 translationY = NavigationBarHideOffsetY.toPx() * (1f - animatedVisibilityFactor)
-                val scale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
+                val baseScale = lerp(NavigationBarHideMinScale, 1.0f, animatedVisibilityFactor)
+                val scale = baseScale * barPulseScale.value
                 scaleX = scale
                 scaleY = scale
                 alpha = animatedVisibilityFactor

@@ -44,6 +44,7 @@ internal class NavigationTabDragState(
         internal set
     var rowWidthPx by mutableFloatStateOf(0f)
     val selectorXAnimatable = Animatable(0f)
+    val selectorWidthAnimatable = Animatable(0f)
 
     val tabWidthPx: Float
         get() = if (items.isNotEmpty()) rowWidthPx / items.size else 0f
@@ -56,6 +57,7 @@ internal class NavigationTabDragState(
         val center = (initialIndex + 0.5f) * tabWidthPx
         coroutineScope.launch {
             selectorXAnimatable.snapTo(center)
+            selectorWidthAnimatable.snapTo(tabWidthPx)
         }
         if (!isSelected(items[initialIndex])) {
             haptics.click()
@@ -69,8 +71,22 @@ internal class NavigationTabDragState(
         val firstCenter = 0.5f * tabWidthPx
         val lastCenter = (items.size - 0.5f) * tabWidthPx
         val clampedX = currentX.coerceIn(firstCenter, lastCenter)
+
+        val fraction = ((clampedX - firstCenter) / tabWidthPx).coerceIn(0f, (items.size - 1).toFloat())
+        val baseIndex = fraction.toInt().coerceIn(0, items.size - 1)
+        val t = (fraction - baseIndex).coerceIn(0f, 1f)
+        val stretchFactor = 4f * t * (1f - t)
+        val targetWidth = tabWidthPx * (1f + 0.25f * stretchFactor)
+
         coroutineScope.launch {
             selectorXAnimatable.snapTo(clampedX)
+            selectorWidthAnimatable.animateTo(
+                targetValue = targetWidth,
+                animationSpec = spring(
+                    dampingRatio = 0.25f,
+                    stiffness = 250f,
+                ),
+            )
         }
         val newIndex = (clampedX / tabWidthPx).toInt().coerceIn(0, items.size - 1)
         if (!isSelected(items[newIndex])) {
@@ -87,13 +103,26 @@ internal class NavigationTabDragState(
         val nearestIndex = (selectorXAnimatable.value / tabWidthPx).toInt().coerceIn(0, items.size - 1)
         val targetCenter = (nearestIndex + 0.5f) * tabWidthPx
         coroutineScope.launch {
-            selectorXAnimatable.animateTo(
-                targetValue = targetCenter,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow,
-                ),
-            )
+            val animX = launch {
+                selectorXAnimatable.animateTo(
+                    targetValue = targetCenter,
+                    animationSpec = spring(
+                        dampingRatio = 0.25f,
+                        stiffness = 250f,
+                    ),
+                )
+            }
+            val animWidth = launch {
+                selectorWidthAnimatable.animateTo(
+                    targetValue = tabWidthPx,
+                    animationSpec = spring(
+                        dampingRatio = 0.25f,
+                        stiffness = 250f,
+                    ),
+                )
+            }
+            animX.join()
+            animWidth.join()
             isDragging = false
         }
     }
@@ -152,14 +181,19 @@ internal fun NavigationDragSelectorOverlay(
     modifier: Modifier = Modifier,
 ) {
     if (dragState.isDragging && dragState.tabWidthPx > 0f) {
-        val tabWidthDp = with(LocalDensity.current) { dragState.tabWidthPx.toDp() }
+        val currentWidth = if (dragState.selectorWidthAnimatable.value > 0f) {
+            dragState.selectorWidthAnimatable.value
+        } else {
+            dragState.tabWidthPx
+        }
+        val tabWidthDp = with(LocalDensity.current) { currentWidth.toDp() }
         Box(
             modifier = modifier
                 .fillMaxHeight()
                 .width(tabWidthDp)
                 .padding(vertical = NavigationTabSlotPaddingVertical)
                 .graphicsLayer {
-                    translationX = dragState.selectorXAnimatable.value - dragState.tabWidthPx / 2f
+                    translationX = dragState.selectorXAnimatable.value - currentWidth / 2f
                 }
                 .background(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = NavigationTabSelectorAlpha),

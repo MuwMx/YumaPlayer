@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -114,6 +115,10 @@ fun UnifiedPlayerSheetV2(
             content = {
                 Box(
                     modifier = Modifier
+                        .graphicsLayer {
+                            val fraction = motionScope.expansionFraction.value
+                            translationY = miniPlayerSlideOffset.toPx() * (1f - fraction)
+                        }
                         .playerSheetBackdrop(
                             hazeState = hazeState,
                             hazeStyle = miniHazeStyle,
