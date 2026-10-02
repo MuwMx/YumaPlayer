@@ -46,7 +46,7 @@ fun rememberPlayerAwareWindowInsets(
     shouldShowNavigationBar: Boolean,
     isMiniPlayerVisible: Boolean,
     floatingToolbarBottomPadding: Dp,
-    windowsInsets: WindowInsets,
+    windowInsets: WindowInsets,
 ): WindowInsets =
     remember(
         useRail,
@@ -54,25 +54,23 @@ fun rememberPlayerAwareWindowInsets(
         shouldShowNavigationBar,
         isMiniPlayerVisible,
         floatingToolbarBottomPadding,
-        windowsInsets,
+        windowInsets,
     ) {
-        var bottom = bottomInset
-        if (shouldShowNavigationBar && !useRail) {
-            bottom = floatingToolbarBottomPadding + FloatingToolbarHeight
+        val navBottom = if (shouldShowNavigationBar && !useRail) {
+            floatingToolbarBottomPadding + FloatingToolbarHeight
+        } else {
+            bottomInset
         }
-        if (isMiniPlayerVisible) {
-            bottom += MiniPlayerHeight + MiniPlayerBottomSpacing
+        val miniPlayerOffset = if (isMiniPlayerVisible) {
+            MiniPlayerHeight + MiniPlayerBottomSpacing
+        } else {
+            0.dp
         }
-        windowsInsets
-            .only(
-                (
-                    if (useRail) {
-                        WindowInsetsSides.Right
-                    } else {
-                        WindowInsetsSides.Horizontal
-                    }
-                ) + WindowInsetsSides.Top,
-            ).add(WindowInsets(top = AppBarHeight, bottom = bottom))
+        val horizontalSides = if (useRail) WindowInsetsSides.Right else WindowInsetsSides.Horizontal
+
+        windowInsets
+            .only(horizontalSides + WindowInsetsSides.Top)
+            .add(WindowInsets(top = AppBarHeight, bottom = navBottom + miniPlayerOffset))
     }
 
 @Composable
@@ -82,7 +80,7 @@ fun rememberPlayerAwareWindowInsets(
     bottomInset: Dp,
     shouldShowNavigationBar: Boolean,
     floatingToolbarBottomPadding: Dp,
-    windowsInsets: WindowInsets,
+    windowInsets: WindowInsets,
 ): WindowInsets {
     val isMiniPlayerVisible by remember(playerViewModel) {
         playerViewModel.uiState
@@ -96,6 +94,6 @@ fun rememberPlayerAwareWindowInsets(
         shouldShowNavigationBar = shouldShowNavigationBar,
         isMiniPlayerVisible = isMiniPlayerVisible,
         floatingToolbarBottomPadding = floatingToolbarBottomPadding,
-        windowsInsets = windowsInsets,
+        windowInsets = windowInsets,
     )
 }
