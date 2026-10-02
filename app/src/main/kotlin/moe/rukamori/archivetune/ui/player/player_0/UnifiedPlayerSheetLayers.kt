@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
@@ -42,7 +44,8 @@ internal fun UnifiedPlayerSheetLayers(
     onOpenSettingsMenu: (PlayerMenuScreen) -> Unit,
     modifier: Modifier = Modifier,
     onSeekStarted: () -> Unit,
-    dragHandler: SheetVerticalDragGestureHandler? = null
+    dragHandler: SheetVerticalDragGestureHandler? = null,
+    miniPlayerSlideOffset: Dp = 0.dp
 ) {
     val density = LocalDensity.current.density
 
@@ -77,15 +80,16 @@ internal fun UnifiedPlayerSheetLayers(
         }
 
         if (showMiniPlayer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val fraction = expansionFractionProvider()
-                        alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
-                    }
-            ) {
-                MiniPlayerContentInternal(
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val fraction = expansionFractionProvider()
+                            alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
+                            translationY = miniPlayerSlideOffset.toPx() * (1f - fraction)
+                        }
+                ) {
+                    MiniPlayerContentInternal(
                     state = state,
                     expansionFractionProvider = expansionFractionProvider,
                     progressMsProvider = progressMsProvider,

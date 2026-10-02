@@ -52,6 +52,7 @@ fun UnifiedPlayerSheetV2(
     onOpenQueue: () -> Unit = {},
     onCloseQueueClick: () -> Unit = {},
     isDocked: Boolean = true,
+    miniPlayerSlideOffset: Dp = 0.dp,
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -150,7 +151,8 @@ fun UnifiedPlayerSheetV2(
                             menuInitialScreen = screen
                             showSettingsMenu = true
                         },
-                        dragHandler = gestures.dragHandler
+                        dragHandler = gestures.dragHandler,
+                        miniPlayerSlideOffset = miniPlayerSlideOffset
                     )
                 }
             }

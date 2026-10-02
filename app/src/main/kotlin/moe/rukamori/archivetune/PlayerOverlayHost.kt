@@ -173,14 +173,17 @@ fun PlayerOverlayHost(
     }.collectAsStateWithLifecycle(initialValue = false)
 
     val isDocked = bottomNavigationBarHeight > 0.dp && scrollVisibilityFactor > 0.01f
-    val effectiveNavHeight = bottomNavigationBarHeight * scrollVisibilityFactor
+    val navSlideDistance =
+        floatingToolbarBottomPadding + navVisibleHeight
+    val miniPlayerSlideOffset = navSlideDistance * (1f - scrollVisibilityFactor)
 
     Box(modifier = modifier) {
         ScopedPlayerSheet(
             playerViewModel = playerViewModel,
             playerConnection = playerConnection,
             navController = navController,
-            bottomNavigationBarHeight = effectiveNavHeight,
+            bottomNavigationBarHeight = bottomNavigationBarHeight,
+            miniPlayerSlideOffset = miniPlayerSlideOffset,
             hazeState = hazeState,
             pureBlack = pureBlack,
             blurRadius = blurRadius,
@@ -193,9 +196,6 @@ fun PlayerOverlayHost(
         )
 
         if (useRail) return@Box
-
-        val navSlideDistance =
-            floatingToolbarBottomPadding + navVisibleHeight
 
         PlayerDockContainer(
             modifier = Modifier.align(Alignment.BottomCenter),

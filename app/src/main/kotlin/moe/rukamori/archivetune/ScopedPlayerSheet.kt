@@ -3,6 +3,7 @@ package moe.rukamori.archivetune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
@@ -21,6 +22,7 @@ internal fun ScopedPlayerSheet(
     pureBlack: Boolean,
     blurRadius: Float,
     isDocked: Boolean = true,
+    miniPlayerSlideOffset: Dp = 0.dp,
     onExpansionFractionChanged: (Float) -> Unit,
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
@@ -60,6 +62,7 @@ internal fun ScopedPlayerSheet(
         onImmersiveChanged = { playerViewModel.setImmersiveEnabled(it) },
 
         bottomBarHeight = bottomNavigationBarHeight,
+        miniPlayerSlideOffset = miniPlayerSlideOffset,
         hazeState = hazeState,
         pureBlack = pureBlack,
         blurRadius = blurRadius,
