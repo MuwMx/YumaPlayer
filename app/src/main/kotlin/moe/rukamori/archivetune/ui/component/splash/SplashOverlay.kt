@@ -30,6 +30,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Composable
 fun SplashOverlay(
     modifier: Modifier = Modifier,
+    isReady: Boolean = true,
     isDark: Boolean = true,
     contentColor: Color? = null,
     primaryColor: Color? = null,
@@ -59,19 +60,24 @@ fun SplashOverlay(
         var frameTick by remember { mutableLongStateOf(0L) }
 
         LaunchedEffect(vv) {
-            if (vv > 0) engine.rebuildSlots()
+            if (vv > 0 && isInitialized) engine.rebuildSlots()
         }
 
-        LaunchedEffect(showSplash) {
-            if (!showSplash) return@LaunchedEffect
+        LaunchedEffect(isReady) {
+            if (isReady && engine.width > 0f && engine.height > 0f && !isInitialized) {
+                engine.density = density
+                engine.startGather(SplashSlots.SHAPE_LOGO)
+                isInitialized = true
+            }
+        }
+
+        LaunchedEffect(showSplash, isReady) {
+            if (!showSplash || !isReady) return@LaunchedEffect
             var lastTime = 0L
             while (isActive) {
                 withFrameNanos { now ->
                     if (!isInitialized) return@withFrameNanos
-                    if (lastTime == 0L) {
-                        lastTime = now
-                        return@withFrameNanos
-                    }
+
                     val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
                     lastTime = now
                     engine.update(dt, now / 1_000_000)
@@ -113,8 +119,10 @@ fun SplashOverlay(
                         if (w > 0f && h > 0f && (engine.width != w || engine.height != h)) {
                             engine.density = density
                             engine.init(w, h)
-                            engine.startGather(SplashSlots.SHAPE_LOGO)
-                            isInitialized = true
+                            if (isReady && !isInitialized) {
+                                engine.startGather(SplashSlots.SHAPE_LOGO)
+                                isInitialized = true
+                            }
                         }
                     },
             ) {

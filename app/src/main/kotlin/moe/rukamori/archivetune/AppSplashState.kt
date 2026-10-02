@@ -11,11 +11,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.ui.component.splash.SplashConfig
+import moe.rukamori.archivetune.ui.component.splash.SplashSlots
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.rememberPreference
+import kotlin.time.Duration.Companion.milliseconds
 
 data class AppSplashState(
     val splashEnabled: Boolean,
@@ -25,8 +30,8 @@ data class AppSplashState(
     val contentAlpha: Float,
     val onBurstStart: () -> Unit,
     val onSplashDismiss: () -> Unit,
+    val isReady: Boolean = true,
 )
-
 @Composable
 fun rememberAppSplashState(
     activity: ComponentActivity,
@@ -36,8 +41,15 @@ fun rememberAppSplashState(
 ): AppSplashState {
     val splashEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
     LaunchedEffect(Unit) {
-        activity.dataStore.data.first()
-        snapshotFlow { splashEnabled }.first()
+        withContext(Dispatchers.IO) {
+            activity.dataStore.data.first()
+        }
+        val isEnabled = snapshotFlow { splashEnabled }.first()
+        if (isEnabled) {
+            withTimeoutOrNull(1500.milliseconds) {
+                snapshotFlow { SplashSlots.vectorVersion }.first { it > 0 }
+            }
+        }
         onReadyChange(true)
     }
     var coldSplash by remember(isReady) { mutableStateOf(splashEnabled) }
@@ -67,5 +79,6 @@ fun rememberAppSplashState(
         onSplashDismiss = {
             splashDone = true
         },
+        isReady = isReady,
     )
 }
