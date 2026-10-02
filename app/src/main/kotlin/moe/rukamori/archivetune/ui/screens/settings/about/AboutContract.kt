@@ -29,6 +29,7 @@ data class AboutUiActions(
     val onDismissDialog: () -> Unit = {},
     val onRetryTranslationContributors: () -> Unit = {},
     val onRetryDependencyLicenses: () -> Unit = {},
+    val onRetryContributors: () -> Unit = {},
 )
 
 typealias AboutActions = AboutUiActions

@@ -51,7 +51,7 @@ import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
 import moe.rukamori.archivetune.viewmodels.AboutContributorsUiState
 
 @Composable
-private fun ContributorsSection(
+internal fun ContributorsSection(
     state: AboutContributorsUiState,
     readMoreUrl: String,
     onOpenProfile: (String) -> Unit,

@@ -81,6 +81,7 @@ fun AboutScreen(
             onDismissDialog = viewModel::dismissDialog,
             onRetryTranslationContributors = viewModel::retryTranslationContributors,
             onRetryDependencyLicenses = viewModel::retryDependencyLicenses,
+            onRetryContributors = viewModel::retryContributors,
         )
     }
 
@@ -110,6 +111,7 @@ internal fun AboutScreenContent(
         onDismissDialog = actions.onDismissDialog,
         onRetryTranslationContributors = actions.onRetryTranslationContributors,
         onRetryDependencyLicenses = actions.onRetryDependencyLicenses,
+        onRetryContributors = actions.onRetryContributors,
     )
 }
 
@@ -127,6 +129,7 @@ internal fun AboutScreenContent(
     onDismissDialog: () -> Unit,
     onRetryTranslationContributors: () -> Unit,
     onRetryDependencyLicenses: () -> Unit,
+    onRetryContributors: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
 
@@ -210,6 +213,7 @@ internal fun AboutScreenContent(
                     AboutSuccessContent(
                         model = state.model,
                         onOpenUri = onOpenUri,
+                        onRetryContributors = onRetryContributors,
                         modifier =
                             Modifier
                                 .fillMaxSize()

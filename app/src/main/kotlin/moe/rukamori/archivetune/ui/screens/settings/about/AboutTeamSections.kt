@@ -137,7 +137,7 @@ internal fun LeadDeveloperSection(
 }
 
 @Composable
-private fun TeamMemberSection(
+internal fun TeamMemberSection(
     title: String,
     members: TeamMemberCollection,
     onOpenUri: (String) -> Unit,
