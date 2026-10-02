@@ -38,7 +38,10 @@ internal fun PlayerSheetScaffold(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .offset { IntOffset(0, sheetVisualState.visualSheetTranslationYProvider().roundToInt()) }
+            .offset {
+                val dropOffsetPx = (dropState.slideOffset.toPx() * (1f - expansionFraction.value)).roundToInt()
+                IntOffset(0, sheetVisualState.visualSheetTranslationYProvider().roundToInt() + dropOffsetPx)
+            }
             .graphicsLayer {
                 translationX = if (currentSheetState == PlayerSheetState.COLLAPSED || expansionFraction.value < 0.01f) offsetAnimatable.value else 0f
                 scaleY = visualOvershootScaleY.value
@@ -54,10 +57,6 @@ internal fun PlayerSheetScaffold(
     ) {
         Box(
             modifier = Modifier
-                .graphicsLayer {
-                    val fraction = expansionFraction.value
-                    translationY = with(density) { dropState.slideOffset.toPx() } * (1f - fraction)
-                }
                 .layout { measurable, constraints ->
                     val targetHeightPx = sheetVisualState.playerContentAreaHeightPxProvider().toInt().coerceAtLeast(0)
                     val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt().coerceAtLeast(0)

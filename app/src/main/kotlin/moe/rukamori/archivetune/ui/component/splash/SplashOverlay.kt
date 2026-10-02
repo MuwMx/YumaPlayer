@@ -77,7 +77,10 @@ fun SplashOverlay(
             while (isActive) {
                 withFrameNanos { now ->
                     if (!isInitialized) return@withFrameNanos
-
+                    if (lastTime == 0L) {
+                        lastTime = now
+                        return@withFrameNanos
+                    }
                     val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
                     lastTime = now
                     engine.update(dt, now / 1_000_000)
