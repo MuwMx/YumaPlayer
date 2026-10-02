@@ -77,6 +77,8 @@ val BackdropBlurAmountKey = intPreferencesKey("backdropBlurAmount")
 val MiniPlayerLastAnchorKey = intPreferencesKey("miniPlayerLastAnchor")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
 val HomeBackgroundStyleKey = stringPreferencesKey("homeBackgroundStyle")
+
+val RandomHomeBackgroundOnStartupKey = booleanPreferencesKey("randomHomeBackgroundOnStartup")
 val HomeBackgroundParallaxEnabledKey = booleanPreferencesKey("homeBackgroundParallaxEnabled")
 val HomeBackgroundParallaxStrengthKey = floatPreferencesKey("homeBackgroundParallaxStrength")
 val HomeBackgroundBrightnessKey = floatPreferencesKey("homeBackgroundBrightness")

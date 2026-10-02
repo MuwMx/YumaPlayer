@@ -59,6 +59,7 @@ import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
+import moe.rukamori.archivetune.constants.RandomHomeBackgroundOnStartupKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
@@ -119,6 +120,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberEnumPreference(
             HomeBackgroundStyleKey,
             defaultValue = HomeBackgroundStyle.TONAL,
+        )
+    val (randomHomeBackgroundOnStartup, onRandomHomeBackgroundOnStartupChange) =
+        rememberPreference(
+            RandomHomeBackgroundOnStartupKey,
+            defaultValue = false,
         )
     val (homeBackgroundParallaxEnabled, onHomeBackgroundParallaxEnabledChange) =
         rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
@@ -232,6 +238,7 @@ fun AppearanceSettings(navController: NavController) {
             splashOverlayEnabled = splashOverlayEnabled,
             archiveTuneCanvas = archiveTuneCanvas,
             homeBackgroundStyle = homeBackgroundStyle,
+            randomHomeBackgroundOnStartup = randomHomeBackgroundOnStartup,
             homeBackgroundParallaxEnabled = homeBackgroundParallaxEnabled,
             homeBackgroundParallaxStrength = homeBackgroundParallaxStrength,
             homeBackgroundBrightness = homeBackgroundBrightness,
@@ -265,6 +272,7 @@ fun AppearanceSettings(navController: NavController) {
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
                 onArchiveTuneCanvasChange = onArchiveTuneCanvasChange,
                 onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
+                onRandomHomeBackgroundOnStartupChange = onRandomHomeBackgroundOnStartupChange,
                 onHomeBackgroundParallaxEnabledChange = onHomeBackgroundParallaxEnabledChange,
                 onHomeBackgroundParallaxStrengthChange = onHomeBackgroundParallaxStrengthChange,
                 onHomeBackgroundBrightnessChange = onHomeBackgroundBrightnessChange,
