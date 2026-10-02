@@ -1,11 +1,10 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
-import android.graphics.drawable.Drawable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -36,15 +37,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import moe.rukamori.archivetune.R
 import androidx.compose.ui.util.lerp
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.media3.ui.AspectRatioFrameLayout
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import kotlin.math.abs
@@ -211,34 +211,29 @@ fun PlayerCoverCard(
             .border(BorderStroke(1.dp, outlineColor), RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.animation.Crossfade(
-            targetState = currentPainter,
-            animationSpec = tween(500),
-            label = "CoverCrossfade"
-        ) { targetPainter ->
-            if (targetPainter == null) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(id = placeholderResId),
-                    contentDescription = stringResource(R.string.album_art_large),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                androidx.compose.foundation.Image(
-                    painter = targetPainter,
-                    contentDescription = stringResource(R.string.album_art_large),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        }
-        if (canvasState.isCanvasEnabled && canvasState.artwork != null) {
+        val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
+        if (isCanvasActive) {
             key(mediaId) {
                 CanvasArtworkPlayer(
                     primaryUrl = canvasState.primaryUrl,
                     fallbackUrl = canvasState.fallbackUrl,
                     isPlaying = isPlaying,
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                     modifier = Modifier.fillMaxSize(),
+                )
+            }
+        } else {
+            androidx.compose.animation.Crossfade(
+                targetState = currentPainter,
+                animationSpec = tween(500),
+                label = "CoverCrossfade",
+            ) { targetPainter ->
+                val painter = targetPainter ?: painterResource(id = placeholderResId)
+                androidx.compose.foundation.Image(
+                    painter = painter,
+                    contentDescription = stringResource(R.string.album_art_large),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
             }
         }
