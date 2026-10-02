@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +43,8 @@ internal class NavigationTabDragState(
 ) {
     var isDragging by mutableStateOf(false)
         internal set
+    var candidateIndex by mutableIntStateOf(-1)
+        internal set
     var rowWidthPx by mutableFloatStateOf(0f)
     val selectorXAnimatable = Animatable(0f)
     val selectorWidthAnimatable = Animatable(0f)
@@ -54,14 +57,11 @@ internal class NavigationTabDragState(
         isDragging = true
         haptics.longPress()
         val initialIndex = (offsetX / tabWidthPx).toInt().coerceIn(0, items.size - 1)
+        candidateIndex = initialIndex
         val center = (initialIndex + 0.5f) * tabWidthPx
         coroutineScope.launch {
             selectorXAnimatable.snapTo(center)
             selectorWidthAnimatable.snapTo(tabWidthPx)
-        }
-        if (!isSelected(items[initialIndex])) {
-            haptics.click()
-            onItemClick(items[initialIndex], false)
         }
     }
 
@@ -89,19 +89,27 @@ internal class NavigationTabDragState(
             )
         }
         val newIndex = (clampedX / tabWidthPx).toInt().coerceIn(0, items.size - 1)
-        if (!isSelected(items[newIndex])) {
+        if (newIndex != candidateIndex) {
+            candidateIndex = newIndex
             haptics.click()
-            onItemClick(items[newIndex], false)
         }
     }
 
     fun onDragEnd() {
         if (items.isEmpty() || tabWidthPx <= 0f) {
             isDragging = false
+            candidateIndex = -1
             return
         }
-        val nearestIndex = (selectorXAnimatable.value / tabWidthPx).toInt().coerceIn(0, items.size - 1)
-        val targetCenter = (nearestIndex + 0.5f) * tabWidthPx
+        val targetIndex = if (candidateIndex in items.indices) {
+            candidateIndex
+        } else {
+            (selectorXAnimatable.value / tabWidthPx).toInt().coerceIn(0, items.size - 1)
+        }
+        val targetCenter = (targetIndex + 0.5f) * tabWidthPx
+        if (targetIndex in items.indices && !isSelected(items[targetIndex])) {
+            onItemClick(items[targetIndex], false)
+        }
         coroutineScope.launch {
             val animX = launch {
                 selectorXAnimatable.animateTo(
@@ -124,6 +132,7 @@ internal class NavigationTabDragState(
             animX.join()
             animWidth.join()
             isDragging = false
+            candidateIndex = -1
         }
     }
 
