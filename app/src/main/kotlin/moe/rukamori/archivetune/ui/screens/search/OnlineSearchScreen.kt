@@ -78,6 +78,91 @@ fun OnlineSearchScreen(
 
     val distinctResultItems = remember(viewState.items) { viewState.items.distinctBy { it.id } }
 
+    val onSearchResultClick: (YTItem) -> Unit =
+        remember(mediaMetadata, playerConnection, navController, onDismiss) {
+            { item ->
+                when (item) {
+                    is SongItem -> {
+                        if (item.id == mediaMetadata?.id) {
+                            playerConnection.player.togglePlayPause()
+                        } else {
+                            playerConnection.playQueue(
+                                YouTubeQueue.radio(item.toMediaMetadata()),
+                            )
+                            onDismiss()
+                        }
+                    }
+
+                    is AlbumItem -> {
+                        navController.navigate("album/${item.id}")
+                        onDismiss()
+                    }
+
+                    is ArtistItem -> {
+                        navController.navigate("artist/${item.id}")
+                        onDismiss()
+                    }
+
+                    is PlaylistItem -> {
+                        navController.navigate("online_playlist/${item.id}")
+                        onDismiss()
+                    }
+                }
+            }
+        }
+
+    val onSearchResultMenuClick: (YTItem) -> Unit =
+        remember(menuState, navController, coroutineScope, onDismiss) {
+            { item ->
+                menuState.show {
+                    when (item) {
+                        is SongItem -> {
+                            YouTubeSongMenu(
+                                song = item,
+                                navController = navController,
+                                onDismiss = {
+                                    menuState.dismiss()
+                                    onDismiss()
+                                },
+                            )
+                        }
+
+                        is AlbumItem -> {
+                            YouTubeAlbumMenu(
+                                albumItem = item,
+                                navController = navController,
+                                onDismiss = {
+                                    menuState.dismiss()
+                                    onDismiss()
+                                },
+                            )
+                        }
+
+                        is ArtistItem -> {
+                            YouTubeArtistMenu(
+                                artist = item,
+                                onDismiss = {
+                                    menuState.dismiss()
+                                    onDismiss()
+                                },
+                            )
+                        }
+
+                        is PlaylistItem -> {
+                            YouTubePlaylistMenu(
+                                playlist = item,
+                                coroutineScope = coroutineScope,
+                                onDismiss = {
+                                    menuState.dismiss()
+                                    onDismiss()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter,
@@ -127,16 +212,18 @@ fun OnlineSearchScreen(
                 key = { item -> "item_${item.id}" },
                 contentType = { item -> item::class },
             ) { item ->
+                val isActive =
+                    when (item) {
+                        is SongItem -> mediaMetadata?.id == item.id
+                        is AlbumItem -> mediaMetadata?.album?.id == item.id
+                        else -> false
+                    }
                 OnlineSearchResultRow(
                     item = item,
-                    mediaMetadata = mediaMetadata,
+                    isActive = isActive,
                     isPlaying = isPlaying,
-                    menuState = menuState,
-                    navController = navController,
-                    coroutineScope = coroutineScope,
-                    haptics = haptics,
-                    playerConnection = playerConnection,
-                    onDismiss = onDismiss,
+                    onClick = { onSearchResultClick(item) },
+                    onMenuClick = { onSearchResultMenuClick(item) },
                 )
             }
         }

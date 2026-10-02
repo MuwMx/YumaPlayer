@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,18 +50,23 @@ import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 internal val HomeFeedMaxWidth = 1_200.dp
 internal val HomeSectionSpacing = 18.dp
 
+@Immutable
+internal data class HomeFeedMediaContext(
+    val mediaMetadata: MediaMetadata?,
+    val isPlaying: Boolean,
+    val navController: NavController,
+    val playerConnection: PlayerConnection,
+    val menuState: MenuState,
+    val scope: CoroutineScope,
+)
+
 @OptIn(
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3ExpressiveApi::class,
 )
 internal fun LazyListScope.homeSimilarAndRemoteSections(
     uiState: HomeUiState,
-    mediaMetadata: MediaMetadata?,
-    isPlaying: Boolean,
-    navController: NavController,
-    playerConnection: PlayerConnection,
-    menuState: MenuState,
-    scope: CoroutineScope,
+    mediaContext: HomeFeedMediaContext,
 ) {
     uiState.similarRecommendations.forEach { recommendation ->
         sectionSpacer("similar_${recommendation.title.id}")
@@ -70,7 +76,7 @@ internal fun LazyListScope.homeSimilarAndRemoteSections(
         ) {
             SimilarRecommendationsTitle(
                 recommendation = recommendation,
-                navController = navController,
+                navController = mediaContext.navController,
                 modifier = Modifier.animateItem(),
             )
         }
@@ -80,12 +86,12 @@ internal fun LazyListScope.homeSimilarAndRemoteSections(
         ) {
             SimilarRecommendationsSection(
                 recommendation = recommendation,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                scope = scope,
+                mediaMetadata = mediaContext.mediaMetadata,
+                isPlaying = mediaContext.isPlaying,
+                navController = mediaContext.navController,
+                playerConnection = mediaContext.playerConnection,
+                menuState = mediaContext.menuState,
+                scope = mediaContext.scope,
                 modifier = Modifier.animateItem(),
             )
         }
@@ -100,7 +106,7 @@ internal fun LazyListScope.homeSimilarAndRemoteSections(
         ) {
             HomePageSectionTitle(
                 section = section,
-                navController = navController,
+                navController = mediaContext.navController,
                 modifier = Modifier.animateItem(),
             )
         }
@@ -110,12 +116,12 @@ internal fun LazyListScope.homeSimilarAndRemoteSections(
         ) {
             HomePageSectionContent(
                 section = section,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                scope = scope,
+                mediaMetadata = mediaContext.mediaMetadata,
+                isPlaying = mediaContext.isPlaying,
+                navController = mediaContext.navController,
+                playerConnection = mediaContext.playerConnection,
+                menuState = mediaContext.menuState,
+                scope = mediaContext.scope,
                 modifier = Modifier.animateItem(),
             )
         }
@@ -155,14 +161,10 @@ internal fun LazyListScope.sectionSpacer(key: String) {
 
 internal fun LazyListScope.homeForgottenFavoritesSection(
     uiState: HomeUiState,
-    mediaMetadata: MediaMetadata?,
-    isPlaying: Boolean,
+    mediaContext: HomeFeedMediaContext,
     forgottenItemWidth: Dp,
     forgottenFavoritesGridState: LazyGridState,
     forgottenSnapLayoutInfoProvider: SnapLayoutInfoProvider,
-    navController: NavController,
-    playerConnection: PlayerConnection,
-    menuState: MenuState,
 ) {
     if (uiState.forgottenFavorites.isNotEmpty()) {
         sectionSpacer("forgotten_favorites")
@@ -181,14 +183,14 @@ internal fun LazyListScope.homeForgottenFavoritesSection(
         ) {
             ForgottenFavoritesSection(
                 forgottenFavorites = uiState.forgottenFavorites,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
+                mediaMetadata = mediaContext.mediaMetadata,
+                isPlaying = mediaContext.isPlaying,
                 horizontalLazyGridItemWidth = forgottenItemWidth,
                 lazyGridState = forgottenFavoritesGridState,
                 snapLayoutInfoProvider = forgottenSnapLayoutInfoProvider,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
+                navController = mediaContext.navController,
+                playerConnection = mediaContext.playerConnection,
+                menuState = mediaContext.menuState,
                 modifier = Modifier.animateItem(),
             )
         }

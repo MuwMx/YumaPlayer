@@ -82,6 +82,18 @@ internal fun HomeContent(
                         )
                     }
 
+                val mediaContext =
+                    remember(mediaMetadata, isPlaying, navController, playerConnection, menuState, scope) {
+                        HomeFeedMediaContext(
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            scope = scope,
+                        )
+                    }
+
                 LazyColumn(
                     state = lazyListState,
                     contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
@@ -206,24 +218,15 @@ internal fun HomeContent(
 
                     homeForgottenFavoritesSection(
                         uiState = uiState,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
+                        mediaContext = mediaContext,
                         forgottenItemWidth = forgottenItemWidth,
                         forgottenFavoritesGridState = forgottenFavoritesGridState,
                         forgottenSnapLayoutInfoProvider = forgottenSnapLayoutInfoProvider,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
                     )
 
                     homeSimilarAndRemoteSections(
                         uiState = uiState,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        scope = scope,
+                        mediaContext = mediaContext,
                     )
 
                     homeLoadingMoreItem(
