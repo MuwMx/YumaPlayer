@@ -8,9 +8,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
@@ -163,26 +165,34 @@ fun PlayerOverlayHost(
     )
 
     Box(modifier = modifier) {
-        ScopedPlayerSheet(
-            playerViewModel = playerViewModel,
-            playerConnection = playerConnection,
-            navController = navController,
-            bottomNavigationBarHeight = bottomNavigationBarHeight,
-            dropState = dropState,
-            hazeState = hazeState,
-            pureBlack = pureBlack,
-            blurRadius = blurRadius,
-            onExpansionFractionChanged = { fraction ->
-                coroutineScope.launch {
-                    playerExpansionAnimatable.snapTo(fraction)
-                }
-            },
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(if (playerExpansionAnimatable.value > 0.001f) 2f else 0f),
+        ) {
+            ScopedPlayerSheet(
+                playerViewModel = playerViewModel,
+                playerConnection = playerConnection,
+                navController = navController,
+                bottomNavigationBarHeight = bottomNavigationBarHeight,
+                dropState = dropState,
+                hazeState = hazeState,
+                pureBlack = pureBlack,
+                blurRadius = blurRadius,
+                onExpansionFractionChanged = { fraction ->
+                    coroutineScope.launch {
+                        playerExpansionAnimatable.snapTo(fraction)
+                    }
+                },
+            )
+        }
 
         if (useRail) return@Box
 
         PlayerDockContainer(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(if (playerExpansionAnimatable.value > 0.001f) 0f else 1f),
             isPillVisible = isMiniPlayerActive,
             isBarVisible = dropState.isDocked,
             barHeight = navSlideDistance,

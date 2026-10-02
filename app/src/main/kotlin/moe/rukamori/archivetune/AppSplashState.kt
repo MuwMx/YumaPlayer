@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -49,6 +50,10 @@ fun rememberAppSplashState(
             withTimeoutOrNull(1500.milliseconds) {
                 snapshotFlow { SplashSlots.vectorVersion }.first { it > 0 }
             }
+        }
+        val app = activity.application as? App
+        while (app != null && !app.isInitialized) {
+            delay(16)
         }
         onReadyChange(true)
     }

@@ -39,6 +39,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 fun PlayerBackgroundLayers(
     state: PlayerUiState,
     modifier: Modifier = Modifier,
+    canvasState: PlayerCanvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist),
     gradientColor: Color = Color(state.gradientColor),
     expansionFractionProvider: () -> Float = { 1f },
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
@@ -92,14 +93,15 @@ fun PlayerBackgroundLayers(
     )
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .drawWithCache {
-                val midTone = lerp(animatedBgColor, Color(0xFF101010), 0.35f)
-                val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.60f)
+                val midTone = lerp(animatedBgColor, Color(0xFF141414), 0.45f)
+                val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.85f)
                 val brush = Brush.verticalGradient(
                     0.0f to animatedBgColor,
-                    0.50f to midTone,
+                    0.30f to animatedBgColor,
+                    0.65f to midTone,
                     1.0f to deepTone,
                     startY = 0f,
                     endY = size.height
@@ -108,11 +110,6 @@ fun PlayerBackgroundLayers(
                     drawRect(brush = brush)
                 }
             }
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
     ) {
         val playerHazeState = remember { HazeState() }
         if (needsBlur && painters.currentBlurPainter != null) {
@@ -129,8 +126,7 @@ fun PlayerBackgroundLayers(
                     Image(
                         painter = painters.currentBlurPainter,
                         contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -170,6 +166,7 @@ fun PlayerBackgroundLayers(
 
         PlayerCanvasArtworkHost(
             state = state,
+            canvasState = canvasState,
             immersiveTransitionAlpha = immersiveTransitionAlpha,
             lyricsFractionProvider = lyricsFractionProvider,
             queueFractionProvider = queueFractionProvider,
@@ -180,24 +177,6 @@ fun PlayerBackgroundLayers(
                 .artworkBottomFade(immersiveTransitionAlpha)
         )
     }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawWithCache {
-                val tintVeil = lerp(Color.Black, animatedBgColor, 0.20f).copy(alpha = 0.24f)
-                val veilBrush = Brush.verticalGradient(
-                    0.0f to Color.Transparent,
-                    0.42f to Color.Transparent,
-                    1.0f to tintVeil
-                )
-
-                onDrawWithContent {
-                    drawContent()
-                    drawRect(veilBrush)
-                }
-            }
-    )
 }
 
 internal fun Modifier.artworkBottomFade(alpha: Float): Modifier = this

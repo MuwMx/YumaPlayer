@@ -61,7 +61,7 @@ internal fun BoxScope.NavigationToolbarBridge(
         showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
         blurEnabled = bottomNavigationBarHeight != 0.dp &&
             playerExpansionAnimatable.value < bottomNavigationBarHeight.coerceAtMost(navVisibleHeight) / navVisibleHeight,
-        visibilityFactor = if (playerExpansionAnimatable.value < 0.01f) scrollVisibilityFactor else 1f,
+        visibilityFactor = scrollVisibilityFactor * (1f - playerExpansionAnimatable.value.coerceIn(0f, 1f)),
         modifier =
             modifier
                 .fillMaxWidth()

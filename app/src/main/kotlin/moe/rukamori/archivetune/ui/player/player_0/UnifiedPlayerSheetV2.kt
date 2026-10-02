@@ -119,7 +119,8 @@ fun UnifiedPlayerSheetV2(
                             hazeState = hazeState,
                             hazeStyle = miniHazeStyle,
                             backgroundBrush = backgroundGradient,
-                            pureBlack = pureBlack
+                            pureBlack = pureBlack,
+                            expansionFractionProvider = { motionScope.expansionFraction.value },
                         )
                         .playerSheetGlassBorder(
                             expansionFractionProvider = { motionScope.expansionFraction.value },

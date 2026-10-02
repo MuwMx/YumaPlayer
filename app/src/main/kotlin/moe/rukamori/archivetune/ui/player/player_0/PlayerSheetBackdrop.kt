@@ -28,6 +28,10 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.lerp
 
 @Composable
 internal fun rememberMiniHazeStyle(
@@ -48,12 +52,19 @@ internal fun rememberMiniHazeStyle(
 
 @Composable
 internal fun rememberBackgroundGradient(gradientColor: Int): Brush {
-    return remember(gradientColor) {
+    val animatedBgColor by animateColorAsState(
+        targetValue = Color(gradientColor),
+        animationSpec = tween(500),
+        label = "PlayerBackdropGradientColor",
+    )
+    return remember(animatedBgColor) {
+        val midTone = lerp(animatedBgColor, Color(0xFF141414), 0.45f)
+        val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.85f)
         Brush.verticalGradient(
-            listOf(
-                Color(gradientColor),
-                Color(0xFF121212)
-            )
+            0.0f to animatedBgColor,
+            0.30f to animatedBgColor,
+            0.65f to midTone,
+            1.0f to deepTone,
         )
     }
 }
@@ -64,16 +75,20 @@ internal fun Modifier.playerSheetBackdrop(
     hazeStyle: HazeStyle,
     backgroundBrush: Brush,
     pureBlack: Boolean = false,
-): Modifier = when {
-    pureBlack -> this.background(Color.Black)
-    hazeState != null -> this.hazeEffect(
-        state = hazeState,
-        style = hazeStyle
-    ) {
-        inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
-        this.blurEnabled = true
+    expansionFractionProvider: () -> Float = { 0f },
+): Modifier {
+    val base = if (pureBlack) this.background(Color.Black) else this.background(backgroundBrush)
+    return if (hazeState != null && !pureBlack) {
+        base.hazeEffect(
+            state = hazeState,
+            style = hazeStyle,
+        ) {
+            inputScale = HazeInputScale.Fixed(SettingsDimensions.HazeInputScaleValue)
+            this.blurEnabled = expansionFractionProvider() < 0.99f
+        }
+    } else {
+        base
     }
-    else -> this.background(backgroundBrush)
 }
 
 internal fun Modifier.playerSheetGlassBorder(
