@@ -21,10 +21,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import kotlin.random.Random
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
+import moe.rukamori.archivetune.constants.SplashShapePreference
+import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
+import moe.rukamori.archivetune.utils.isInternetAvailable
+import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
@@ -59,6 +65,24 @@ fun SplashOverlay(
         val renderer = remember { SplashRenderer() }
         var frameTick by remember { mutableLongStateOf(0L) }
 
+        val context = LocalContext.current
+        val isOffline = remember { !isInternetAvailable(context) }
+        val splashShapePreference by rememberEnumPreference(
+            SplashShapePreferenceKey,
+            defaultValue = SplashShapePreference.LOGO,
+        )
+        val initialShape = remember(isOffline, splashShapePreference) {
+            if (isOffline) {
+                SplashSlots.SHAPE_CROSS
+            } else {
+                when (splashShapePreference) {
+                    SplashShapePreference.LOGO -> SplashSlots.SHAPE_LOGO
+                    SplashShapePreference.BOLT -> SplashSlots.SHAPE_BOLT
+                    SplashShapePreference.RANDOM -> if (Random.nextBoolean()) SplashSlots.SHAPE_LOGO else SplashSlots.SHAPE_BOLT
+                }
+            }
+        }
+
         LaunchedEffect(vv) {
             if (vv > 0 && isInitialized) engine.rebuildSlots()
         }
@@ -66,7 +90,8 @@ fun SplashOverlay(
         LaunchedEffect(isReady) {
             if (isReady && engine.width > 0f && engine.height > 0f && !isInitialized) {
                 engine.density = density
-                engine.startGather(SplashSlots.SHAPE_LOGO)
+                engine.shape = initialShape
+                engine.startGather(initialShape)
                 isInitialized = true
             }
         }
@@ -121,9 +146,10 @@ fun SplashOverlay(
                         val h = size.height.toFloat()
                         if (w > 0f && h > 0f && (engine.width != w || engine.height != h)) {
                             engine.density = density
-                            engine.init(w, h)
+                            engine.shape = initialShape
+                            engine.init(w, h, density)
                             if (isReady && !isInitialized) {
-                                engine.startGather(SplashSlots.SHAPE_LOGO)
+                                engine.startGather(initialShape)
                                 isInitialized = true
                             }
                         }

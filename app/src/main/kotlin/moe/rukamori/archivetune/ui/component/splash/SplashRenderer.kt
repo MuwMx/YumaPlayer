@@ -195,7 +195,8 @@ class SplashRenderer {
         val maxDistSq = maxDist * maxDist
         val invMaxDist = 1f / maxDist
 
-        val bins = getBins(contentColor)
+        val linkColor = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else contentColor
+        val bins = getBins(linkColor)
 
         for (j in slotLookup.indices) slotLookup[j] = null
         for (p in engine.particles) {
@@ -270,7 +271,7 @@ class SplashRenderer {
             val color = if (p.isMember) {
                 if (p.isRare) memberCore else memberColor
             } else {
-                if (isCross && glow > SplashConfig.Look.Halo.FAIL_GLOW_THRESHOLD) Fu.fail.color else contentColor
+                if (isCross) Fu.fail.color else contentColor
             }
             val memberAlpha = SplashConfig.Look.Halo.MEMBER_ALPHA_BASE * (SplashConfig.Look.Halo.GLOW_MIX_BASE + SplashConfig.Look.Halo.GLOW_MIX_FACTOR * glow)
             val floaterAlpha = SplashConfig.Look.Halo.FLOATER_ALPHA_BASE * p.depth * p.lum * (1f - SplashConfig.Look.Halo.GLOW_MIX_FACTOR * glow)

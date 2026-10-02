@@ -63,6 +63,8 @@ import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
+import moe.rukamori.archivetune.constants.SplashShapePreference
+import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -109,6 +111,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberPreference(
             SplashOverlayEnabledKey,
             defaultValue = true,
+        )
+    val (splashShapePreference, onSplashShapePreferenceChange) =
+        rememberEnumPreference(
+            SplashShapePreferenceKey,
+            defaultValue = SplashShapePreference.LOGO,
         )
     val (archiveTuneCanvas, onArchiveTuneCanvasChange) =
         rememberPreference(
@@ -230,6 +237,7 @@ fun AppearanceSettings(navController: NavController) {
             blurRadius = blurRadius,
             disableAnimations = disableAnimations,
             splashOverlayEnabled = splashOverlayEnabled,
+            splashShapePreference = splashShapePreference,
             archiveTuneCanvas = archiveTuneCanvas,
             homeBackgroundStyle = homeBackgroundStyle,
             homeBackgroundParallaxEnabled = homeBackgroundParallaxEnabled,
@@ -263,6 +271,7 @@ fun AppearanceSettings(navController: NavController) {
                 onBlurRadiusChange = onBlurRadiusChange,
                 onDisableAnimationsChange = onDisableAnimationsChange,
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
+                onSplashShapePreferenceChange = onSplashShapePreferenceChange,
                 onArchiveTuneCanvasChange = onArchiveTuneCanvasChange,
                 onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
                 onHomeBackgroundParallaxEnabledChange = onHomeBackgroundParallaxEnabledChange,

@@ -29,6 +29,13 @@ val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
 val DisableAnimationsKey = booleanPreferencesKey("disableAnimations")
 val SplashOverlayEnabledKey = booleanPreferencesKey("splashOverlayEnabled")
+val SplashShapePreferenceKey = stringPreferencesKey("splashShapePreference")
+
+enum class SplashShapePreference {
+    LOGO,
+    BOLT,
+    RANDOM,
+}
 val ForceHighRefreshRateKey = booleanPreferencesKey("forceHighRefreshRate")
 val EnableHapticFeedbackKey = booleanPreferencesKey("enableHapticFeedback")
 val UseSystemFontKey = booleanPreferencesKey("useSystemFont")

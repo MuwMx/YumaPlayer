@@ -47,6 +47,7 @@ import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
+import moe.rukamori.archivetune.constants.SplashShapePreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
@@ -79,6 +80,8 @@ fun AppearanceThemeSection(
         onDisableAnimationsChange = actions.onDisableAnimationsChange,
         splashOverlayEnabled = state.splashOverlayEnabled,
         onSplashOverlayEnabledChange = actions.onSplashOverlayEnabledChange,
+        splashShapePreference = state.splashShapePreference,
+        onSplashShapePreferenceChange = actions.onSplashShapePreferenceChange,
         archiveTuneCanvas = state.archiveTuneCanvas,
         onArchiveTuneCanvasChange = actions.onArchiveTuneCanvasChange,
         homeBackgroundStyle = state.homeBackgroundStyle,
@@ -122,6 +125,8 @@ fun AppearanceThemeSection(
     onDisableAnimationsChange: (Boolean) -> Unit,
     splashOverlayEnabled: Boolean,
     onSplashOverlayEnabledChange: (Boolean) -> Unit,
+    splashShapePreference: SplashShapePreference,
+    onSplashShapePreferenceChange: (SplashShapePreference) -> Unit,
     archiveTuneCanvas: Boolean,
     onArchiveTuneCanvasChange: (Boolean) -> Unit,
     homeBackgroundStyle: HomeBackgroundStyle,
@@ -232,6 +237,23 @@ fun AppearanceThemeSection(
                 icon = { Icon(painterResource(R.drawable.auto_awesome), null, modifier = Modifier.size(24.dp)) },
                 checked = splashOverlayEnabled,
                 onCheckedChange = onSplashOverlayEnabledChange,
+            )
+        }
+
+        item(visible = splashOverlayEnabled) {
+            EnumListPreference(
+                title = { Text(stringResource(R.string.splash_shape_preference)) },
+                description = stringResource(R.string.splash_shape_preference_desc),
+                icon = { Icon(painterResource(R.drawable.bolt), null, modifier = Modifier.size(24.dp)) },
+                selectedValue = splashShapePreference,
+                onValueSelected = onSplashShapePreferenceChange,
+                valueText = {
+                    when (it) {
+                        SplashShapePreference.LOGO -> stringResource(R.string.splash_shape_logo)
+                        SplashShapePreference.BOLT -> stringResource(R.string.splash_shape_bolt)
+                        SplashShapePreference.RANDOM -> stringResource(R.string.splash_shape_random)
+                    }
+                },
             )
         }
 

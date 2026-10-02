@@ -303,7 +303,13 @@ class SplashEngine {
                     setPhase(SplashPhase.Gather)
                 }
             }
-            SplashPhase.Idle, SplashPhase.Success, SplashPhase.Error -> {
+            SplashPhase.Error -> {
+                formStrength = 1f
+                if (phaseElapsedMs >= SplashConfig.Timings.ERROR_HOLD_MS) {
+                    setPhase(SplashPhase.Burst)
+                }
+            }
+            SplashPhase.Idle, SplashPhase.Success -> {
             }
         }
 

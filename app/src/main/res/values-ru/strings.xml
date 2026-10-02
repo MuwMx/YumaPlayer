@@ -686,6 +686,11 @@
     <string name="disable_animations_desc">Отключить большинство анимаций в приложении. Рекомендовано для слабых устройств</string>
     <string name="splash_overlay_enabled">Анимация заставки</string>
     <string name="splash_overlay_enabled_desc">Показывать анимированный сплэш при запуске приложения</string>
+    <string name="splash_shape_preference">Форма созвездия</string>
+    <string name="splash_shape_preference_desc">Выбор формы созвездия при запуске</string>
+    <string name="splash_shape_logo">Логотип</string>
+    <string name="splash_shape_bolt">Молния</string>
+    <string name="splash_shape_random">Чередовать</string>
     <string name="blur_intensity">Сила размытия</string>
     <string name="blur_intensity_value">%1$d dp</string>
     <string name="playback_confirmation_required">Необходимо подтверждение воспроизведения</string>

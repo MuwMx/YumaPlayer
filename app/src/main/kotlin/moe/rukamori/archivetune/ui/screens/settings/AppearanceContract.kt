@@ -34,6 +34,8 @@ import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
+import moe.rukamori.archivetune.constants.SplashShapePreference
+import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 
 internal object AppearanceContract {
@@ -54,6 +56,7 @@ internal object AppearanceContract {
     val BlurRadius = BlurRadiusKey
     val DisableAnimations = DisableAnimationsKey
     val SplashOverlayEnabled = SplashOverlayEnabledKey
+    val SplashShapePref = SplashShapePreferenceKey
     val ArchiveTuneCanvas = ArchiveTuneCanvasKey
     val HomeBackgroundStylePref = HomeBackgroundStyleKey
     val HomeBackgroundParallaxEnabled = HomeBackgroundParallaxEnabledKey
@@ -101,6 +104,7 @@ data class AppearanceSettingsUiState(
     val blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     val disableAnimations: Boolean = false,
     val splashOverlayEnabled: Boolean = true,
+    val splashShapePreference: SplashShapePreference = SplashShapePreference.LOGO,
     val archiveTuneCanvas: Boolean = false,
     val homeBackgroundStyle: HomeBackgroundStyle = HomeBackgroundStyle.TONAL,
     val homeBackgroundParallaxEnabled: Boolean = true,
@@ -135,6 +139,7 @@ data class AppearanceSettingsUiActions(
     val onBlurRadiusChange: (Float) -> Unit = {},
     val onDisableAnimationsChange: (Boolean) -> Unit = {},
     val onSplashOverlayEnabledChange: (Boolean) -> Unit = {},
+    val onSplashShapePreferenceChange: (SplashShapePreference) -> Unit = {},
     val onArchiveTuneCanvasChange: (Boolean) -> Unit = {},
     val onHomeBackgroundStyleChange: (HomeBackgroundStyle) -> Unit = {},
     val onHomeBackgroundParallaxEnabledChange: (Boolean) -> Unit = {},
