@@ -199,10 +199,11 @@ internal fun CanvasArtworkPlayer(
         }
 
     LaunchedEffect(isPlaying) {
+        Timber.tag(CanvasPlaybackLogTag).d("Canvas isPlaying state changed: isPlaying=$isPlaying, hasPlaybackFailed=$hasPlaybackFailed")
         if (!hasPlaybackFailed) {
             exoPlayer.setCanvasPlayback(
                 isPlaying = isPlaying,
-                isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                isStarted = true,
             )
         }
     }
@@ -416,8 +417,8 @@ private fun ExoPlayer.setCanvasPlayback(
 ) {
     if (isPlaying) {
         if (playbackState == Player.STATE_ENDED) seekTo(0)
-        if (isStarted && playbackState == Player.STATE_IDLE && mediaItemCount > 0) prepare()
-        if (isStarted) play()
+        if (playbackState == Player.STATE_IDLE && mediaItemCount > 0) prepare()
+        play()
     } else {
         pause()
     }

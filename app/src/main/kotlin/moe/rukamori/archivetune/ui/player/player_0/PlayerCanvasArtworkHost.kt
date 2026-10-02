@@ -25,7 +25,7 @@ internal fun PlayerCanvasArtworkHost(
     queueFractionProvider: () -> Float,
     modifier: Modifier = Modifier,
 ) {
-    val canPlayCanvas by remember {
+    val canPlayCanvas by remember(state.isPlaying, state.isImmersiveEnabled, immersiveTransitionAlpha) {
         derivedStateOf {
             state.isPlaying &&
                 lyricsFractionProvider() < 0.05f &&

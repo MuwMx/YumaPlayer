@@ -50,22 +50,27 @@ internal fun rememberFullPlayerMotionState(
     val isExitingLyrics = prevLyricsVisible && !state.isLyricsVisible
     LaunchedEffect(state.isLyricsVisible) { prevLyricsVisible = state.isLyricsVisible }
 
-    val isOverlayVisibleState = remember {
+    val isOverlayVisibleState = remember(state.isLyricsVisible) {
         derivedStateOf {
             state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
         }
     }
 
-    val isSheetExpandedState = remember { derivedStateOf { slideOffset() > 0.95f } }
+    val isSheetExpandedState = remember(slideOffset) { derivedStateOf { slideOffset() > 0.95f } }
 
-    val coverGestureEnabledState = remember {
+    val coverGestureEnabledState = remember(state.isImmersiveEnabled, state.isLyricsVisible) {
         derivedStateOf {
             !state.isImmersiveEnabled && !state.isLyricsVisible &&
                 lyricsFractionProvider() < 0.05f && queueFractionProvider() < 0.05f
         }
     }
 
-    val canPlayCanvasState = remember {
+    val canPlayCanvasState = remember(
+        state.isPlaying,
+        state.isImmersiveEnabled,
+        state.isLyricsVisible,
+        state.isQueueVisible,
+    ) {
         derivedStateOf {
             state.isPlaying &&
                 !state.isImmersiveEnabled &&
