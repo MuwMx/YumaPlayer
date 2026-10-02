@@ -579,7 +579,7 @@ fun SettingsSegmentedItem(
     }
 }
 
-private fun segmentedSettingsItemShape(
+internal fun segmentedSettingsItemShape(
     index: Int,
     count: Int,
 ): Shape {
