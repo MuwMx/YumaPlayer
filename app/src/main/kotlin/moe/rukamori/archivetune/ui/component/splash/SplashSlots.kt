@@ -85,12 +85,12 @@ object SplashSlots {
     fun tips(shape: String, width: Float, height: Float, density: Float = 1f): List<Offset> {
         val (c, size) = boxFrame(shape, width, height, density)
         return if (shape == SHAPE_CROSS) {
-            val offset = size * 0.45f
+            val arm = size * 0.25f
             listOf(
-                Offset(c.x, c.y - offset),
-                Offset(c.x + offset, c.y),
-                Offset(c.x, c.y + offset),
-                Offset(c.x - offset, c.y)
+                Offset(c.x + arm, c.y - arm),
+                Offset(c.x + arm, c.y + arm),
+                Offset(c.x - arm, c.y + arm),
+                Offset(c.x - arm, c.y - arm)
             )
         } else {
             val w = size * RD
@@ -156,6 +156,15 @@ object SplashSlots {
                 close()
             }
         }
-        return ShapeSlots(pts, listOf(0 until totalSlots), tips(shape, width, height, density), outline)
+        val shapeTips = if (shape == SHAPE_CROSS) {
+            val q1 = pts.filter { it.x >= c.x && it.y <= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
+            val q2 = pts.filter { it.x >= c.x && it.y >= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
+            val q3 = pts.filter { it.x <= c.x && it.y >= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
+            val q4 = pts.filter { it.x <= c.x && it.y <= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
+            listOfNotNull(q1, q2, q3, q4).ifEmpty { tips(shape, width, height, density) }
+        } else {
+            tips(shape, width, height, density)
+        }
+        return ShapeSlots(pts, listOf(0 until totalSlots), shapeTips, outline)
     }
 }
