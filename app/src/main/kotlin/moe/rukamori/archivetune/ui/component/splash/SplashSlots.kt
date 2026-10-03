@@ -156,15 +156,6 @@ object SplashSlots {
                 close()
             }
         }
-        val shapeTips = if (shape == SHAPE_CROSS) {
-            val q1 = pts.filter { it.x >= c.x && it.y <= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
-            val q2 = pts.filter { it.x >= c.x && it.y >= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
-            val q3 = pts.filter { it.x <= c.x && it.y >= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
-            val q4 = pts.filter { it.x <= c.x && it.y <= c.y }.maxByOrNull { (it.x - c.x) * (it.x - c.x) + (it.y - c.y) * (it.y - c.y) }
-            listOfNotNull(q1, q2, q3, q4).ifEmpty { tips(shape, width, height, density) }
-        } else {
-            tips(shape, width, height, density)
-        }
-        return ShapeSlots(pts, listOf(0 until totalSlots), shapeTips, outline)
+        return ShapeSlots(pts, listOf(0 until totalSlots), tips(shape, width, height, density), outline)
     }
 }
