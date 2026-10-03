@@ -106,7 +106,10 @@ internal object SpotifyTrackParser {
     }
 
     fun parseGqlTrackDurationMs(trackData: JsonObject): Int {
+        trackData.obj("trackDuration")?.int("totalMilliseconds")?.let { if (it > 0) return it }
+
         trackData.obj("duration")?.int("totalMilliseconds")?.let { if (it > 0) return it }
+
         trackData.int("durationMs")?.let { if (it > 0) return it }
         trackData.int("duration_ms")?.let { if (it > 0) return it }
         trackData.int("duration")?.let { sec -> if (sec > 0) return sec * 1000 }

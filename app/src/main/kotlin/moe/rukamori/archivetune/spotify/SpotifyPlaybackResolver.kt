@@ -141,16 +141,6 @@ object SpotifyPlaybackResolver {
                 return@withContext null
             }
 
-            candidates.forEach { c ->
-                val candDurSec = c.duration ?: 0
-                val deltaSec = kotlin.math.abs(track.durationMs / 1000 - candDurSec)
-                val candArtists = c.artists.joinToString { it.name }
-                Timber.tag("SpotifyMatching").d(
-                    "CANDIDATE: id=${c.id}, title='${c.title}', artists='${candArtists}', " +
-                    "dur=${candDurSec}s (delta=${deltaSec}s)",
-                )
-            }
-
             val trackQuery =
                 TrackQuery(
                     artist = queryArtist,
