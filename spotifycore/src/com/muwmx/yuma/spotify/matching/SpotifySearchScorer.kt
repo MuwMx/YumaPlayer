@@ -47,13 +47,15 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val bestSim = effectiveTitleSim(track.title, titleOf(best))
 
         val ambiguous = passers.any { other ->
+            val otherDur = abs(track.durationMs - durationMsOf(other)) / 1000
+            val otherSim = effectiveTitleSim(track.title, titleOf(other))
             other !== best &&
-                    abs(effectiveTitleSim(track.title, titleOf(other)) - bestSim) <= AMBIGUOUS_TITLE_SIM &&
-                    abs((abs(track.durationMs - durationMsOf(other)) / 1000) - bestDur) <= AMBIGUOUS_DUR_SEC &&
-                    !sameRecordingGeneric(
-                        titleOf(best), artistsOf(best), durationMsOf(best),
-                        titleOf(other), artistsOf(other), durationMsOf(other),
-                    )
+                abs(otherSim - bestSim) <= AMBIGUOUS_TITLE_SIM &&
+                abs(otherDur - bestDur) <= AMBIGUOUS_DUR_SEC &&
+                !sameRecordingGeneric(
+                    titleOf(best), artistsOf(best), durationMsOf(best),
+                    titleOf(other), artistsOf(other), durationMsOf(other),
+                )
         }
         if (ambiguous) return CandidateDecision(null, bestSim, "ambiguous")
 
@@ -172,9 +174,18 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
     ): Boolean {
         if (effectiveTitleSim(titleA, titleB) < TITLE_SIM_THRESHOLD) return false
         if (abs(durA - durB) / 1000 > SAME_RECORDING_DUR_SEC) return false
-        val aArtists = artistsA.map { matcher.canonicalArtist(it) }.toSet()
-        val bArtists = artistsB.map { matcher.canonicalArtist(it) }.toSet()
-        return aArtists.isNotEmpty() && (aArtists == bArtists || aArtists.any { it in bArtists })
+        val aArtists = artistsA.map { cleanArtist(it) }.filter { it.isNotBlank() }.toSet()
+        val bArtists = artistsB.map { cleanArtist(it) }.filter { it.isNotBlank() }.toSet()
+        if (aArtists.isEmpty() || bArtists.isEmpty()) return true
+        if (aArtists == bArtists || aArtists.any { it in bArtists } || bArtists.any { it in aArtists }) return true
+        return aArtists.any { a -> bArtists.any { b -> isCrossScript(a, b) } }
+    }
+
+    private fun cleanArtist(artist: String): String {
+        val withoutSuffix = artist
+            .replace(Regex("""\s*-\s*topic\b""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s*official\b""", RegexOption.IGNORE_CASE), "")
+        return matcher.canonicalArtist(withoutSuffix)
     }
 
     private fun versionConflict(trackTitle: String, candName: String): Boolean {

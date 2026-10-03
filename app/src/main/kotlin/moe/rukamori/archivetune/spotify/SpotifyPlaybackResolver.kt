@@ -121,26 +121,6 @@ object SpotifyPlaybackResolver {
             val query = SpotifyQueryBuilder.buildSearchQuery(track)
             Timber.tag("SpotifyMatching").d("QUERY: '$query'")
 
-            val searchResult =
-                YouTube
-                    .search(
-                        query = query,
-                        filter = YouTube.SearchFilter.FILTER_SONG,
-                    ).getOrNull()
-            if (searchResult == null) {
-                Timber.tag("SpotifyMatching").w("MISS '${track.name}': YouTube search failed")
-                return@withContext null
-            }
-
-            val candidates =
-                searchResult.items
-                    .filterIsInstance<SongItem>()
-                    .distinctBy { it.id }
-            if (candidates.isEmpty()) {
-                Timber.tag("SpotifyMatching").w("MISS '${track.name}': No SongItem candidates on YouTube")
-                return@withContext null
-            }
-
             val trackQuery =
                 TrackQuery(
                     artist = queryArtist,
@@ -151,18 +131,67 @@ object SpotifyPlaybackResolver {
                     explicit = track.explicit,
                 )
 
-            val decision =
-                scorer.pickGeneric(
-                    track = trackQuery,
-                    candidates = candidates,
-                    titleOf = { it.title },
-                    artistsOf = { it.artists.map { a -> a.name } },
-                    durationMsOf = { (it.duration ?: 0) * 1000L },
-                )
+            val songSearchResult =
+                YouTube
+                    .search(
+                        query = query,
+                        filter = YouTube.SearchFilter.FILTER_SONG,
+                    ).getOrNull()
+
+            var candidates =
+                songSearchResult?.items
+                    ?.filterIsInstance<SongItem>()
+                    ?.distinctBy { it.id }
+                    .orEmpty()
+
+            var decision =
+                if (candidates.isNotEmpty()) {
+                    scorer.pickGeneric(
+                        track = trackQuery,
+                        candidates = candidates,
+                        titleOf = { it.title },
+                        artistsOf = { it.artists.map { a -> a.name } },
+                        durationMsOf = { (it.duration ?: 0) * 1000L },
+                    )
+                } else {
+                    null
+                }
+
+            if (decision?.accepted == null) {
+                Timber.tag("SpotifyMatching").d("Song search yielded no match for '${track.name}', falling back to unfiltered search")
+                val summaryPage = YouTube.searchSummary(query).getOrNull()
+                val fallbackCandidates =
+                    summaryPage?.summaries
+                        ?.flatMap { it.items }
+                        ?.filterIsInstance<SongItem>()
+                        ?.distinctBy { it.id }
+                        .orEmpty()
+
+                if (fallbackCandidates.isNotEmpty()) {
+                    candidates = fallbackCandidates
+                    decision =
+                        scorer.pickGeneric(
+                            track = trackQuery,
+                            candidates = fallbackCandidates,
+                            titleOf = { it.title },
+                            artistsOf = { it.artists.map { a -> a.name } },
+                            durationMsOf = { (it.duration ?: 0) * 1000L },
+                        )
+                }
+            }
 
             val best =
-                decision.accepted ?: run {
-                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': reason='${decision.reason}'")
+                decision?.accepted ?: run {
+                    val reason = decision?.reason ?: "no candidates returned"
+                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': reason='$reason'")
+                    candidates.take(3).forEach { c ->
+                        val candDur = c.duration ?: 0
+                        val delta = kotlin.math.abs(track.durationMs / 1000 - candDur)
+                        Timber.tag("SpotifyMatching").d(
+                            "  CANDIDATE: id=${c.id}, title='${c.title}', " +
+                                "artists='${c.artists.joinToString { it.name }}', dur=${candDur}s (delta=${delta}s)",
+                        )
+                    }
                     return@withContext null
                 }
             Timber.tag("SpotifyMatching").i(
