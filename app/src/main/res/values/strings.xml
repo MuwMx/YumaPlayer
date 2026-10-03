@@ -15,6 +15,7 @@
     <string name="albums">Albums</string>
     <string name="playlists">Playlists</string>
     <plurals name="n_selected">
+        
         <item quantity="other">%d selected</item>
     </plurals>
     <string name="history">History</string>
@@ -474,6 +475,8 @@
     <string name="splash_shape_bolt">Lightning bolt</string>
     <string name="splash_shape_random">Alternate</string>
     <string name="home_background">Home background</string>
+    <string name="random_home_background_on_startup">Random background on startup</string>
+    <string name="random_home_background_on_startup_desc">Choose a different home background every time the app starts</string>
     <string name="home_background_tonal">Tonal glow</string>
     <string name="home_background_circles">Circles</string>
     <string name="home_background_rings">Rings</string>
