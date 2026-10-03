@@ -13,6 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import moe.rukamori.archivetune.ui.screens.album.SpotifyAlbumScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistAlbumsScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistItemsScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistScreen
@@ -125,6 +126,17 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
             ),
     ) {
         SpotifyPlaylistScreen(navController, scrollBehavior)
+    }
+    composable(
+        route = "spotify_album/{albumId}",
+        arguments =
+            listOf(
+                navArgument("albumId") {
+                    type = NavType.StringType
+                },
+            ),
+    ) {
+        SpotifyAlbumScreen(navController, scrollBehavior)
     }
     composable("spotify_liked_songs") {
         SpotifyLikedSongsScreen(navController, scrollBehavior)

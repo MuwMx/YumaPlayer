@@ -55,7 +55,6 @@ fun SpotifyHomeScreen(
     LaunchedEffect(viewModel) {
         viewModel.navigationEvents.collect { event ->
             when (event) {
-                is SpotifyHomeNavigationEvent.OpenAlbum -> navController.navigate("album/${event.browseId}")
                 is SpotifyHomeNavigationEvent.OpenArtist -> navController.navigate("artist/${event.id}")
             }
         }
@@ -120,16 +119,7 @@ fun SpotifyHomeScreen(
                                 recentItems = state.recentItems,
                                 frequentArtists = state.frequentArtists,
                                 onPlaylistClick = { playlist -> navController.navigate("spotify_playlist/${playlist.id}") },
-                                onAlbumClick = { album -> 
-                                    viewModel.onAction(SpotifyHomeAction.AlbumClick(
-                                        moe.rukamori.archivetune.spotify.models.SpotifyAlbum(
-                                            id = album.id,
-                                            name = album.title,
-                                            artists = album.artists,
-                                            images = listOfNotNull(album.thumbnailUrl?.let { moe.rukamori.archivetune.spotify.models.SpotifyImage(it, null, null) })
-                                        )
-                                    )) 
-                                },
+                                onAlbumClick = { album -> navController.navigate("spotify_album/${album.id}") },
                                 onArtistClick = { artist -> viewModel.onAction(SpotifyHomeAction.ArtistClick(artist)) },
                                 modifier = Modifier.animateItem()
                             )
@@ -179,7 +169,7 @@ fun SpotifyHomeScreen(
                                     SectionType.ALBUMS -> {
                                         SpotifyAlbumSectionRow(
                                             albums = section.albums,
-                                            onAlbumClick = { album -> viewModel.onAction(SpotifyHomeAction.AlbumClick(album)) },
+                                            onAlbumClick = { album -> navController.navigate("spotify_album/${album.id}") },
                                             modifier = Modifier.animateItem()
                                         )
                                     }

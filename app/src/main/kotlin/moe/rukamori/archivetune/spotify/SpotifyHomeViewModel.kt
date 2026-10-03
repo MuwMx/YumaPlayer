@@ -17,41 +17,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.models.SpotifyRecentItem
-import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem
-import moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedSection
-import moe.rukamori.archivetune.spotify.models.SpotifyImage
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistOwner
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import javax.inject.Inject
-
-sealed interface SpotifyHomeScreenState {
-    data object Loading : SpotifyHomeScreenState
-    data class Success(
-        val sections: List<SpotifyHomeSection>,
-        val recentItems: List<SpotifyRecentItem> = emptyList(),
-        val frequentArtists: List<SpotifyArtist> = emptyList()
-    ) : SpotifyHomeScreenState
-    data object Empty : SpotifyHomeScreenState
-    data class Error(val messageResId: Int, val notAuthenticated: Boolean = false) : SpotifyHomeScreenState
-}
-
-sealed interface SpotifyHomeNavigationEvent {
-    data class OpenAlbum(val browseId: String) : SpotifyHomeNavigationEvent
-    data class OpenArtist(val id: String) : SpotifyHomeNavigationEvent
-}
-
-sealed interface SpotifyHomeAction {
-    data object Refresh : SpotifyHomeAction
-    data class AlbumClick(val album: SpotifyAlbum) : SpotifyHomeAction
-    data class ArtistClick(val artist: SpotifyArtist) : SpotifyHomeAction
-}
 
 @HiltViewModel
 class SpotifyHomeViewModel @Inject constructor(
@@ -77,20 +48,7 @@ class SpotifyHomeViewModel @Inject constructor(
     fun onAction(action: SpotifyHomeAction) {
         when (action) {
             SpotifyHomeAction.Refresh -> load(force = true)
-            is SpotifyHomeAction.AlbumClick -> resolveAlbum(action.album)
             is SpotifyHomeAction.ArtistClick -> resolveArtist(action.artist)
-        }
-    }
-
-    private fun resolveAlbum(album: SpotifyAlbum) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val browseId = YouTube.search(album.name, YouTube.SearchFilter.FILTER_ALBUM)
-                .getOrNull()
-                ?.items
-                ?.firstOrNull() as? AlbumItem
-            if (browseId != null) {
-                _navigationEvents.emit(SpotifyHomeNavigationEvent.OpenAlbum(browseId.browseId))
-            }
         }
     }
 
@@ -277,67 +235,6 @@ class SpotifyHomeViewModel @Inject constructor(
                     _isRefreshing.value = false
                 }
             }
-        }
-    }
-
-    private fun convertHomeSection(feedSection: SpotifyHomeFeedSection): SpotifyHomeSection? {
-        val title = feedSection.title ?: return null
-
-        val playlists = feedSection.items.filterIsInstance<SpotifyHomeFeedItem.Playlist>()
-        val albums = feedSection.items.filterIsInstance<SpotifyHomeFeedItem.Album>()
-        val artists = feedSection.items.filterIsInstance<SpotifyHomeFeedItem.Artist>()
-
-        val counts = arrayOf(
-            SectionType.PLAYLISTS to playlists.size,
-            SectionType.ALBUMS to albums.size,
-            SectionType.ARTISTS to artists.size,
-        )
-        val (dominant, size) = counts.maxByOrNull { it.second } ?: return null
-        if (size == 0) return null
-
-        return when (dominant) {
-            SectionType.PLAYLISTS -> SpotifyHomeSection(
-                title = title,
-                type = SectionType.PLAYLISTS,
-                playlists = playlists.map {
-                    SpotifyPlaylist(
-                        id = it.id,
-                        name = it.name,
-                        description = it.description,
-                        images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
-                        owner = it.ownerName?.let { owner -> SpotifyPlaylistOwner(id = "", displayName = owner) },
-                        tracks = SpotifyPlaylistTracksRef(total = it.totalCount),
-                        uri = it.uri
-                    )
-                }
-            )
-            SectionType.ALBUMS -> SpotifyHomeSection(
-                title = title,
-                type = SectionType.ALBUMS,
-                albums = albums.map {
-                    SpotifyAlbum(
-                        id = it.id,
-                        name = it.name,
-                        albumType = it.albumType,
-                        artists = it.artists,
-                        images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
-                        uri = it.uri
-                    )
-                }
-            )
-            SectionType.ARTISTS -> SpotifyHomeSection(
-                title = title,
-                type = SectionType.ARTISTS,
-                artists = artists.map {
-                    SpotifyArtist(
-                        id = it.id,
-                        name = it.name,
-                        images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
-                        uri = it.uri
-                    )
-                }
-            )
-            else -> null
         }
     }
 }
