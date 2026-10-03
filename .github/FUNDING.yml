@@ -1,5 +1,9 @@
-# These are supported funding model platforms
+# Supported funding model platforms
 
-github: ["rukamori"]
-ko_fi: rukamori
-custom: ["https://koiiverse.cloud/donate"]
+github: [MuwMix]
+ko_fi: MuwMix
+patreon: MuwMix
+#open_collective: MuwMix 
+custom:
+  - "https://own.page/muwmix"
+  - "https://solscan.io/account/DT3ckdbNuiQMR1mrCpBXCMrhLB19GckVv3YfxsLLiF8z"
