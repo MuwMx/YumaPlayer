@@ -18,12 +18,19 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.spotify.mapping.SpotifyEntityMapper
+import moe.rukamori.archivetune.spotify.mapping.SpotifyQueryBuilder
+import moe.rukamori.archivetune.spotify.matching.SpotifySearchScorer
+import moe.rukamori.archivetune.spotify.matching.TrackMatcher
+import moe.rukamori.archivetune.spotify.matching.TrackQuery
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import timber.log.Timber
 
 object SpotifyPlaybackResolver {
-    private const val MIN_MATCH_THRESHOLD = 0.35
     private const val CACHE_MAX_SIZE = 512
+
+    private val matcher = TrackMatcher()
+    private val scorer = SpotifySearchScorer(matcher)
 
     private val mutex = Mutex()
     private val cache =
@@ -53,7 +60,7 @@ object SpotifyPlaybackResolver {
 
             mutex.withLock {
                 (cache[rawSpotifyId] ?: cache[track.id])?.let { cached ->
-                    Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${cached.id}")
+                    Timber.tag("SpotifyMatching").d("CACHE HIT: '${track.name}' -> YT ${cached.id}")
                     return@withContext cached
                 }
             }
@@ -70,7 +77,7 @@ object SpotifyPlaybackResolver {
                     val metadata =
                         if (dbSong != null) {
                             dbSong.toMediaMetadata().copy(
-                                thumbnailUrl = SpotifyMapper.getTrackThumbnail(track) ?: dbSong.song.thumbnailUrl,
+                                thumbnailUrl = SpotifyEntityMapper.getTrackThumbnail(track) ?: dbSong.song.thumbnailUrl,
                                 duration = if (track.durationMs > 0) track.durationMs / 1000 else dbSong.song.duration,
                                 album =
                                     track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
@@ -85,7 +92,7 @@ object SpotifyPlaybackResolver {
                                 title = track.name,
                                 artists = track.artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
                                 duration = if (track.durationMs > 0) track.durationMs / 1000 else -1,
-                                thumbnailUrl = SpotifyMapper.getTrackThumbnail(track),
+                                thumbnailUrl = SpotifyEntityMapper.getTrackThumbnail(track),
                                 album = track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) },
                                 explicit = track.explicit,
                                 spotifyTrackId = track.id.takeIf(String::isNotBlank),
@@ -99,12 +106,21 @@ object SpotifyPlaybackResolver {
                             cache[rawSpotifyId] = metadata
                         }
                     }
-                    Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${metadata.id}")
+                    Timber.tag("SpotifyMatching").d("DB MATCH HIT: '${track.name}' -> YT ${metadata.id}")
                     return@withContext metadata
                 }
             }
 
-            val query = SpotifyMapper.buildSearchQuery(track)
+            val artistsList = track.artists.map { it.name }.filter { it.isNotBlank() }
+            val queryArtist = artistsList.joinToString(", ")
+            Timber.tag("SpotifyMatching").d(
+                "INPUT: title='${track.name}', artists=[$queryArtist], dur=${track.durationMs}ms, " +
+                "isrc=${track.externalIds?.isrc}, explicit=${track.explicit}",
+            )
+
+            val query = SpotifyQueryBuilder.buildSearchQuery(track)
+            Timber.tag("SpotifyMatching").d("QUERY: '$query'")
+
             val searchResult =
                 YouTube
                     .search(
@@ -112,7 +128,7 @@ object SpotifyPlaybackResolver {
                         filter = YouTube.SearchFilter.FILTER_SONG,
                     ).getOrNull()
             if (searchResult == null) {
-                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
+                Timber.tag("SpotifyMatching").w("MISS '${track.name}': YouTube search failed")
                 return@withContext null
             }
 
@@ -121,56 +137,65 @@ object SpotifyPlaybackResolver {
                     .filterIsInstance<SongItem>()
                     .distinctBy { it.id }
             if (candidates.isEmpty()) {
-                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
+                Timber.tag("SpotifyMatching").w("MISS '${track.name}': No SongItem candidates on YouTube")
                 return@withContext null
             }
 
-            val precomputed =
-                mutex.withLock {
-                    SpotifyMapper.precompute(
-                        title = track.name,
-                        artist = track.artists.joinToString(" ") { it.name },
-                        durationMs = track.durationMs,
-                    )
+            candidates.forEach { c ->
+                val candDurSec = c.duration ?: 0
+                val deltaSec = kotlin.math.abs(track.durationMs / 1000 - candDurSec)
+                val candArtists = c.artists.joinToString { it.name }
+                Timber.tag("SpotifyMatching").d(
+                    "CANDIDATE: id=${c.id}, title='${c.title}', artists='${candArtists}', " +
+                    "dur=${candDurSec}s (delta=${deltaSec}s)",
+                )
+            }
+
+            val trackQuery =
+                TrackQuery(
+                    artist = queryArtist,
+                    title = track.name,
+                    album = track.album?.name,
+                    isrc = track.externalIds?.isrc,
+                    durationMs = track.durationMs.toLong(),
+                    explicit = track.explicit,
+                )
+
+            val decision =
+                scorer.pickGeneric(
+                    track = trackQuery,
+                    candidates = candidates,
+                    titleOf = { it.title },
+                    artistsOf = { it.artists.map { a -> a.name } },
+                    durationMsOf = { (it.duration ?: 0) * 1000L },
+                )
+
+            val best =
+                decision.accepted ?: run {
+                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': reason='${decision.reason}'")
+                    return@withContext null
                 }
-
-            val scoredCandidates =
-                mutex.withLock {
-                    candidates
-                        .map { candidate ->
-                            candidate to
-                                SpotifyMapper.matchScorePrecomputed(
-                                    precomputed = precomputed,
-                                    candidateTitle = candidate.title,
-                                    candidateArtist = candidate.artists.joinToString(" ") { it.name },
-                                    candidateDurationSec = candidate.duration,
-                                )
-                        }
-                }
-            val bestCandidatePair = scoredCandidates.maxByOrNull { it.second }
-            if (bestCandidatePair == null) {
-                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
-                return@withContext null
-            }
-
-            val (best, score) = bestCandidatePair
-            if (score < MIN_MATCH_THRESHOLD) {
-                Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> MISS")
-                return@withContext null
-            }
+            Timber.tag("SpotifyMatching").i(
+                "ACCEPTED '${track.name}' -> YT id=${best.id}, title='${best.title}', score=${decision.score}",
+            )
 
             val bestMetadata = best.toMediaMetadata()
             val metadata =
                 bestMetadata.copy(
-                    thumbnailUrl = SpotifyMapper.getTrackThumbnail(track) ?: best.thumbnail,
+                    thumbnailUrl = SpotifyEntityMapper.getTrackThumbnail(track) ?: best.thumbnail,
                     duration = if (track.durationMs > 0) track.durationMs / 1000 else best.duration ?: -1,
                     explicit = track.explicit || best.explicit,
                     album =
                         track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
                             ?: bestMetadata.album,
                     spotifyTrackId = track.id.takeIf(String::isNotBlank),
-                    isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() },
+                    isrc = track.externalIds?.isrc?.takeIf(String::isNotBlank) ?: bestMetadata.isrc,
                 )
+
+            Timber.tag("SpotifyMatching").d(
+                "PLAYER OUTPUT: id=${metadata.id}, title='${metadata.title}', artists='${metadata.artists.joinToString { it.name }}', " +
+                "dur=${metadata.duration}s, isrc=${metadata.isrc}, explicit=${metadata.explicit}",
+            )
 
             mutex.withLock {
                 cache[track.id] = metadata
@@ -188,13 +213,12 @@ object SpotifyPlaybackResolver {
                         youtubeId = metadata.id,
                         title = track.name,
                         artist = track.artists.joinToString(" ") { it.name },
-                        matchScore = score,
+                        matchScore = decision.score,
                         isrc = metadata.isrc,
                     ),
                 )
             }
 
-            Timber.tag("SpotifyPipeline").d("Resolved '${track.name}' -> ${metadata.id}")
             metadata
         }
 }

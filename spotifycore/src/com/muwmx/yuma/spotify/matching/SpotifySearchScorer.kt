@@ -27,69 +27,98 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
 
     data class Decision(val accepted: SpotifyTrack?, val reason: String)
 
-    fun pick(track: TrackQuery, candidates: List<SpotifyTrack>): Decision {
-        val passers = candidates.filter { passes(track, it) }
-        val best = passers.minWithOrNull(
-            compareBy<SpotifyTrack> { durDeltaSec(track, it) }
-                .thenByDescending { titleSim(track, it) },
-        ) ?: return Decision(null, "no candidate passed gates")
+    data class CandidateDecision<T>(
+        val accepted: T?,
+        val score: Double,
+        val reason: String,
+    )
 
-        // Abstain when another passer is genuinely indistinguishable from the
-        // best — within AMBIGUOUS_TITLE_SIM and AMBIGUOUS_DUR_SEC — UNLESS it
-        // is the SAME RECORDING (identical canonical title + artist line-up,
-        // duration within SAME_RECORDING_DUR_SEC). Popular tracks appear on
-        // the album plus N compilations as literal duplicates of one master
-        // (device-confirmed 2026-06-10: "Stairway to Heaven - Remaster" on
-        // two IV editions, "That's All I Ask" on three albums 80ms apart);
-        // accepting any duplicate is risk-free, so duplicates never abstain.
-        val bestDur = durDeltaSec(track, best)
-        val bestSim = titleSim(track, best)
+    fun <T> pickGeneric(
+        track: TrackQuery,
+        candidates: List<T>,
+        titleOf: (T) -> String,
+        artistsOf: (T) -> List<String>,
+        durationMsOf: (T) -> Long,
+    ): CandidateDecision<T> {
+        val passers = candidates.filter { cand ->
+            passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
+        }
+        val best = passers.minWithOrNull(
+            compareBy<T> { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
+                .thenByDescending {
+                    matcher.jaroWinklerSimilarity(
+                        matcher.canonicalTitle(track.title),
+                        matcher.canonicalTitle(titleOf(it)),
+                    )
+                },
+        ) ?: return CandidateDecision(null, 0.0, "no candidate passed gates")
+
+        val bestDur = abs(track.durationMs!! - durationMsOf(best)) / 1000
+        val bestSim = matcher.jaroWinklerSimilarity(
+            matcher.canonicalTitle(track.title),
+            matcher.canonicalTitle(titleOf(best)),
+        )
+
         val ambiguous = passers.any { other ->
             other !== best &&
-                abs(titleSim(track, other) - bestSim) <= AMBIGUOUS_TITLE_SIM &&
-                abs(durDeltaSec(track, other) - bestDur) <= AMBIGUOUS_DUR_SEC &&
-                !sameRecording(best, other)
+                abs(
+                    matcher.jaroWinklerSimilarity(
+                        matcher.canonicalTitle(track.title),
+                        matcher.canonicalTitle(titleOf(other)),
+                    ) - bestSim,
+                ) <= AMBIGUOUS_TITLE_SIM &&
+                abs((abs(track.durationMs - durationMsOf(other)) / 1000) - bestDur) <= AMBIGUOUS_DUR_SEC &&
+                !sameRecordingGeneric(
+                    titleOf(best), artistsOf(best), durationMsOf(best),
+                    titleOf(other), artistsOf(other), durationMsOf(other),
+                )
         }
-        if (ambiguous) return Decision(null, "ambiguous")
+        if (ambiguous) return CandidateDecision(null, bestSim, "ambiguous")
 
-        return Decision(best, "accepted")
+        return CandidateDecision(best, bestSim, "accepted")
     }
 
-    /**
-     * Two candidates are the same recording when their canonical titles match
-     * exactly, their durations are within [SAME_RECORDING_DUR_SEC], and their
-     * artist line-ups are identical as canonical SETS (set equality — NOT the
-     * per-part gate used against our track, so "Artist" vs "Artist Tribute"
-     * or an added feat. credit stays distinct and still abstains).
-     */
-    private fun sameRecording(a: SpotifyTrack, b: SpotifyTrack): Boolean {
-        if (matcher.canonicalTitle(a.name) != matcher.canonicalTitle(b.name)) return false
-        if (abs(a.durationMs - b.durationMs) / 1000 > SAME_RECORDING_DUR_SEC) return false
-        val aArtists = a.artists.map { matcher.canonicalArtist(it.name) }.toSet()
-        val bArtists = b.artists.map { matcher.canonicalArtist(it.name) }.toSet()
-        return aArtists.isNotEmpty() && aArtists == bArtists
+    fun pick(track: TrackQuery, candidates: List<SpotifyTrack>): Decision {
+        val res = pickGeneric(
+            track = track,
+            candidates = candidates,
+            titleOf = { it.name },
+            artistsOf = { it.artists.map { a -> a.name } },
+            durationMsOf = { it.durationMs.toLong() },
+        )
+        return Decision(res.accepted, res.reason)
     }
 
-    private fun passes(track: TrackQuery, cand: SpotifyTrack): Boolean {
-        val durKnown = track.durationMs != null && track.durationMs > 0 && cand.durationMs > 0
+    fun passesGeneric(
+        track: TrackQuery,
+        candTitle: String,
+        candArtists: List<String>,
+        candDurationMs: Long,
+    ): Boolean {
+        val durKnown = track.durationMs != null && track.durationMs > 0 && candDurationMs > 0
         if (!durKnown) return false
-        if (durDeltaSec(track, cand) > DUR_TOLERANCE_SEC) return false
-        if (titleSim(track, cand) < TITLE_SIM_THRESHOLD) return false
-        if (!artistOk(track, cand)) return false
-        if (versionConflict(track.title, cand.name)) return false
+        if (abs(track.durationMs - candDurationMs) / 1000 > DUR_TOLERANCE_SEC) return false
+        if (matcher.jaroWinklerSimilarity(matcher.canonicalTitle(track.title), matcher.canonicalTitle(candTitle)) < TITLE_SIM_THRESHOLD) return false
+        if (!artistOkGeneric(track.artist, candArtists)) return false
+        if (versionConflict(track.title, candTitle)) return false
         return true
     }
 
-    /**
-     * The PRIMARY track-artist part must match some `cand.artists[]` element
-     * (Jaro-Winkler on canonicalArtist >= 0.85, or token-run containment), AND
-     * every ADDITIONAL track-artist part must likewise be a member of
-     * `cand.artists`. Order-insensitive, per-element — never join cand.artists.
-     */
-    private fun artistOk(track: TrackQuery, cand: SpotifyTrack): Boolean {
-        val parts = ArtistMatching.artistParts(track.artist)
+    private fun artistOkGeneric(trackArtist: String, candArtists: List<String>): Boolean {
+        val parts = ArtistMatching.artistParts(trackArtist)
         if (parts.isEmpty()) return false
-        return parts.all { part -> cand.artists.any { artistPartMatches(part, it.name) } }
+        return parts.all { part -> candArtists.any { artistPartMatches(part, it) } }
+    }
+
+    private fun sameRecordingGeneric(
+        titleA: String, artistsA: List<String>, durA: Long,
+        titleB: String, artistsB: List<String>, durB: Long,
+    ): Boolean {
+        if (matcher.canonicalTitle(titleA) != matcher.canonicalTitle(titleB)) return false
+        if (abs(durA - durB) / 1000 > SAME_RECORDING_DUR_SEC) return false
+        val aArtists = artistsA.map { matcher.canonicalArtist(it) }.toSet()
+        val bArtists = artistsB.map { matcher.canonicalArtist(it) }.toSet()
+        return aArtists.isNotEmpty() && aArtists == bArtists
     }
 
     private fun artistPartMatches(trackPart: String, candArtist: String): Boolean {
