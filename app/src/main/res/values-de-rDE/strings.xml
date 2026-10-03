@@ -783,7 +783,6 @@
     <string name="longest_duration">Längste Dauer</string>
     <string name="shortest_duration">Kürzeste Dauer</string>
     <string name="featured_album_badge">AUSGEWÄHLTES ALBUM</string>
-    <string name="cast"></string>
     <string name="cast_sheet_subtitle">Wähle aus, wo YumaPlayer spielt</string>
     <string name="cast_available_devices">Verfügbare Geräte</string>
     <string name="cast_searching_devices">Suche nach Geräten</string>
