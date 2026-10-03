@@ -192,7 +192,7 @@ object YouTube {
 
     suspend fun search(
         query: String,
-        filter: SearchFilter,
+        filter: SearchFilter? = null,
         useAccountContext: Boolean = true,
     ): Result<SearchResult> =
         SearchClient.search(query, filter, useAccountContext)

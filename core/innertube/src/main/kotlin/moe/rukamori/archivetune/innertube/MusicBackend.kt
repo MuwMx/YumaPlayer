@@ -83,7 +83,7 @@ interface MusicBackend {
 
     suspend fun search(
         query: String,
-        filter: SearchFilter,
+        filter: SearchFilter? = null,
         useAccountContext: Boolean = true,
     ): Result<SearchResult>
 

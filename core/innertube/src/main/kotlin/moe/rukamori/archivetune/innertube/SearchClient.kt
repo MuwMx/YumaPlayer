@@ -110,7 +110,7 @@ object SearchClient {
 
     suspend fun search(
         query: String,
-        filter: SearchFilter,
+        filter: SearchFilter? = null,
         useAccountContext: Boolean = true,
     ): Result<SearchResult> =
         runCatching {
@@ -119,7 +119,7 @@ object SearchClient {
                     .search(
                         client = WEB_REMIX,
                         query = query,
-                        params = filter.value,
+                        params = filter?.value,
                         useAccountContext = useAccountContext,
                     ).body<SearchResponse>()
             val contents =

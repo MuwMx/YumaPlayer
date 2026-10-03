@@ -83,14 +83,14 @@ class SpotifySearchScorerTest {
             id = "1",
             name = "Song",
             artists = listOf(SpotifySimpleArtist(name = "Artist")),
-            durationMs = 180_000
+            durationMs = 177_000
         )
 
         val candidate2 = SpotifyTrack(
             id = "2",
             name = "Song",
             artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
-            durationMs = 180_000
+            durationMs = 177_000
         )
 
         val decision = scorer.pick(query, listOf(candidate1, candidate2))

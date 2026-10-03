@@ -57,7 +57,10 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                     titleOf(other), artistsOf(other), durationMsOf(other),
                 )
         }
-        if (ambiguous) return CandidateDecision(null, bestSim, "ambiguous")
+
+        if (ambiguous && (bestSim < 0.95 || bestDur > 2)) {
+            return CandidateDecision(null, bestSim, "ambiguous")
+        }
 
         return CandidateDecision(best, bestSim, "accepted")
     }
