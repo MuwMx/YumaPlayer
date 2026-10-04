@@ -1,3 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    </resources>
+    <string name="playback_source">წყარო</string>
+    <string name="source_yt_music">YT მუსიკა</string>
+    <string name="source_flac">FLAC</string>
+    <string name="flac_quality_cd">CD (16-bit/44.1 kHz)</string>
+</resources>
