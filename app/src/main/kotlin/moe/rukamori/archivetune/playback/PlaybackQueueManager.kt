@@ -9,15 +9,12 @@ package moe.rukamori.archivetune.playback
 import androidx.annotation.OptIn
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
-import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -26,11 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
@@ -41,28 +35,29 @@ import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.queue.GuestAddTracksGateDecision
+import moe.rukamori.archivetune.playback.queue.GuestPlayQueuePlan
+import moe.rukamori.archivetune.playback.queue.PlayQueueGateDecision
+import moe.rukamori.archivetune.playback.queue.QueueAutomixController
+import moe.rukamori.archivetune.playback.queue.QueueLibraryToggles
+import moe.rukamori.archivetune.playback.queue.ReadOnlyTimelineDelegate
+import moe.rukamori.archivetune.playback.queue.applyCurrentFirstShuffleOrder
+import moe.rukamori.archivetune.playback.queue.buildPlayNextShuffleOrder
+import moe.rukamori.archivetune.playback.queue.gateAddTracks
+import moe.rukamori.archivetune.playback.queue.gatePlayQueue
+import moe.rukamori.archivetune.playback.queue.performAddToQueueHostInsert
+import moe.rukamori.archivetune.playback.queue.performPlayNextHostInsert
+import moe.rukamori.archivetune.playback.queue.planGuestPlayQueue
 import moe.rukamori.archivetune.playback.queues.EmptyQueue
-import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.together.AddTrackMode
 import moe.rukamori.archivetune.together.ControlAction
 import moe.rukamori.archivetune.together.TogetherGuestOp
-import moe.rukamori.archivetune.together.TogetherGuestPlaybackPlanner
-import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.together.TogetherTrack
-import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.get
-import moe.rukamori.archivetune.utils.isLocalMediaId
-import moe.rukamori.archivetune.utils.reportException
-import timber.log.Timber
-import java.util.ArrayDeque
-import java.util.Collections
 
 @OptIn(UnstableApi::class)
 internal class PlaybackQueueManager(
@@ -81,11 +76,11 @@ internal class PlaybackQueueManager(
         var queueTitle: String?
     }
 
-    interface Delegate {
-        fun getMediaItemCount(): Int
-        fun getCurrentMediaItemIndex(): Int
+    interface Delegate : ReadOnlyTimelineDelegate {
+        override fun getMediaItemCount(): Int
+        override fun getCurrentMediaItemIndex(): Int
         fun getMediaItemAt(index: Int): MediaItem
-        fun getCurrentTimeline(): Timeline
+        override fun getCurrentTimeline(): Timeline
         fun getPlaybackState(): Int
         fun getCurrentMetadata(): MediaMetadata?
         fun isShuffleModeEnabled(): Boolean
@@ -144,13 +139,84 @@ internal class PlaybackQueueManager(
     private var currentQueue: Queue = queueHolder.currentQueue
     private var queueTitle: String? = queueHolder.queueTitle
     private var playQueueJob: Job? = null
-    private var infiniteQueueJob: Job? = null
     @Volatile
     private var isInitializingQueue = false
-    @Volatile
-    private var isInfiniteQueueLoading = false
-    private val autoAddedMediaIds: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
-    private val toggleLikeMutex = Mutex()
+
+    private val automixController =
+        QueueAutomixController(
+            scope = scope,
+            dataStore = dataStore,
+            ioDispatcher = ioDispatcher,
+            delegate = object : QueueAutomixController.Delegate {
+                override var currentQueue: Queue
+                    get() = getActiveQueue()
+                    set(value) {
+                        this@PlaybackQueueManager.currentQueue = value
+                        queueHolder.currentQueue = value
+                    }
+
+                override var queueTitle: String?
+                    get() = this@PlaybackQueueManager.queueTitle
+                    set(value) {
+                        this@PlaybackQueueManager.queueTitle = value
+                        queueHolder.queueTitle = value
+                    }
+
+                override fun getActiveQueue(): Queue = this@PlaybackQueueManager.getActiveQueue()
+
+                override fun getCurrentTimeline(): Timeline = delegate.getCurrentTimeline()
+                override fun getMediaItemCount(): Int = delegate.getMediaItemCount()
+                override fun getCurrentMediaItemIndex(): Int = delegate.getCurrentMediaItemIndex()
+                override fun getMediaItemAt(index: Int): MediaItem = delegate.getMediaItemAt(index)
+                override fun getCurrentMetadata(): MediaMetadata? = delegate.getCurrentMetadata()
+                override fun isCurrentSongLocal(): Boolean = delegate.isCurrentSongLocal()
+                override fun isCurrentPlaybackItemLocal(metadata: MediaMetadata): Boolean =
+                    delegate.isCurrentPlaybackItemLocal(metadata)
+                override fun getPlaybackState(): Int = delegate.getPlaybackState()
+                override fun addMediaItems(items: List<MediaItem>) = delegate.addMediaItems(items)
+                override fun addMediaItems(index: Int, items: List<MediaItem>) =
+                    delegate.addMediaItems(index, items)
+                override fun removeMediaItem(index: Int) = delegate.removeMediaItem(index)
+                override fun removeMediaItems(fromIndex: Int, toIndex: Int) =
+                    delegate.removeMediaItems(fromIndex, toIndex)
+                override fun seekToNext() = delegate.seekToNext()
+                override fun play() = delegate.play()
+                override fun setSuppressAutoPlayback(suppress: Boolean) =
+                    delegate.setSuppressAutoPlayback(suppress)
+                override fun setInfiniteQueueLoading(isLoading: Boolean) =
+                    delegate.setInfiniteQueueLoading(isLoading)
+                override fun recordAutoAddedMediaId(mediaId: String) =
+                    delegate.recordAutoAddedMediaId(mediaId)
+                override fun clearAutoAddedMediaIds() = delegate.clearAutoAddedMediaIds()
+                override fun getTogetherSessionState(): Any? = delegate.getTogetherSessionState()
+                override fun isTogetherApplyingRemote(): Boolean = delegate.isTogetherApplyingRemote()
+                override fun showTogetherNotice(message: String, key: String) =
+                    delegate.showTogetherNotice(message, key)
+                override fun getString(resId: Int): String = delegate.getString(resId)
+                override fun showToast(resId: Int) = delegate.showToast(resId)
+            },
+        )
+
+    private val libraryToggles =
+        QueueLibraryToggles(
+            scope = scope,
+            ioScope = ioScope,
+            database = database,
+            syncUtils = syncUtils,
+            dataStore = dataStore,
+            ioDispatcher = ioDispatcher,
+            delegate = object : QueueLibraryToggles.Delegate {
+                override fun ensureScopesActive() = delegate.ensureScopesActive()
+                override suspend fun resolveVoiceMediaItems(query: String): List<MediaItem> =
+                    delegate.resolveVoiceMediaItems(query)
+                override fun playQueue(queue: Queue) = this@PlaybackQueueManager.playQueue(queue)
+                override fun getCurrentSong(): Song? = delegate.getCurrentSong()
+                override fun getCurrentMediaMetadata(): MediaMetadata? = delegate.getCurrentMediaMetadata()
+                override fun getCurrentMetadata(): MediaMetadata? = delegate.getCurrentMetadata()
+                override fun getActiveQueue(): Queue = this@PlaybackQueueManager.getActiveQueue()
+                override fun downloadSong(song: SongEntity) = delegate.downloadSong(song)
+            },
+        )
 
     fun getCurrentQueue(): Queue = getActiveQueue()
     fun getQueueTitle(): String? = queueTitle
@@ -168,76 +234,71 @@ internal class PlaybackQueueManager(
         delegate.setInitializingQueue(initializing)
     }
 
-    private fun setInfiniteQueueLoading(loading: Boolean) {
-        isInfiniteQueueLoading = loading
-        delegate.setInfiniteQueueLoading(loading)
-    }
-
     fun playQueue(
         queue: Queue,
         playWhenReady: Boolean = true,
     ) {
         val joined = delegate.getTogetherSessionState() as? TogetherSessionState.Joined
-        if (!delegate.isTogetherApplyingRemote() && joined?.role is TogetherRole.Guest) {
-            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
-                delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_DISABLED")
+        when (
+            val decision =
+                gatePlayQueue(
+                    role = joined?.role,
+                    allowGuestsToControlPlayback = joined?.roomState?.settings?.allowGuestsToControlPlayback ?: false,
+                    isApplyingRemote = delegate.isTogetherApplyingRemote(),
+                )
+        ) {
+            is PlayQueueGateDecision.Denied -> {
+                delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = decision.noticeKey)
                 return
             }
-            delegate.ensureScopesActive()
-            scope.launch(SilentHandler) {
-                val initialStatus =
-                    withContext(ioDispatcher) {
-                        queue
-                            .getInitialStatus()
-                            .filterExplicit(dataStore.get(HideExplicitKey, false))
-                            .filterVideo(dataStore.get(HideVideoKey, false))
-                    }
 
-                val targetItem =
-                    initialStatus.items.getOrNull(initialStatus.mediaItemIndex)
-                        ?: queue.preloadItem?.toMediaItem()
+            PlayQueueGateDecision.HandleAsGuest -> {
+                if (joined == null) return
+                delegate.ensureScopesActive()
+                scope.launch(SilentHandler) {
+                    val initialStatus =
+                        withContext(ioDispatcher) {
+                            queue
+                                .getInitialStatus()
+                                .filterExplicit(dataStore.get(HideExplicitKey, false))
+                                .filterVideo(dataStore.get(HideVideoKey, false))
+                        }
 
-                val meta = targetItem?.metadata
-                val trackId =
-                    meta?.id?.trim().orEmpty().ifBlank {
-                        targetItem?.mediaId?.trim().orEmpty()
-                    }
-                if (trackId.isBlank()) {
-                    delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_NO_TRACK")
-                    return@launch
-                }
+                    val targetItem =
+                        initialStatus.items.getOrNull(initialStatus.mediaItemIndex)
+                            ?: queue.preloadItem?.toMediaItem()
 
-                val track =
-                    TogetherTrack(
-                        id = trackId,
-                        title = meta?.title ?: trackId,
-                        artists = meta?.artists?.map { it.name }.orEmpty(),
-                        durationSec = meta?.duration ?: -1,
-                        thumbnailUrl = meta?.thumbnailUrl,
-                    )
+                    when (
+                        val plan =
+                            planGuestPlayQueue(
+                                roomState = joined.roomState,
+                                targetItem = targetItem,
+                                positionMs = initialStatus.position,
+                                playWhenReady = playWhenReady,
+                            )
+                    ) {
+                        is GuestPlayQueuePlan.Blocked -> {
+                            delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = plan.noticeKey)
+                        }
 
-                val ops =
-                    TogetherGuestPlaybackPlanner.planPlayTrackNow(
-                        roomState = joined.roomState,
-                        track = track,
-                        positionMs = initialStatus.position,
-                        playWhenReady = playWhenReady,
-                    )
-
-                if (ops.isEmpty()) {
-                    delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = "GUEST_PLAYQUEUE_BLOCKED")
-                    return@launch
-                }
-
-                delegate.showTogetherNotice(delegate.getString(R.string.together_requesting_song_change), key = "GUEST_PLAYQUEUE_REQUEST")
-                ops.forEach { op ->
-                    when (op) {
-                        is TogetherGuestOp.Control -> delegate.requestTogetherControl(op.action)
-                        is TogetherGuestOp.AddTrack -> delegate.requestTogetherAddTrack(op.track, op.mode)
+                        is GuestPlayQueuePlan.Execute -> {
+                            delegate.showTogetherNotice(
+                                delegate.getString(R.string.together_requesting_song_change),
+                                key = plan.noticeKey,
+                            )
+                            plan.ops.forEach { op ->
+                                when (op) {
+                                    is TogetherGuestOp.Control -> delegate.requestTogetherControl(op.action)
+                                    is TogetherGuestOp.AddTrack -> delegate.requestTogetherAddTrack(op.track, op.mode)
+                                }
+                            }
+                        }
                     }
                 }
+                return
             }
-            return
+
+            PlayQueueGateDecision.PassThrough -> Unit
         }
         if (playWhenReady) {
             delegate.cancelIdleStop()
@@ -261,8 +322,6 @@ internal class PlaybackQueueManager(
         }
 
         clearAutomix()
-        autoAddedMediaIds.clear()
-        delegate.clearAutoAddedMediaIds()
         if (queue.preloadItem != null) {
             delegate.setMediaItem(queue.preloadItem!!.toMediaItem())
             delegate.prepare()
@@ -326,138 +385,31 @@ internal class PlaybackQueueManager(
     }
 
     fun applyCurrentFirstShuffleOrder() {
-        val count = delegate.getMediaItemCount()
-        if (count <= 1) return
-        val currentIndex = delegate.getCurrentMediaItemIndex().coerceIn(0, count - 1)
-        val shuffledIndices = IntArray(count) { it }
-        shuffledIndices.shuffle()
-        val currentPos = shuffledIndices.indexOf(currentIndex)
-        if (currentPos >= 0) {
-            shuffledIndices[currentPos] = shuffledIndices[0]
-        }
-        shuffledIndices[0] = currentIndex
-        delegate.setShuffleOrder(DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis()))
+        applyCurrentFirstShuffleOrder(
+            itemCount = delegate.getMediaItemCount(),
+            currentIndex = delegate.getCurrentMediaItemIndex(),
+        )?.let(delegate::setShuffleOrder)
     }
 
     fun buildPlayNextShuffleOrder(
         currentIndex: Int,
         insertionIndex: Int,
         insertionCount: Int,
-    ): DefaultShuffleOrder? {
-        val timeline = delegate.getCurrentTimeline()
-        if (insertionCount <= 0 || timeline.isEmpty) return null
-
-        fun adjustedIndex(index: Int): Int =
-            if (index >= insertionIndex) {
-                index + insertionCount
-            } else {
-                index
-            }
-
-        val previousIndices = ArrayDeque<Int>()
-        var traversalIndex = currentIndex
-        while (true) {
-            traversalIndex = timeline.getPreviousWindowIndex(traversalIndex, REPEAT_MODE_OFF, true)
-            if (traversalIndex == C.INDEX_UNSET) {
-                break
-            }
-            previousIndices.addFirst(adjustedIndex(traversalIndex))
-        }
-
-        val nextIndices = mutableListOf<Int>()
-        traversalIndex = currentIndex
-        while (true) {
-            traversalIndex = timeline.getNextWindowIndex(traversalIndex, REPEAT_MODE_OFF, true)
-            if (traversalIndex == C.INDEX_UNSET) {
-                break
-            }
-            nextIndices += adjustedIndex(traversalIndex)
-        }
-
-        val shuffledIndices =
-            buildList(delegate.getMediaItemCount() + insertionCount) {
-                addAll(previousIndices)
-                add(currentIndex)
-                repeat(insertionCount) { offset ->
-                    add(insertionIndex + offset)
-                }
-                addAll(nextIndices)
-            }.toIntArray()
-
-        return DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis())
-    }
+    ): DefaultShuffleOrder? =
+        buildPlayNextShuffleOrder(
+            timeline = delegate.getCurrentTimeline(),
+            mediaItemCount = delegate.getMediaItemCount(),
+            currentIndex = currentIndex,
+            insertionIndex = insertionIndex,
+            insertionCount = insertionCount,
+        )
 
     fun startRadioSeamlessly() {
-        val joined = delegate.getTogetherSessionState() as? TogetherSessionState.Joined
-        if (!delegate.isTogetherApplyingRemote() && joined?.role is TogetherRole.Guest) {
-            if (!joined.roomState.settings.allowGuestsToControlPlayback) {
-                delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = "GUEST_RADIO_DISABLED")
-                return
-            }
-            delegate.showTogetherNotice(delegate.getString(R.string.not_allowed), key = "GUEST_RADIO_UNSUPPORTED")
-            return
-        }
-        cancelInfiniteQueueBootstrap()
-        delegate.setSuppressAutoPlayback(false)
-        val currentMediaMetadata = delegate.getCurrentMetadata() ?: return
-
-        val currentIndex = delegate.getCurrentMediaItemIndex()
-        val currentMediaId = currentMediaMetadata.id
-        if (delegate.isCurrentSongLocal() || currentMediaId.isLocalMediaId()) {
-            return
-        }
-
-        scope.launch(
-            CoroutineExceptionHandler { _, throwable ->
-                Timber.e(throwable, "Failed to start radio seamlessly")
-            },
-        ) {
-            val radioQueue =
-                YouTubeQueue(
-                    endpoint = WatchEndpoint(videoId = currentMediaId),
-                    followAutomixPreview = true,
-                )
-            val initialStatus =
-                withContext(ioDispatcher) {
-                    radioQueue
-                        .getInitialStatus()
-                        .filterExplicit(
-                            dataStore.get(HideExplicitKey, false),
-                        ).filterVideo(dataStore.get(HideVideoKey, false))
-                }
-
-            if (initialStatus.title != null) {
-                queueTitle = initialStatus.title
-                queueHolder.queueTitle = initialStatus.title
-            }
-
-            val radioItems =
-                initialStatus.items.filter { item ->
-                    item.mediaId != currentMediaId
-                }
-
-            if (radioItems.isNotEmpty()) {
-                val itemCount = delegate.getMediaItemCount()
-
-                if (itemCount > currentIndex + 1) {
-                    delegate.removeMediaItems(currentIndex + 1, itemCount)
-                }
-
-                delegate.addMediaItems(currentIndex + 1, radioItems)
-            } else {
-                withContext(Dispatchers.Main) {
-                    delegate.showToast(R.string.no_results_found)
-                }
-            }
-
-            currentQueue = radioQueue
-            queueHolder.currentQueue = radioQueue
-        }
+        automixController.startRadioSeamlessly()
     }
 
     fun clearAutomix() {
-        autoAddedMediaIds.clear()
-        delegate.clearAutoAddedMediaIds()
+        automixController.clearAutomix()
     }
 
     fun clearQueue() {
@@ -480,73 +432,15 @@ internal class PlaybackQueueManager(
     }
 
     fun onInfiniteQueueDisabled() {
-        cancelInfiniteQueueBootstrap()
-        val currentIndex = delegate.getCurrentMediaItemIndex()
-        val idsToRemove = synchronized(autoAddedMediaIds) { autoAddedMediaIds.toSet() }
-        if (idsToRemove.isEmpty()) {
-            return
-        }
-        for (i in delegate.getMediaItemCount() - 1 downTo 0) {
-            if (i == currentIndex) continue
-            val item = delegate.getMediaItemAt(i)
-            if (item.mediaId in idsToRemove) {
-                delegate.removeMediaItem(i)
-            }
-        }
-        autoAddedMediaIds.clear()
-        delegate.clearAutoAddedMediaIds()
-        currentQueue = EmptyQueue
-        queueHolder.currentQueue = EmptyQueue
+        automixController.onInfiniteQueueDisabled()
     }
 
     fun onInfiniteQueueEnabled() {
-        if (infiniteQueueJob?.isActive == true) return
-        if (getActiveQueue() is SpotifyTracksQueue) return
-        val currentMeta = delegate.getCurrentMetadata() ?: return
-        if (delegate.isCurrentPlaybackItemLocal(currentMeta)) return
-        if (isInfiniteQueueLoading) return
-        setInfiniteQueueLoading(true)
-
-        infiniteQueueJob =
-            scope.launch(SilentHandler) {
-                try {
-                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMeta.id), followAutomixPreview = true)
-                    val status = withContext(ioDispatcher) { radioQueue.getInitialStatus() }
-
-                    val count = delegate.getMediaItemCount()
-                    val existingIds = (0 until count).map { delegate.getMediaItemAt(it).mediaId }.toSet()
-                    val newItems = status.items.filter { it.mediaId !in existingIds }
-
-                    if (newItems.isNotEmpty()) {
-                        delegate.addMediaItems(newItems)
-                        newItems.forEach {
-                            autoAddedMediaIds.add(it.mediaId)
-                            delegate.recordAutoAddedMediaId(it.mediaId)
-                        }
-                    }
-
-                    currentQueue = radioQueue
-                    queueHolder.currentQueue = radioQueue
-
-                    if (delegate.getPlaybackState() == Player.STATE_ENDED || delegate.getMediaItemCount() == delegate.getCurrentMediaItemIndex() + 1) {
-                        delegate.seekToNext()
-                        delegate.play()
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to bootstrap auto-queue")
-                } finally {
-                    infiniteQueueJob = null
-                    setInfiniteQueueLoading(false)
-                }
-            }
+        automixController.onInfiniteQueueEnabled()
     }
 
     fun cancelInfiniteQueueBootstrap() {
-        infiniteQueueJob?.cancel()
-        infiniteQueueJob = null
-        setInfiniteQueueLoading(false)
+        automixController.cancelInfiniteQueueBootstrap()
     }
 
     fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
@@ -575,141 +469,78 @@ internal class PlaybackQueueManager(
 
     fun playNext(items: List<MediaItem>) {
         val joined = delegate.getTogetherSessionState() as? TogetherSessionState.Joined
-        if (joined?.role is TogetherRole.Guest) {
-            if (!joined.roomState.settings.allowGuestsToAddTracks) {
+        when (
+            val decision =
+                gateAddTracks(
+                    role = joined?.role,
+                    allowGuestAdd = joined?.roomState?.settings?.allowGuestsToAddTracks ?: false,
+                    items = items,
+                )
+        ) {
+            is GuestAddTracksGateDecision.Allowed -> {
+                decision.tracks.asReversed().forEach { track ->
+                    delegate.requestTogetherAddTrack(track, AddTrackMode.PLAY_NEXT)
+                }
                 return
             }
-            val tracks =
-                items.mapNotNull { it.metadata }.map { meta ->
-                    TogetherTrack(
-                        id = meta.id,
-                        title = meta.title,
-                        artists = meta.artists.map { it.name },
-                        durationSec = meta.duration,
-                        thumbnailUrl = meta.thumbnailUrl,
-                    )
-                }
-            tracks.asReversed().forEach { track ->
-                delegate.requestTogetherAddTrack(track, AddTrackMode.PLAY_NEXT)
-            }
-            return
-        }
-        delegate.setSuppressAutoPlayback(false)
-        val itemCount = delegate.getMediaItemCount()
-        val insertionIndex = if (itemCount == 0) 0 else delegate.getCurrentMediaItemIndex() + 1
-        val playNextShuffleOrder =
-            if (delegate.isShuffleModeEnabled() && itemCount > 0) {
-                buildPlayNextShuffleOrder(
-                    currentIndex = delegate.getCurrentMediaItemIndex(),
-                    insertionIndex = insertionIndex,
-                    insertionCount = items.size,
-                )
-            } else {
-                null
-            }
 
-        delegate.addMediaItems(insertionIndex, items)
-        playNextShuffleOrder?.let(delegate::setShuffleOrder)
-        delegate.prepare()
+            GuestAddTracksGateDecision.Denied -> return
+            GuestAddTracksGateDecision.PassThrough -> Unit
+        }
+        performPlayNextHostInsert(
+            timeline = delegate.getCurrentTimeline(),
+            mediaItemCount = delegate.getMediaItemCount(),
+            currentIndex = delegate.getCurrentMediaItemIndex(),
+            items = items,
+            isShuffleModeEnabled = delegate.isShuffleModeEnabled(),
+            onSetSuppressAutoPlayback = delegate::setSuppressAutoPlayback,
+            onAddMediaItems = delegate::addMediaItems,
+            onSetShuffleOrder = delegate::setShuffleOrder,
+            onPrepare = delegate::prepare,
+        )
     }
 
     fun addToQueue(items: List<MediaItem>) {
         val joined = delegate.getTogetherSessionState() as? TogetherSessionState.Joined
-        if (joined?.role is TogetherRole.Guest) {
-            if (!joined.roomState.settings.allowGuestsToAddTracks) {
+        when (
+            val decision =
+                gateAddTracks(
+                    role = joined?.role,
+                    allowGuestAdd = joined?.roomState?.settings?.allowGuestsToAddTracks ?: false,
+                    items = items,
+                )
+        ) {
+            is GuestAddTracksGateDecision.Allowed -> {
+                decision.tracks.forEach { track ->
+                    delegate.requestTogetherAddTrack(track, AddTrackMode.ADD_TO_QUEUE)
+                }
                 return
             }
-            val tracks =
-                items.mapNotNull { it.metadata }.map { meta ->
-                    TogetherTrack(
-                        id = meta.id,
-                        title = meta.title,
-                        artists = meta.artists.map { it.name },
-                        durationSec = meta.duration,
-                        thumbnailUrl = meta.thumbnailUrl,
-                    )
-                }
-            tracks.forEach { track ->
-                delegate.requestTogetherAddTrack(track, AddTrackMode.ADD_TO_QUEUE)
-            }
-            return
+
+            GuestAddTracksGateDecision.Denied -> return
+            GuestAddTracksGateDecision.PassThrough -> Unit
         }
-        delegate.setSuppressAutoPlayback(false)
-        delegate.addMediaItems(items)
-        delegate.prepare()
+        performAddToQueueHostInsert(
+            items = items,
+            onSetSuppressAutoPlayback = delegate::setSuppressAutoPlayback,
+            onAddMediaItems = delegate::addMediaItems,
+            onPrepare = delegate::prepare,
+        )
     }
 
     fun playFromVoiceSearch(query: String) {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) return
-        delegate.ensureScopesActive()
-        scope.launch(SilentHandler) {
-            val mediaItems =
-                withContext(ioDispatcher) {
-                    delegate.resolveVoiceMediaItems(trimmed)
-                }
-            if (mediaItems.isEmpty()) return@launch
-            playQueue(ListQueue(items = mediaItems))
-        }
+        libraryToggles.playFromVoiceSearch(query)
     }
 
     fun toggleLibrary() {
-        database.query {
-            delegate.getCurrentSong()?.let {
-                update(it.song.toggleLibrary())
-            }
-        }
+        libraryToggles.toggleLibrary()
     }
 
     fun toggleLike() {
-        val mediaMetadata = delegate.getCurrentMediaMetadata() ?: delegate.getCurrentMetadata() ?: return
-        Timber.tag("MediaNotification").d("toggleLike() called for mediaId=${mediaMetadata.id}, title=${mediaMetadata.title}")
-        val currentSongSong = delegate.getCurrentSong()?.song
-        val source = LikeSourceResolver.resolve(
-            mediaId = mediaMetadata.id,
-            spotifyTrackId = mediaMetadata.spotifyTrackId,
-            queue = getActiveQueue(),
-            isLocal = currentSongSong?.isLocal ?: mediaMetadata.id.isLocalMediaId(),
-        )
-        ioScope.launch {
-            try {
-                val song =
-                    toggleLikeMutex.withLock {
-                        database.withTransaction {
-                            val currentSongEntity =
-                                getSongById(mediaMetadata.id)
-                                    ?: run {
-                                        insert(mediaMetadata) {
-                                            it.copy(isLocal = mediaMetadata.id.isLocalMediaId())
-                                        }
-                                        getSongById(mediaMetadata.id)
-                                    }
-                                    ?: return@withTransaction null
-                            currentSongEntity.song.localToggleLike(source).also(::update)
-                        }
-                    } ?: return@launch
-
-                Timber.tag("MediaNotification").d("toggleLike() successful: song=${song.id}, liked=${song.liked}")
-                val spotifyId = if (!mediaMetadata.spotifyTrackId.isNullOrBlank()) {
-                    mediaMetadata.spotifyTrackId
-                } else if (LikeSourceResolver.isSpotifyId(song.id, song.isLocal)) {
-                    song.id
-                } else {
-                    null
-                }
-                syncUtils.likeSong(song, source, spotifyId)
-
-                if (!song.isLocal && dataStore.get(AutoDownloadOnLikeKey, false) && song.liked) {
-                    delegate.downloadSong(song)
-                }
-            } catch (e: Exception) {
-                Timber.tag("MediaNotification").e(e, "toggleLike() failed for mediaId=${mediaMetadata.id}")
-                reportException(e)
-            }
-        }
+        libraryToggles.toggleLike()
     }
 
     fun toggleStartRadio() {
-        startRadioSeamlessly()
+        automixController.toggleStartRadio()
     }
 }
