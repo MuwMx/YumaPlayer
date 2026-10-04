@@ -604,11 +604,11 @@
     <string name="logs_empty_message">Log akan muncul di sini bila tersedia</string>
     <string name="real_time_playback_stats">Statistik pemutaran realtime</string>
     <string name="copied_to_clipboard">Menyalin log ke clipboard</string>
-    <string name="playback_state_idle">IDLE</string>
-    <string name="playback_state_buffering">BUFFERING</string>
-    <string name="playback_state_ready">READY</string>
-    <string name="playback_state_ended">ENDED</string>
-    <string name="playback_state_unknown">UNKNOWN</string>
+    <string name="playback_state_idle">DIAM</string>
+    <string name="playback_state_buffering">MEMUAT</string>
+    <string name="playback_state_ready">SIAP</string>
+    <string name="playback_state_ended">SELESAI</string>
+    <string name="playback_state_unknown">TIDAK DIKETAHUI</string>
     <string name="share_logs">Bagikan log</string>
     <string name="about">Tentang</string>
     <string name="open_youtube_music">Buka YouTube Musik</string>
@@ -984,4 +984,13 @@
     <string name="lastfm_service_provider">Penyedia layanan</string>
     <string name="lastfm_provider_lastfm">Last.fm</string>
     <string name="lastfm_provider_librefm">Libre.fm</string>
+    <string name="playback_speed_desc">Pengaturan tempo dan pitch</string>
+    <string name="player_settings">Pengaturan Pemutar</string>
+    <string name="widget_listening_time_hours_minutes">%1$d j %2$d mnt</string>
+    <string name="widget_listening_time_minutes">%1$d mnt</string>
+    <string name="widget_no_genres">Belum ada genre</string>
+    <string name="widget_no_recommendations">Belum ada rekomendasi</string>
+    <string name="widget_no_recent_songs">Belum ada lagu terbaru</string>
+    <string name="save_as_playlist">Simpan sebagai playlist</string>
+    <string name="save_as_playlist_desc">Simpan antrean saat ini ke playlist</string>
 </resources>
