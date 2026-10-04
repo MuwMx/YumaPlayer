@@ -69,7 +69,7 @@ Example:
 ## 3. Section B — God-Objects and Architecture Debt
 
 ### B1. `MusicService.kt` monolithic service
-- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt` (+ `MusicServiceAudio.kt`, `MusicServicePlayback.kt`, `MusicServiceCrossfade.kt`, `MusicServiceIntegrations.kt`, `MusicServiceTogether.kt`, `MusicServiceWidgetUpdater.kt`)
+- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt` (+ `MusicServiceAudioEffects.kt`, `MusicServiceAudioFocusRoute.kt`, `MusicServicePlayback.kt`, `MusicServiceCrossfade.kt`, `MusicServiceIntegrations.kt`, `MusicServiceTogether.kt`, `MusicServiceWidgetUpdater.kt`)
 - **Debt:** One class owns ExoPlayer plus a Cast wrapper, four URL caches (`playbackUrlCache`, `losslessUrlCache`, `extractorPlaybackUrlCache`, `contentLengthCache`), crossfade with `secondaryCrossfadePlayer`, Discord / loudness / EQ / audio-focus / Bluetooth / wakelock handling, Together sessions, history (`PendingHistoryFinalization`), a `runBlocking` import, `ResolvingDataSource`, and two `OkHttpClient` instances (media + extractor). The split into `MusicService*.kt` files is physical only; state is still shared via `internal var`.
 - **Do not touch:** `onCreate` ordering (player -> session -> `ensureStartedAsForeground` -> DataStore collect) is fragile; reordering throws `ForegroundServiceStartNotAllowedException` or drops the queue.
 - **Refactor criterion:** Extract `PlaybackEngine`, `UrlResolveCache`, `AudioEffectsController`, and `PresenceController` as interfaced classes; keep `MusicService` as a thin `MediaLibraryService` facade.
