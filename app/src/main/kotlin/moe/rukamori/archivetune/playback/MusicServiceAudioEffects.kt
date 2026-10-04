@@ -226,11 +226,11 @@ internal fun MusicService.updateEffectiveVolume(finalVolume: Float) {
             val progress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             val easedProgress = progress * progress * (3f - (2f * progress))
             val interpolatedVolume = startVolume + ((targetVolume - startVolume) * easedProgress)
-            applyEffectiveVolume(interpolatedVolume)
+            renderEffectiveVolume(interpolatedVolume)
             if (progress >= 1f) break
             delay(MusicService.EFFECTIVE_VOLUME_RAMP_FRAME_MS)
         }
-        applyEffectiveVolume(targetVolume)
+        renderEffectiveVolume(targetVolume)
         effectiveVolumeRampJob = null
     }
 }
@@ -246,10 +246,10 @@ internal fun MusicService.shouldRampEffectiveVolume(finalVolume: Float): Boolean
 internal fun MusicService.applyEffectiveVolumeImmediately(finalVolume: Float = currentEffectivePlayerVolume()) {
     effectiveVolumeRampJob?.cancel()
     effectiveVolumeRampJob = null
-    applyEffectiveVolume(finalVolume)
+    renderEffectiveVolume(finalVolume)
 }
 
-internal fun MusicService.applyEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
+internal fun MusicService.renderEffectiveVolume(finalVolume: Float = currentEffectivePlayerVolume()) {
     crossfadeBaseVolume = finalVolume
     val incomingPlayer = secondaryCrossfadePlayer
     if (isCrossfading && incomingPlayer != null) {
