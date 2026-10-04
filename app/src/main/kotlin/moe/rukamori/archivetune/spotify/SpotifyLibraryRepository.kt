@@ -7,37 +7,15 @@
 package moe.rukamori.archivetune.spotify
 
 import android.content.Context
-import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.SpotifyAccessTokenExpiresAtKey
-import moe.rukamori.archivetune.constants.SpotifyAccessTokenKey
-import moe.rukamori.archivetune.constants.SpotifyAccountAvatarUrlKey
-import moe.rukamori.archivetune.constants.SpotifyAccountNameKey
-import moe.rukamori.archivetune.constants.SpotifyLibraryPlaylistsCacheKey
-import moe.rukamori.archivetune.constants.SpotifyLikedSongsCacheKey
-import moe.rukamori.archivetune.constants.SpotifySpDcKey
-import moe.rukamori.archivetune.constants.SpotifySpKeyKey
+import moe.rukamori.archivetune.spotify.library.SpotifyCacheStore
+import moe.rukamori.archivetune.spotify.library.SpotifyLikedRepository
+import moe.rukamori.archivetune.spotify.library.SpotifyPlaylistsRepository
+import moe.rukamori.archivetune.spotify.library.SpotifySessionRepository
+import moe.rukamori.archivetune.spotify.models.SpotifyPaging
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
-import moe.rukamori.archivetune.utils.clearWebAuthSession
-import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.reportException
-import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,395 +26,52 @@ class SpotifyLibraryRepository
         @ApplicationContext private val context: Context,
         private val profileCache: SpotifyProfileCache,
     ) {
-        private val _playlists = MutableStateFlow<List<SpotifyPlaylist>>(emptyList())
-        val playlists: StateFlow<List<SpotifyPlaylist>> = _playlists.asStateFlow()
+        private val cacheStore = SpotifyCacheStore(context)
+        private val sessionRepository = SpotifySessionRepository(context, profileCache)
+        private val playlistsRepository = SpotifyPlaylistsRepository(sessionRepository, cacheStore)
+        private val likedRepository = SpotifyLikedRepository(sessionRepository, cacheStore)
 
-        private val _isRefreshing = MutableStateFlow(false)
-        val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
-        private val _errorMessage = MutableStateFlow<String?>(null)
-        val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-        private val _likedSongsTotal = MutableStateFlow(0)
-        val likedSongsTotal: StateFlow<Int> = _likedSongsTotal.asStateFlow()
-
-        private val _likedSongs = MutableStateFlow<List<SpotifyTrack>>(emptyList())
-        val likedSongs: StateFlow<List<SpotifyTrack>> = _likedSongs.asStateFlow()
-
-        private val tokenMutex = Mutex()
+        val playlists: StateFlow<List<SpotifyPlaylist>> = playlistsRepository.playlists
+        val isRefreshing: StateFlow<Boolean> = playlistsRepository.isRefreshing
+        val errorMessage: StateFlow<String?> = playlistsRepository.errorMessage
+        val likedSongsTotal: StateFlow<Int> = likedRepository.likedSongsTotal
+        val likedSongs: StateFlow<List<SpotifyTrack>> = likedRepository.likedSongs
 
         suspend fun likedSongsPage(
             limit: Int = 50,
             offset: Int = 0,
-        ): moe.rukamori.archivetune.spotify.models.SpotifyPaging<SpotifyTrack> {
-            val page =
-                spotifyCallWithTokenRetry {
-                    Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
-                }
-            val filtered = page.items.mapNotNull { it.track.takeUnless(SpotifyTrack::isLocal) }
-            Timber.tag("SpotifyPipeline").d(
-                "likedSongsPage: received ${filtered.size} tracks, total=${page.total}"
-            )
-            return moe.rukamori.archivetune.spotify.models.SpotifyPaging(
-                items = filtered,
-                total = page.total,
-                limit = page.limit,
-                offset = page.offset,
-            )
-        }
+        ): SpotifyPaging<SpotifyTrack> = likedRepository.likedSongsPage(limit, offset)
 
-        suspend fun refreshLikedSongsTotal() {
-            runCatching {
-                ensureAuthenticated()
-                spotifyCallWithTokenRetry {
-                    Spotify.likedSongs(limit = 1, offset = 0).getOrThrow().total
-                }
-            }.onSuccess { total ->
-                _likedSongsTotal.value = total
-            }.onFailure { error ->
-                reportException(error)
-            }
-        }
+        suspend fun refreshLikedSongsTotal() = likedRepository.refreshLikedSongsTotal()
 
-        suspend fun restoreCachedPlaylists() {
-            withContext(Dispatchers.IO) {
-                if (_playlists.value.isNotEmpty()) return@withContext
-                val cached =
-                    context.dataStore.data
-                        .first()[SpotifyLibraryPlaylistsCacheKey]
-                        .orEmpty()
-                if (cached.isBlank()) return@withContext
-                runCatching {
-                    spotifyCacheJson.decodeFromString(
-                        ListSerializer(SpotifyPlaylist.serializer()),
-                        cached,
-                    )
-                }.onSuccess { playlists ->
-                    _playlists.value = playlists
-                }.onFailure { error ->
-                    reportException(error)
-                    context.dataStore.edit { prefs ->
-                        prefs.remove(SpotifyLibraryPlaylistsCacheKey)
-                    }
-                }
-            }
-        }
+        suspend fun restoreCachedPlaylists() = playlistsRepository.restoreCachedPlaylists()
 
-        suspend fun restoreCachedLikedSongs() {
-            withContext(Dispatchers.IO) {
-                if (_likedSongs.value.isNotEmpty()) return@withContext
-                val cached =
-                    context.dataStore.data
-                        .first()[SpotifyLikedSongsCacheKey]
-                        .orEmpty()
-                if (cached.isBlank()) return@withContext
-                runCatching {
-                    spotifyCacheJson.decodeFromString(
-                        ListSerializer(SpotifyTrack.serializer()),
-                        cached,
-                    )
-                }.onSuccess { tracks ->
-                    _likedSongs.value = tracks
-                }.onFailure { error ->
-                    reportException(error)
-                    context.dataStore.edit { prefs ->
-                        prefs.remove(SpotifyLikedSongsCacheKey)
-                    }
-                }
-            }
-        }
+        suspend fun restoreCachedLikedSongs() = likedRepository.restoreCachedLikedSongs()
 
-        suspend fun restoreSession(): SpotifyAccountSession =
-            withContext(Dispatchers.IO) {
-                val prefs = context.dataStore.data.first()
-                val token = prefs[SpotifyAccessTokenKey].orEmpty()
-                val expiresAt = prefs[SpotifyAccessTokenExpiresAtKey] ?: 0L
-                val accountName = prefs[SpotifyAccountNameKey].orEmpty()
-                val avatarUrl = prefs[SpotifyAccountAvatarUrlKey]
-
-                if (token.isNotBlank() && expiresAt > System.currentTimeMillis() + TOKEN_EXPIRY_GRACE_MS) {
-                    Spotify.accessToken = token
-                    return@withContext SpotifyAccountSession(
-                        isAuthenticated = true,
-                        accountName = accountName,
-                        accountAvatarUrl = avatarUrl,
-                    )
-                }
-
-                val spDc = prefs[SpotifySpDcKey].orEmpty()
-                if (spDc.isBlank()) return@withContext SpotifyAccountSession()
-
-                refreshAccessToken(spDc = spDc, spKey = prefs[SpotifySpKeyKey].orEmpty())
-                    .fold(
-                        onSuccess = {
-                            val refreshed = context.dataStore.data.first()
-                            SpotifyAccountSession(
-                                isAuthenticated = true,
-                                accountName = refreshed[SpotifyAccountNameKey].orEmpty(),
-                                accountAvatarUrl = refreshed[SpotifyAccountAvatarUrlKey],
-                            )
-                        },
-                        onFailure = {
-                            if (it is CancellationException) throw it
-                            reportException(it)
-                            SpotifyAccountSession()
-                        },
-                    )
-            }
+        suspend fun restoreSession(): SpotifyAccountSession = sessionRepository.restoreSession()
 
         suspend fun connectWithCookies(
             spDc: String,
             spKey: String,
-        ): SpotifyAccountSession =
-            withContext(Dispatchers.IO) {
-                profileCache.clearCache()
-                context.dataStore.edit { prefs ->
-                    prefs[SpotifySpDcKey] = spDc
-                    prefs.remove(SpotifyLibraryPlaylistsCacheKey)
-                    prefs.remove(SpotifyLikedSongsCacheKey)
-                    if (spKey.isNotBlank()) {
-                        prefs[SpotifySpKeyKey] = spKey
-                    } else {
-                        prefs.remove(SpotifySpKeyKey)
-                    }
-                }
-                _playlists.value = emptyList()
-                _likedSongs.value = emptyList()
-                _errorMessage.value = null
-                refreshAccessToken(spDc = spDc, spKey = spKey).getOrThrow()
-                val prefs = context.dataStore.data.first()
-                SpotifyAccountSession(
-                    isAuthenticated = true,
-                    accountName = prefs[SpotifyAccountNameKey].orEmpty(),
-                    accountAvatarUrl = prefs[SpotifyAccountAvatarUrlKey],
-                )
-            }
+        ): SpotifyAccountSession {
+            playlistsRepository.clear()
+            likedRepository.clear()
+            return sessionRepository.connectWithCookies(spDc, spKey)
+        }
 
         suspend fun logout() {
-            withContext(Dispatchers.IO) {
-                profileCache.clearCache()
-                context.dataStore.edit { prefs ->
-                    prefs.remove(SpotifySpDcKey)
-                    prefs.remove(SpotifySpKeyKey)
-                    prefs.remove(SpotifyAccessTokenKey)
-                    prefs.remove(SpotifyAccessTokenExpiresAtKey)
-                    prefs.remove(SpotifyAccountNameKey)
-                    prefs.remove(SpotifyAccountAvatarUrlKey)
-                    prefs.remove(SpotifyLibraryPlaylistsCacheKey)
-                    prefs.remove(SpotifyLikedSongsCacheKey)
-                }
-                _playlists.value = emptyList()
-                _likedSongs.value = emptyList()
-                _errorMessage.value = null
-                Spotify.accessToken = null
-                runCatching { clearWebAuthSession(context) }
-                    .onFailure(::reportException)
-            }
+            sessionRepository.logout()
+            playlistsRepository.clear()
+            likedRepository.clear()
         }
 
-        suspend fun refreshPlaylists(): List<SpotifyPlaylist> =
-            withContext(Dispatchers.IO) {
-                _isRefreshing.value = true
-                _errorMessage.value = null
-                try {
-                    ensureAuthenticated()
-                    val loaded = fetchAllPlaylists()
-                    _playlists.value = loaded
-                    context.dataStore.edit { prefs ->
-                        prefs[SpotifyLibraryPlaylistsCacheKey] =
-                            spotifyCacheJson.encodeToString(
-                                ListSerializer(SpotifyPlaylist.serializer()),
-                                loaded,
-                            )
-                    }
-                    loaded
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    reportException(error)
-                    _errorMessage.value = error.message
-                    _playlists.value
-                } finally {
-                    _isRefreshing.value = false
-                }
-            }
+        suspend fun refreshPlaylists(): List<SpotifyPlaylist> = playlistsRepository.refreshPlaylists()
 
-        suspend fun playlist(playlistId: String): SpotifyPlaylist =
-            withContext(Dispatchers.IO) {
-                ensureAuthenticated()
-                spotifyCallWithTokenRetry {
-                    Spotify.playlist(playlistId).getOrThrow()
-                }
-            }
+        suspend fun playlist(playlistId: String): SpotifyPlaylist = playlistsRepository.playlist(playlistId)
 
-        suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> =
-            withContext(Dispatchers.IO) {
-                ensureAuthenticated()
-                val tracks = ArrayList<SpotifyTrack>()
-                var offset = 0
-                val limit = 50
+        suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> = playlistsRepository.playlistTracks(playlistId)
 
-                while (true) {
-                    val page =
-                        spotifyCallWithTokenRetry {
-                            Spotify
-                                .playlistTracks(
-                                    playlistId = playlistId,
-                                    limit = limit,
-                                    offset = offset,
-                                ).getOrThrow()
-                        }
-                    if (page.items.isEmpty()) break
-                    val pageTracks = page.items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
-                    tracks += pageTracks
-                    offset += page.items.size
-                    if (offset >= page.total || page.items.size < limit) break
-                }
-
-                tracks
-            }
-
-        suspend fun refreshLikedSongs() {
-            ensureAuthenticated()
-            val accumulated = mutableListOf<SpotifyTrack>()
-            var offset = 0
-            val limit = 50
-            while (currentCoroutineContext().isActive) {
-                val page =
-                    spotifyCallWithTokenRetry {
-                        Spotify.likedSongs(limit = limit, offset = offset).getOrThrow()
-                    }
-                if (page.items.isEmpty()) break
-                val pageTracks = page.items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
-                if (pageTracks.isNotEmpty()) {
-                    accumulated += pageTracks
-                    _likedSongs.value = accumulated.toList()
-                }
-                offset += page.items.size
-                if (offset >= page.total || page.items.size < limit) break
-            }
-            if (accumulated.isNotEmpty()) {
-                context.dataStore.edit { prefs ->
-                    prefs[SpotifyLikedSongsCacheKey] =
-                        spotifyCacheJson.encodeToString(ListSerializer(SpotifyTrack.serializer()), accumulated)
-                }
-            }
-        }
-
-        private suspend fun ensureAuthenticated() {
-            val prefs = context.dataStore.data.first()
-            val token = prefs[SpotifyAccessTokenKey].orEmpty()
-            val expiresAt = prefs[SpotifyAccessTokenExpiresAtKey] ?: 0L
-            if (token.isNotBlank() && expiresAt > System.currentTimeMillis() + TOKEN_EXPIRY_GRACE_MS) {
-                Spotify.accessToken = token
-                return
-            }
-
-            val spDc = prefs[SpotifySpDcKey].orEmpty()
-            if (spDc.isBlank()) {
-                throw IllegalStateException(context.getString(R.string.spotify_not_connected))
-            }
-            refreshAccessToken(spDc = spDc, spKey = prefs[SpotifySpKeyKey].orEmpty()).getOrThrow()
-        }
-
-        private suspend fun refreshAccessToken(
-            spDc: String,
-            spKey: String,
-        ): Result<Unit> =
-            tokenMutex.withLock {
-                SpotifyAuth
-                    .fetchAccessToken(spDc = spDc, spKey = spKey)
-                    .mapCatching { token ->
-                        Spotify.accessToken = token.accessToken
-                        context.dataStore.edit { prefs ->
-                            prefs[SpotifyAccessTokenKey] = token.accessToken
-                            prefs[SpotifyAccessTokenExpiresAtKey] = token.accessTokenExpirationTimestampMs
-                        }
-                        refreshProfile()
-                    }
-            }
-
-        private suspend fun refreshProfile() {
-            Spotify
-                .me()
-                .onSuccess { user ->
-                    context.dataStore.edit { prefs ->
-                        prefs[SpotifyAccountNameKey] = user.displayName.orEmpty()
-                        user.images
-                            .firstOrNull()
-                            ?.url
-                            ?.let { prefs[SpotifyAccountAvatarUrlKey] = it }
-                            ?: prefs.remove(SpotifyAccountAvatarUrlKey)
-                    }
-                }.onFailure { error ->
-                    if (error is CancellationException) throw error
-                }
-        }
-
-        private suspend fun fetchAllPlaylists(): List<SpotifyPlaylist> {
-            val playlists = ArrayList<SpotifyPlaylist>()
-            var offset = 0
-            val limit = 50
-
-            while (true) {
-                val page =
-                    spotifyCallWithTokenRetry {
-                        Spotify.myPlaylists(limit = limit, offset = offset).getOrThrow()
-                    }
-                if (page.items.isEmpty()) break
-                playlists +=
-                    page.items.map { playlist ->
-                        if (playlist.tracks?.total != null) {
-                            playlist
-                        } else {
-                            playlistTrackCount(playlist.id)
-                                ?.let { playlist.copy(tracks = SpotifyPlaylistTracksRef(total = it)) }
-                                ?: playlist
-                        }
-                    }
-                offset += page.items.size
-                if (offset >= page.total || page.items.size < limit) break
-            }
-
-            return playlists
-        }
-
-        private suspend fun playlistTrackCount(playlistId: String): Int? =
-            try {
-                spotifyCallWithTokenRetry {
-                    Spotify
-                        .playlistTracks(
-                            playlistId = playlistId,
-                            limit = 1,
-                            offset = 0,
-                        ).getOrThrow()
-                }.total
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                reportException(error)
-                null
-            }
-
-        private suspend fun <T> spotifyCallWithTokenRetry(block: suspend () -> T): T =
-            runCatching { block() }
-                .getOrElse { error ->
-                    if ((error as? Spotify.SpotifyException)?.statusCode != 401) throw error
-                    val prefs = context.dataStore.data.first()
-                    val spDc = prefs[SpotifySpDcKey].orEmpty()
-                    if (spDc.isBlank()) throw error
-                    refreshAccessToken(spDc = spDc, spKey = prefs[SpotifySpKeyKey].orEmpty()).getOrThrow()
-                    block()
-                }
-
-        companion object {
-            private const val TOKEN_EXPIRY_GRACE_MS = 60_000L
-            private val spotifyCacheJson =
-                Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = true
-                }
-        }
+        suspend fun refreshLikedSongs() = likedRepository.refreshLikedSongs()
     }
 
 data class SpotifyAccountSession(

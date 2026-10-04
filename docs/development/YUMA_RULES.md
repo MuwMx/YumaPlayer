@@ -16,7 +16,21 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **Root Cause First:** Fix the underlying cause of an issue instead of introducing workarounds.
 - **No Duplicate Implementations:** Reuse existing abstractions, helpers, and components before creating new ones.
 - **Fail Gracefully:** Errors must be mapped to structured UI states (`Error`), never swallowed silently or causing unhandled crashes.
-- **File Length Limit:** Any production source file must not exceed 250 lines. Large files must be decomposed into SRP-compliant subcomponents, coordinators, and state holders without compromising architecture.
+- **File Length Limit:** Production source files should generally target under 250 lines. Large or multi-responsibility files must be decomposed into SRP-compliant subcomponents, coordinators, and state holders without compromising architecture (see §1.1 for split vs cohesion criteria).
+
+### 1.1 Split Criteria (SRP, not line count)
+- Split by reasons to change, not by ruler. Monolith = mixes auth, cache, parsing, UI-state or different lifecycles.
+- Keep cohesive class untouched even at 250-350 lines if it owns one end-to-end process (transport + retries, scoring math, JNI bridge).
+- Facade keeps old signatures, <100 lines, delegates to specialists. No ViewModel/DI rewrite on internal split.
+- Single state owner. No shared MutableStateFlow/lists. Playlists request token from Session, never store it.
+- Dependencies one-way only, no cycles.
+- No micro-files for digit beauty. Never extract 10-line private method to `SomethingHelper.kt` or break one algorithm chain into 3-4 files.
+
+### 1.2 Error Handling & Pipeline Integrity
+- No silent drops in playback and queue pipelines: `if (items.isEmpty()) return`, empty `CoroutineExceptionHandler`, raw `runCatching { }.getOrNull()` / `getOrDefault` without state update are forbidden. Dropped error = infinite loader.
+- Typed pipeline failures: resolvers and fetchers propagate `Result<T>` with typed cause (`StreamError` sealed: NoInternet, Timeout, SessionExpired, RateLimited, StreamNotFound, BotDetected, LoginRequired, CacheError, Unknown) or typed exception. Raw `Throwable` / `Exception` only at system boundary for logging via `reportException`.
+- Explicit failure reaction: every service/queue failure ends deterministically — auto-skip to next playable, prompt user action (relogin, retry), or emit mapped UI error. No hanging states.
+- Safe cache fallbacks: corrupt cache read purges damaged entry and falls back to network. No silent empty lists, no crash.
 
 ---
 
