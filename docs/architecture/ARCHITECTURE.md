@@ -53,6 +53,17 @@ To keep the codebase maintainable as it grows, all modules and layers must stric
 - **Responsibilities:** Fetching, caching, persisting, and transforming data from local databases and remote network APIs.
 - **Components:** Repository Implementations, Room Entities in `:database` (`db/entities/`, `MusicDatabase.kt` v36), InnerTube client in `:core:innertube`, Ktor Data Sources, Network DTOs, Mappers.
 
+### Playback Subsystem (`:app` `playback/` + `:core:audio-dsp`)
+- **Responsibilities:** Android Media3 session lifecycle, audio focus and hardware effects, stream resolving (FLAC/YT/Extractor), queue orchestration, dual-engine crossfade, and background integrations.
+- **Architecture (ADR-014):** Centered on `MusicService` as a thin coordinator delegating to four domain-isolated subsystem holders:
+  - `playback/audio/ServiceAudioPolicyHolder`: Focus, audio device routing, mute recovery, normalization, and EQ effects.
+  - `playback/engine/PlayerEngineHolder`: ExoPlayer instances, audio decks, connection pools, caches, load control, and renderers.
+  - `playback/session/ServiceSessionHolder`: MediaLibrarySession, notifications, and foreground service management.
+  - `playback/host/ServiceConfigCollector`: DataStore preferences, metadata state flows, and Together room/session state.
+  - Stream resolving is isolated in specialist classes (`FlacPlaybackResolver`, `YtPlaybackResolver`, `DiskCacheDataSpecProbe`, `MemoryPlaybackUrlPolicy`, `PlaybackFormatPersist`, `ArchiveTuneExtractorSpec`, `PlaybackSpecSupport`).
+  - Queue management is decoupled into `QueuePlayOrchestrator`, `QueueMutationCommands`, and `TogetherGuestCoordinator`.
+  - External integrations are isolated in `playback/discord/` and `playback/history/`.
+
 ---
 
 ## 3. Request & Data Flow Lifecycle

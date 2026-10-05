@@ -50,7 +50,7 @@ YumaPlayer consists of **20 Gradle modules** (verified against `settings.gradle.
 
 ### 📱 Application Root
 - **`:app`**
-  - **Responsibility:** Application entry point, Hilt composition root (`di/AppModule.kt`, `di/NetworkModule.kt`, `di/RepositoryModule.kt`), navigation graph, all Compose screens (`ui/screens/`, `ui/player/player_0/`), background playback (`playback/MusicService.kt` + `MusicService*.kt` splits), colocated domain packages (UseCases, repositories under `artist/`, `search/`, `library/`, `spotify/`, …), and ViewModels.
+  - **Responsibility:** Application entry point, Hilt composition root (`di/AppModule.kt`, `di/NetworkModule.kt`, `di/RepositoryModule.kt`), navigation graph, all Compose screens (`ui/screens/`, `ui/player/player_0/`), background playback subsystem (`playback/MusicService.kt` coordinator + subsystem holders under `playback/audio/`, `engine/`, `session/`, `host/`, resolvers, queue orchestrator, `discord/`, `history/`), colocated domain packages (UseCases, repositories under `artist/`, `search/`, `library/`, `spotify/`, …), and ViewModels.
   - **Rule:** Composition root. No other module may depend on `:app`.
 
 ### 🎨 Design System

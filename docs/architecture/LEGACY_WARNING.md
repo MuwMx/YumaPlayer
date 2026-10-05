@@ -68,11 +68,11 @@ Example:
 
 ## 3. Section B — God-Objects and Architecture Debt
 
-### B1. `MusicService.kt` monolithic service
-- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt` (+ `MusicServiceAudioEffects.kt`, `MusicServiceAudioFocusRoute.kt`, `MusicServicePlayback.kt`, `MusicServiceCrossfade.kt`, `MusicServiceIntegrations.kt`, `MusicServiceTogether.kt`, `MusicServiceWidgetUpdater.kt`)
-- **Debt:** One class owns ExoPlayer plus a Cast wrapper, four URL caches (`playbackUrlCache`, `losslessUrlCache`, `extractorPlaybackUrlCache`, `contentLengthCache`), crossfade with `secondaryCrossfadePlayer`, Discord / loudness / EQ / audio-focus / Bluetooth / wakelock handling, Together sessions, history (`PendingHistoryFinalization`), a `runBlocking` import, `ResolvingDataSource`, and two `OkHttpClient` instances (media + extractor). The split into `MusicService*.kt` files is physical only; state is still shared via `internal var`.
-- **Do not touch:** `onCreate` ordering (player -> session -> `ensureStartedAsForeground` -> DataStore collect) is fragile; reordering throws `ForegroundServiceStartNotAllowedException` or drops the queue.
-- **Refactor criterion:** Extract `PlaybackEngine`, `UrlResolveCache`, `AudioEffectsController`, and `PresenceController` as interfaced classes; keep `MusicService` as a thin `MediaLibraryService` facade.
+### B1. `MusicService.kt` coordinator and subsystem holders (Wave-3 completed, ADR-014)
+- **Path:** `app/src/main/kotlin/moe/rukamori/archivetune/playback/MusicService.kt` (reduced from 2415 to ~894 lines, target <200), `playback/audio/ServiceAudioPolicyHolder.kt`, `playback/engine/PlayerEngineHolder.kt`, `playback/session/ServiceSessionHolder.kt`, `playback/host/ServiceConfigCollector.kt`.
+- **Status:** Decomposed via ADR-014. The monolithic responsibilities have been cleanly decoupled into four specialized subsystem holders (`ServiceAudioPolicyHolder`, `PlayerEngineHolder`, `ServiceSessionHolder`, `ServiceConfigCollector`). Stream resolving is partitioned into specialist classes (`DiskCacheDataSpecProbe`, `MemoryPlaybackUrlPolicy`, `FlacPlaybackResolver`, `YtPlaybackResolver`, `PlaybackFormatPersist`, `ArchiveTuneExtractorSpec`). Queue management is split into `QueuePlayOrchestrator`, `QueueMutationCommands`, and `TogetherGuestCoordinator`. Discord and History states are encapsulated in dedicated sub-packages (`playback/discord/`, `playback/history/`).
+- **Do not touch:** `onCreate` ordering (player -> session -> `ensureStartedAsForeground` -> DataStore collect) remains fragile; reordering throws `ForegroundServiceStartNotAllowedException` or drops the queue. Audio effects transfer on crossfade handoff must remain atomic.
+- **Remaining task:** Compact the remaining ~800 lines of `MusicService.kt` down to a pure 150-200 line lifecycle coordinator by inlining remaining proxy getters directly to the holders.
 
 ### B2. `MusicDatabase.kt` Room facade (v36)
 - **Path:** `database/src/main/kotlin/moe/rukamori/archivetune/db/MusicDatabase.kt` (1183 lines, `CURRENT_VERSION=36`), `database/src/main/kotlin/moe/rukamori/archivetune/db/entities/` (33 files)

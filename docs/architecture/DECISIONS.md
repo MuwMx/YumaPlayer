@@ -20,6 +20,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-011](#adr-011-spotify-sync-architecture)** — Spotify Sync Architecture
 - **[ADR-012](#adr-012-room-persistence-extracted-into-database-module)** — Room Persistence Extracted into `:database` Module
 - **[ADR-013](#adr-013-dual-player-crossfade-engine)** — Dual-Player Crossfade Engine
+- **[ADR-014](#adr-014-playback-monolith-decomposition--subsystem-coordinator-architecture)** — Playback Monolith Decomposition & Subsystem Coordinator Architecture
 
 ---
 
@@ -182,4 +183,36 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Perfectly smooth, gapless crossfade transitions with zero audio artifacts, uninterrupted MediaSession lifetime, and complete UI contract preservation.
   - *Negative:* Temporary dual-decoder memory and CPU overhead during active crossfade ramp intervals.
+
+---
+
+## ADR-014: Playback Monolith Decomposition & Subsystem Coordinator Architecture
+
+- **Status:** Accepted
+- **Context:** The playback subsystem accumulated significant technical debt over time. `MusicService.kt` (2415+ lines), `MusicServicePlayback.kt` (625+ lines), `MusicServiceIntegrations.kt` (794+ lines), and `PlaybackQueueManager.kt` (546+ lines) operated as multi-responsibility monoliths where Android Service lifecycle, player engines, URL/disk caches, audio effects, Discord RPC, playback history, queue mutation, and Together sessions were tightly entangled via shared `internal var` state on `MusicService`. Extension dumps (`fun MusicService.doSomething()`) created risk of recursion bugs (e.g. member vs extension shadowing) and prevented parallel module compilation.
+- **Decision:**
+  1. **Coordinator-Holder Architecture for `MusicService`:** Decompose `MusicService` into a thin lifecycle coordinator delegating to four dedicated domain-isolated holders:
+     - `playback/audio/ServiceAudioPolicyHolder`: Owns audio focus, noisy handling, audio device routing, device mute recovery, volume ramping, normalization, and EQ effects session.
+     - `playback/engine/PlayerEngineHolder`: Owns ExoPlayer instances, Cast wrapper, audio decks, DJ filters, network OkHttp clients, URL/content length caches, and load control/renderers factories.
+     - `playback/session/ServiceSessionHolder`: Owns `MediaLibrarySession`, `MusicBinder`, notification provider, and foreground service management.
+     - `playback/host/ServiceConfigCollector`: Owns DataStore preference subscriptions, metadata state flows, and Together room/session state.
+  2. **Specialist Resolvers for Playback:** Decompose `MusicServicePlayback` into single-responsibility resolution components:
+     - `DiskCacheDataSpecProbe`: Cache probing and content length inspection.
+     - `MemoryPlaybackUrlPolicy`: In-memory URL caching and DataSpec building.
+     - `FlacPlaybackResolver`: FLAC/lossless stream resolution and format persistence.
+     - `YtPlaybackResolver`: YouTube Music player response resolution, retries, and error mapping.
+     - `PlaybackFormatPersist`: Audio format entity construction, normalization, and cache storage.
+     - `ArchiveTuneExtractorSpec`: Standalone stream extraction pipeline.
+     - `PlaybackSpecSupport`: Pure token extraction, URL formatting, and network error classification.
+  3. **Lifecycle-Isolated Integrations:**
+     - Discord RPC moved into `playback/discord/` (`DiscordHoldController`, `DiscordPresenceApplier`, `DiscordSyncOrchestrator`).
+     - Playback history moved into `playback/history/` (`PlaybackHistoryStore`, `PlaybackHistoryTracker`).
+  4. **Queue Orchestration & Mutation Decoupling:**
+     - `QueuePlayOrchestrator`: Owns timeline initialization, preload, status resolution, shuffling, and auto-load continuation.
+     - `QueueMutationCommands`: Encapsulates explicit mutations (`clearQueue`, `stopAndClearPlayback`, host track insertions).
+     - `TogetherGuestCoordinator`: Stateless Together guest gating logic.
+  5. **Extension-Dump Ban:** Forbid untyped extension dumps of the form `fun MusicService.doSomething()`. Subsystems must be interfaced classes or holders with explicit dependency graphs and one-way downward dependencies.
+- **Consequences:**
+  - *Positive:* Strict SRP compliance, isolation of mutable state into explicit owners, elimination of recursion risks, clear boundaries between service lifecycle and playback engine, significantly reduced cognitive load.
+  - *Negative:* Increased file count under `playback/`, requiring disciplined usage of holder interfaces.
 
