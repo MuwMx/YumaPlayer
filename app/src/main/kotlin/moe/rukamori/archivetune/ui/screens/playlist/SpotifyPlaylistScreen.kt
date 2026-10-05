@@ -244,7 +244,7 @@ fun SpotifyPlaylistScreen(
     }
 
     ExpressivePullToRefreshBox(
-        isRefreshing = state.isLoading,
+        isRefreshing = state.isLoading && tracks.isNotEmpty(),
         onRefresh = viewModel::reload,
         modifier =
             Modifier

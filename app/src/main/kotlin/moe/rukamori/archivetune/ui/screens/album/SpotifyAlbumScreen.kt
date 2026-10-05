@@ -112,7 +112,7 @@ fun SpotifyAlbumScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Transparent)) {
         ExpressivePullToRefreshBox(
-            isRefreshing = uiState is SpotifyAlbumUiState.Loading,
+            isRefreshing = false,
             onRefresh = viewModel::loadAlbum,
             modifier = Modifier.fillMaxSize(),
         ) {

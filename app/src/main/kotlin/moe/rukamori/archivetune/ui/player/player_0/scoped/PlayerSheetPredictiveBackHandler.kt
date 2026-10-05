@@ -37,8 +37,8 @@ internal fun PlayerSheetPredictiveBackHandler(
     key(registrationKey) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             PredictiveBackHandler(enabled = enabled) { progressFlow ->
-
                 var actualProgress = 0f
+                var isCompleted = false
 
                 try {
                     progressFlow.collect { backEvent ->
@@ -46,49 +46,32 @@ internal fun PlayerSheetPredictiveBackHandler(
                         onSwipeEdgeChanged(backEvent.swipeEdge)
                         onPredictiveBackFractionChanged(actualProgress)
                     }
-
-                    // Жест успешно завершен. Используем локальный actualProgress!
-                    val currentVisualY = lerp(sheetExpandedTargetY, sheetCollapsedTargetY, actualProgress)
-                    val currentVisualExpansionFraction = (1f - actualProgress).coerceIn(0f, 1f)
-
-                    // 1. Фиксируем точку отрыва пальца в реальных координатах
-                    sheetMotionController.snapTo(
-                        translationYValue = currentVisualY,
-                        expansionFractionValue = currentVisualExpansionFraction
-                    )
-
-                    // 2. Сбрасываем флаги для калькулятора геометрии
-                    onPredictiveBackFractionChanged(0f)
-                    onSwipeEdgeChanged(null)
-
-                    // 3. Плавно роняем шторку вниз прямо в этом suspend-блоке
-                    sheetMotionController.animateTo(
-                        targetExpanded = false,
-                        canExpand = true,
-                        collapsedY = sheetCollapsedTargetY
-                    )
-
-                    onCollapse()
-
+                    isCompleted = true
                 } catch (_: CancellationException) {
-                    // Жест отменен (вернули палец к краю экрана)
                     scope.launch {
-                        // ИСПРАВЛЕНО: Плавный возврат от актуальной позиции, а не от нуля
                         Animatable(actualProgress).animateTo(
                             targetValue = 0f,
                             animationSpec = tween(animationDurationMs)
                         ) {
                             onPredictiveBackFractionChanged(this.value)
                         }
-
-                        if (actualProgress > 0.5f) {
-                            onCollapse()
-                        } else {
-                            onExpand()
-                        }
-
                         onSwipeEdgeChanged(null)
                     }
+                }
+
+                if (isCompleted) {
+                    val currentVisualY = lerp(sheetExpandedTargetY, sheetCollapsedTargetY, actualProgress)
+                    val currentVisualExpansionFraction = (1f - actualProgress).coerceIn(0f, 1f)
+
+                    sheetMotionController.snapTo(
+                        translationYValue = currentVisualY,
+                        expansionFractionValue = currentVisualExpansionFraction
+                    )
+
+                    onPredictiveBackFractionChanged(0f)
+                    onSwipeEdgeChanged(null)
+
+                    onCollapse()
                 }
             }
         } else {
