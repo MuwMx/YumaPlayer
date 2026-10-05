@@ -1169,4 +1169,15 @@
     <string name="action_go">Lanjut</string>
     <string name="sync_offset">Offset Sinkronisasi</string>
     <string name="lyrics_search_plain_badge">Teks Biasa</string>
+    <string name="app_icon_builtin">Bawaan</string>
+    <string name="home_background_tonal">Tonal glow</string>
+    <string name="playback_error_cause">Penyebab</string>
+    <string name="spotify_discover">Temukan</string>
+    <string name="spotify_login_via_token">Masuk menggunakan token</string>
+    <string name="spotify_sp_dc">sp_dc</string>
+    <string name="spotify_sync_likes_desc">Sinkronkan lagu yang disukai ke koleksi Spotify Anda</string>
+    <string name="hide_ytm_liked_songs">Sembunyikan Lagu yang Disukai dari YTM</string>
+    <string name="qobuz_app_id">Qobuz App ID</string>
+    <string name="qobuz_app_secret">Qobuz App Secret</string>
+    <string name="qobuz_user_auth_token">Qobuz User Auth Token</string>
 </resources>
