@@ -570,7 +570,7 @@
     <string name="no_logs">Tidak Ada Log</string>
     <string name="show_nerd_stats">Tampilkan statistik nerd</string>
     <string name="description_show_nerd_stats">Menampilkan statistik pemutaran waktu nyata (codec, bitrate, buffer)</string>
-    <string name="display_codec_on_player">Tampilkan Codec di Player</string>
+    <string name="display_codec_on_player">Tampilkan Codec di Pemutar</string>
     <string name="description_display_codec_on_player">Tampilkan informasi codec audio terkini pada pemutar</string>
     <string name="nerd_stats">Statistik Nerd</string>
     <string name="track_label">Lacak</string>
@@ -993,4 +993,7 @@
     <string name="widget_no_recent_songs">Belum ada lagu terbaru</string>
     <string name="save_as_playlist">Simpan sebagai playlist</string>
     <string name="save_as_playlist_desc">Simpan antrean saat ini ke playlist</string>
+    <string name="device_mute_recovery_volume_disabled">Nonaktifkan</string>
+    <string name="device_volume_zero_playback_paused">Pemutaran dijeda karena volume perangkat 0. Naikkan volume untuk melanjutkan.</string>
+    <string name="discord_reauthorize_required_title">Sesi Discord kedaluwarsa</string>
 </resources>
