@@ -1094,7 +1094,7 @@
     <string name="unsaved_account_dialog_save_yes">Sì, salva l\'account corrente</string>
     <string name="youtube_channels">Canali YouTube</string>
     <string name="hidden_playlists">Playlist nascoste</string>
-    <string name="hidden_playlists_description">Le playlist nascoste dalla libreria appaiono qui</string>
+    <string name="hidden_playlists_description">Le playlist nascoste dalla libreria appariranno qui</string>
     <string name="no_hidden_playlists">Nessuna playlist nascosta</string>
     <string name="unhide">Mostra</string>
     <string name="immersive_mode">Modalità immersiva</string>
@@ -1224,4 +1224,11 @@
     <string name="automix_duration_4s">4s</string>
     <string name="automix_duration_8s">8s</string>
     <string name="automix_duration_12s">12s</string>
+    <string name="splash_shape_preference">Forma della schermata Splash</string>
+    <string name="splash_shape_preference_desc">Seleziona la forma della costellazione da mostrare all\'avvio</string>
+    <string name="splash_shape_logo">Logo</string>
+    <string name="splash_shape_bolt">Fulmine</string>
+    <string name="splash_shape_random">Alterna</string>
+    <string name="random_home_background_on_startup">Sfondo casuale all\'avvio</string>
+    <string name="random_home_background_on_startup_desc">Scegli uno sfondo diverso ad ogni avvio dell\'app</string>
 </resources>
