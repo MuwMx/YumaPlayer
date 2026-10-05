@@ -1117,4 +1117,6 @@
     <string name="channel_canary">Canary</string>
     <string name="channel_canary_soon">Canary (segera)</string>
     <string name="channel_daily_nightly">Harian</string>
+    <string name="together_current_playback">Pemutaran saat ini</string>
+    <string name="together_playback_empty">Tidak ada yang diputar</string>
 </resources>
