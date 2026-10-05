@@ -295,6 +295,12 @@ YumaPlayer распространяется бесплатно, не содер�
 * Ознакомьтесь с **[Правилами участия](CONTRIBUTING.md)** перед отправкой кода или созданием Pull Request.
 * Хотите перевести плеер? Переходите сразу на **[Hosted Weblate](https://hosted.weblate.org/engage/yumaplayer/)** — знание Git не требуется.
 
+### 👥 Контрибьюторы
+
+<a href="https://github.com/MuwMx/YumaPlayer/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=MuwMx/YumaPlayer" alt="Контрибьюторы" />
+</a>
+
 ---
 
 ## 🤝 Благодарности (Open-Source Credits)

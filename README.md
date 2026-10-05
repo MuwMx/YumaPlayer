@@ -294,6 +294,12 @@ Contributions make open-source projects thrive! Whether you are fixing bugs, pro
 * Read our **[Contribution Guidelines](CONTRIBUTING.md)** before submitting code or PRs.
 * Want to translate? Head over to our **[Hosted Weblate](https://hosted.weblate.org/engage/yumaplayer/)** — no coding required.
 
+### 👥 Contributors
+
+<a href="https://github.com/MuwMx/YumaPlayer/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=MuwMx/YumaPlayer" alt="Contributors" />
+</a>
+
 ---
 
 ## 🤝 Acknowledgments (Open-Source Credits)
