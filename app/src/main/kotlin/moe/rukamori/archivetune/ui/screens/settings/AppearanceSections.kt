@@ -86,6 +86,8 @@ fun AppearanceThemeSection(
         onArchiveTuneCanvasChange = actions.onArchiveTuneCanvasChange,
         homeBackgroundStyle = state.homeBackgroundStyle,
         onHomeBackgroundStyleChange = actions.onHomeBackgroundStyleChange,
+        randomHomeBackgroundOnStartup = state.randomHomeBackgroundOnStartup,
+        onRandomHomeBackgroundOnStartupChange = actions.onRandomHomeBackgroundOnStartupChange,
         homeBackgroundParallaxEnabled = state.homeBackgroundParallaxEnabled,
         onHomeBackgroundParallaxEnabledChange = actions.onHomeBackgroundParallaxEnabledChange,
         homeBackgroundParallaxStrength = state.homeBackgroundParallaxStrength,
@@ -131,6 +133,8 @@ fun AppearanceThemeSection(
     onArchiveTuneCanvasChange: (Boolean) -> Unit,
     homeBackgroundStyle: HomeBackgroundStyle,
     onHomeBackgroundStyleChange: (HomeBackgroundStyle) -> Unit,
+    randomHomeBackgroundOnStartup: Boolean,
+    onRandomHomeBackgroundOnStartupChange: (Boolean) -> Unit,
     homeBackgroundParallaxEnabled: Boolean,
     onHomeBackgroundParallaxEnabledChange: (Boolean) -> Unit,
     homeBackgroundParallaxStrength: Float,
@@ -271,6 +275,16 @@ fun AppearanceThemeSection(
             HomeBackgroundSelector(
                 homeBackgroundStyle = homeBackgroundStyle,
                 onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
+            )
+        }
+
+        item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.random_home_background_on_startup)) },
+                description = stringResource(R.string.random_home_background_on_startup_desc),
+                icon = { Icon(painterResource(R.drawable.shuffle), null, modifier = Modifier.size(24.dp)) },
+                checked = randomHomeBackgroundOnStartup,
+                onCheckedChange = onRandomHomeBackgroundOnStartupChange,
             )
         }
 

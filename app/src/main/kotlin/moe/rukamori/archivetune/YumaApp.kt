@@ -36,6 +36,7 @@ import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PureBlackKey
+import moe.rukamori.archivetune.constants.RandomHomeBackgroundOnStartupKey
 import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.constants.UseSystemFontKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -107,8 +108,32 @@ fun YumaApp(
             disableAnimations = disableAnimations,
             onReadyChange = onReadyChange,
         )
-    val homeBackgroundStyle by rememberEnumPreference(HomeBackgroundStyleKey, HomeBackgroundStyle.TONAL)
-    val homeBackgroundParallaxEnabled by rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
+    val homeBackgroundStyle by
+    rememberEnumPreference(
+        HomeBackgroundStyleKey,
+        HomeBackgroundStyle.TONAL,
+    )
+
+    val randomHomeBackgroundOnStartup by
+    rememberPreference(
+        RandomHomeBackgroundOnStartupKey,
+        defaultValue = false,
+    )
+
+    val effectiveHomeBackgroundStyle =
+        remember(randomHomeBackgroundOnStartup) {
+            if (randomHomeBackgroundOnStartup) {
+                HomeBackgroundStyle.entries.random()
+            } else {
+                homeBackgroundStyle
+            }
+        }
+
+    val homeBackgroundParallaxEnabled by
+    rememberPreference(
+        HomeBackgroundParallaxEnabledKey,
+        defaultValue = true,
+    )
     val homeBackgroundParallaxStrength by rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
     val homeBackgroundBrightness by rememberPreference(HomeBackgroundBrightnessKey, defaultValue = 1f)
     val fontPreference by rememberEnumPreference(FontPreferenceKey, defaultValue = AppFontPreference.DEFAULT)
@@ -184,7 +209,7 @@ fun YumaApp(
             splashEnabled = splashState.splashEnabled,
             useDarkTheme = useDarkTheme,
             pureBlack = pureBlack,
-            homeBackgroundStyle = homeBackgroundStyle,
+            homeBackgroundStyle = effectiveHomeBackgroundStyle,
             homeBackgroundParallaxEnabled = homeBackgroundParallaxEnabled,
             homeBackgroundParallaxStrength = homeBackgroundParallaxStrength,
             homeBackgroundBrightness = homeBackgroundBrightness,
