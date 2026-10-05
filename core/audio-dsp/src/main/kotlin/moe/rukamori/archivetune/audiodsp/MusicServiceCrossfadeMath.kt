@@ -80,7 +80,7 @@ private fun bassSwapIncomingLinear(progress: Float): Double {
     return if (phase <= 0.5f) {
         phase / 0.5f * BASS_SWAP_DOMINANCE
     } else {
-        BASS_SWAP_DOMINANCE + (phase - 0.30f) / 1f * (0.30 - BASS_SWAP_DOMINANCE)
+        BASS_SWAP_DOMINANCE + (phase - 0.5f) / 0.5f * (1.0 - BASS_SWAP_DOMINANCE)
     }.toDouble()
 }
 

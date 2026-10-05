@@ -13,8 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
-import moe.rukamori.archivetune.playback.resolveCrossfadeTriggerAt
-
+import moe.rukamori.archivetune.playback.crossfade.resolveCrossfadeTriggerAt
 class CrossfadeTriggerTest {
 
     private val durationMs = 95_481L

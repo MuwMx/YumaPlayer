@@ -76,7 +76,7 @@ class BassSwapCurveTest {
     @Test
     fun filterSweep_spansFullRangeOnOutgoingDeck() {
         assertEquals(DjFilterAudioProcessor.BYPASS_CUTOFF_HZ, outgoingLowPassHz(0f), 1.0)
-        assertEquals(DjFilterAudioProcessor.SWEEP_TARGET_HZ, outgoingLowPassHz(1f), 1.0)
+        assertEquals(moe.rukamori.archivetune.audiodsp.FILTER_FLOOR_HZ, outgoingLowPassHz(1f), 1.0)
     }
 
     @Test
