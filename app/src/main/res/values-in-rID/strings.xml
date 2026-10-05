@@ -1141,4 +1141,15 @@
     <string name="together_activity_host_transferred">Host dialihkan ke %1$s</string>
     <string name="proxy_connection_invalid_configuration">Host atau port proksi tidak valid</string>
     <string name="updates_channel_warning_stable_title">Versi stabil</string>
+    <plurals name="widget_total_plays">
+        <item quantity="other">%d pemutaran</item>
+    </plurals>
+    <string name="widget_insights_title">Statistik Mendengar</string>
+    <string name="widget_top_song_summary">Paling sering diputar: %1$s</string>
+    <string name="solana_address_copied">Alamat Solana disalin ke papan klip!</string>
+    <string name="discord_reauthorize_required_description">Rich Presence tidak dapat ditampilkan sebelum Anda memberikan izin ulang ke Discord.</string>
+    <string name="discord_reauthorize_action">Otorisasi ulang</string>
+    <string name="duration_seconds_short">%1$dd</string>
+    <string name="export">Ekspor</string>
+    <string name="onboarding_permission_app_installation_title">Pemasangan aplikasi</string>
 </resources>
