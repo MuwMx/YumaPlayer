@@ -100,4 +100,18 @@ class PlaybackRecoveryEngine(
         RecoveryMaintenanceOps.recoverSong(mediaId, databaseProvider, playerActions::findNextMediaItemById, playbackData)
     suspend fun trimPlayerCacheToBytes(limitBytes: Long) =
         RecoveryMaintenanceOps.trimPlayerCacheToBytes(limitBytes, cacheOps)
+
+    val registeredCacheKeys: MutableSet<String>
+        get() = RecoveryMaintenanceOps.registeredCacheKeys
+
+    fun createAutomixCacheListener(
+        tag: String = "MusicService",
+        flacCacheKeyPrefix: String = "flac_",
+        onSpanAdded: (cache: Cache, key: String, mediaId: String) -> Unit,
+    ): Cache.Listener = RecoveryMaintenanceOps.createAutomixCacheListener(
+        playerCache = cacheOps.playerCache,
+        tag = tag,
+        flacCacheKeyPrefix = flacCacheKeyPrefix,
+        onSpanAdded = onSpanAdded,
+    )
 }

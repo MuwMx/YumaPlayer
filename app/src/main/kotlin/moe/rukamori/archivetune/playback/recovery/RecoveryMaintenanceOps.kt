@@ -8,6 +8,7 @@ package moe.rukamori.archivetune.playback.recovery
 
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheSpan
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -147,4 +148,32 @@ object RecoveryMaintenanceOps {
             ioDispatcher = ioDispatcher,
         )
     }
+
+    val registeredCacheKeys: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    fun createAutomixCacheListener(
+        playerCache: Cache,
+        tag: String = "MusicService",
+        flacCacheKeyPrefix: String = "flac_",
+        onSpanAdded: (cache: Cache, key: String, mediaId: String) -> Unit,
+    ): Cache.Listener =
+        object : Cache.Listener {
+            override fun onSpanAdded(cache: Cache, span: CacheSpan) {
+                val key = span.key
+                timber.log.Timber.tag(tag).d("Automix cache onSpanAdded key=$key length=${span.length} cached=${cache.isCached(key, span.position, span.length)}")
+                val mediaId =
+                    if (key.startsWith(flacCacheKeyPrefix)) {
+                        key.removePrefix(flacCacheKeyPrefix)
+                    } else {
+                        key
+                    }
+                if (mediaId.isNotBlank()) {
+                    onSpanAdded(cache, key, mediaId)
+                }
+            }
+
+            override fun onSpanRemoved(cache: Cache, span: CacheSpan) {}
+
+            override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) {}
+        }
 }

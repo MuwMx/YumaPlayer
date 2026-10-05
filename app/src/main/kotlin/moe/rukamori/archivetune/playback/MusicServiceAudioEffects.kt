@@ -20,12 +20,17 @@ import moe.rukamori.archivetune.audiodsp.RISE
 import timber.log.Timber
 import kotlin.math.abs
 
-internal inline fun <T> MusicService.readAudioEffectValue(
+internal inline fun <T> readAudioEffectValue(
     operation: String,
     block: () -> T,
 ): T? = runCatching(block).onFailure { error ->
     Timber.tag("MusicService").w(error, "Audio effect query failed: %s", operation)
 }.getOrNull()
+
+internal inline fun <T> MusicService.readAudioEffectValue(
+    operation: String,
+    block: () -> T,
+): T? = moe.rukamori.archivetune.playback.readAudioEffectValue(operation, block)
 
 internal fun MusicService.updateEqCapabilitiesFromEffect(eq: Equalizer) {
     val bandCount = readAudioEffectValue("equalizer band count") { eq.numberOfBands.toInt().coerceAtLeast(0) } ?: 0

@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.playback
 
 import android.content.Intent
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.datastore.preferences.core.edit
 import androidx.media3.common.Player
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,35 @@ import timber.log.Timber
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
+
+internal data class TogetherPendingGuestControl(
+    val desiredIsPlaying: Boolean? = null,
+    val desiredIndex: Int? = null,
+    val desiredTrackId: String? = null,
+    val requestedAtElapsedMs: Long,
+    val expiresAtElapsedMs: Long,
+)
+
+@Volatile
+internal var togetherPendingGuestControl: TogetherPendingGuestControl? = null
+internal val togetherParticipantNames = ConcurrentHashMap<String, String>()
+private var lastTogetherNoticeAtElapsedMs: Long = 0L
+private var lastTogetherNoticeKey: String? = null
+
+internal fun MusicService.showTogetherNotice(
+    message: String,
+    key: String? = null,
+) {
+    val now = android.os.SystemClock.elapsedRealtime()
+    val normalizedKey = key ?: message
+    if (normalizedKey == lastTogetherNoticeKey && now - lastTogetherNoticeAtElapsedMs < 1200L) return
+    lastTogetherNoticeKey = normalizedKey
+    lastTogetherNoticeAtElapsedMs = now
+    scope.launch(SilentHandler) {
+        Toast.makeText(this@showTogetherNotice, message, Toast.LENGTH_SHORT).show()
+    }
+}
 
 internal fun MusicService.startTogetherHost(
     port: Int,
@@ -881,15 +911,15 @@ internal fun MusicService.requestTogetherControl(action: moe.rukamori.archivetun
     togetherPendingGuestControl =
         when (action) {
             moe.rukamori.archivetune.together.ControlAction.Play -> {
-                MusicService.TogetherPendingGuestControl(desiredIsPlaying = true, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
+                TogetherPendingGuestControl(desiredIsPlaying = true, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
             }
 
             moe.rukamori.archivetune.together.ControlAction.Pause -> {
-                MusicService.TogetherPendingGuestControl(desiredIsPlaying = false, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
+                TogetherPendingGuestControl(desiredIsPlaying = false, requestedAtElapsedMs = now, expiresAtElapsedMs = now + timeout)
             }
 
             is moe.rukamori.archivetune.together.ControlAction.SeekToIndex -> {
-                MusicService.TogetherPendingGuestControl(
+                TogetherPendingGuestControl(
                     desiredIndex = action.index.coerceAtLeast(0),
                     requestedAtElapsedMs = now,
                     expiresAtElapsedMs =
@@ -898,7 +928,7 @@ internal fun MusicService.requestTogetherControl(action: moe.rukamori.archivetun
             }
 
             is moe.rukamori.archivetune.together.ControlAction.SeekToTrack -> {
-                MusicService.TogetherPendingGuestControl(
+                TogetherPendingGuestControl(
                     desiredTrackId = action.trackId.trim().ifBlank { null },
                     requestedAtElapsedMs = now,
                     expiresAtElapsedMs = now + timeout,

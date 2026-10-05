@@ -1,6 +1,10 @@
 package moe.rukamori.archivetune.playback
 
+import android.media.MediaCodecList
+import android.net.Uri
+import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
@@ -11,6 +15,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import moe.rukamori.archivetune.playback.MusicService.ResolvedUrlRoutingDataSource
 import moe.rukamori.archivetune.playback.MusicService.SchemeRoutingDataSource
 import moe.rukamori.archivetune.utils.isLowDataModeActive
+import java.util.Locale
 
 internal fun MusicService.createPlayerCacheDataSourceFactory(cacheWriteEnabled: Boolean): CacheDataSource.Factory =
     CacheDataSource
@@ -90,3 +95,48 @@ internal fun MusicService.createMediaSourceFactory() =
         createDataSourceFactory(),
         DefaultExtractorsFactory(),
     )
+
+internal fun MusicService.resolveMediaItemForCast(mediaItem: MediaItem): MediaItem {
+    val uri = mediaItem.localConfiguration?.uri ?: return mediaItem
+    if (uri.shouldBypassYouTubeResolver()) return mediaItem
+    val dataSpec =
+        DataSpec
+            .Builder()
+            .setUri(uri)
+            .setKey(mediaItem.localConfiguration?.customCacheKey ?: mediaItem.mediaId)
+            .build()
+    val resolvedDataSpec =
+        resolvePlaybackDataSpec(
+            dataSpec = dataSpec,
+            allowCacheShortCircuit = false,
+        )
+    return if (resolvedDataSpec.uri == uri) {
+        mediaItem
+    } else {
+        mediaItem
+            .buildUpon()
+            .setUri(resolvedDataSpec.uri)
+            .build()
+    }
+}
+
+internal fun MusicService.isExtractorPlaybackUri(uri: Uri): Boolean {
+    val url = uri.toString()
+    return extractorPlaybackUrlCache.values.any { it.url == url } ||
+        uri.path?.startsWith("/api/play/") == true
+}
+
+internal fun Uri.shouldBypassPlayerCache(): Boolean {
+    val normalizedScheme = scheme?.lowercase(Locale.US)
+    return normalizedScheme == "content" ||
+        normalizedScheme == "file" ||
+        normalizedScheme == "android.resource"
+}
+
+internal fun deviceSupportsMimeType(mimeType: String): Boolean =
+    runCatching {
+        val codecList = MediaCodecList(MediaCodecList.ALL_CODECS)
+        codecList.codecInfos.any { info ->
+            !info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
+        }
+    }.getOrDefault(false)
