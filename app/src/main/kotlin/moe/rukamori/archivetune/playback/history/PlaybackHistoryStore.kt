@@ -59,7 +59,7 @@ internal class PlaybackHistoryStore(
     fun updatePendingHistoryFinalization(
         mediaId: String,
         sessionToken: Long,
-        result: MusicService.ImmediateHistoryResult,
+        result: ImmediateHistoryResult,
     ) {
         val pendingSessions = service.pendingHistoryFinalizations[mediaId] ?: return
         val index = pendingSessions.indexOfFirst { it.sessionToken == sessionToken }
@@ -77,7 +77,7 @@ internal class PlaybackHistoryStore(
         if (service.currentHistorySessionQueued) return
 
         service.pendingHistoryFinalizations.getOrPut(mediaId) { mutableListOf() }.add(
-            MusicService.PendingHistoryFinalization(
+            PendingHistoryFinalization(
                 sessionToken = service.currentHistorySessionToken,
                 eventId = service.currentHistoryEventId,
                 remoteRegistered = service.currentHistoryRemoteRegistered,
@@ -86,7 +86,7 @@ internal class PlaybackHistoryStore(
         service.currentHistorySessionQueued = true
     }
 
-    fun popPendingHistoryFinalization(mediaId: String): MusicService.PendingHistoryFinalization? {
+    fun popPendingHistoryFinalization(mediaId: String): PendingHistoryFinalization? {
         val pendingSessions = service.pendingHistoryFinalizations[mediaId] ?: return null
         val pending = pendingSessions.firstOrNull() ?: return null
         pendingSessions.removeAt(0)
@@ -118,7 +118,7 @@ internal class PlaybackHistoryStore(
             withContext(Dispatchers.IO) {
                 val resolvedEventId = eventIdSnapshot ?: insertPlaybackHistoryEvent(mediaId, playedMs, mediaMetadataSnapshot)
                 val remoteRegistered = remoteRegisteredSnapshot || registerRemotePlaybackHistory(mediaId)
-                MusicService.ImmediateHistoryResult(resolvedEventId, remoteRegistered)
+                ImmediateHistoryResult(resolvedEventId, remoteRegistered)
             }
         }
 
@@ -282,3 +282,14 @@ internal class PlaybackHistoryStore(
 
 internal fun PlayerResponse.PlaybackTracking.remotePlaybackTrackingUrl(): String? =
     videostatsPlaybackUrl?.baseUrl?.trim()?.takeIf { it.isNotEmpty() }
+
+internal data class PendingHistoryFinalization(
+    val sessionToken: Long,
+    val eventId: Long?,
+    val remoteRegistered: Boolean,
+)
+
+internal data class ImmediateHistoryResult(
+    val eventId: Long?,
+    val remoteRegistered: Boolean,
+)

@@ -21,35 +21,19 @@ import timber.log.Timber
 internal class DiscordHoldController(
     private val service: MusicService,
 ) {
-    var activeHoldState: ActiveHoldState?
-        get() = service.activeDiscordHoldState
-        set(value) {
-            service.activeDiscordHoldState = value
-        }
+    @Volatile
+    var activeHoldState: ActiveHoldState? = null
 
-    var activeHoldTimeoutJob: Job?
-        get() = service.activeDiscordHoldTimeoutJob
-        set(value) {
-            service.activeDiscordHoldTimeoutJob = value
-        }
+    var activeHoldTimeoutJob: Job? = null
 
-    var lastAppliedVisiblePresence: LastAppliedVisiblePresence?
-        get() = service.lastAppliedVisiblePresence
-        set(value) {
-            service.lastAppliedVisiblePresence = value
-        }
+    @Volatile
+    var lastAppliedVisiblePresence: LastAppliedVisiblePresence? = null
 
-    var lastDecision: DiscordPresenceDecision?
-        get() = service.lastDiscordPresenceDecision
-        set(value) {
-            service.lastDiscordPresenceDecision = value
-        }
+    @Volatile
+    var lastDecision: DiscordPresenceDecision? = null
 
-    var pausedPresenceGate: PausedPresenceGate
-        get() = service.pausedPresenceGate
-        set(value) {
-            service.pausedPresenceGate = value
-        }
+    @Volatile
+    var pausedPresenceGate: PausedPresenceGate = PausedPresenceGate.FollowPreference
 
     fun updateActiveDiscordHoldState(nextHoldState: ActiveHoldState?) {
         val previousHoldState = activeHoldState

@@ -23,7 +23,7 @@ internal class DiscordPresenceApplier(
     private val holdController: DiscordHoldController = DiscordHoldController(service),
 ) {
     suspend fun applyDiscordPresenceDecision(
-        request: MusicService.DiscordSyncRequest,
+        request: DiscordSyncRequest,
         resolution: DiscordPresenceResolution,
         token: String,
         song: Song?,

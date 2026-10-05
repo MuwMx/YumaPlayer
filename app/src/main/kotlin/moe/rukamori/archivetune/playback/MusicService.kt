@@ -20,13 +20,11 @@ import android.database.ContentObserver
 import android.media.AudioDeviceCallback
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.media.MediaCodecList
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
 import android.net.ConnectivityManager
-import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -34,15 +32,12 @@ import android.os.PowerManager
 import androidx.core.content.getSystemService
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -53,14 +48,9 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import dagger.hilt.android.AndroidEntryPoint
-import java.net.ConnectException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,12 +60,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.audiodsp.AnalysisStore
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
@@ -89,11 +76,6 @@ import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
 import moe.rukamori.archivetune.constants.AudioQuality
-import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
-import moe.rukamori.archivetune.constants.DiscordTokenKey
-import moe.rukamori.archivetune.constants.EnableDiscordRPCKey
-import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
-import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -102,9 +84,6 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.extensions.currentMetadata
-import moe.rukamori.archivetune.extensions.directorySizeBytes
-import moe.rukamori.archivetune.extensions.findNextMediaItemById
-import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
@@ -112,6 +91,8 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.audio.ServiceAudioPolicyHolder
+import moe.rukamori.archivetune.playback.discord.DiscordHoldController
+import moe.rukamori.archivetune.playback.discord.DiscordSyncOrchestrator
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder
 import moe.rukamori.archivetune.playback.history.PlaybackHistoryStore
 import moe.rukamori.archivetune.playback.host.ServiceConfigCollector
@@ -119,22 +100,21 @@ import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.session.ServiceSessionHolder
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
-import moe.rukamori.archivetune.storage.StorageFolderKind
-import moe.rukamori.archivetune.storage.StorageLocationRepository
-import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
-import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
-import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.dataStore
-import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.widget.LoadWidgetInsightsUseCase
 import okhttp3.OkHttpClient
-import timber.log.Timber
+
+internal typealias DiscordSyncRequest = moe.rukamori.archivetune.playback.discord.DiscordSyncRequest
+internal typealias Quadruple<A, B, C, D> = moe.rukamori.archivetune.playback.discord.Quadruple<A, B, C, D>
+internal typealias StaleDiscordSyncException = moe.rukamori.archivetune.playback.discord.StaleDiscordSyncException
+internal typealias PendingHistoryFinalization = moe.rukamori.archivetune.playback.history.PendingHistoryFinalization
+internal typealias ImmediateHistoryResult = moe.rukamori.archivetune.playback.history.ImmediateHistoryResult
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class, UnstableApi::class)
 @AndroidEntryPoint
@@ -214,19 +194,13 @@ class MusicService :
         )
     }
     private val binder = MusicBinder()
-    internal val hasBoundClients: Boolean
-        get() = serviceLifecycle.hasBoundClients
+    internal val hasBoundClients: Boolean get() = serviceLifecycle.hasBoundClients
 
     override lateinit var connectivityManager: ConnectivityManager
     override lateinit var connectivityObserver: NetworkConnectivityObserver
     override val isNetworkConnected = MutableStateFlow(false)
-    val waitingForNetworkConnection: MutableStateFlow<Boolean>
-        get() = playbackRecoveryEngine.waitingForNetworkConnection
-    internal var networkStallRecoveryJob: Job?
-        get() = playbackRecoveryEngine.networkStallRecoveryJob
-        set(value) {
-            playbackRecoveryEngine.networkStallRecoveryJob = value
-        }
+    val waitingForNetworkConnection: MutableStateFlow<Boolean> get() = playbackRecoveryEngine.waitingForNetworkConnection
+    internal var networkStallRecoveryJob: Job? get() = playbackRecoveryEngine.networkStallRecoveryJob; set(value) { playbackRecoveryEngine.networkStallRecoveryJob = value }
 
     override val playbackRecoveryEngine: PlaybackRecoveryEngine by lazy {
         createPlaybackRecoveryEngine()
@@ -263,30 +237,22 @@ class MusicService :
 
     @Volatile
     internal var suppressAutoPlayback = false
-    internal var lastPresenceToken: String? = null
 
-    @Volatile
-    internal var pausedPresenceGate = PausedPresenceGate.FollowPreference
+    internal val discordHoldController = DiscordHoldController(this)
+    internal val discordSyncOrchestrator by lazy { DiscordSyncOrchestrator(this, discordHoldController) }
 
-    @Volatile
-    internal var discordServiceStopping = false
-
-    @Volatile
-    internal var lastDiscordPresenceDecision: DiscordPresenceDecision? = null
-
-    @Volatile
-    internal var activeDiscordHoldState: ActiveHoldState? = null
-
-    internal var activeDiscordHoldTimeoutJob: Job? = null
-
-    @Volatile
-    internal var lastAppliedVisiblePresence: LastAppliedVisiblePresence? = null
-
-    internal val discordSyncEpoch = AtomicLong(0L)
-    internal val discordSyncRequests = Channel<DiscordSyncRequest>(Channel.CONFLATED)
-    internal var discordSyncWorkerJob: Job? = null
-    internal val pendingDiscordRefreshWaiters = mutableListOf<CompletableDeferred<Boolean>>()
-    internal val discordRefreshWaitersMutex = Mutex()
+    internal var activeDiscordHoldState: ActiveHoldState? get() = discordHoldController.activeHoldState; set(v) { discordHoldController.activeHoldState = v }
+    internal var activeDiscordHoldTimeoutJob: Job? get() = discordHoldController.activeHoldTimeoutJob; set(v) { discordHoldController.activeHoldTimeoutJob = v }
+    internal var lastAppliedVisiblePresence: LastAppliedVisiblePresence? get() = discordHoldController.lastAppliedVisiblePresence; set(v) { discordHoldController.lastAppliedVisiblePresence = v }
+    internal var lastDiscordPresenceDecision: DiscordPresenceDecision? get() = discordHoldController.lastDecision; set(v) { discordHoldController.lastDecision = v }
+    internal var pausedPresenceGate: PausedPresenceGate get() = discordHoldController.pausedPresenceGate; set(v) { discordHoldController.pausedPresenceGate = v }
+    internal var discordServiceStopping: Boolean get() = discordSyncOrchestrator.discordServiceStopping; set(v) { discordSyncOrchestrator.discordServiceStopping = v }
+    internal var lastPresenceToken: String? get() = discordSyncOrchestrator.lastPresenceToken; set(v) { discordSyncOrchestrator.lastPresenceToken = v }
+    internal val discordSyncEpoch: AtomicLong get() = discordSyncOrchestrator.discordSyncEpoch
+    internal val discordSyncRequests: Channel<DiscordSyncRequest> get() = discordSyncOrchestrator.discordSyncRequests
+    internal var discordSyncWorkerJob: Job? get() = discordSyncOrchestrator.discordSyncWorkerJob; set(v) { discordSyncOrchestrator.discordSyncWorkerJob = v }
+    internal val pendingDiscordRefreshWaiters: MutableList<CompletableDeferred<Boolean>> get() = discordSyncOrchestrator.pendingDiscordRefreshWaiters
+    internal val discordRefreshWaitersMutex: Mutex get() = discordSyncOrchestrator.discordRefreshWaitersMutex
 
     internal val playbackStreamRecoveryTracker = PlaybackStreamRecoveryTracker()
     internal val queuePersistenceStore: QueuePersistenceStore by lazy {
@@ -305,16 +271,13 @@ class MusicService :
     internal val pendingHistoryFinalizations = mutableMapOf<String, MutableList<PendingHistoryFinalization>>()
     internal val historyRecordingJobs = ConcurrentHashMap<Long, kotlinx.coroutines.Deferred<ImmediateHistoryResult>>()
 
-    override val currentMediaMetadata: MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>
-        get() = configCollector.currentMediaMetadata
+    override val currentMediaMetadata: MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?> get() = configCollector.currentMediaMetadata
     override val queueRestoreCompleted = MutableStateFlow(false)
     val infiniteQueueLoading = MutableStateFlow(false)
     internal var infiniteQueueJob: Job? = null
     override val playerInitialized = MutableStateFlow(false)
-    override val currentSong: StateFlow<Song?>
-        get() = configCollector.currentSong
-    override val currentFormat: kotlinx.coroutines.flow.Flow<FormatEntity?>
-        get() = configCollector.currentFormat
+    override val currentSong: StateFlow<Song?> get() = configCollector.currentSong
+    override val currentFormat: kotlinx.coroutines.flow.Flow<FormatEntity?> get() = configCollector.currentFormat
 
     override val normalizeFactor: MutableStateFlow<Float> get() = audioPolicyHolder.normalizeFactor
     internal val audioNormalizationFactorCache: ConcurrentHashMap<String, Float> get() = audioPolicyHolder.audioNormalizationFactorCache
@@ -352,40 +315,12 @@ class MusicService :
     internal var crossfadeIncomingBaseVolume = 1f
     internal var crossfadeProgress = 0f
     internal var crossfadePlaybackRequested = false
-    internal val djFilterByPlayer: ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor>
-        get() = playerEngineHolder.djFilterByPlayer
+    internal val djFilterByPlayer: ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor> get() = playerEngineHolder.djFilterByPlayer
     internal var lyricsPreloadManager: LyricsPreloadManager? = null
     internal var streamPrefetcher: StreamPrefetcher? = null
     internal lateinit var playerListeners: MusicServicePlayerListeners
 
-    internal val secondaryCrossfadeListener: Player.Listener
-        get() = playerListeners.secondaryCrossfadeListener
-
-    internal data class DiscordSyncRequest(
-        val epoch: Long,
-        val reason: String,
-        val force: Boolean,
-    )
-
-    internal data class Quadruple<A, B, C, D>(
-        val first: A,
-        val second: B,
-        val third: C,
-        val fourth: D,
-    )
-
-    internal class StaleDiscordSyncException : CancellationException("Stale Discord sync request")
-
-    internal data class PendingHistoryFinalization(
-        val sessionToken: Long,
-        val eventId: Long?,
-        val remoteRegistered: Boolean,
-    )
-
-    internal data class ImmediateHistoryResult(
-        val eventId: Long?,
-        val remoteRegistered: Boolean,
-    )
+    internal val secondaryCrossfadeListener: Player.Listener get() = playerListeners.secondaryCrossfadeListener
 
     override fun isAppInForeground(): Boolean {
         val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -413,8 +348,7 @@ class MusicService :
     @DownloadCache
     override lateinit var downloadCache: Cache
 
-    internal val registeredCacheKeys: MutableSet<String>
-        get() = playbackRecoveryEngine.registeredCacheKeys
+    internal val registeredCacheKeys: MutableSet<String> get() = playbackRecoveryEngine.registeredCacheKeys
 
     internal val automixCacheListener: Cache.Listener by lazy {
         playbackRecoveryEngine.createAutomixCacheListener(
@@ -433,19 +367,14 @@ class MusicService :
         }
     }
 
-    override var localPlayer: ExoPlayer
-        get() = playerEngineHolder.localPlayer
-        internal set(value) { playerEngineHolder.localPlayer = value }
-    override var player: Player
-        get() = playerEngineHolder.player
-        internal set(value) { playerEngineHolder.player = value }
+    override var localPlayer: ExoPlayer get() = playerEngineHolder.localPlayer; internal set(value) { playerEngineHolder.localPlayer = value }
+    override var player: Player get() = playerEngineHolder.player; internal set(value) { playerEngineHolder.player = value }
 
     internal fun transferAudioEffects(to: ExoPlayer) {
         playerEngineHolder.transferAudioEffects(to, audioEffectPlayerListener)
     }
     private lateinit var castPlaybackRepository: CastPlaybackRepository
-    internal val mediaSession: MediaLibrarySession
-        get() = serviceSessionHolder.mediaSession
+    internal val mediaSession: MediaLibrarySession get() = serviceSessionHolder.mediaSession
 
     internal var isAudioEffectSessionOpened: Boolean get() = audioPolicyHolder.isAudioEffectSessionOpened; set(v) { audioPolicyHolder.isAudioEffectSessionOpened = v }
     internal var openedAudioSessionId: Int? get() = audioPolicyHolder.openedAudioSessionId; set(v) { audioPolicyHolder.openedAudioSessionId = v }
@@ -467,11 +396,7 @@ class MusicService :
 
     val autoAddedMediaIds: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
 
-    internal var consecutivePlaybackErr: Int
-        get() = playbackRecoveryEngine.consecutivePlaybackErrorCount
-        set(value) {
-            playbackRecoveryEngine.consecutivePlaybackErr = value
-        }
+    internal var consecutivePlaybackErr: Int get() = playbackRecoveryEngine.consecutivePlaybackErrorCount; set(value) { playbackRecoveryEngine.consecutivePlaybackErr = value }
 
     val maxSafeGainFactor: Float get() = audioPolicyHolder.maxSafeGainFactor
 
@@ -499,28 +424,14 @@ class MusicService :
     internal fun isTogetherApplyingRemote(): Boolean = configCollector.isTogetherApplyingRemote()
     internal val togetherHostId: String get() = configCollector.togetherHostId
 
-    internal fun showTogetherParticipantNotification(
-        participantName: String,
-        joined: Boolean,
-    ) {
-        serviceSessionHolder.showTogetherParticipantNotification(
-            context = this,
-            participantName = participantName,
-            joined = joined,
-        )
-    }
+    internal fun showTogetherParticipantNotification(participantName: String, joined: Boolean) =
+        serviceSessionHolder.showTogetherParticipantNotification(this, participantName, joined)
 
     internal suspend fun getOrCreateTogetherClientId(): String = configCollector.getOrCreateTogetherClientId()
-
     internal fun ensureStartedAsForeground() = serviceLifecycle.ensureStartedAsForeground()
-
     internal fun promoteToStartedService() = serviceLifecycle.promoteToStartedService()
-
     internal fun cancelIdleStop() = serviceLifecycle.cancelIdleStop()
-
-    internal fun hasResumablePlaybackNotification(): Boolean =
-        serviceLifecycle.hasResumablePlaybackNotification()
-
+    internal fun hasResumablePlaybackNotification(): Boolean = serviceLifecycle.hasResumablePlaybackNotification()
     internal fun scheduleStopIfIdle() = serviceLifecycle.scheduleStopIfIdle()
 
     override fun onCreate() {
@@ -715,17 +626,6 @@ class MusicService :
         mediaId: String?, mediaMetadata: moe.rukamori.archivetune.models.MediaMetadata?, durationMs: Long, positionMs: Long, reason: String,
     ) = handlePresenceAndListenBrainzInternal(mediaId, mediaMetadata, durationMs, positionMs, reason)
 
-    internal class SchemeRoutingDataSource(
-        cachedFactory: DataSource.Factory,
-        directFactory: DataSource.Factory,
-    ) : moe.rukamori.archivetune.playback.engine.SchemeRoutingDataSource(cachedFactory, directFactory)
-
-    internal class ResolvedUrlRoutingDataSource(
-        defaultFactory: DataSource.Factory,
-        extractorFactory: DataSource.Factory,
-        shouldUseExtractorFactory: (Uri) -> Boolean,
-    ) : moe.rukamori.archivetune.playback.engine.ResolvedUrlRoutingDataSource(defaultFactory, extractorFactory, shouldUseExtractorFactory)
-
     override fun updateAudioOffload(enabled: Boolean) {
         playerEngineHolder.updateAudioOffload(enabled, crossfadeEnabled)
     }
@@ -898,13 +798,10 @@ class MusicService :
 
     // ── Widget Support ────────────────────────────────────────────────────────────
 
-    fun updateWidget() {
-        widgetUpdater.update()
-    }
+    fun updateWidget() = widgetUpdater.update()
 
     inner class MusicBinder : Binder() {
-        val service: MusicService
-            get() = this@MusicService
+        val service: MusicService get() = this@MusicService
     }
 
     companion object {

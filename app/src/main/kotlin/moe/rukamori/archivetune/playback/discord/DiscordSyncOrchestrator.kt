@@ -9,8 +9,11 @@ package moe.rukamori.archivetune.playback.discord
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -27,20 +30,33 @@ import moe.rukamori.archivetune.playback.resolveDiscordPresenceDecision
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicLong
 
 internal class DiscordSyncOrchestrator(
     private val service: MusicService,
-    private val holdController: DiscordHoldController = DiscordHoldController(service),
+    private val holdController: DiscordHoldController = service.discordHoldController,
     private val presenceApplier: DiscordPresenceApplier = DiscordPresenceApplier(service, holdController),
 ) {
+    @Volatile
+    var discordServiceStopping: Boolean = false
+
+    @Volatile
+    var lastPresenceToken: String? = null
+
+    val discordSyncEpoch = AtomicLong(0L)
+    val discordSyncRequests = Channel<DiscordSyncRequest>(Channel.CONFLATED)
+    var discordSyncWorkerJob: Job? = null
+    val pendingDiscordRefreshWaiters = mutableListOf<CompletableDeferred<Boolean>>()
+    val discordRefreshWaitersMutex = Mutex()
+
     fun startDiscordSyncWorker() {
-        if (service.discordSyncWorkerJob?.isActive == true) return
-        service.discordSyncWorkerJob =
+        if (discordSyncWorkerJob?.isActive == true) return
+        discordSyncWorkerJob =
             service.scope.launch(Dispatchers.IO) {
-                for (request in service.discordSyncRequests) {
+                for (request in discordSyncRequests) {
                     try {
                         syncDiscordStateInternal(request)
-                    } catch (_: MusicService.StaleDiscordSyncException) {
+                    } catch (_: StaleDiscordSyncException) {
                         Timber.tag(MusicService.DISCORD_SYNC_TAG).d("stale sync aborted epoch=%d reason=%s", request.epoch, request.reason)
                     } catch (error: CancellationException) {
                         throw error
@@ -55,12 +71,12 @@ internal class DiscordSyncOrchestrator(
         reason: String,
         force: Boolean = false,
     ) {
-        val request = MusicService.DiscordSyncRequest(
-            epoch = service.discordSyncEpoch.incrementAndGet(),
+        val request = DiscordSyncRequest(
+            epoch = discordSyncEpoch.incrementAndGet(),
             reason = reason,
             force = force,
         )
-        if (service.discordSyncRequests.trySend(request).isFailure) {
+        if (discordSyncRequests.trySend(request).isFailure) {
             Timber.tag(MusicService.DISCORD_SYNC_TAG).w("failed to enqueue sync epoch=%d reason=%s", request.epoch, request.reason)
         }
     }
@@ -68,30 +84,30 @@ internal class DiscordSyncOrchestrator(
     fun forceDiscordSync(reason: String) = requestDiscordSync(reason = reason, force = true)
 
     fun ensureDiscordSyncFresh(epoch: Long) {
-        if (epoch != service.discordSyncEpoch.get()) {
-            throw MusicService.StaleDiscordSyncException()
+        if (epoch != discordSyncEpoch.get()) {
+            throw StaleDiscordSyncException()
         }
     }
 
     suspend fun addPendingDiscordRefreshWaiter(waiter: CompletableDeferred<Boolean>) {
-        service.discordRefreshWaitersMutex.withLock {
-            service.pendingDiscordRefreshWaiters += waiter
+        discordRefreshWaitersMutex.withLock {
+            pendingDiscordRefreshWaiters += waiter
         }
     }
 
     suspend fun takePendingDiscordRefreshWaiters(): List<CompletableDeferred<Boolean>> =
-        service.discordRefreshWaitersMutex.withLock {
-            val snapshot = service.pendingDiscordRefreshWaiters.toList()
-            service.pendingDiscordRefreshWaiters.removeAll(snapshot)
+        discordRefreshWaitersMutex.withLock {
+            val snapshot = pendingDiscordRefreshWaiters.toList()
+            pendingDiscordRefreshWaiters.removeAll(snapshot)
             snapshot
         }
 
     suspend fun requeueDiscordRefreshWaiters(waiters: List<CompletableDeferred<Boolean>>) {
         if (waiters.isEmpty()) return
-        service.discordRefreshWaitersMutex.withLock {
+        discordRefreshWaitersMutex.withLock {
             waiters.forEach { waiter ->
                 if (!waiter.isCompleted && !waiter.isCancelled) {
-                    service.pendingDiscordRefreshWaiters += waiter
+                    pendingDiscordRefreshWaiters += waiter
                 }
             }
         }
@@ -121,7 +137,7 @@ internal class DiscordSyncOrchestrator(
         }
     }
 
-    suspend fun syncDiscordStateInternal(request: MusicService.DiscordSyncRequest) {
+    suspend fun syncDiscordStateInternal(request: DiscordSyncRequest) {
         val refreshWaiters = takePendingDiscordRefreshWaiters()
         try {
             ensureDiscordSyncFresh(request.epoch)
@@ -132,7 +148,7 @@ internal class DiscordSyncOrchestrator(
             val showWhenPaused = service.dataStore.get(DiscordShowWhenPausedKey, false)
             val (song, isPlaying, playWhenReady, playbackState) =
                 withContext(Dispatchers.Main.immediate) {
-                    MusicService.Quadruple(
+                    Quadruple(
                         service.currentPresenceSong(),
                         service.player.isPlaying,
                         service.player.playWhenReady,
@@ -156,7 +172,7 @@ internal class DiscordSyncOrchestrator(
                 isPlaying = isPlaying,
                 showWhenPaused = showWhenPaused,
                 pausedPresenceGate = holdController.pausedPresenceGate,
-                serviceStopping = service.discordServiceStopping,
+                serviceStopping = discordServiceStopping,
                 playWhenReady = playWhenReady,
                 playbackState = playbackState,
             )
@@ -203,7 +219,7 @@ internal class DiscordSyncOrchestrator(
             } else {
                 completeDiscordRefreshWaiters(refreshWaiters, applied)
             }
-        } catch (_: MusicService.StaleDiscordSyncException) {
+        } catch (_: StaleDiscordSyncException) {
             requeueDiscordRefreshWaiters(refreshWaiters)
             Timber.tag(MusicService.DISCORD_SYNC_TAG).d("stale sync aborted epoch=%d reason=%s and refresh waiters requeued=%d", request.epoch, request.reason, refreshWaiters.size)
         } catch (error: CancellationException) {
@@ -216,3 +232,18 @@ internal class DiscordSyncOrchestrator(
         }
     }
 }
+
+internal data class DiscordSyncRequest(
+    val epoch: Long,
+    val reason: String,
+    val force: Boolean,
+)
+
+internal data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+)
+
+internal class StaleDiscordSyncException : CancellationException("Stale Discord sync request")

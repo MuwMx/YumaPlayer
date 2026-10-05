@@ -12,8 +12,8 @@ import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERR
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
-import moe.rukamori.archivetune.playback.MusicService.ResolvedUrlRoutingDataSource
-import moe.rukamori.archivetune.playback.MusicService.SchemeRoutingDataSource
+import moe.rukamori.archivetune.playback.engine.ResolvedUrlRoutingDataSource
+import moe.rukamori.archivetune.playback.engine.SchemeRoutingDataSource
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import java.util.Locale
 

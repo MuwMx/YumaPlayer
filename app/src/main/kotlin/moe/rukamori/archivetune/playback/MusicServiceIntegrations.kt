@@ -15,6 +15,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.discord.DiscordHoldController
 import moe.rukamori.archivetune.playback.discord.DiscordPresenceApplier
 import moe.rukamori.archivetune.playback.discord.DiscordSyncOrchestrator
+import moe.rukamori.archivetune.playback.discord.DiscordSyncRequest
 import moe.rukamori.archivetune.playback.history.PlaybackHistoryStore
 import moe.rukamori.archivetune.playback.history.PlaybackHistoryTracker
 import moe.rukamori.archivetune.playback.history.remotePlaybackTrackingUrl as storeRemotePlaybackTrackingUrl
@@ -23,34 +24,34 @@ import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
 import moe.rukamori.archivetune.utils.get
 import timber.log.Timber
 
-internal fun MusicService.startDiscordSyncWorker() = DiscordSyncOrchestrator(this).startDiscordSyncWorker()
+internal fun MusicService.startDiscordSyncWorker() = discordSyncOrchestrator.startDiscordSyncWorker()
 internal fun MusicService.requestDiscordSync(reason: String, force: Boolean = false) =
-    DiscordSyncOrchestrator(this).requestDiscordSync(reason, force)
-internal fun MusicService.forceDiscordSync(reason: String) = DiscordSyncOrchestrator(this).forceDiscordSync(reason)
-internal fun MusicService.ensureDiscordSyncFresh(epoch: Long) = DiscordSyncOrchestrator(this).ensureDiscordSyncFresh(epoch)
+    discordSyncOrchestrator.requestDiscordSync(reason, force)
+internal fun MusicService.forceDiscordSync(reason: String) = discordSyncOrchestrator.forceDiscordSync(reason)
+internal fun MusicService.ensureDiscordSyncFresh(epoch: Long) = discordSyncOrchestrator.ensureDiscordSyncFresh(epoch)
 
 internal fun MusicService.updateActiveDiscordHoldState(nextHoldState: ActiveHoldState?) =
-    DiscordHoldController(this).updateActiveDiscordHoldState(nextHoldState)
+    discordHoldController.updateActiveDiscordHoldState(nextHoldState)
 internal fun MusicService.reconcileDiscordHoldTimeoutJob(previousHoldState: ActiveHoldState?, nextHoldState: ActiveHoldState?) =
-    DiscordHoldController(this).reconcileDiscordHoldTimeoutJob(previousHoldState, nextHoldState)
-internal fun MusicService.clearDiscordHoldState() = DiscordHoldController(this).clearDiscordHoldState()
+    discordHoldController.reconcileDiscordHoldTimeoutJob(previousHoldState, nextHoldState)
+internal fun MusicService.clearDiscordHoldState() = discordHoldController.clearDiscordHoldState()
 internal fun MusicService.markLastAppliedVisiblePresence(visibleDecision: DiscordPresenceDecision.Visible) =
-    DiscordHoldController(this).markLastAppliedVisiblePresence(visibleDecision)
+    discordHoldController.markLastAppliedVisiblePresence(visibleDecision)
 
 internal suspend fun MusicService.addPendingDiscordRefreshWaiter(waiter: CompletableDeferred<Boolean>) =
-    DiscordSyncOrchestrator(this).addPendingDiscordRefreshWaiter(waiter)
+    discordSyncOrchestrator.addPendingDiscordRefreshWaiter(waiter)
 internal suspend fun MusicService.takePendingDiscordRefreshWaiters(): List<CompletableDeferred<Boolean>> =
-    DiscordSyncOrchestrator(this).takePendingDiscordRefreshWaiters()
+    discordSyncOrchestrator.takePendingDiscordRefreshWaiters()
 internal suspend fun MusicService.requeueDiscordRefreshWaiters(waiters: List<CompletableDeferred<Boolean>>) =
-    DiscordSyncOrchestrator(this).requeueDiscordRefreshWaiters(waiters)
+    discordSyncOrchestrator.requeueDiscordRefreshWaiters(waiters)
 internal fun MusicService.completeDiscordRefreshWaiters(waiters: List<CompletableDeferred<Boolean>>, result: Boolean) =
-    DiscordSyncOrchestrator(this).completeDiscordRefreshWaiters(waiters, result)
-internal suspend fun MusicService.refreshDiscordNow(): Boolean = DiscordSyncOrchestrator(this).refreshDiscordNow()
-internal suspend fun MusicService.syncDiscordStateInternal(request: MusicService.DiscordSyncRequest) =
-    DiscordSyncOrchestrator(this).syncDiscordStateInternal(request)
+    discordSyncOrchestrator.completeDiscordRefreshWaiters(waiters, result)
+internal suspend fun MusicService.refreshDiscordNow(): Boolean = discordSyncOrchestrator.refreshDiscordNow()
+internal suspend fun MusicService.syncDiscordStateInternal(request: DiscordSyncRequest) =
+    discordSyncOrchestrator.syncDiscordStateInternal(request)
 
 internal suspend fun MusicService.applyDiscordPresenceDecision(
-    request: MusicService.DiscordSyncRequest,
+    request: DiscordSyncRequest,
     resolution: DiscordPresenceResolution,
     token: String,
     song: moe.rukamori.archivetune.db.entities.Song?,
@@ -70,11 +71,11 @@ internal fun MusicService.flushCurrentHistoryPlayedTime(nowElapsedMs: Long = Sys
 internal fun MusicService.updatePendingHistoryFinalization(
     mediaId: String,
     sessionToken: Long,
-    result: MusicService.ImmediateHistoryResult,
+    result: ImmediateHistoryResult,
 ) = PlaybackHistoryStore(this).updatePendingHistoryFinalization(mediaId, sessionToken, result)
 internal fun MusicService.enqueueCurrentHistorySessionForFinalization() =
     PlaybackHistoryStore(this).enqueueCurrentHistorySessionForFinalization()
-internal fun MusicService.popPendingHistoryFinalization(mediaId: String): MusicService.PendingHistoryFinalization? =
+internal fun MusicService.popPendingHistoryFinalization(mediaId: String): PendingHistoryFinalization? =
     PlaybackHistoryStore(this).popPendingHistoryFinalization(mediaId)
 
 internal fun MusicService.beginHistorySession(mediaId: String?, forceNew: Boolean = false) =
