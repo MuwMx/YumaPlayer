@@ -91,6 +91,10 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.audio.ServiceAudioPolicyHolder
+import moe.rukamori.archivetune.playback.crossfade.isFullyCached
+import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
+import moe.rukamori.archivetune.playback.crossfade.registerCacheListenerForKey
+import moe.rukamori.archivetune.playback.crossfade.unregisterAllCacheListeners
 import moe.rukamori.archivetune.playback.discord.DiscordHoldController
 import moe.rukamori.archivetune.playback.discord.DiscordSyncOrchestrator
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder

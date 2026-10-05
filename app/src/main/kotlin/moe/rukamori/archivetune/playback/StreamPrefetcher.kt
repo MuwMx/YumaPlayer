@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
+import moe.rukamori.archivetune.playback.crossfade.isFullyCached
 import moe.rukamori.archivetune.playback.resolvers.LosslessStreamResolver
 import moe.rukamori.archivetune.playback.resolvers.StreamUrlCache
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue

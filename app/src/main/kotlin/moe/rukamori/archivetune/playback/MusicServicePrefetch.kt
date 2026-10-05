@@ -9,6 +9,8 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.crossfade.isTrackFullyCached
+import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 

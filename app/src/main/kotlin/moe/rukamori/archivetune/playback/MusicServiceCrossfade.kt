@@ -9,18 +9,15 @@
 
 package moe.rukamori.archivetune.playback
 
-import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.datasource.cache.Cache
-import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import java.io.EOFException
-import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
@@ -38,98 +35,29 @@ import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.audiodsp.TransitionTier
-import moe.rukamori.archivetune.audiodsp.advanceCueForElapsed
 import moe.rukamori.archivetune.audiodsp.boundedFoldMs
 import moe.rukamori.archivetune.audiodsp.fadeProgress
+import moe.rukamori.archivetune.playback.crossfade.advanceCueForLateStart
+import moe.rukamori.archivetune.playback.crossfade.audioTrackDescription
+import moe.rukamori.archivetune.playback.crossfade.computeCrossfadeTriggerAt
+import moe.rukamori.archivetune.playback.crossfade.isFullyCached
+import moe.rukamori.archivetune.playback.crossfade.isPlanGenerationCurrent
+import moe.rukamori.archivetune.playback.crossfade.isTrackFullyCached
+import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
+import moe.rukamori.archivetune.playback.crossfade.resolveCrossfadeTarget
+import moe.rukamori.archivetune.playback.crossfade.resolveCrossfadeTargetIndex
+import moe.rukamori.archivetune.playback.crossfade.resolveCrossfadeTriggerAt
+import moe.rukamori.archivetune.playback.crossfade.resolveIncomingCueInMs
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
-import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 
 private const val SYNC_LOG_PERIOD_MS = 400L
 
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
-private val crossfadePlanGeneration = AtomicLong(0L)
+internal val crossfadePlanGeneration = AtomicLong(0L)
 
 internal fun bumpCrossfadePlanGeneration(): Long = crossfadePlanGeneration.incrementAndGet()
-
-private fun MusicService.isPlanGenerationCurrent(
-    generation: Long,
-    currentMediaId: String,
-    targetMediaId: String,
-    startPositionMs: Long,
-): Boolean {
-    if (crossfadePlanGeneration.get() != generation) return false
-    if (player.currentMediaItem?.mediaId != currentMediaId) return false
-    val currentTarget = resolveCrossfadeTarget() ?: return false
-    if (currentTarget.mediaId != targetMediaId) return false
-    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
-    if (!player.playWhenReady) return false
-    if (player.currentPosition < startPositionMs) return false
-    return true
-}
-
-internal fun resolveCrossfadeTriggerAt(
-    automixEnabled: Boolean,
-    outgoingAnalysis: TrackAnalysisResult?,
-    durationMs: Long,
-    triggerOffsetMs: Long,
-    planTriggerAtMs: Long?,
-): Long {
-    if (automixEnabled && planTriggerAtMs != null) {
-        return planTriggerAtMs
-    }
-    val contentEndMs = TransitionPlanner.resolveTrustedContentEndMs(
-        reportedContentEndMs = outgoingAnalysis?.contentEndTime
-            ?.takeIf { it > 0.0 }
-            ?.let { (it * 1000.0).roundToLong() }
-            ?: 0L,
-        currentDurationMs = durationMs,
-    )
-    val mixOutMs = outgoingAnalysis?.mixOutTime
-        ?.takeIf { it > 0.0 }
-        ?.let { (it * 1000.0).roundToLong() }
-        ?.let { TransitionPlanner.sanitizeOutroMs(it, contentEndMs) }
-        ?.coerceAtMost(durationMs)
-    return if (automixEnabled && mixOutMs != null) {
-        mixOutMs
-    } else {
-        contentEndMs - triggerOffsetMs
-    }
-}
-
-private fun MusicService.computeCrossfadeTriggerAt(
-    outgoingAnalysis: TrackAnalysisResult?,
-    duration: Long,
-    triggerOffset: Long,
-    automixPlanTriggerAtMs: Long?,
-): Long = resolveCrossfadeTriggerAt(
-    automixEnabled = automixEnabled,
-    outgoingAnalysis = outgoingAnalysis,
-    durationMs = duration,
-    triggerOffsetMs = triggerOffset,
-    planTriggerAtMs = automixPlanTriggerAtMs,
-)
-
-private fun Player.audioTrackDescription(): String {
-    val audioFormat = currentTracks.groups
-        .firstOrNull { it.type == C.TRACK_TYPE_AUDIO }
-        ?.getTrackFormat(0)
-        ?: return "audio=none"
-    return "audio=${audioFormat.sampleRate}Hz/${audioFormat.channelCount}ch"
-}
-
-private fun resolveIncomingCueInMs(
-    automixPlan: AutomixPlan?,
-    incomingAnalysis: TrackAnalysisResult?,
-    explicitStartMs: Long = 0L,
-): Long {
-    if (explicitStartMs > 0L) return explicitStartMs
-    val planStart = automixPlan?.incomingStartMs ?: 0L
-    if (planStart > 0L) return planStart
-    val mixInSec = incomingAnalysis?.mixInTime ?: 0.0
-    return if (mixInSec > 0.0) (mixInSec * 1000.0).roundToLong() else 0L
-}
 
 internal fun MusicService.scheduleCrossfade() {
     if (!isPlayerInitialized()) return
@@ -394,29 +322,6 @@ internal fun MusicService.scheduleCrossfade() {
         }
 }
 
-internal fun MusicService.resolveCrossfadeTarget(): CrossfadeTarget? {
-    if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
-    if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
-    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
-
-    val currentIndex = player.currentMediaItemIndex
-    if (currentIndex !in 0 until player.mediaItemCount) return null
-
-    val repeatCurrent = player.repeatMode == Player.REPEAT_MODE_ONE
-    val targetIndex = if (repeatCurrent) currentIndex else player.nextMediaItemIndex
-    if (targetIndex == C.INDEX_UNSET || targetIndex !in 0 until player.mediaItemCount) return null
-    if (!repeatCurrent && targetIndex == currentIndex) return null
-
-    val currentItem = player.getMediaItemAt(currentIndex)
-    val targetItem = player.getMediaItemAt(targetIndex)
-    if (!repeatCurrent && crossfadeGapless && isGaplessAlbumTransition(currentItem, targetItem)) return null
-
-    return CrossfadeTarget(
-        index = targetIndex,
-        mediaId = targetItem.mediaId,
-    )
-}
-
 internal fun MusicService.prepareSecondaryCrossfadePlayer(
     target: CrossfadeTarget,
     startPositionMs: Long = 0L,
@@ -637,21 +542,6 @@ internal fun MusicService.startCrossfade(
         }
 }
 
-internal fun advanceCueForLateStart(
-    incomingPlayer: ExoPlayer,
-    cueInMs: Long,
-    elapsedBeforeStartMs: Long,
-): Long {
-    if (cueInMs <= 0L || elapsedBeforeStartMs <= 0L) return cueInMs
-    val incomingDuration = incomingPlayer.duration
-    val maxPositionMs = if (incomingDuration != C.TIME_UNSET && incomingDuration > 0L) {
-        incomingDuration - MusicService.CROSSFADE_END_GUARD_MS
-    } else {
-        null
-    }
-    return advanceCueForElapsed(cueInMs, elapsedBeforeStartMs, maxPositionMs)
-}
-
 internal suspend fun MusicService.awaitCrossfadePlayerReady(
     crossfadePlayer: ExoPlayer,
     timeoutMs: Long,
@@ -796,21 +686,6 @@ internal fun MusicService.hasBufferedForSmoothStart(
         targetPlayer.bufferedPosition >= duration - MusicService.CROSSFADE_END_GUARD_MS
 }
 
-internal fun MusicService.resolveCrossfadeTargetIndex(target: CrossfadeTarget): Int {
-    if (target.index in 0 until player.mediaItemCount &&
-        player.getMediaItemAt(target.index).mediaId == target.mediaId
-    ) {
-        return target.index
-    }
-
-    for (index in 0 until player.mediaItemCount) {
-        if (player.getMediaItemAt(index).mediaId == target.mediaId) {
-            return index
-        }
-    }
-    return C.INDEX_UNSET
-}
-
 internal fun MusicService.cancelCrossfade(
     resetVolume: Boolean,
     resetPauseAtEnd: Boolean,
@@ -874,29 +749,6 @@ internal fun MusicService.releaseSecondaryCrossfadePlayer() {
     }
 }
 
-internal fun MusicService.kickOffUpcomingTrackAnalysis(currentIndex: Int) {
-    if (!automixEnabled) return
-    val nextIndex = player.nextMediaItemIndex
-    if (nextIndex == C.INDEX_UNSET || nextIndex !in 0 until player.mediaItemCount) return
-    if (player.repeatMode == Player.REPEAT_MODE_ONE || nextIndex == currentIndex) return
-    val nextMediaItem = runCatching { player.getMediaItemAt(nextIndex) }.getOrNull() ?: return
-    kickOffTrackAnalysis(nextMediaItem)
-}
-
-internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
-    val spans = cache.getCachedSpans(key)
-    if (spans.isEmpty()) return@runCatching false
-    val contentLength = cache.getContentMetadata(key).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
-    contentLength > 0L && cache.isCached(key, 0L, contentLength)
-}.getOrDefault(false)
-
-internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
-    if (mediaId.isBlank()) return false
-    val flacKey = flacCacheKey(mediaId)
-    return isFullyCached(downloadCache, flacKey) ||
-        isFullyCached(downloadCache, mediaId)
-}
-
 internal suspend fun MusicService.analyzeCachedTrack(
     mediaId: String,
     durationSeconds: Double? = null,
@@ -916,138 +768,3 @@ internal suspend fun MusicService.analyzeCachedTrack(
     return null
 }
 
-internal fun MusicService.registerCacheListenerForKey(key: String) {
-    if (key.isBlank()) return
-    if (registeredCacheKeys.add(key)) {
-        runCatching { downloadCache.addListener(key, automixCacheListener) }
-    }
-}
-
-internal fun MusicService.registerCacheListenersForMediaItem(mediaItem: MediaItem?) {
-    if (mediaItem == null) return
-    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
-    if (mediaId.isBlank()) return
-    registerCacheListenerForKey(mediaId)
-    registerCacheListenerForKey(flacCacheKey(mediaId))
-}
-
-internal fun MusicService.checkTrackCacheReadiness(mediaItem: MediaItem?) {
-    if (mediaItem == null || !automixEnabled) return
-    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
-    if (mediaId.isBlank() || TrackAnalyzer.hasCached(mediaId)) return
-
-    if (isTrackFullyCached(mediaId)) {
-        kickOffTrackAnalysis(mediaItem)
-    }
-}
-
-internal fun MusicService.recheckCacheReadinessForCurrentAndNext() {
-    if (!isPlayerInitialized() || !automixEnabled) return
-    val currentItem = player.currentMediaItem
-    registerCacheListenersForMediaItem(currentItem)
-    checkTrackCacheReadiness(currentItem)
-
-    val nextIndex = player.nextMediaItemIndex
-    if (nextIndex != C.INDEX_UNSET &&
-        nextIndex in 0 until player.mediaItemCount &&
-        player.repeatMode != Player.REPEAT_MODE_ONE &&
-        nextIndex != player.currentMediaItemIndex
-    ) {
-        val nextItem = runCatching { player.getMediaItemAt(nextIndex) }.getOrNull()
-        registerCacheListenersForMediaItem(nextItem)
-        checkTrackCacheReadiness(nextItem)
-    }
-}
-
-internal fun MusicService.unregisterAllCacheListeners() {
-    for (key in registeredCacheKeys) {
-        runCatching { playerCache.removeListener(key, automixCacheListener) }
-        runCatching { downloadCache.removeListener(key, automixCacheListener) }
-    }
-    registeredCacheKeys.clear()
-}
-
-internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
-    if (mediaItem == null || !automixEnabled) return
-    val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
-    kickOffTrackAnalysis(mediaId, mediaItem)
-}
-
-internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
-    if (mediaId.isBlank() || !automixEnabled) return
-    if (TrackAnalyzer.shouldThrottleKickOff(mediaId)) return
-
-    // ExoPlayer is thread-confined to the application thread, so its state has to be read here,
-    // before the analysis moves to IO. player.duration is C.TIME_UNSET when unknown, hence the > 0 guard.
-    val currentId = runCatching { player.currentMediaItem?.mediaId }.getOrNull()
-    val currentDurationMs =
-        if (currentId == mediaId) runCatching { player.duration }.getOrDefault(0L) else 0L
-    val playlistDurations: Map<String, Double> = if (currentDurationMs > 0L) {
-        emptyMap()
-    } else {
-        runCatching {
-            buildMap {
-                for (i in 0 until player.mediaItemCount) {
-                    val item = player.getMediaItemAt(i)
-                    val id = item.mediaId.ifBlank { item.metadata?.id.orEmpty() }
-                    val seconds = item.metadata?.duration?.takeIf { it > 0 }?.toDouble()
-                    if (id.isNotBlank() && seconds != null) put(id, seconds)
-                }
-            }
-        }.getOrDefault(emptyMap())
-    }
-
-    val service = this
-    ioScope.launch {
-        try {
-            val cached = TrackAnalyzer.getOrFetchCached(mediaId)
-            if (cached != null) {
-                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis ready from cache/Room: mediaId=$mediaId bpm=${cached.bpm}")
-                return@launch
-            }
-
-            var durationSeconds = mediaItem?.metadata?.duration?.takeIf { it > 0 }?.toDouble()
-            if (durationSeconds == null || durationSeconds <= 0.0) {
-                durationSeconds = if (currentId == mediaId && currentDurationMs > 0L) {
-                    currentDurationMs / 1000.0
-                } else {
-                    playlistDurations[mediaId]
-                }
-            }
-
-            if (mediaId.isLocalMediaId()) {
-                val uri = mediaItem?.localConfiguration?.uri ?: mediaId.toUri()
-                val scheme = uri.scheme?.lowercase()
-                if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
-                    TrackAnalyzer.analyze(mediaId, service, uri, durationSeconds = durationSeconds)
-                    return@launch
-                }
-            }
-
-            if (mediaId.startsWith("/")) {
-                val file = File(mediaId)
-                if (file.exists() && file.canRead()) {
-                    TrackAnalyzer.analyze(mediaId, file, durationSeconds = durationSeconds)
-                    return@launch
-                }
-            }
-
-            val directUri = mediaItem?.localConfiguration?.uri
-            if (directUri != null) {
-                val scheme = directUri.scheme?.lowercase()
-                if (scheme == "content" || scheme == "file" || scheme == "android.resource") {
-                    TrackAnalyzer.analyze(mediaId, service, directUri, durationSeconds = durationSeconds)
-                    return@launch
-                }
-            }
-
-            if (isTrackFullyCached(mediaId)) {
-                Timber.tag(MusicService.TAG).d("kickOffTrackAnalysis start: offline downloaded track mediaId=$mediaId")
-                analyzeCachedTrack(mediaId, durationSeconds = durationSeconds)
-                return@launch
-            }
-        } catch (e: Exception) {
-            Timber.tag(MusicService.TAG).v(e, "Background TrackAnalyzer failed for mediaId=$mediaId")
-        }
-    }
-}

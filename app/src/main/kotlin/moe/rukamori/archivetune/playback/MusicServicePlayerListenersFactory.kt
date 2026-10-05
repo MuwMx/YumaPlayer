@@ -16,6 +16,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
+import moe.rukamori.archivetune.playback.crossfade.kickOffUpcomingTrackAnalysis
+import moe.rukamori.archivetune.playback.crossfade.recheckCacheReadinessForCurrentAndNext
+import moe.rukamori.archivetune.playback.crossfade.registerCacheListenersForMediaItem
 import moe.rukamori.archivetune.playback.queues.Queue
 
 internal fun MusicService.createMusicServicePlayerListeners(): MusicServicePlayerListeners {
