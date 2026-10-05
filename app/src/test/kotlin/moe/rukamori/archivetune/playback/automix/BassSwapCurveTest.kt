@@ -20,7 +20,7 @@ import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
 import moe.rukamori.archivetune.audiodsp.outgoingLowPassHz
-
+@Suppress("KotlinConstantConditions")
 class BassSwapCurveTest {
 
     private fun dbToLinear(db: Double): Double = 10.0.pow(db / 20.0)

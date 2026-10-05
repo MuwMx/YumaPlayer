@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.playback.effectiveCrossfadeDuration
 import moe.rukamori.archivetune.playback.isPlayerInitialized
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
@@ -281,7 +282,7 @@ internal fun MusicService.scheduleCrossfade() {
                             remainingToTrigger > 1_000L -> 250L
                             else -> 50L
                         }.coerceAtMost(remainingToTrigger).coerceAtLeast(1L)
-                    delay(sleepMs)
+                    delay(sleepMs.milliseconds)
                 }
             } finally {
                 if (hasPrimedIncomingPlayer && !handedOffToCrossfade) {

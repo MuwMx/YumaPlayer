@@ -30,6 +30,7 @@ import moe.rukamori.archivetune.playback.currentEffectivePlayerVolumeForMediaId
 import moe.rukamori.archivetune.playback.requiredCrossfadeStartBufferMs
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val SYNC_LOG_PERIOD_MS = 400L
 
@@ -84,16 +85,13 @@ internal fun MusicService.startCrossfade(
                 val latenessMs = triggerAtMs?.takeIf { it > 0L }
                     ?.let { player.currentPosition - it } ?: 0L
                 val elapsedBeforeStartMs = boundedFoldMs(latenessMs, durationMs)
-                val effectiveCueMs = advanceCueForLateStart(standbyPlayer, cueInMs, elapsedBeforeStartMs)
 
-                if (effectiveCueMs > 0L) {
-                    val driftMs = (standbyPlayer.currentPosition - effectiveCueMs).let { if (it < 0L) -it else it }
-                    if (driftMs > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
-                        Timber.tag("MusicServiceCrossfade").d("Incoming cue drift ${driftMs}ms over tolerance, seeking")
-                        standbyPlayer.seekTo(target.index, effectiveCueMs)
-                    }
-                } else if (standbyPlayer.currentPosition > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
-                    standbyPlayer.seekTo(target.index, 0L)
+                val effectiveCueMs = cueInMs
+                val targetPosition = if (cueInMs > 0L) cueInMs else 0L
+                val driftMs = kotlin.math.abs(standbyPlayer.currentPosition - targetPosition)
+                if (driftMs > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
+                    Timber.tag("MusicServiceCrossfade").d("Incoming cue drift ${driftMs}ms over tolerance, seeking to $targetPosition")
+                    standbyPlayer.seekTo(target.index, targetPosition)
                 }
                 val outDurationMs = runCatching { player.duration }.getOrDefault(-1L)
                 val outPositionMs = runCatching { player.currentPosition }.getOrDefault(-1L)
@@ -196,7 +194,7 @@ internal fun MusicService.startCrossfade(
                         bufferingStartMs = null
                     }
                     lastTickMs = nowMs
-                    delay(MusicService.CROSSFADE_FRAME_MS)
+                    delay(MusicService.CROSSFADE_FRAME_MS.milliseconds)
                 }
                 Timber.tag("MusicServiceCrossfade").d(
                     "Crossfade closed: plannedMs=$durationMs wallMs=${android.os.SystemClock.elapsedRealtime() - fadeStartedMs}" +
