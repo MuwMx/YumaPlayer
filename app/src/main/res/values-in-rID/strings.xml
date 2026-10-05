@@ -212,7 +212,7 @@
     <string name="palette_mint_fresh">Mint</string>
     <string name="palette_olive_garden">Zaitun</string>
     <string name="palette_sage_green">Sage</string>
-    <string name="palette_sunset_orange">Sunset</string>
+    <string name="palette_sunset_orange">Senja</string>
     <string name="palette_golden_hour">Emas</string>
     <string name="palette_warm_amber">kuning</string>
     <string name="palette_tangerine_blast">Tangerine</string>
@@ -228,7 +228,7 @@
     <string name="palette_rose_quartz">Rose Quartz</string>
     <string name="palette_magenta_pop">Magenta</string>
     <string name="palette_hot_pink">Hot Pink</string>
-    <string name="palette_blush">Blush</string>
+    <string name="palette_blush">Merona</string>
     <string name="palette_coral">Karang</string>
     <string name="palette_bubblegum">Permen karet</string>
     <string name="palette_crimson_red">Crimson</string>
@@ -1180,4 +1180,27 @@
     <string name="qobuz_app_id">Qobuz App ID</string>
     <string name="qobuz_app_secret">Qobuz App Secret</string>
     <string name="qobuz_user_auth_token">Qobuz User Auth Token</string>
+    <string name="updates_nightly_hosting_description">Build pengembangan yang dibuat secara otomatis tersedia dari eksekusi GitHub Actions yang berhasil.</string>
+    <string name="updates_channel_warning_intro">YumaPlayer menyediakan dua saluran unduhan untuk build:</string>
+    <string name="updates_channel_warning_nightly_title">Build Nightly</string>
+    <string name="updates_channel_warning_nightly_risk">Build Nightly mungkin menyertakan fitur eksperimental, perubahan yang belum selesai, atau regresi sementara.</string>
+    <string name="updates_channel_warning_nightly_unstable">Build Nightly disediakan hanya untuk pengujian dan akses awal.\nStabilitas, kompatibilitas, dan fungsionalitas tidak dijamin.</string>
+    <string name="updates_channel_warning_acknowledgement">Catatan: mengunduh langsung dari Github akan melewati penyaringan tambahan yang dilakukan oleh toko aplikasi tempat Anda pertama kali memasang aplikasi ini.\nDengan melanjutkan, Anda mengakui bahwa build nightly mungkin tidak stabil dan menanggung sendiri risiko penggunaannya.</string>
+    <string name="updates_daily_channel_confirmation">Beralih ke saluran Harian untuk menerima pembaruan dari repositori daily-nightly.\n\nBuild harian dipublikasikan secara otomatis setiap hari dari cabang pengembangan terbaru.\nCatatan: mengunduh langsung dari Github akan melewati penyaringan tambahan yang dilakukan oleh toko aplikasi tempat Anda pertama kali memasang aplikasi ini.</string>
+    <string name="lastfm_provider_custom">Kustom</string>
+    <string name="lastfm_custom_endpoint">Endpoint kustom</string>
+    <string name="lastfm_api_credentials">Kredensial API</string>
+    <string name="lastfm_api_credentials_default">Menggunakan kredensial bawaan</string>
+    <string name="lastfm_api_credentials_custom">Menggunakan kredensial kustom</string>
+    <string name="lastfm_api_credentials_hint">Biarkan kredensial kosong untuk layanan kompatibel yang menerima sembarang kunci API dan rahasia bersama.</string>
+    <string name="lastfm_api_key_override">Kunci API</string>
+    <string name="lastfm_secret_override">Rahasia bersama</string>
+    <string name="lastfm_service_not_configured">Konfigurasikan layanan scrobbling sebelum masuk.</string>
+    <string name="lastfm_login_missing_credentials">Masukkan nama pengguna dan kata sandi.</string>
+    <string name="lastfm_login_invalid_credentials">Nama pengguna atau kata sandi tidak valid.</string>
+    <string name="lastfm_login_invalid_api_key">Kunci API tidak valid.</string>
+    <string name="lastfm_login_authentication_error">Autentikasi gagal. Coba lagi.</string>
+    <string name="lastfm_login_api_key_suspended">Kunci API ditangguhkan.</string>
+    <string name="lastfm_login_network_error">Kesalahan jaringan. Periksa koneksi Anda.</string>
+    <string name="lastfm_login_failed">Gagal masuk. Coba lagi.</string>
 </resources>
