@@ -19,7 +19,7 @@ import java.io.File
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.analyzeCachedTrack
+import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.playback.flacCacheKey
 import moe.rukamori.archivetune.playback.isPlayerInitialized
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
@@ -182,3 +182,23 @@ internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: Media
         }
     }
 }
+
+internal suspend fun MusicService.analyzeCachedTrack(
+    mediaId: String,
+    durationSeconds: Double? = null,
+): TrackAnalysisResult? {
+    if (mediaId.isBlank()) return null
+    TrackAnalyzer.getCached(mediaId)?.let { return it }
+
+    val flacKey = flacCacheKey(mediaId)
+    if (isFullyCached(downloadCache, flacKey)) {
+        return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey, durationSeconds = durationSeconds)
+    }
+
+    if (isFullyCached(downloadCache, mediaId)) {
+        return TrackAnalyzer.analyze(mediaId, downloadCache, mediaId, durationSeconds = durationSeconds)
+    }
+
+    return null
+}
+
