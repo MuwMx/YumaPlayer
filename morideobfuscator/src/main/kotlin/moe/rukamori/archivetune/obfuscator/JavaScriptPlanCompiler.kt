@@ -9,7 +9,7 @@ package moe.rukamori.archivetune.obfuscator
 
 import java.security.MessageDigest
 
-internal const val JAVA_SCRIPT_PLAN_COMPILER_VERSION = 2
+internal const val JAVA_SCRIPT_PLAN_COMPILER_VERSION = 3
 
 internal class JavaScriptPlanCompiler {
     fun compile(
@@ -462,6 +462,13 @@ internal class JavaScriptPlanCompiler {
 
         val signatureCallPatterns =
             listOf(
+                Regex("""\b[A-Za-z0-9_$]+\s*&&\s*\(\s*[A-Za-z0-9_$]+\s*=\s*([A-Za-z0-9_$]{2,})\(\s*\d+\s*,\s*decodeURIComponent\(\s*[A-Za-z0-9_$]+\s*\)\s*\)"""),
+                Regex("""\b[A-Za-z0-9_$]+\s*&&\s*\(\s*[A-Za-z0-9_$]+\s*=\s*([A-Za-z0-9_$]{2,})\(\s*decodeURIComponent\(\s*[A-Za-z0-9_$]+\s*\)\s*\)"""),
+                Regex("""\bm=([A-Za-z0-9$]{2,})\(\s*decodeURIComponent\(\s*h\.s\s*\)\s*\)"""),
+                Regex("""\bc\s*&&\s*\(\s*c\s*=\s*([A-Za-z0-9$]{2,})\(\s*decodeURIComponent\(\s*c\s*\)\s*\)"""),
+                Regex("""(?:\b|[^A-Za-z0-9$])([A-Za-z0-9$]{2,})\s*=\s*function\(\s*a\s*\)\s*\{\s*a\s*=\s*a\.split\(\s*["']{2}\s*\)"""),
+                Regex("""([A-Za-z0-9_$]+)\s*=\s*function\(\s*([A-Za-z0-9_$]+)\s*\)\s*\{\s*\2\s*=\s*\2\.split\(\s*["']{2}\s*\)\s*;"""),
+                Regex("""function\s+([A-Za-z0-9_$]{2,})\s*\(\s*([A-Za-z0-9_$]+)\s*\)\s*\{\s*\2\s*=\s*\2\.split\(\s*["']{2}\s*\)\s*;"""),
                 Regex("""(?:signature|sig)\s*[,=:]\s*([A-Za-z_$][\w$]*)\("""),
                 Regex("""\.set\(\s*["'](?:signature|sig)["']\s*,\s*([A-Za-z_$][\w$]*)\("""),
                 Regex("""["']signature["']\s*,\s*([A-Za-z_$][\w$]*)\("""),
@@ -471,6 +478,8 @@ internal class JavaScriptPlanCompiler {
                 Regex(
                     """(?:\b(?:a|b|c|sig|signature)\s*=\s*|decodeURIComponent\([^)]*\)\s*=\s*)([A-Za-z_$][\w$]*)\(decodeURIComponent\(""",
                 ),
+                Regex("""\b([A-Za-z_$][\w$]*)\s*=\s*function\s*\(\s*[A-Za-z_$][\w$]*\s*\)\s*\{\s*[A-Za-z_$][\w$]*\s*=\s*[A-Za-z_$][\w$]*\.split\s*\("""),
+                Regex("""\.set\(\s*["']sig["']\s*,\s*([A-Za-z_$][\w$]*)\("""),
             )
 
         val nCallPatterns =
