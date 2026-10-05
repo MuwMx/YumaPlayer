@@ -62,7 +62,7 @@ internal fun MusicService.startCrossfade(
             crossfadePlaybackRequested = player.playWhenReady
 
             try {
-                if (cueInMs > 0L && incomingPlayer.currentPosition != cueInMs) {
+                if (cueInMs > 0L && kotlin.math.abs(incomingPlayer.currentPosition - cueInMs) > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
                     incomingPlayer.seekTo(target.index, cueInMs)
                 }
                 val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)

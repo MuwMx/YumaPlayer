@@ -51,7 +51,11 @@ class ExoDeckController(
         val existingDeck = transitionDeck
         if (existingDeck != null && secondaryCrossfadeTarget == target) {
             existingDeck.player.playWhenReady = false
-            existingDeck.player.seekTo(target.index, 0L)
+            val currentPos = existingDeck.player.currentPosition
+            val currentIndex = existingDeck.player.currentMediaItemIndex
+            if (currentIndex != target.index || currentPos > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
+                existingDeck.player.seekTo(target.index, 0L)
+            }
             return true
         }
 
@@ -104,7 +108,7 @@ class ExoDeckController(
         if (cueMs > 0L && kotlin.math.abs(incomingPlayer.currentPosition - cueMs) > CrossfadeConstants.PRIME_MAX_DRIFT_MS) {
             incomingPlayer.seekTo(secondaryCrossfadeTarget?.index ?: 0, cueMs)
         }
-        incomingPlayer.playWhenReady = true
+        incomingPlayer.playWhenReady = false
     }
 
     override fun stopIncoming() {
