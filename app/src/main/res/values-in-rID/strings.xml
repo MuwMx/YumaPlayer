@@ -175,7 +175,7 @@
     </plurals>
     <string name="error_no_stream">Tidak ada aliran yang tersedia</string>
     <string name="error_no_internet">Tidak ada koneksi jaringan</string>
-    <string name="error_timeout">Timeout</string>
+    <string name="error_timeout">Waktu habis</string>
     <string name="error_malformed_stream">Kesalahan sumber</string>
     <string name="error_unknown">Kesalahan tidak diketahui</string>
     <string name="action_like">Suka</string>
@@ -344,7 +344,7 @@
     <string name="ip_rotation_desc">Rotasikan IP saat ini ketika terjadi masalah pemutaran atau konten.</string>
     <string name="ip_rotation_active_proxies">%d proksi aktif</string>
     <string name="ip_rotation_loading">Memuat daftar proksi</string>
-    <string name="ip_rotation_refreshing">Menyegarkan IP…</string>
+    <string name="ip_rotation_refreshing">Menyegarkan IP</string>
     <string name="ip_rotation_refresh">Segarkan IP</string>
     <string name="stream_bypass_proxy">Lewati proksi untuk streaming</string>
     <string name="stream_bypass_proxy_desc">Gunakan IP langsung Anda untuk pemutaran streaming guna menghindari ketidakcocokan IP</string>
@@ -388,7 +388,7 @@
     <string name="enter_symbol">Masukkan simbol</string>
     <string name="equalizer">Ekualiser</string>
     <string name="tap_to_activate_equalizer">Ketuk untuk mengaktifkan ekualiser</string>
-    <string name="eq_waiting_for_audio_session">Menunggu sesi audio…</string>
+    <string name="eq_waiting_for_audio_session">Menunggu sesi audio</string>
     <string name="eq_open_system_equalizer">Buka ekualiser sistem</string>
     <string name="eq_presets">Preset</string>
     <string name="eq_flat">Datar</string>
@@ -482,7 +482,7 @@
     <string name="scrobble_delay_minutes">Penundaan Scrobble (Detik)</string>
     <string name="username">Nama pengguna</string>
     <string name="password">Kata sandi</string>
-    <string name="logging_in">Sedang Masuk…</string>
+    <string name="logging_in">Sedang Masuk</string>
     <string name="listenbrainz_scrobbling">Scrobble ListenBrainz</string>
     <string name="listenbrainz_scrobbling_description">Aktifkan pengiriman lagu yang sedang diputar dan yang sudah selesai ke ListenBrainz</string>
     <string name="set_listenbrainz_token">Atur token ListenBrainz</string>
@@ -556,7 +556,7 @@
     <string name="discord_show_when_paused_desc">Jika diaktifkan, Rich Presence akan tetap terlihat saat dijeda dengan ikon jeda. Jika dinonaktifkan, RPC akan hilang saat dijeda.</string>
     <string name="discord_paused">Dijeda</string>
     <string name="logout_confirm_title">Konfirmasikan logout</string>
-    <string name="logout_confirm_message">Apakah Anda yakin ingin keluar dari Discord?</string>
+    <string name="logout_confirm_message">Apakah Anda yakin ingin keluar dari Discord?.</string>
     <string name="logout_confirm_yes">Keluar</string>
     <string name="logout_confirm_no">Batal</string>
     <string name="experiment_settings">Pengaturan Eksperimental</string>
@@ -583,7 +583,7 @@
     <string name="unknown_sample_rate">Sample rate tidak diketahui</string>
     <string name="content_length_label">Ukuran Konten</string>
     <string name="unknown_content_length">Panjang konten tidak diketahui</string>
-    <string name="loading_format">Memuat format…</string>
+    <string name="loading_format">Memuat format</string>
     <string name="buffer_health_label">Kesehatan Buffer</string>
     <string name="playback_speed_label">Kecepatan Pemutaran</string>
     <string name="state_label">Status</string>
@@ -690,7 +690,7 @@
     <string name="join">Bergabunglah</string>
     <string name="joined">Bergabung</string>
     <string name="loading">Memuat</string>
-    <string name="connecting">Menghubungkan...</string>
+    <string name="connecting">Menghubungkan</string>
     <string name="copy_link">Salin tautan</string>
     <string name="together_host_section">Host</string>
     <string name="together_join_section">Bergabung</string>
@@ -726,12 +726,12 @@
     <string name="regenerate_token">Regenerasi Token</string>
     <string name="source_url">URL sumber</string>
     <string name="source_url_placeholder">https://youtube.com/account</string>
-    <string name="generating_tokens">Menghasilkan token…</string>
+    <string name="generating_tokens">Menghasilkan token</string>
     <string name="tokens_generated">Token berhasil dibuat</string>
     <string name="token_generation_failed">Pembuatan token gagal</string>
     <string name="open_account_before_extract">Buka dan masuk di youtube.com/account sebelum mengekstrak</string>
     <string name="token_copied">Token disalin ke papan klip</string>
-    <string name="extracting_from_url">Mengekstrak token dari URL…</string>
+    <string name="extracting_from_url">Mengekstrak token dari URL</string>
     <string name="po_token_account_notice_title">Gunakan akun yang sama</string>
     <string name="po_token_account_notice_body">Masuk di sini dengan akun Google yang sama yang sudah Anda gunakan untuk YouTube Music di dalam YumaPlayer sebelum membuat token PO.</string>
     <string name="po_token_account_notice_same_account">Jika WebView ini menggunakan akun lain, token yang dihasilkan tidak akan berfungsi dengan benar.</string>
@@ -1152,4 +1152,21 @@
     <string name="duration_seconds_short">%1$dd</string>
     <string name="export">Ekspor</string>
     <string name="onboarding_permission_app_installation_title">Pemasangan aplikasi</string>
+    <string name="onboarding_permission_app_installation_desc">Pasang pembaruan APK yang diunduh dari YumaPlayer.</string>
+    <string name="onboarding_permission_bluetooth_scan_title">Pemindaian Bluetooth</string>
+    <string name="onboarding_community_github_desc">Bintangi repositori dan ikuti rilis.</string>
+    <string name="onboarding_community_discord_title">Gabung ke Discord</string>
+    <string name="onboarding_community_telegram_title">Gabung ke Telegram</string>
+    <string name="onboarding_community_donate_desc">Dukung kelanjutan pengembangan.</string>
+    <string name="unlink_cookie_and_enable">Putus tautan cookie dan aktifkan</string>
+    <string name="continue_with_visitor_data">Lanjutkan dengan data pengunjung</string>
+    <string name="hidden_playlists">Playlist tersembunyi</string>
+    <string name="no_hidden_playlists">Tidak ada playlist tersembunyi</string>
+    <string name="unhide">Tampilkan</string>
+    <string name="update_critical_title">Pembaruan Penting</string>
+    <string name="lyrics_search_hint">Cari lirik…</string>
+    <string name="automix">AutoMix</string>
+    <string name="action_go">Lanjut</string>
+    <string name="sync_offset">Offset Sinkronisasi</string>
+    <string name="lyrics_search_plain_badge">Teks Biasa</string>
 </resources>
