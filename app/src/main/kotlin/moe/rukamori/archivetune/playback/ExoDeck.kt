@@ -13,6 +13,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
+import moe.rukamori.archivetune.audiodsp.FALL
+import moe.rukamori.archivetune.audiodsp.RISE
+import moe.rukamori.archivetune.audiodsp.TransitionTier
 import moe.rukamori.archivetune.audiodsp.incomingBassGainDb
 import moe.rukamori.archivetune.audiodsp.incomingStageGain
 import moe.rukamori.archivetune.audiodsp.outgoingBassGainDb
@@ -32,8 +35,11 @@ class ExoDeck(
 
     override fun applyAutomation(progress: Float, plan: AutomixPlan) {
         val clamped = progress.coerceIn(0f, 1f)
+        val isAutomix = plan.tier != TransitionTier.PLAIN_CROSSFADE || plan.enableBassSwap
+
         if (isIncoming) {
-            player.volume = (baseVolume * incomingStageGain(clamped)).coerceIn(0f, maxGainFactor)
+            val gain = if (isAutomix) incomingStageGain(clamped) else RISE(clamped)
+            player.volume = (baseVolume * gain).coerceIn(0f, maxGainFactor)
             if (plan.enableBassSwap) {
                 // No entry high-pass: a corner sweeping down to 20 Hz phase-smears the kick.
                 djFilter.highPassHz = DjFilterAudioProcessor.BYPASS_HIGH_PASS_HZ
@@ -42,16 +48,21 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         } else {
-            // Both decks are audible during the overlap, so their gains must sum to at most unity or
-            // the mix clips on the loudest transients. The reference bounds this with a fixed -6 dB
-            // mid duck, but that is sized for its equal-power curves, where the sum peaks at 1.414.
-            // Our staged curves overlap more broadly and reach 1.33, so the outgoing deck is capped by
-            // whatever the incoming deck has already taken.
-            val partnerGain = (partner?.baseVolume ?: 0f) * incomingStageGain(clamped)
-            val sumCap = (1f - partnerGain).coerceIn(0f, 1f)
-            player.volume = (baseVolume * outgoingStageGain(clamped))
-                .coerceIn(0f, maxGainFactor)
-                .coerceAtMost(sumCap)
+            if (isAutomix) {
+                // Both decks are audible during the overlap, so their gains must sum to at most unity or
+                // the mix clips on the loudest transients. The reference bounds this with a fixed -6 dB
+                // mid duck, but that is sized for its equal-power curves, where the sum peaks at 1.414.
+                // Our staged curves overlap more broadly and reach 1.33, so the outgoing deck is capped by
+                // whatever the incoming deck has already taken.
+                val partnerGain = (partner?.baseVolume ?: 0f) * incomingStageGain(clamped)
+                val sumCap = (1f - partnerGain).coerceIn(0f, 1f)
+                player.volume = (baseVolume * outgoingStageGain(clamped))
+                    .coerceIn(0f, maxGainFactor)
+                    .coerceAtMost(sumCap)
+            } else {
+                player.volume = (baseVolume * FALL(clamped)).coerceIn(0f, maxGainFactor)
+            }
+
             if (plan.enableBassSwap) {
                 djFilter.lowPassCutoffHz = outgoingLowPassHz(clamped)
                 djFilter.bassGainDb = outgoingBassGainDb(clamped)
@@ -59,6 +70,7 @@ class ExoDeck(
                 djFilter.clearAutomation()
             }
         }
+
         val quarter = (clamped * 4f).toInt().coerceIn(0, 4)
         if (plan.enableBassSwap && quarter != lastLoggedQuarter) {
             lastLoggedQuarter = quarter
@@ -71,7 +83,6 @@ class ExoDeck(
             )
         }
     }
-
     override fun clearAutomation() {
         djFilter.clearAutomation()
         lastLoggedQuarter = -1
