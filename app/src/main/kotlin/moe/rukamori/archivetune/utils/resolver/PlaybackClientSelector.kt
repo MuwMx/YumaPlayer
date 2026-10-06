@@ -80,6 +80,13 @@ object PlaybackClientSelector {
             add(PlayerStreamClient.ANDROID_VR)
         }.distinct()
 
+    fun resolveMetadataClient(authState: PlaybackAuthState): YouTubeClient =
+        if (authState.hasPlaybackLoginContext) {
+            MAIN_CLIENT
+        } else {
+            VISIONOS
+        }
+
     fun resolvePreferredPlaybackClient(
         preferredStreamClient: PlayerStreamClient,
         authState: PlaybackAuthState,

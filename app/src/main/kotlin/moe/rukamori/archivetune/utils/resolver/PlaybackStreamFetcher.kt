@@ -225,7 +225,7 @@ object PlaybackStreamFetcher {
             )
         }
 
-        val metadataClient = PlaybackClientSelector.MAIN_CLIENT
+        val metadataClient = PlaybackClientSelector.resolveMetadataClient(authState)
 
         Timber.tag(logTag).i("Fetching metadata response using client: ${metadataClient.clientName}")
 
@@ -614,10 +614,11 @@ object PlaybackStreamFetcher {
             authState.fingerprint,
         )
 
+        val finalResponse = streamPlayerResponse ?: metadataPlayerResponse
         return PlaybackData(
-            metadataPlayerResponse.playerConfig?.audioConfig,
-            metadataPlayerResponse.videoDetails,
-            metadataPlayerResponse.playbackTracking,
+            finalResponse.playerConfig?.audioConfig,
+            finalResponse.videoDetails,
+            finalResponse.playbackTracking,
             format,
             streamUrl,
             streamExpiresInSeconds,
