@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.ui.player.queue_0
 import android.view.View
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -29,7 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -38,6 +38,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,9 +51,10 @@ import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.darkYumaColorScheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -153,8 +155,15 @@ fun QueueScreen(
 
     LaunchedEffect(state.queueWindows) {
         if (!reorderableState.isAnyItemDragging) {
-            mutableQueueWindows.clear()
-            mutableQueueWindows.addAll(state.queueWindows)
+            val isContentIdentical =
+                mutableQueueWindows.size == state.queueWindows.size &&
+                    mutableQueueWindows.indices.all { i ->
+                        mutableQueueWindows[i].queueItemKey == state.queueWindows[i].queueItemKey
+                    }
+            if (!isContentIdentical) {
+                mutableQueueWindows.clear()
+                mutableQueueWindows.addAll(state.queueWindows)
+            }
         }
     }
 
@@ -185,44 +194,22 @@ fun QueueScreen(
             LocalContentColor provides Color.White,
             LocalYumaColors provides yumaColors,
         ) {
-            LazyColumn(
-                state = lazyListState,
-                userScrollEnabled = !(reorderableState.isAnyItemDragging || reorderHandleInUse),
-                modifier =
-                    modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            compositingStrategy = if (queueFractionProvider() > 0.05f) {
-                                CompositingStrategy.Offscreen
-                            } else {
-                                CompositingStrategy.Auto
-                            }
-                        }
-                        .drawWithCache {
-                            val fadeHeightPx = fadeHeight.toPx()
-                            val topMask = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black),
-                                startY = 0f,
-                                endY = fadeHeightPx,
-                            )
-                            val bottomMask = Brush.verticalGradient(
-                                colors = listOf(Color.Black, Color.Transparent),
-                                startY = (size.height - fadeHeightPx).coerceAtLeast(0f),
-                                endY = size.height,
-                            )
+            val surfaceColor = MaterialTheme.colorScheme.surface
+            val topFadeBrush = remember(surfaceColor) {
+                Brush.verticalGradient(listOf(surfaceColor, Color.Transparent))
+            }
+            val bottomFadeBrush = remember(surfaceColor) {
+                Brush.verticalGradient(listOf(Color.Transparent, surfaceColor))
+            }
 
-                            onDrawWithContent {
-                                drawContent()
-                                if (queueFractionProvider() <= 0f) return@onDrawWithContent
-                                if (size.height > 0f && fadeHeightPx > 0f) {
-                                    drawRect(brush = topMask, blendMode = BlendMode.DstIn)
-                                    drawRect(brush = bottomMask, blendMode = BlendMode.DstIn)
-                                }
-                            }
-                        },
-                contentPadding = contentPadding,
-            ) {
-                itemsIndexed(
+            Box(modifier = modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = lazyListState,
+                    userScrollEnabled = !(reorderableState.isAnyItemDragging || reorderHandleInUse),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                ) {
+                    itemsIndexed(
             items = mutableQueueWindows,
             key = { _, window -> window.queueItemKey },
             contentType = { _, _ -> "queue_item" },
@@ -314,8 +301,26 @@ fun QueueScreen(
             }
             }
         }
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(fadeHeight)
+                            .align(Alignment.TopCenter)
+                            .background(topFadeBrush),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(fadeHeight)
+                            .align(Alignment.BottomCenter)
+                            .background(bottomFadeBrush),
+                )
+            }
+        }
     }
-}
 }
 
 @Composable
@@ -357,36 +362,9 @@ private fun QueueItem(
             }
         }
 
-    val isSwipeTargeted = dismissHandler?.isInDismissZone == true
-    val currentOffsetPx = dismissOffsetAnimatable.value
-    val revealWidthPx = (-currentOffsetPx).coerceAtLeast(0f)
-    val revealProgress =
-        if (density.density > 0f) {
-            (revealWidthPx / (56.dp.value * density.density)).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-
-    val dismissBackgroundColor by animateColorAsState(
-        targetValue =
-            if (isSwipeTargeted) {
-                MaterialTheme.colorScheme.errorContainer
-            } else {
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.82f)
-            },
-        animationSpec = tween(durationMillis = 150),
-        label = "dismissBackgroundColor",
-    )
-    val dismissIconAlpha by animateFloatAsState(
-        targetValue = revealProgress * if (isSwipeTargeted) 1f else 0.88f,
-        animationSpec = tween(durationMillis = 120),
-        label = "dismissIconAlpha",
-    )
-    val dismissIconScale by animateFloatAsState(
-        targetValue = if (isSwipeTargeted) 1.08f else 0.95f,
-        animationSpec = tween(durationMillis = 120),
-        label = "dismissIconScale",
-    )
+    val isDismissActive by remember {
+        derivedStateOf { dismissOffsetAnimatable.value != 0f }
+    }
 
     val dismissGestureModifier =
         if (dismissEnabled && dismissHandler != null) {
@@ -412,40 +390,19 @@ private fun QueueItem(
         Box(
             modifier = Modifier.weight(1f),
         ) {
-            if (revealWidthPx > 0f) {
-                val revealWidthDp = with(density) { revealWidthPx.toDp() }
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 12.dp)
-                            .height(ListItemHeight)
-                            .width(revealWidthDp)
-                            .clip(CircleShape)
-                            .background(dismissBackgroundColor),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.close),
-                        contentDescription = stringResource(R.string.remove_from_queue),
-                        modifier =
-                            Modifier
-                                .padding(end = 16.dp)
-                                .graphicsLayer {
-                                    alpha = dismissIconAlpha
-                                    scaleX = dismissIconScale
-                                    scaleY = dismissIconScale
-                                },
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
+            if (isDismissActive) {
+                QueueItemDismissReveal(
+                    dismissHandler = dismissHandler,
+                    dismissOffsetAnimatable = dismissOffsetAnimatable,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                )
             }
 
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .graphicsLayer { translationX = currentOffsetPx }
+                        .graphicsLayer { translationX = dismissOffsetAnimatable.value }
                         .then(dismissGestureModifier),
             ) {
                 MediaMetadataListItem(
@@ -455,15 +412,90 @@ private fun QueueItem(
                     cropToSquare = cropToSquare,
                     shouldLoadImage = shouldLoadImage,
                     isSheetActive = isSheetActive,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = currentOffsetPx == 0f) {
-                            onPlay()
-                        },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isDismissActive) {
+                                if (dismissOffsetAnimatable.value == 0f) {
+                                    onPlay()
+                                }
+                            },
                 )
             }
         }
 
         dragHandle()
+    }
+}
+
+@Composable
+private fun QueueItemDismissReveal(
+    dismissHandler: QueueItemDismissGestureHandler?,
+    dismissOffsetAnimatable: Animatable<Float, AnimationVector1D>,
+    modifier: Modifier = Modifier,
+) {
+    val isSwipeTargeted = dismissHandler?.isInDismissZone == true
+    val density = LocalDensity.current
+
+    val dismissBackgroundColor by animateColorAsState(
+        targetValue =
+            if (isSwipeTargeted) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.82f)
+            },
+        animationSpec = tween(durationMillis = 150),
+        label = "dismissBackgroundColor",
+    )
+    val dismissIconScale by animateFloatAsState(
+        targetValue = if (isSwipeTargeted) 1.08f else 0.95f,
+        animationSpec = tween(durationMillis = 120),
+        label = "dismissIconScale",
+    )
+
+    Box(
+        modifier =
+            modifier
+                .padding(end = 12.dp)
+                .height(ListItemHeight)
+                .fillMaxWidth()
+                .drawBehind {
+                    val offset = dismissOffsetAnimatable.value
+                    val revealWidthPx = (-offset).coerceAtLeast(0f)
+                    if (revealWidthPx <= 0f) return@drawBehind
+                    val pillHeight = size.height
+                    val pillWidth = revealWidthPx.coerceAtMost(size.width)
+                    val left = size.width - pillWidth
+                    drawRoundRect(
+                        color = dismissBackgroundColor,
+                        topLeft = Offset(left, 0f),
+                        size = Size(pillWidth, pillHeight),
+                        cornerRadius =
+                            CornerRadius(pillHeight / 2f, pillHeight / 2f),
+                    )
+                },
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.close),
+            contentDescription = stringResource(R.string.remove_from_queue),
+            modifier =
+                Modifier
+                    .padding(end = 16.dp)
+                    .graphicsLayer {
+                        val offset = dismissOffsetAnimatable.value
+                        val revealWidthPx = (-offset).coerceAtLeast(0f)
+                        val progress =
+                            if (density.density > 0f) {
+                                (revealWidthPx / (56.dp.toPx())).coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
+                        alpha = progress * if (isSwipeTargeted) 1f else 0.88f
+                        scaleX = dismissIconScale
+                        scaleY = dismissIconScale
+                    },
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+        )
     }
 }

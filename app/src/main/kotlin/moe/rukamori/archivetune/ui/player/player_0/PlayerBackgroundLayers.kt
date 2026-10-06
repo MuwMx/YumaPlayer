@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,11 +75,13 @@ fun PlayerBackgroundLayers(
 
     val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
 
-    PlayerPaletteExtractor(
-        targetUrl = targetUrl,
-        trackUrl = state.trackUrl,
-        onColorsExtracted = onColorsExtracted
-    )
+    key(state.trackUrl) {
+        PlayerPaletteExtractor(
+            targetUrl = targetUrl,
+            trackUrl = state.trackUrl,
+            onColorsExtracted = onColorsExtracted
+        )
+    }
 
     val painters = rememberPlayerBackgroundPainters(
         targetUrl = targetUrl,
