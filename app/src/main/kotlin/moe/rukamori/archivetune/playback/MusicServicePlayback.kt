@@ -14,6 +14,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
@@ -35,9 +36,12 @@ internal fun MusicService.resolvePlaybackDataSpec(
 ): DataSpec {
     if (dataSpec.uri.shouldBypassYouTubeResolver()) return dataSpec
     val mediaId = (dataSpec.key ?: return dataSpec).removePrefix(FLAC_CACHE_KEY_PREFIX)
-    val storedFormat = if (audioNormalizationFactorCache.containsKey(mediaId)) null else {
-        runBlocking(Dispatchers.IO) { database.format(mediaId).first() }?.also {
-            audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(it, normalizeAudio = true)
+    val storedFormat = null
+    if (!audioNormalizationFactorCache.containsKey(mediaId)) {
+        scope.launch(Dispatchers.IO) {
+            database.format(mediaId).first()?.let {
+                audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(it, normalizeAudio = true)
+            }
         }
     }
 
