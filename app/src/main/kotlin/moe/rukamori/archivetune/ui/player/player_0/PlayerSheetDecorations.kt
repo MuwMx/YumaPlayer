@@ -71,12 +71,14 @@ internal fun ColumnScope.PlayerSheetBorderContainer(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val cardShape = remember { RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f)
             .then(modifier)
-            .clipToBounds()
+            .clip(cardShape) // Режет контент строго по дуге скругления углов, а не прямоугольником
     ) {
         Box(
             modifier = Modifier
@@ -105,4 +107,3 @@ internal fun ColumnScope.PlayerSheetBorderContainer(
         content()
     }
 }
-

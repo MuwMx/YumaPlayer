@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,16 +59,18 @@ internal fun UnifiedPlayerSheetLayers(
                     alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
                 }
         ) {
-            PlayerBackgroundLayers(
-                state = state,
-                canvasState = canvasState,
-                expansionFractionProvider = expansionFractionProvider,
-                lyricsFractionProvider = lyricsFractionProvider,
-                queueFractionProvider = queueFractionProvider,
-                onColorsExtracted = { vibrant, darkMuted, gradient ->
-                    onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
-                },
-            )
+            key(state.trackUrl) {
+                PlayerBackgroundLayers(
+                    state = state,
+                    canvasState = canvasState,
+                    expansionFractionProvider = expansionFractionProvider,
+                    lyricsFractionProvider = lyricsFractionProvider,
+                    queueFractionProvider = queueFractionProvider,
+                    onColorsExtracted = { vibrant, darkMuted, gradient ->
+                        onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
+                    },
+                )
+            }
         }
 
         val isMiniPlayerVisible by remember {
@@ -113,7 +116,6 @@ internal fun UnifiedPlayerSheetLayers(
                 }
             }
 
-            if (isFullPlayerMounted) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -121,7 +123,11 @@ internal fun UnifiedPlayerSheetLayers(
                             val maxFraction = maxOf(lyricsFractionProvider(), queueFractionProvider())
                             val expansionFraction = expansionFractionProvider()
                             alpha = expansionFraction.coerceIn(0f, 1f) * (1f - maxFraction)
-                            translationY = (1f - expansionFraction) * (150f * density) - (200f * density * maxFraction)
+                            translationY = if (expansionFraction <= 0.005f) {
+                                10000f
+                            } else {
+                                (1f - expansionFraction) * (150f * density) - (200f * density * maxFraction)
+                            }
                         }
                 ) {
                     FullPlayer(
@@ -144,7 +150,7 @@ internal fun UnifiedPlayerSheetLayers(
                         isVisible = isFullPlayerVisible
                     )
                 }
-            }
+
 
             val isLyricsMounted by remember {
                 derivedStateOf { lyricsFractionProvider() > 0.001f }

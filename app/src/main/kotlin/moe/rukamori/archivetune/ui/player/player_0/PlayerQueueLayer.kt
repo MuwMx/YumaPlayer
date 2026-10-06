@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -85,13 +86,20 @@ internal fun PlayerQueueLayer(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // В PlayerQueueLayer.kt:
+
             PlayerSheetBorderContainer(
                 state = state,
-                modifier = if (queueNestedScrollConnection != null && !isQueueReordering) {
-                    Modifier.nestedScroll(queueNestedScrollConnection)
-                } else {
-                    Modifier
-                }
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .then(
+                        if (queueNestedScrollConnection != null && !isQueueReordering) {
+                            Modifier.nestedScroll(queueNestedScrollConnection)
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
                 QueueScreen(
                     state = queueState,
@@ -101,7 +109,7 @@ internal fun PlayerQueueLayer(
                     onCloseClick = onCloseQueueClick,
                     lazyListState = queueListState,
                     contentPadding = PaddingValues(
-                        top = 8.dp,
+                        top = 16.dp,
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
                     ),
                     onReorderStateChange = { isQueueReordering = it },
