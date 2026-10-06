@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
-import moe.rukamori.archivetune.ui.component.LyricsEnhanced
+import moe.rukamori.archivetune.ui.component.lyrics.LyricsEnhanced
 import moe.rukamori.archivetune.ui.player.player_0.PlayerSeekBar
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -78,7 +78,7 @@ fun LyricsContentCard(
 
     Box(modifier = modifier.fillMaxSize()) {
         LyricsEnhanced(
-            sliderPositionProvider = { playbackProgress.value },
+            sliderPositionProvider = { null },
             lyricsSyncOffset = state.lyricsSyncOffset,
             textColorOverride = Color.White,
             isReadyToParse = isReadyToParse,
