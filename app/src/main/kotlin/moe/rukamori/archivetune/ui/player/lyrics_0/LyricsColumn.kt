@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
@@ -18,7 +19,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 fun LyricsColumn(
     state: PlayerUiState,
     animateProgressProvider: () -> Float,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     onCloseClick: () -> Unit,
     onMoreClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -51,7 +52,7 @@ fun LyricsColumn(
         LyricsContentCard(
             state = state,
             animateProgressProvider = animateProgressProvider,
-            progressMsProvider = progressMsProvider,
+            playbackProgress = playbackProgress,
             onSearchClick = onSearchClick,
             lazyListState = lazyListState,
             onLineClick = onLineClick,

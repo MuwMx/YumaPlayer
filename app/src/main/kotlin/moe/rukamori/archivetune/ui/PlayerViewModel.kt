@@ -129,8 +129,9 @@ class PlayerViewModel @Inject constructor(
     )
 
     private val _playbackProgress = MutableStateFlow(0L)
+    val playbackProgress: StateFlow<Long> = _playbackProgress.asStateFlow()
 
-    val progressMsProvider: () -> Long = { audioPlayer?.currentPosition ?: _playbackProgress.value }
+    val progressMsProvider: () -> Long = { _playbackProgress.value }
 
     val lyricsDelegate = LyricsDelegate(
         coroutineScope = viewModelScope,

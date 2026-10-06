@@ -28,10 +28,6 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.lerp
 
 @Composable
 internal fun rememberMiniHazeStyle(
@@ -52,19 +48,11 @@ internal fun rememberMiniHazeStyle(
 
 @Composable
 internal fun rememberBackgroundGradient(gradientColor: Int): Brush {
-    val animatedBgColor by animateColorAsState(
-        targetValue = Color(gradientColor),
-        animationSpec = tween(500),
-        label = "PlayerBackdropGradientColor",
-    )
-    return remember(animatedBgColor) {
-        val midTone = lerp(animatedBgColor, Color(0xFF141414), 0.45f)
-        val deepTone = lerp(animatedBgColor, Color(0xFF0A0A0A), 0.85f)
+    val containerColor = MaterialTheme.colorScheme.surfaceContainer
+
+    return remember(containerColor) {
         Brush.verticalGradient(
-            0.0f to animatedBgColor,
-            0.30f to animatedBgColor,
-            0.65f to midTone,
-            1.0f to deepTone,
+            colors = listOf(containerColor, containerColor)
         )
     }
 }

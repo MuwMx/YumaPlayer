@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.MiniPlayerDropState
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -44,7 +45,7 @@ fun UnifiedPlayerSheetV2(
     onImmersiveChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     onSeekStarted: () -> Unit,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     bottomBarHeight: Dp = 0.dp,
     hazeState: HazeState? = null,
     pureBlack: Boolean = false,
@@ -134,7 +135,7 @@ fun UnifiedPlayerSheetV2(
                         expansionFractionProvider = { motionScope.expansionFraction.value },
                         lyricsFractionProvider = motionScope.lyricsFractionProvider,
                         queueFractionProvider = motionScope.queueFractionProvider,
-                        progressMsProvider = progressMsProvider,
+                        playbackProgress = playbackProgress,
                         fullPlayerVisualState = motionScope.fullPlayerVisualState,
                         onAction = onAction,
                         onCloseLyricsClick = onCloseLyricsClick,

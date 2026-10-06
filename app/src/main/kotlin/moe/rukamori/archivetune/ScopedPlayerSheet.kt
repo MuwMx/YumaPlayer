@@ -28,7 +28,7 @@ internal fun ScopedPlayerSheet(
     UnifiedPlayerSheetV2(
         state = uiState,
         queueState = queueState,
-        progressMsProvider = playerViewModel.progressMsProvider,
+        playbackProgress = playerViewModel.playbackProgress,
         onAction = { action ->
             when (action) {
                 is PlayerAction.StartRadio -> {

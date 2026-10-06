@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerToolbar
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
@@ -22,7 +23,7 @@ import moe.rukamori.archivetune.ui.state.UpdateState
 @Composable
 fun FullPlayer(
     state: PlayerUiState,
-    progressMsProvider: () -> Long = { 0L },
+    playbackProgress: StateFlow<Long>,
     canvasState: PlayerCanvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist),
     slideOffset: () -> Float,
     density: Float,
@@ -101,7 +102,7 @@ fun FullPlayer(
             controls = {
                 FullPlayerControlsGroup(
                     state = state,
-                    progressMsProvider = progressMsProvider,
+                    playbackProgress = playbackProgress,
                     slideOffset = slideOffset,
                     controlsOffsetY = { motionState.controlsOffsetY },
                     onAction = onAction,

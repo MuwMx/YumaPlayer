@@ -83,10 +83,6 @@ fun PlayerBackgroundLayers(
         )
     }
 
-    val painters = rememberPlayerBackgroundPainters(
-        targetUrl = targetUrl,
-        needsBlur = needsBlur
-    )
 
     val animatedBgColor by animateColorAsState(
         targetValue = gradientColor,
@@ -113,7 +109,21 @@ fun PlayerBackgroundLayers(
                 }
             }
     ) {
+        val shouldRenderHeavyBackground by remember {
+            derivedStateOf { expansionFractionProvider() > 0.05f }
+        }
+
+        if (!shouldRenderHeavyBackground) {
+            return@Box
+        }
+
+        val painters = rememberPlayerBackgroundPainters(
+            targetUrl = targetUrl,
+            needsBlur = needsBlur
+        )
+
         val playerHazeState = remember { HazeState() }
+
         if (needsBlur && painters.currentBlurPainter != null) {
             Box(
                 modifier = Modifier
@@ -154,8 +164,8 @@ fun PlayerBackgroundLayers(
         val isCanvasActive by remember {
             derivedStateOf {
                 canvasState.isCanvasEnabled &&
-                    canvasState.artwork != null &&
-                    expansionFractionProvider() > 0.05f
+                        canvasState.artwork != null &&
+                        expansionFractionProvider() > 0.05f
             }
         }
 

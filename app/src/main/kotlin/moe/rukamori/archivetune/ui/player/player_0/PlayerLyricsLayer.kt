@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
@@ -27,7 +28,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 internal fun PlayerLyricsLayer(
     state: PlayerUiState,
     lyricsFractionProvider: () -> Float,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     onAction: (PlayerAction) -> Unit,
     onCloseLyricsClick: () -> Unit,
     onMoreLyricsClick: () -> Unit,
@@ -93,7 +94,7 @@ internal fun PlayerLyricsLayer(
                 LyricsColumn(
                     state = state,
                     animateProgressProvider = lyricsFractionProvider,
-                    progressMsProvider = progressMsProvider,
+                    playbackProgress = playbackProgress,
                     onCloseClick = onCloseLyricsClick,
                     onMoreClick = onMoreLyricsClick,
                     onSearchClick = onSearchLyricsClick,

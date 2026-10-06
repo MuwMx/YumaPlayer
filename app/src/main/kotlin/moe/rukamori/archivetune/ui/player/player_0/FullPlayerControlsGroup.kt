@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerBottomBar
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
@@ -23,7 +24,7 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 @Composable
 internal fun FullPlayerControlsGroup(
     state: PlayerUiState,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     slideOffset: () -> Float,
     controlsOffsetY: () -> Dp,
     onAction: (PlayerAction) -> Unit,
@@ -55,7 +56,7 @@ internal fun FullPlayerControlsGroup(
 
         PlayerSeekBar(
             state = state,
-            progressProvider = progressMsProvider,
+            playbackProgress = playbackProgress,
             durationMs = state.durationMs,
             vibrantColor = Color(state.vibrantColor),
             slideOffset = slideOffset,

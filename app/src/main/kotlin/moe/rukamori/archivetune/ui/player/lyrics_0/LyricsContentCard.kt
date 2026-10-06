@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
@@ -62,7 +63,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun LyricsContentCard(
     state: PlayerUiState,
     animateProgressProvider: () -> Float,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     modifier: Modifier = Modifier,
     onAction: (PlayerAction) -> Unit,
     onSeek: (Float) -> Unit,
@@ -77,7 +78,7 @@ fun LyricsContentCard(
 
     Box(modifier = modifier.fillMaxSize()) {
         LyricsEnhanced(
-            sliderPositionProvider = progressMsProvider,
+            sliderPositionProvider = { playbackProgress.value },
             lyricsSyncOffset = state.lyricsSyncOffset,
             textColorOverride = Color.White,
             isReadyToParse = isReadyToParse,
@@ -140,7 +141,7 @@ fun LyricsContentCard(
                         ) {
                             PlayerSeekBar(
                                 state = state,
-                                progressProvider = progressMsProvider,
+                                playbackProgress = playbackProgress,
                                 durationMs = state.durationMs,
                                 vibrantColor = Color(state.vibrantColor),
                                 slideOffset = { 1f },

@@ -25,8 +25,7 @@ import moe.rukamori.archivetune.ui.player.player_0.buttons.SleepTimerTopBadge
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.TimeUtils
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.StateFlow
 
 // The marker has to sit exactly where the ear hears the effect begin, so it comes from the same
 // planner the service uses rather than the raw mixOutTime, which the service is free to reject.
@@ -49,7 +48,7 @@ internal fun resolveTransitionMarkerMs(
 @Composable
 fun PlayerSeekBar(
     state: PlayerUiState,
-    progressProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     durationMs: Long,
     vibrantColor: Color,
     slideOffset: () -> Float,
@@ -62,7 +61,7 @@ fun PlayerSeekBar(
     isVisible: Boolean = true,
     trackAnalysis: TrackAnalysisResult? = state.trackAnalysis,
 ) {
-    var progressMs by remember { mutableLongStateOf(progressProvider()) }
+    var progressMs by remember { mutableLongStateOf(playbackProgress.value) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var localSeekTarget by remember { mutableStateOf<Float?>(null) }
@@ -76,14 +75,11 @@ fun PlayerSeekBar(
         dynamicAnalysis = trackAnalysis ?: state.trackAnalysis ?: TrackAnalyzer.getCached(state.trackUrl)
     }
 
-    LaunchedEffect(isVisible, state.trackUrl) {
-        if (!isVisible) {
-            return@LaunchedEffect
-        }
-        progressMs = progressProvider()
-        while (isActive) {
-            val current = progressProvider()
-            if (progressMs != current) {
+    LaunchedEffect(isVisible, playbackProgress, state.trackUrl) {
+        if (!isVisible) return@LaunchedEffect
+
+        playbackProgress.collect { current ->
+            if (!isDragging && progressMs != current) {
                 progressMs = current
             }
             if (dynamicAnalysis == null && state.trackUrl.isNotEmpty()) {
@@ -92,7 +88,6 @@ fun PlayerSeekBar(
                     dynamicAnalysis = cached
                 }
             }
-            delay(if (isVisible) 250L else 1000L)
         }
     }
 

@@ -23,7 +23,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,13 +57,21 @@ import moe.rukamori.archivetune.ui.theme.SoftTextShadow
 internal fun MiniPlayerContentInternal(
     state: PlayerUiState,
     expansionFractionProvider: () -> Float,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
     onMediaAreaClick: () -> Unit,
     isVisible: Boolean = true
 ) {
     val context = LocalContext.current
+    var progressMs by remember { mutableLongStateOf(playbackProgress.value) }
+
+    LaunchedEffect(isVisible, playbackProgress) {
+        if (!isVisible) return@LaunchedEffect
+
+        playbackProgress.collect { progressMs = it }
+    }
+
     val rotation = remember { Animatable(0f) }
 
     LaunchedEffect(state.isPlaying, isVisible) {
@@ -95,8 +107,10 @@ internal fun MiniPlayerContentInternal(
                 progress = {
                     val duration = state.durationMs
                     if (duration > 0L) {
-                        (progressMsProvider().toFloat() / duration).coerceIn(0f, 1f)
-                    } else 0f
+                        (progressMs.toFloat() / duration).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
                 },
                 modifier = Modifier.fillMaxSize(),
                 trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)

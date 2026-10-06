@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
@@ -26,7 +26,7 @@ internal fun UnifiedPlayerSheetLayers(
     expansionFractionProvider: () -> Float,
     lyricsFractionProvider: () -> Float,
     queueFractionProvider: () -> Float,
-    progressMsProvider: () -> Long,
+    playbackProgress: StateFlow<Long>,
     fullPlayerVisualState: FullPlayerVisualState,
     onAction: (PlayerAction) -> Unit,
     onCloseLyricsClick: () -> Unit,
@@ -59,7 +59,6 @@ internal fun UnifiedPlayerSheetLayers(
                     alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
                 }
         ) {
-            key(state.trackUrl) {
                 PlayerBackgroundLayers(
                     state = state,
                     canvasState = canvasState,
@@ -70,7 +69,7 @@ internal fun UnifiedPlayerSheetLayers(
                         onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
                     },
                 )
-            }
+
         }
 
         val isMiniPlayerVisible by remember {
@@ -93,7 +92,7 @@ internal fun UnifiedPlayerSheetLayers(
                 MiniPlayerContentInternal(
                     state = state,
                     expansionFractionProvider = expansionFractionProvider,
-                    progressMsProvider = progressMsProvider,
+                    playbackProgress = playbackProgress,
                     onAction = onAction,
                     onMediaAreaClick = onExpandClick,
                     isVisible = isMiniPlayerVisible
@@ -133,7 +132,7 @@ internal fun UnifiedPlayerSheetLayers(
                     FullPlayer(
                         state = state,
                         canvasState = canvasState,
-                        progressMsProvider = progressMsProvider,
+                        playbackProgress = playbackProgress,
                         updateState = updateState,
                         slideOffset = expansionFractionProvider,
                         density = density,
@@ -160,7 +159,7 @@ internal fun UnifiedPlayerSheetLayers(
                 PlayerLyricsLayer(
                     state = state,
                     lyricsFractionProvider = lyricsFractionProvider,
-                    progressMsProvider = progressMsProvider,
+                    playbackProgress = playbackProgress,
                     onAction = onAction,
                     onCloseLyricsClick = onCloseLyricsClick,
                     onMoreLyricsClick = onMoreLyricsClick,
