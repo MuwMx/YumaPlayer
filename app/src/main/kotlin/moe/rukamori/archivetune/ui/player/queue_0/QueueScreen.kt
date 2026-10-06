@@ -271,22 +271,7 @@ fun QueueScreen(
                 )
             }
             }
-        }
-
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(fadeHeight)
-                            .align(Alignment.TopCenter)
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(fadeHeight)
-                            .align(Alignment.BottomCenter)
-                )
+            }
             }
         }
     }
