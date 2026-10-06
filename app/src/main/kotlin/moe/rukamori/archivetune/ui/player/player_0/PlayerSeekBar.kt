@@ -65,7 +65,13 @@ fun PlayerSeekBar(
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var localSeekTarget by remember { mutableStateOf<Float?>(null) }
-    var dynamicAnalysis by remember(state.trackUrl) { mutableStateOf(trackAnalysis ?: state.trackAnalysis) }
+    var dynamicAnalysis by remember(state.trackUrl) {
+        mutableStateOf(
+            trackAnalysis
+                ?: state.trackAnalysis
+                ?: TrackAnalyzer.getCached(state.trackUrl)
+        )
+    }
 
     LaunchedEffect(state.trackUrl) {
         progressMs = 0L
@@ -113,10 +119,16 @@ fun PlayerSeekBar(
         else -> progressMs.toFloat()
     }
 
-    val markerAnalysis = trackAnalysis ?: state.trackAnalysis ?: dynamicAnalysis
-        ?: TrackAnalyzer.getCached(state.trackUrl)
-    val markerMs = remember(markerAnalysis, durationMs, progressMs) {
-        resolveTransitionMarkerMs(markerAnalysis, durationMs, progressMs)
+    val markerAnalysis =
+        trackAnalysis
+            ?: state.trackAnalysis
+            ?: dynamicAnalysis
+    val markerMs = remember(markerAnalysis, durationMs) {
+        resolveTransitionMarkerMs(
+            analysis = markerAnalysis,
+            durationMs = durationMs,
+            currentPositionMs = 0L,
+        )
     }
 
     val shouldSnap = isDragging || baseProgress <= 500f

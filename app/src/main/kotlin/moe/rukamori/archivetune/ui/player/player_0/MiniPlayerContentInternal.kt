@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -103,7 +103,7 @@ internal fun MiniPlayerContentInternal(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            CircularWavyProgressIndicator(
+            CircularProgressIndicator(
                 progress = {
                     val duration = state.durationMs
                     if (duration > 0L) {
