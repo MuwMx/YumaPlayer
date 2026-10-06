@@ -36,6 +36,10 @@ internal fun MusicService.resolvePlaybackDataSpec(
 ): DataSpec {
     if (dataSpec.uri.shouldBypassYouTubeResolver()) return dataSpec
     val mediaId = (dataSpec.key ?: return dataSpec).removePrefix(FLAC_CACHE_KEY_PREFIX)
+    val startTime = android.os.SystemClock.elapsedRealtime()
+
+    Timber.tag("PlaybackTiming").i("[$mediaId] START resolvePlaybackDataSpec (allowCache=$allowCacheShortCircuit)")
+
     val storedFormat = null
     if (!audioNormalizationFactorCache.containsKey(mediaId)) {
         scope.launch(Dispatchers.IO) {
@@ -61,24 +65,38 @@ internal fun MusicService.resolvePlaybackDataSpec(
 
     val knownContentLength = getOrResolveContentLength(targetKey = dataSpecCacheKey, mediaId = mediaId, storedFormat = storedFormat)
 
-    probeDiskCacheShortCircuit(
+    val cacheProbeStart = android.os.SystemClock.elapsedRealtime()
+    val diskShortCircuit = probeDiskCacheShortCircuit(
         dataSpec = dataSpec,
         mediaId = mediaId,
         dataSpecCacheKey = dataSpecCacheKey,
         flacKey = flacKey,
         storedFormat = storedFormat,
         allowCacheShortCircuit = allowCacheShortCircuit,
-    )?.let { return it }
+    )
+    val cacheProbeDuration = android.os.SystemClock.elapsedRealtime() - cacheProbeStart
+
+    if (diskShortCircuit != null) {
+        Timber.tag("PlaybackTiming").i(
+            "[$mediaId] DISK CACHE HIT! Short-circuit in ${cacheProbeDuration}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+        )
+        return diskShortCircuit
+    } else {
+        Timber.tag("PlaybackTiming").d("[$mediaId] DISK CACHE MISS (checked in ${cacheProbeDuration}ms)")
+    }
 
     if (preferredStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
-        return resolveArchiveTuneExtractorDataSpec(dataSpec = dataSpec, mediaId = mediaId)
+        val res = resolveArchiveTuneExtractorDataSpec(dataSpec = dataSpec, mediaId = mediaId)
+        Timber.tag("PlaybackTiming").i("[$mediaId] EXTRACTOR RESOLVE in ${android.os.SystemClock.elapsedRealtime() - startTime}ms")
+        return res
     }
 
     val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
     val effectiveNetworkSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac)
     val networkCacheKey = "${mediaId}_${effectiveNetworkSource.name}"
 
-    resolveFromMemoryUrlPolicy(
+    val memProbeStart = android.os.SystemClock.elapsedRealtime()
+    val memoryUrl = resolveFromMemoryUrlPolicy(
         dataSpec = dataSpec,
         mediaId = mediaId,
         flacKey = flacKey,
@@ -88,9 +106,20 @@ internal fun MusicService.resolvePlaybackDataSpec(
         effectiveSource = effectiveSource,
         knownContentLength = knownContentLength,
         storedFormat = storedFormat,
-    )?.let { return it }
+    )
+    val memProbeDuration = android.os.SystemClock.elapsedRealtime() - memProbeStart
 
-    resolveFlacPlaybackDataSpec(
+    if (memoryUrl != null) {
+        Timber.tag("PlaybackTiming").i(
+            "[$mediaId] MEMORY URL HIT! Resolved in ${memProbeDuration}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+        )
+        return memoryUrl
+    } else {
+        Timber.tag("PlaybackTiming").d("[$mediaId] MEMORY URL MISS (checked in ${memProbeDuration}ms)")
+    }
+
+    val flacStart = android.os.SystemClock.elapsedRealtime()
+    val flacDataSpec = resolveFlacPlaybackDataSpec(
         dataSpec = dataSpec,
         mediaId = mediaId,
         flacKey = flacKey,
@@ -99,13 +128,23 @@ internal fun MusicService.resolvePlaybackDataSpec(
         currentSource = currentSource,
         lowDataEnabled = lowDataEnabled,
         isMeteredConnection = isMeteredConnection,
-    )?.let { return it }
+    )
+    if (flacDataSpec != null) {
+        Timber.tag("PlaybackTiming").i(
+            "[$mediaId] FLAC HIT! Resolved in ${android.os.SystemClock.elapsedRealtime() - flacStart}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+        )
+        return flacDataSpec
+    }
 
+    val ytResolveStart = android.os.SystemClock.elapsedRealtime()
     val playbackData = resolveYtPlaybackResponse(
         mediaId = mediaId, shouldBypassFlac = shouldBypassFlac, isMeteredConnection = isMeteredConnection
     )
+    Timber.tag("PlaybackTiming").i(
+        "[$mediaId] YT RESOLVE COMPLETED in ${android.os.SystemClock.elapsedRealtime() - ytResolveStart}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+    )
 
-    return persistPlaybackFormat(
+    val persisted = persistPlaybackFormat(
         dataSpec = dataSpec,
         mediaId = mediaId,
         flacKey = flacKey,
@@ -113,6 +152,9 @@ internal fun MusicService.resolvePlaybackDataSpec(
         knownContentLength = knownContentLength,
         playbackData = playbackData,
     )
+    val totalTime = android.os.SystemClock.elapsedRealtime() - startTime
+    Timber.tag("PlaybackTiming").i("[$mediaId] FULL RESOLVE COMPLETED in ${totalTime}ms")
+    return persisted
 }
 
 internal fun MusicService.createPlaybackRecoveryEngine(): PlaybackRecoveryEngine =

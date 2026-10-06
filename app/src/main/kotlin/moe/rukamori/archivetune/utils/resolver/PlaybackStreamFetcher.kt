@@ -8,6 +8,8 @@ package moe.rukamori.archivetune.utils.resolver
 
 import android.net.ConnectivityManager
 import androidx.media3.common.PlaybackException
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CompletableDeferred
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
@@ -30,6 +32,7 @@ import timber.log.Timber
 
 object PlaybackStreamFetcher {
     private const val logTag = "PlaybackStreamFetcher"
+    private val inFlightRequests = ConcurrentHashMap<String, CompletableDeferred<Result<PlaybackData>>>()
 
     /**
      * Custom player response intended to use for playback.
@@ -44,6 +47,41 @@ object PlaybackStreamFetcher {
         preferredStreamClient: PlayerStreamClient = PlayerStreamClient.ANDROID_VR,
         // if provided, this preference overrides ConnectivityManager.isActiveNetworkMetered
         networkMetered: Boolean? = null,
+    ): Result<PlaybackData> {
+        val coalesceKey = "$videoId:$audioQuality"
+        val deferred = CompletableDeferred<Result<PlaybackData>>()
+        val existing = inFlightRequests.putIfAbsent(coalesceKey, deferred)
+        if (existing != null) {
+            return existing.await()
+        }
+
+        return try {
+            val result =
+                fetchPlayerResponseForPlayback(
+                    videoId = videoId,
+                    playlistId = playlistId,
+                    audioQuality = audioQuality,
+                    connectivityManager = connectivityManager,
+                    preferredStreamClient = preferredStreamClient,
+                    networkMetered = networkMetered,
+                )
+            deferred.complete(result)
+            result
+        } catch (e: Throwable) {
+            deferred.complete(Result.failure(e))
+            throw e
+        } finally {
+            inFlightRequests.remove(coalesceKey, deferred)
+        }
+    }
+
+    private suspend fun fetchPlayerResponseForPlayback(
+        videoId: String,
+        playlistId: String?,
+        audioQuality: AudioQuality,
+        connectivityManager: ConnectivityManager,
+        preferredStreamClient: PlayerStreamClient,
+        networkMetered: Boolean?,
     ): Result<PlaybackData> =
         runCatching {
             val attempts =
@@ -493,19 +531,8 @@ object PlaybackStreamFetcher {
             Timber.tag(logTag).i("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
             Timber.tag(logTag).v("Stream expires in: $streamExpiresInSeconds seconds")
 
-            val valid = PlaybackStreamValidator.validateStatus(streamUrl)
-            if (valid) {
-                Timber.tag(logTag).i("Stream validated successfully with client: ${PlaybackClientSelector.describeClient(client)}")
-                StreamUrlCache.lastSuccessfulClientKey = StreamClientUtils.buildClientKey(client)
-                break
-            }
-
-            Timber.tag(logTag).w("Stream validation failed with client: ${PlaybackClientSelector.describeClient(client)}, trying next fallback")
-            format = null
-            streamUrl = null
-            streamClientUsed = null
-            streamExpiresInSeconds = null
-            streamPlayerResponse = null
+            StreamUrlCache.lastSuccessfulClientKey = StreamClientUtils.buildClientKey(client)
+            break
         }
 
         if (streamPlayerResponse == null) {

@@ -51,13 +51,15 @@ object PlaybackStreamValidator {
      * If this returns false the url might cause an error during playback.
      */
     fun validateStatus(url: String): Boolean {
-        Timber.tag(logTag).v("Validating stream URL status")
+        val start = android.os.SystemClock.elapsedRealtime()
+        Timber.tag("PlaybackTiming").v("Validating stream URL status")
         try {
             val requestProfile = StreamClientUtils.resolveRequestProfile(url)
             val probeRanges = buildPlaybackProbeRanges()
 
             var sawReadableProbe = false
             for (range in probeRanges) {
+                val rangeStart = android.os.SystemClock.elapsedRealtime()
                 val rangeRequest =
                     StreamClientUtils
                         .applyRequestProfile(
@@ -72,6 +74,9 @@ object PlaybackStreamValidator {
                 val probeValid =
                     currentStreamClient().newCall(rangeRequest).execute().use { response ->
                         val code = response.code
+                        val rangeDuration = android.os.SystemClock.elapsedRealtime() - rangeStart
+                        Timber.tag("PlaybackTiming").d("Stream probe range [$range] -> code $code in ${rangeDuration}ms")
+
                         if (code == 403) return@use false
                         if (code !in 200..399 && code != 416) return@use false
                         if (code == 416) return@use sawReadableProbe
@@ -84,7 +89,7 @@ object PlaybackStreamValidator {
                             contentType.startsWith("application/xml") ||
                             contentType.startsWith("text/xml")
                         ) {
-                            Timber.tag(logTag).w(
+                            Timber.tag("PlaybackTiming").w(
                                 "Rejecting stream probe because it returned non-media content-type: %s",
                                 contentType,
                             )
@@ -97,12 +102,15 @@ object PlaybackStreamValidator {
                         }
                         readable
                     }
-                if (!probeValid) return false
+                if (!probeValid) {
+                    Timber.tag("PlaybackTiming").w("Stream probe failed on range $range (Total: ${android.os.SystemClock.elapsedRealtime() - start}ms)")
+                    return false
+                }
             }
-
+            Timber.tag("PlaybackTiming").i("Stream validation PASSED in ${android.os.SystemClock.elapsedRealtime() - start}ms")
             return true
         } catch (e: Exception) {
-            Timber.tag(logTag).e(e, "Stream URL validation failed with exception")
+            Timber.tag("PlaybackTiming").e(e, "Stream validation EXCEPTION after ${android.os.SystemClock.elapsedRealtime() - start}ms")
             reportException(e)
         }
         return false
@@ -110,8 +118,6 @@ object PlaybackStreamValidator {
 
     internal fun buildPlaybackProbeRanges(): List<String> =
         listOf(
-            "bytes=0-0",
-            "bytes=0-524287",
-            "bytes=1048576-1049087",
+            "bytes=0-1",
         )
 }
