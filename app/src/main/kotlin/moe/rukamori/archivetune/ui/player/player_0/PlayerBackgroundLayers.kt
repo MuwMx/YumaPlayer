@@ -57,10 +57,9 @@ fun PlayerBackgroundLayers(
             state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
         }
     }
+    
     val isLayerOnScreen by remember {
-        derivedStateOf {
-            expansionFractionProvider() > 0.005f
-        }
+        derivedStateOf { expansionFractionProvider() > 0.005f }
     }
     val needsBlur by remember {
         derivedStateOf {
@@ -149,7 +148,14 @@ fun PlayerBackgroundLayers(
             }
         }
 
-        val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
+        val isCanvasActive by remember {
+            derivedStateOf {
+                canvasState.isCanvasEnabled &&
+                    canvasState.artwork != null &&
+                    expansionFractionProvider() > 0.05f
+            }
+        }
+
         val painter = painters.currentClearPainter
         if (painter != null && !isCanvasActive) {
             Image(

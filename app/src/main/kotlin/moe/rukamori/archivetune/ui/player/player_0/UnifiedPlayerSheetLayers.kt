@@ -103,65 +103,83 @@ internal fun UnifiedPlayerSheetLayers(
         }
 
         if (hasTrack) {
+            val isFullPlayerMounted by remember {
+                derivedStateOf { expansionFractionProvider() > 0.005f }
+            }
+
             val isFullPlayerVisible by remember {
                 derivedStateOf {
                     expansionFractionProvider() > 0.005f && maxOf(lyricsFractionProvider(), queueFractionProvider()) < 1f
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        val maxFraction = maxOf(lyricsFractionProvider(), queueFractionProvider())
-                        val expansionFraction = expansionFractionProvider()
-                        alpha = expansionFraction.coerceIn(0f, 1f) * (1f - maxFraction)
-                        translationY = (1f - expansionFraction) * (150f * density) - (200f * density * maxFraction)
-                    }
-            ) {
-                FullPlayer(
+            if (isFullPlayerMounted) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val maxFraction = maxOf(lyricsFractionProvider(), queueFractionProvider())
+                            val expansionFraction = expansionFractionProvider()
+                            alpha = expansionFraction.coerceIn(0f, 1f) * (1f - maxFraction)
+                            translationY = (1f - expansionFraction) * (150f * density) - (200f * density * maxFraction)
+                        }
+                ) {
+                    FullPlayer(
+                        state = state,
+                        canvasState = canvasState,
+                        progressMsProvider = progressMsProvider,
+                        updateState = updateState,
+                        slideOffset = expansionFractionProvider,
+                        density = density,
+                        onCollapseClick = onCollapseClick,
+                        onAction = onAction,
+                        onSeek = onSeek,
+                        onBackgroundStyleChanged = onBackgroundStyleChanged,
+                        onImmersiveChanged = onImmersiveChanged,
+                        onOpenSettingsMenu = onOpenSettingsMenu,
+                        onOpenQueue = onOpenQueue,
+                        onSeekStarted = onSeekStarted,
+                        lyricsFractionProvider = lyricsFractionProvider,
+                        queueFractionProvider = queueFractionProvider,
+                        isVisible = isFullPlayerVisible
+                    )
+                }
+            }
+
+            val isLyricsMounted by remember {
+                derivedStateOf { lyricsFractionProvider() > 0.001f }
+            }
+
+            if (isLyricsMounted) {
+                PlayerLyricsLayer(
                     state = state,
-                    canvasState = canvasState,
-                    progressMsProvider = progressMsProvider,
-                    updateState = updateState,
-                    slideOffset = expansionFractionProvider,
-                    density = density,
-                    onCollapseClick = onCollapseClick,
-                    onAction = onAction,
-                    onSeek = onSeek,
-                    onBackgroundStyleChanged = onBackgroundStyleChanged,
-                    onImmersiveChanged = onImmersiveChanged,
-                    onOpenSettingsMenu = onOpenSettingsMenu,
-                    onOpenQueue = onOpenQueue,
-                    onSeekStarted = onSeekStarted,
                     lyricsFractionProvider = lyricsFractionProvider,
-                    queueFractionProvider = queueFractionProvider,
-                    isVisible = isFullPlayerVisible
+                    progressMsProvider = progressMsProvider,
+                    onAction = onAction,
+                    onCloseLyricsClick = onCloseLyricsClick,
+                    onMoreLyricsClick = onMoreLyricsClick,
+                    onSearchLyricsClick = onSearchLyricsClick,
+                    onSeek = onSeek,
+                    onSeekStarted = onSeekStarted,
+                    dragHandler = dragHandler,
                 )
             }
 
-            PlayerLyricsLayer(
-                state = state,
-                lyricsFractionProvider = lyricsFractionProvider,
-                progressMsProvider = progressMsProvider,
-                onAction = onAction,
-                onCloseLyricsClick = onCloseLyricsClick,
-                onMoreLyricsClick = onMoreLyricsClick,
-                onSearchLyricsClick = onSearchLyricsClick,
-                onSeek = onSeek,
-                onSeekStarted = onSeekStarted,
-                dragHandler = dragHandler,
-            )
+            val isQueueMounted by remember {
+                derivedStateOf { queueFractionProvider() > 0.001f }
+            }
 
-            PlayerQueueLayer(
-                state = state,
-                queueState = queueState,
-                queueFractionProvider = queueFractionProvider,
-                onAction = onAction,
-                onCloseQueueClick = onCloseQueueClick,
-                onMoreQueueClick = onMoreQueueClick,
-                dragHandler = dragHandler,
-            )
+            if (isQueueMounted) {
+                PlayerQueueLayer(
+                    state = state,
+                    queueState = queueState,
+                    queueFractionProvider = queueFractionProvider,
+                    onAction = onAction,
+                    onCloseQueueClick = onCloseQueueClick,
+                    onMoreQueueClick = onMoreQueueClick,
+                    dragHandler = dragHandler,
+                )
+            }
         }
     }
 }
