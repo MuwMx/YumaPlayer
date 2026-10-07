@@ -42,7 +42,7 @@
     <string name="no_results_found">Tidak ada hasil yang ditemukan</string>
     <string name="top_results">Hasil Teratas</string>
     <string name="other_versions">Versi lainnya</string>
-    <string name="liked_songs">Disukai</string>
+    <string name="liked_songs">Lagu yang disukai</string>
     <string name="downloaded_songs">Lagu yang diunduh</string>
     <string name="playlist_is_empty">Playlist-nya kosong</string>
     <string name="remove_download_playlist_confirm">Apakah Anda yakin ingin menghapus semua lagu playlist \"%s\" dari penyimpanan Lagu Unduhan?</string>
@@ -60,7 +60,7 @@
     <string name="widget_pause">Jeda</string>
     <string name="widget_previous">Sebelumnya</string>
     <string name="widget_tap_to_open">Ketuk untuk membuka YumaPlayer</string>
-    <string name="play_next">Putar berikutnya</string>
+    <string name="play_next">Putar setelah ini</string>
     <string name="add_to_queue">Tambahkan ke antrean</string>
     <string name="add_to_library">Tambahkan ke koleksi</string>
     <string name="remove_from_library">Hapus dari koleksi</string>
@@ -305,7 +305,7 @@
     <string name="slider_style_simple">Sederhana</string>
     <string name="misc">Lain-lain</string>
     <string name="haptics">Getaran</string>
-    <string name="haptics_desc">Aktifkan umpan balik haptik pada elemen interaktif</string>
+    <string name="haptics_desc">Aktifkan masukan haptik pada elemen interaktif</string>
     <string name="default_open_tab">Tab terbuka bawaan</string>
     <string name="lyrics_line_spacing">Jarak baris lirik</string>
     <string name="content">Konten</string>
@@ -556,7 +556,7 @@
     <string name="discord_show_when_paused_desc">Jika diaktifkan, Rich Presence akan tetap terlihat saat dijeda dengan ikon jeda. Jika dinonaktifkan, RPC akan hilang saat dijeda.</string>
     <string name="discord_paused">Dijeda</string>
     <string name="logout_confirm_title">Konfirmasikan logout</string>
-    <string name="logout_confirm_message">Apakah Anda yakin ingin keluar dari Discord?.</string>
+    <string name="logout_confirm_message">Apakah Anda yakin ingin keluar dari Discord?</string>
     <string name="logout_confirm_yes">Keluar</string>
     <string name="logout_confirm_no">Batal</string>
     <string name="experiment_settings">Pengaturan Eksperimental</string>
@@ -952,7 +952,7 @@
     <string name="cast_no_network_desc">Hubungkan ke Wi-Fi untuk menemukan perangkat Cast di jaringan lokal Anda.</string>
     <string name="cast_no_play_services_desc">Cast memerlukan Layanan Google Play untuk menemukan dan terhubung ke perangkat.</string>
     <string name="cast_route_picker_unavailable">Cast sedang tidak tersedia saat ini.</string>
-    <string name="search_refresh_lyrics">Cari / Muat Ulang Lirik</string>
+    <string name="search_refresh_lyrics">Cari / Segarkan Lirik</string>
     <string name="flac_downloaded_desc">Ketuk untuk menghapus file .flac</string>
     <string name="lossless_flac">FLAC Lossless</string>
     <string name="lossless_flac_desc">Unduh .flac kualitas penuh</string>
@@ -1027,8 +1027,8 @@
     <string name="spotify_sync_likes">Sinkronisasikan Spotify Likes</string>
     <string name="spotify_made_for_you">Dibuat Untuk Anda</string>
     <string name="no_playlists_yet">Belum ada playlist</string>
-    <string name="add_to_playlist_desc">Tambahkan ke kustom playlist</string>
-    <string name="add_to_playlist_title">Tambahkan ke playlist</string>
+    <string name="add_to_playlist_desc">Tambahkan ke playlist kustom</string>
+    <string name="add_to_playlist_title">Tambahkan ke Playlist</string>
     <string name="track_details_desc">Codec, bitrate, info file</string>
     <string name="together_shuffle_on">Acak nyala</string>
     <string name="together_shuffle_off">Acak mati</string>
@@ -1098,7 +1098,7 @@
     <string name="check_for_update">Periksa Pembaruan</string>
     <string name="onboarding_community_telegram_desc">Ngobrol dengan komunitas dan dapatkan pembaruan.</string>
     <string name="youtube_channels">Saluran YouTube</string>
-    <string name="onboarding_permission_audio_settings_desc">Sesuaikan perilaku audio pemutaran dan berikan umpan balik sentuhan ringan.</string>
+    <string name="onboarding_permission_audio_settings_desc">Sesuaikan perilaku audio pemutaran dan berikan masukan sentuhan ringan.</string>
     <string name="check_again">Periksa lagi</string>
     <string name="download_apk">Unduh APK</string>
     <string name="all_releases_github">Semua rilis di GitHub</string>
