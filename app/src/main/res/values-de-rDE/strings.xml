@@ -13,7 +13,7 @@
     <string name="albums">Alben</string>
     <string name="playlists">Wiedergabelisten</string>
     <plurals name="n_selected">
-        <item quantity="one">%d ausgewählt</item>
+        <item quantity="one">1 ausgewählt</item>
         <item quantity="other">%d ausgewählt</item>
     </plurals>
     <string name="history">Hörverlauf</string>
@@ -118,7 +118,7 @@
         <item quantity="other">%d Lieder</item>
     </plurals>
     <plurals name="n_artist">
-        <item quantity="one">%d Künstler</item>
+        <item quantity="one">1 Künstler</item>
         <item quantity="other">%d Künstler</item>
     </plurals>
     <plurals name="n_album">
