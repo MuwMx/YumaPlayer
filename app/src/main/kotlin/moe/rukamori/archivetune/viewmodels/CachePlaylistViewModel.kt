@@ -276,7 +276,8 @@ class CachePlaylistViewModel
                             storedYtLength = storedYtLength,
                             storedFlacLength = storedFlacLength,
                         )
-                        if (evaluation.isFullyCached) {                            CachedSong(
+                        if (evaluation.isFullyCached) {
+                            CachedSong(
                                 song = song,
                                 source = evaluation.source,
                                 cachedBytes = evaluation.totalCachedBytes,
