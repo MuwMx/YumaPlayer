@@ -97,7 +97,7 @@ internal fun resolveAudioNormalizationFactor(
         return 1f
     }
 
-    if (format?.id == currentMediaId) {
+    if (format?.id == currentMediaId || format?.id?.startsWith("${currentMediaId}_") == true) {
         val factor = calculateAudioNormalizationFactor(format, normalizeAudio = true)
         audioNormalizationFactorCache[currentMediaId] = factor
         return factor
