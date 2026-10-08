@@ -144,4 +144,23 @@
     <string name="show_hidden_playlists">Ukázať skryté</string>
     <string name="hide_playlist_confirm">Skryť \"%1$s\" z knižnice?</string>
     <string name="together_participants">Účastníci</string>
+    <string name="unknown">Neznámy</string>
+    <string name="copied">Skopírované do schránky</string>
+    <string name="search_lyrics">Vyhľadať text</string>
+    <string name="lyrics_synced_badge">Synchronizované</string>
+    <string name="lyrics_search_plain_badge">Jednoduchý</string>
+    <string name="lyrics_searching_providers">Vyhľadávanie poskytovateľov</string>
+    <string name="lyrics_search_still_searching">Stále hľadám</string>
+    <string name="lyrics_search_results_count">%1$d výsledkov</string>
+    <string name="lyrics_search_result_stats">%1$d riadkov, %2$d znakov</string>
+    <string name="edit_song">Upraviť skladbu</string>
+    <string name="song_title">Názov piesne</string>
+    <string name="song_artists">Hudobní interpreti</string>
+    <string name="unsupported_language">Nepodporovaný jazyk: %1$s</string>
+    <string name="source">Zdroj</string>
+    <string name="save">Uložiť</string>
+    <string name="edit_playlist">Upraviť playlist</string>
+    <string name="create_playlist">Vytvoriť playlist</string>
+    <string name="playlist_name">Názov playlistu</string>
+    <string name="artist_name">Názov umelca</string>
 </resources>
