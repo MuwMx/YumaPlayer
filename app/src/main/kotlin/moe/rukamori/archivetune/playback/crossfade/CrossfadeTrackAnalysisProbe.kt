@@ -20,7 +20,14 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
+import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.playback.flacCacheKey
+import moe.rukamori.archivetune.playback.flacStreamCacheKey
+import moe.rukamori.archivetune.playback.ytStreamCacheKey
+import moe.rukamori.archivetune.playback.streamCacheKey
+import moe.rukamori.archivetune.playback.legacyDataKey
+import moe.rukamori.archivetune.playback.validateLegacyCacheKey
+import moe.rukamori.archivetune.playback.validateLegacyCacheKeyAcrossCaches
 import moe.rukamori.archivetune.playback.isPlayerInitialized
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -42,12 +49,19 @@ internal fun isFullyCached(cache: Cache, key: String): Boolean = runCatching {
     contentLength > 0L && cache.isCached(key, 0L, contentLength)
 }.getOrDefault(false)
 
-internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean {
+internal fun MusicService.isSourceFullyCached(mediaId: String, source: PlaybackSource): Boolean {
     if (mediaId.isBlank()) return false
-    val flacKey = flacCacheKey(mediaId)
-    return isFullyCached(downloadCache, flacKey) ||
-        isFullyCached(downloadCache, mediaId)
+    val versioned = streamCacheKey(mediaId, source)
+    if (isFullyCached(downloadCache, versioned) || isFullyCached(playerCache, versioned)) return true
+
+    val legacy = legacyDataKey(mediaId, source)
+    return validateLegacyCacheKeyAcrossCaches(downloadCache, playerCache, legacy, source) &&
+        (isFullyCached(downloadCache, legacy) || isFullyCached(playerCache, legacy))
 }
+
+internal fun MusicService.isTrackFullyCached(mediaId: String): Boolean =
+    isSourceFullyCached(mediaId, PlaybackSource.FLAC) ||
+        isSourceFullyCached(mediaId, PlaybackSource.YT_MUSIC)
 
 internal fun MusicService.registerCacheListenerForKey(key: String) {
     if (key.isBlank()) return
@@ -60,6 +74,8 @@ internal fun MusicService.registerCacheListenersForMediaItem(mediaItem: MediaIte
     if (mediaItem == null) return
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
     if (mediaId.isBlank()) return
+    registerCacheListenerForKey(ytStreamCacheKey(mediaId))
+    registerCacheListenerForKey(flacStreamCacheKey(mediaId))
     registerCacheListenerForKey(mediaId)
     registerCacheListenerForKey(flacCacheKey(mediaId))
 }
@@ -190,12 +206,22 @@ internal suspend fun MusicService.analyzeCachedTrack(
     if (mediaId.isBlank()) return null
     TrackAnalyzer.getCached(mediaId)?.let { return it }
 
-    val flacKey = flacCacheKey(mediaId)
-    if (isFullyCached(downloadCache, flacKey)) {
-        return TrackAnalyzer.analyze(mediaId, downloadCache, flacKey, durationSeconds = durationSeconds)
+    val v2Flac = flacStreamCacheKey(mediaId)
+    if (isFullyCached(downloadCache, v2Flac)) {
+        return TrackAnalyzer.analyze(mediaId, downloadCache, v2Flac, durationSeconds = durationSeconds)
     }
 
-    if (isFullyCached(downloadCache, mediaId)) {
+    val v2Yt = ytStreamCacheKey(mediaId)
+    if (isFullyCached(downloadCache, v2Yt)) {
+        return TrackAnalyzer.analyze(mediaId, downloadCache, v2Yt, durationSeconds = durationSeconds)
+    }
+
+    val legacyFlac = flacCacheKey(mediaId)
+    if (validateLegacyCacheKey(downloadCache, legacyFlac, PlaybackSource.FLAC) && isFullyCached(downloadCache, legacyFlac)) {
+        return TrackAnalyzer.analyze(mediaId, downloadCache, legacyFlac, durationSeconds = durationSeconds)
+    }
+
+    if (validateLegacyCacheKey(downloadCache, mediaId, PlaybackSource.YT_MUSIC) && isFullyCached(downloadCache, mediaId)) {
         return TrackAnalyzer.analyze(mediaId, downloadCache, mediaId, durationSeconds = durationSeconds)
     }
 
