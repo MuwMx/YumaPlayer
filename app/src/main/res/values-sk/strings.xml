@@ -163,4 +163,56 @@
     <string name="create_playlist">Vytvoriť playlist</string>
     <string name="playlist_name">Názov playlistu</string>
     <string name="artist_name">Názov umelca</string>
+    <string name="duplicates">Duplikáty</string>
+    <string name="skip_duplicates">Preskočiť Duplikáty</string>
+    <string name="add_anyway">Aj tak pridať</string>
+    <string name="duplicates_description_single">Pieseň sa už nachádza vo vašom playliste</string>
+    <string name="duplicates_description_multiple">Vo vašom playliste sa už nachádza %d skladieb.</string>
+    <plurals name="n_song">
+        <item quantity="one">%d skladba</item>
+        <item quantity="few">%d skladby</item>
+        <item quantity="many">%d skladieb</item>
+        <item quantity="other">%d skladieb</item>
+    </plurals>
+    <plurals name="n_artist">
+        <item quantity="one">%d umelec</item>
+        <item quantity="few">%d umeleci</item>
+        <item quantity="many">%d umelcov</item>
+        <item quantity="other">%d umelcov</item>
+    </plurals>
+    <plurals name="n_album">
+        <item quantity="one">%d album</item>
+        <item quantity="few">%d albumi</item>
+        <item quantity="many">%d albumov</item>
+        <item quantity="other">%d albumov</item>
+    </plurals>
+    <plurals name="n_playlist">
+        <item quantity="one">%d playlist</item>
+        <item quantity="few">%d playlisty</item>
+        <item quantity="many">%d playlistov</item>
+        <item quantity="other">%d playlistov</item>
+    </plurals>
+    <plurals name="n_week">
+        <item quantity="one">%d týždeň</item>
+        <item quantity="few">%d tyždne</item>
+        <item quantity="many">%d týždňov</item>
+        <item quantity="other">%d týždňov</item>
+    </plurals>
+    <plurals name="n_month">
+        <item quantity="one">%d mesiac</item>
+        <item quantity="few">%d mesiace</item>
+        <item quantity="many">%d mesiacov</item>
+        <item quantity="other">%d mesiacov</item>
+    </plurals>
+    <plurals name="n_year">
+        <item quantity="one">%d rok</item>
+        <item quantity="few">‘%d roky</item>
+        <item quantity="many">%d rokov</item>
+        <item quantity="other">%d rokov</item>
+    </plurals>
+    <string name="added_to_playlist">Pridané do %s</string>
+    <string name="added_n_songs_to_playlist">Do %2$s bolo pridaných %1$d skladieb</string>
+    <string name="added_to_n_playlists">Pridané do %d zoznamov skladieb</string>
+    <string name="added_n_songs_to_n_playlists">Pridaných %1$d skladieb do %2$d zoznamov skladieb</string>
+    <string name="playlist_synced">Zoznam skladieb synchronizovaný</string>
 </resources>
