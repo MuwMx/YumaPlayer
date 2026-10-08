@@ -20,20 +20,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.MemoryCacheToggleKey
+import moe.rukamori.archivetune.constants.PlaybackSource
+import moe.rukamori.archivetune.constants.PlaybackSourceKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.EqSettings
+import moe.rukamori.archivetune.playback.formatForSource
 import moe.rukamori.archivetune.together.ControlAction
 import moe.rukamori.archivetune.together.TogetherClient
 import moe.rukamori.archivetune.together.TogetherClock
@@ -47,11 +54,12 @@ import moe.rukamori.archivetune.utils.preference
 import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ServiceConfigCollector(
+internal class ServiceConfigCollector(
     private val context: Context,
     private val scope: CoroutineScope,
     private val database: MusicDatabase,
     private val dataStore: DataStore<Preferences>,
+    private val actualPlaybackSources: StateFlow<Map<String, PlaybackSource>> = MutableStateFlow(emptyMap()),
 ) {
     val audioQuality by enumPreference(
         context,
@@ -79,10 +87,22 @@ class ServiceConfigCollector(
             .stateIn(scope, SharingStarted.Lazily, null)
 
     val currentFormat: Flow<FormatEntity?> =
-        currentMediaMetadata
-            .flatMapLatest { mediaMetadata ->
-                database.format(mediaMetadata?.id)
-            }.flowOn(Dispatchers.IO)
+        combine(
+            currentMediaMetadata,
+            dataStore.data.map { it[PlaybackSourceKey]?.toEnum(PlaybackSource.YT_MUSIC) ?: PlaybackSource.YT_MUSIC },
+            actualPlaybackSources,
+        ) { metadata, selectedSource, actualSources ->
+            val id = metadata?.id
+            if (id == null) {
+                null
+            } else {
+                val effective = actualSources[id] ?: selectedSource
+                id to effective
+            }
+        }.distinctUntilChanged().flatMapLatest { target ->
+            if (target == null) kotlinx.coroutines.flow.flowOf(null)
+            else database.formatForSource(target.first, target.second)
+        }.flowOn(Dispatchers.IO)
 
     val desiredEqSettings =
         MutableStateFlow(

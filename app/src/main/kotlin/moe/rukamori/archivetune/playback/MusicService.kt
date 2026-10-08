@@ -147,12 +147,33 @@ class MusicService :
     internal var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     internal var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
 
+    internal val currentPlaybackSourceFlow = MutableStateFlow(PlaybackSource.YT_MUSIC)
+    override var currentPlaybackSource: PlaybackSource
+        get() = currentPlaybackSourceFlow.value
+        set(value) { currentPlaybackSourceFlow.value = value }
+
+    internal val actualPlaybackSources = MutableStateFlow<Map<String, PlaybackSource>>(emptyMap())
+
+    internal fun setActualPlaybackSource(mediaId: String, source: PlaybackSource) {
+        if (mediaId.isBlank()) return
+        val current = actualPlaybackSources.value
+        val updated = LinkedHashMap<String, PlaybackSource>(current)
+        updated.remove(mediaId)
+        updated[mediaId] = source
+        while (updated.size > 32) {
+            val oldest = updated.keys.firstOrNull() ?: break
+            updated.remove(oldest)
+        }
+        actualPlaybackSources.value = updated
+    }
+
     internal val configCollector by lazy {
         ServiceConfigCollector(
             context = this,
             scope = scope,
             database = database,
             dataStore = dataStore,
+            actualPlaybackSources = actualPlaybackSources,
         )
     }
 
@@ -215,13 +236,12 @@ class MusicService :
     internal val enableMemoryCache: Boolean get() = configCollector.enableMemoryCache
     internal val playbackUrlCache get() = playerEngineHolder.playbackUrlCache
     internal val losslessUrlCache get() = playerEngineHolder.losslessUrlCache
-    @Volatile override var currentPlaybackSource: PlaybackSource = PlaybackSource.YT_MUSIC
     @Volatile override var isLowDataEnabled: Boolean = true
     internal val extractorPlaybackUrlCache get() = playerEngineHolder.extractorPlaybackUrlCache
     internal val remotePlaybackTrackingUrlCache get() = playerEngineHolder.remotePlaybackTrackingUrlCache
     internal val contentLengthCache get() = playerEngineHolder.contentLengthCache
     internal fun invalidatePlaybackUrlCache(mediaId: String) = playerEngineHolder.invalidatePlaybackUrlCache(mediaId)
-    private fun invalidateLosslessUrlCache(mediaId: String) = playerEngineHolder.invalidateLosslessUrlCache(mediaId)
+    internal fun invalidateLosslessUrlCache(mediaId: String) = playerEngineHolder.invalidateLosslessUrlCache(mediaId)
     internal val streamingExtractionManager get() = playerEngineHolder.streamingExtractionManager
     internal val mediaOkHttpClient: OkHttpClient get() = playerEngineHolder.mediaOkHttpClient
     internal val extractorMediaOkHttpClient: OkHttpClient get() = playerEngineHolder.extractorMediaOkHttpClient

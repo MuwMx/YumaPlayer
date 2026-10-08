@@ -69,11 +69,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.flow.flowOf
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
+import moe.rukamori.archivetune.playback.formatForSource
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
@@ -110,8 +113,20 @@ fun ShowMediaInfo(videoId: String) {
     val database = LocalDatabase.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current
+    val mediaMetadataFlow = remember(playerConnection) { playerConnection?.mediaMetadata ?: flowOf(null) }
+    val currentFormatFlow = remember(playerConnection) { playerConnection?.currentFormat ?: flowOf(null) }
+    val selectedSourceFlow = remember(playerConnection) {
+        playerConnection?.currentPlaybackSource ?: flowOf(PlaybackSource.YT_MUSIC)
+    }
+    val currentMediaMetadata by mediaMetadataFlow.collectAsState(initial = null)
+    val selectedSource by selectedSourceFlow.collectAsState(initial = PlaybackSource.YT_MUSIC)
+    val isCurrentTrack = videoId == currentMediaMetadata?.id
     val song by database.song(videoId).collectAsState(initial = null)
-    val currentFormat by database.format(videoId).collectAsState(initial = null)
+    val currentPlayingFormat by currentFormatFlow.collectAsState(initial = null)
+    val fallbackDbFormat by remember(videoId, selectedSource) {
+        database.formatForSource(videoId, selectedSource)
+    }.collectAsState(initial = null)
+    val currentFormat = if (isCurrentTrack) currentPlayingFormat else fallbackDbFormat
     var info by remember(videoId) { mutableStateOf<MediaInfo?>(null) }
     var selectedTab by rememberSaveable(videoId) { mutableStateOf(MediaInfoTab.Information) }
 

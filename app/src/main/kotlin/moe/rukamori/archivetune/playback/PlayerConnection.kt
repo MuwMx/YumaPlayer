@@ -24,6 +24,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
@@ -73,9 +74,23 @@ class PlayerConnection(
         mediaMetadata.flatMapLatest { mediaMetadata ->
             database.lyrics(mediaMetadata?.id)
         }
+    val currentPlaybackSource = service.currentPlaybackSourceFlow
     val currentFormat =
-        mediaMetadata.flatMapLatest { mediaMetadata ->
-            database.format(mediaMetadata?.id)
+        combine(
+            mediaMetadata,
+            service.currentPlaybackSourceFlow,
+            service.actualPlaybackSources,
+        ) { metadata, selectedSource, actualSources ->
+            val id = metadata?.id
+            if (id == null) {
+                null
+            } else {
+                val effective = actualSources[id] ?: selectedSource
+                id to effective
+            }
+        }.distinctUntilChanged().flatMapLatest { target ->
+            if (target == null) kotlinx.coroutines.flow.flowOf(null)
+            else database.formatForSource(target.first, target.second)
         }
 
     val queueTitle = MutableStateFlow<String?>(null)
@@ -252,7 +267,8 @@ class PlayerConnection(
             } else {
                 scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     val mediaId = mediaMetadata.value?.id ?: return@launch
-                    val formatEntity = database.format(mediaId).firstOrNull()
+                    val source = service.actualPlaybackSources.value[mediaId] ?: service.currentPlaybackSource
+                    val formatEntity = database.getFormatForSource(mediaId, source)
 
                     if (mediaMetadata.value?.id != mediaId) return@launch
 
