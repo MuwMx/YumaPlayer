@@ -1955,18 +1955,20 @@ class MediaLibrarySessionCallback
                 .toList()
         }
 
-        private fun cachedSongIds(): List<String> {
+        internal fun cachedSongIds(): List<String> {
             val completedDownloadIds =
                 downloadUtil.downloads.value
                     .asSequence()
                     .filter { (_, download) -> download.state == Download.STATE_COMPLETED }
-                    .map { (id, _) -> id }
+                    .map { (id, _) -> extractMediaIdFromCacheKey(id) }
             val downloadCacheIds =
                 runCatching { downloadUtil.downloadCache.keys.asSequence() }
                     .getOrDefault(emptySequence())
+                    .map(::extractMediaIdFromCacheKey)
             val playerCacheIds =
                 runCatching { downloadUtil.playerCache.keys.asSequence() }
                     .getOrDefault(emptySequence())
+                    .map(::extractMediaIdFromCacheKey)
 
             return sequenceOf(completedDownloadIds, downloadCacheIds, playerCacheIds)
                 .flatten()

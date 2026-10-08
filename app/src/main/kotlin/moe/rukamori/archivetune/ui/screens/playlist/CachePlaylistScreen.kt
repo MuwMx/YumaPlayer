@@ -158,21 +158,21 @@ fun CachePlaylistScreen(
             val sortedSongs =
                 when (sortType) {
                     SongSortType.CREATE_DATE -> {
-                        cachedSongs.sortedBy { it.song.dateDownload ?: LocalDateTime.MIN }
+                        cachedSongs.sortedBy { it.song.song.dateDownload ?: LocalDateTime.MIN }
                     }
 
                     SongSortType.NAME -> {
-                        cachedSongs.sortedBy { it.song.title }
+                        cachedSongs.sortedBy { it.title }
                     }
 
                     SongSortType.ARTIST -> {
-                        cachedSongs.sortedBy { song ->
-                            song.artists.joinToString(separator = "") { artist -> artist.name }
+                        cachedSongs.sortedBy { item ->
+                            item.artists.joinToString(separator = "") { artist -> artist.name }
                         }
                     }
 
                     SongSortType.PLAY_TIME -> {
-                        cachedSongs.sortedBy { it.song.totalPlayTime }
+                        cachedSongs.sortedBy { it.song.song.totalPlayTime }
                     }
                 }.let { if (sortDescending) it.reversed() else it }
 
@@ -501,7 +501,7 @@ fun CachePlaylistScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Metadata chips row
-                            val totalDuration = remember(filteredSongs) { filteredSongs.fastSumBy { it.item.song.duration } }
+                            val totalDuration = remember(filteredSongs) { filteredSongs.fastSumBy { it.item.duration } }
                             Row(
                                 modifier =
                                     Modifier
@@ -723,17 +723,20 @@ fun CachePlaylistScreen(
 
                 // Song items
                 itemsIndexed(filteredSongs, key = { index, song -> "${song.item.id}_$index" }) { index, songWrapper ->
+                    val cachedSong = songWrapper.item
                     SongListItem(
-                        song = songWrapper.item,
-                        isActive = songWrapper.item.id == mediaMetadata?.id,
+                        song = cachedSong.song,
+                        isActive = cachedSong.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
                         isSelected = songWrapper.isSelected && selection,
                         showInLibraryIcon = true,
+                        isDownloaded = cachedSong.isFullyCached,
+                        viewCountText = cachedSong.statusText,
                         trailingContent = {
                             androidx.compose.material3.IconButton(onClick = {
                                 menuState.show {
                                     SongMenu(
-                                        originalSong = songWrapper.item,
+                                        originalSong = cachedSong.song,
                                         navController = navController,
                                         onDismiss = menuState::dismiss,
                                         isFromCache = true,
@@ -752,14 +755,14 @@ fun CachePlaylistScreen(
                                 .combinedClickable(
                                     onClick = {
                                         if (!selection) {
-                                            if (songWrapper.item.id == mediaMetadata?.id) {
+                                            if (cachedSong.id == mediaMetadata?.id) {
                                                 playerConnection.player.togglePlayPause()
                                             } else {
                                                 playerConnection.playQueue(
                                                     ListQueue(
                                                         title = "Cache Songs",
                                                         items = cachedSongs.map { it.toMediaItem() },
-                                                        startIndex = cachedSongs.indexOfFirst { it.id == songWrapper.item.id },
+                                                        startIndex = cachedSongs.indexOfFirst { it.id == cachedSong.id },
                                                     ),
                                                 )
                                             }
@@ -911,7 +914,7 @@ fun CachePlaylistScreen(
                     androidx.compose.material3.IconButton(onClick = {
                         menuState.show {
                             SelectionSongMenu(
-                                songSelection = wrappedSongs.filter { it.isSelected }.map { it.item },
+                                songSelection = wrappedSongs.filter { it.isSelected }.map { it.item.song },
                                 onDismiss = menuState::dismiss,
                                 clearAction = { selection = false },
                                 isFromCache = true,
