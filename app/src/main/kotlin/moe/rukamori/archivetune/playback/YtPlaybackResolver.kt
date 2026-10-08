@@ -114,7 +114,6 @@ internal fun MusicService.resolveYtPlaybackResponse(
 internal fun MusicService.resolveYtPlaybackDataSpec(
     dataSpec: DataSpec,
     mediaId: String,
-    flacKey: String,
     networkCacheKey: String,
     shouldBypassFlac: Boolean,
     isMeteredConnection: Boolean,
@@ -128,7 +127,6 @@ internal fun MusicService.resolveYtPlaybackDataSpec(
     return persistPlaybackFormat(
         dataSpec = dataSpec,
         mediaId = mediaId,
-        flacKey = flacKey,
         networkCacheKey = networkCacheKey,
         knownContentLength = knownContentLength,
         playbackData = playbackData,

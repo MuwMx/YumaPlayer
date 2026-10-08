@@ -26,8 +26,6 @@ import timber.log.Timber
 internal fun MusicService.resolveFlacPlaybackDataSpec(
     dataSpec: DataSpec,
     mediaId: String,
-    flacKey: String,
-    cacheKey: String,
     shouldBypassFlac: Boolean,
     currentSource: PlaybackSource,
     lowDataEnabled: Boolean,
@@ -35,13 +33,9 @@ internal fun MusicService.resolveFlacPlaybackDataSpec(
 ): DataSpec? {
     val losslessResult = if (!shouldBypassFlac && currentSource == PlaybackSource.FLAC) {
         val isOffline = connectivityManager.activeNetwork == null
-        val hasLocalCache = runCatching {
-            playerCache.getCachedSpans(mediaId).isNotEmpty() || downloadCache.getCachedSpans(mediaId).isNotEmpty() ||
-                playerCache.getCachedSpans(flacKey).isNotEmpty() || downloadCache.getCachedSpans(flacKey).isNotEmpty()
-        }.getOrDefault(false)
 
-        if (isOffline || hasLocalCache) {
-            Timber.tag("FLAC_PLAYBACK").d("Bypassed FLAC due to offline or local cache present")
+        if (isOffline) {
+            Timber.tag("FLAC_PLAYBACK").d("Bypassed FLAC due to offline")
             null
         } else {
             try {
@@ -67,28 +61,28 @@ internal fun MusicService.resolveFlacPlaybackDataSpec(
                         losslessStreamResolver.resolve(it, quality)
                     }
 
+                    val formatKey = formatIdForSource(mediaId, PlaybackSource.FLAC)
+
                     if (result != null) {
                         Timber.tag("FLAC_PLAYBACK").i("FLAC resolved successfully: origin=${result.origin}, url=${result.url}")
                         if (enableMemoryCache) {
-                            losslessUrlCache.put(cacheKey, result)
-                            losslessUrlCache.put(mediaId, result)
-                            losslessUrlCache.put(flacKey, result)
+                            losslessUrlCache.put(formatKey, result)
                         }
                     } else {
                         Timber.tag("FLAC_PLAYBACK").w("FLAC resolver returned NULL for $mediaId")
-                        losslessUrlCache.remove(cacheKey)
+                        losslessUrlCache.remove(formatKey)
                     }
                     result
                 }
             } catch (e: InterruptedException) {
                 Timber.tag("FLAC_PLAYBACK").d("FLAC resolving interrupted by player skip")
-                losslessUrlCache.remove(cacheKey)
+                losslessUrlCache.remove(formatIdForSource(mediaId, PlaybackSource.FLAC))
                 null
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 Timber.tag("FLAC_PLAYBACK").e(e, "FLAC resolve failed")
-                losslessUrlCache.remove(cacheKey)
+                losslessUrlCache.remove(formatIdForSource(mediaId, PlaybackSource.FLAC))
                 null
             }
         }
@@ -101,7 +95,6 @@ internal fun MusicService.resolveFlacPlaybackDataSpec(
         return buildResolvedFlacDataSpec(
             dataSpec = dataSpec,
             mediaId = mediaId,
-            flacKey = flacKey,
             streamUrl = losslessResult,
         )
     }

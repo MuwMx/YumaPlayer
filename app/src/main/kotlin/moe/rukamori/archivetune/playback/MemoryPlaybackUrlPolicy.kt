@@ -11,11 +11,26 @@ import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import timber.log.Timber
 
+internal fun MusicService.resolveTargetDataKey(mediaId: String, source: PlaybackSource): String {
+    val versioned = streamCacheKey(mediaId, source)
+    val hasVersioned = runCatching {
+        downloadCache.getCachedSpans(versioned).isNotEmpty() || playerCache.getCachedSpans(versioned).isNotEmpty()
+    }.getOrDefault(false)
+    if (hasVersioned) return versioned
+
+    val legacy = legacyDataKey(mediaId, source)
+    if (validateLegacyCacheKeyAcrossCaches(downloadCache, playerCache, legacy, source)) {
+        return legacy
+    }
+
+    return versioned
+}
+
 internal fun MusicService.buildResolvedFlacDataSpec(
     dataSpec: DataSpec,
     mediaId: String,
-    flacKey: String,
     streamUrl: StreamUrl,
+    explicitKey: String? = null,
 ): DataSpec {
     val headers = mutableMapOf<String, String>()
     if (streamUrl.origin in listOf("squid", "kennyy", "arcod", "qobuz", "qbdlx")) {
@@ -26,7 +41,7 @@ internal fun MusicService.buildResolvedFlacDataSpec(
 
     val flacFormat =
         FormatEntity(
-            id = mediaId,
+            id = formatIdForSource(mediaId, PlaybackSource.FLAC),
             itag = 0,
             mimeType = "audio/flac",
             codecs = streamUrl.codec ?: "flac",
@@ -40,8 +55,9 @@ internal fun MusicService.buildResolvedFlacDataSpec(
         )
     database.query { upsert(flacFormat) }
 
+    val targetKey = explicitKey ?: resolveTargetDataKey(mediaId, PlaybackSource.FLAC)
     return dataSpec.buildUpon()
-        .setKey(flacKey)
+        .setKey(targetKey)
         .setUri(streamUrl.url.toUri())
         .setHttpRequestHeaders(headers)
         .build()
@@ -53,10 +69,12 @@ internal fun MusicService.buildResolvedPlaybackDataSpec(
     cached: AuthScopedCacheValue,
     knownContentLength: Long?,
     storedFormat: FormatEntity?,
+    explicitKey: String? = null,
 ): DataSpec {
     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-    val specWithMediaId = if (dataSpec.key != mediaId) dataSpec.buildUpon().setKey(mediaId).build() else dataSpec
-    val resolvedDataSpec = specWithMediaId.withUri(cached.url.toUri())
+    val targetKey = explicitKey ?: resolveTargetDataKey(mediaId, PlaybackSource.YT_MUSIC)
+    val specWithKey = if (dataSpec.key != targetKey) dataSpec.buildUpon().setKey(targetKey).build() else dataSpec
+    val resolvedDataSpec = specWithKey.withUri(cached.url.toUri())
     val length =
         resolveStreamChunkLength(
             requestedLength = dataSpec.length,
@@ -73,48 +91,31 @@ internal fun MusicService.buildResolvedPlaybackDataSpec(
 internal fun MusicService.resolveFromMemoryUrlPolicy(
     dataSpec: DataSpec,
     mediaId: String,
-    flacKey: String,
-    cacheKey: String,
-    networkCacheKey: String,
     authFingerprint: String,
     effectiveSource: PlaybackSource,
     knownContentLength: Long?,
     storedFormat: FormatEntity?,
 ): DataSpec? {
-    val cachedPlayback = (playbackUrlCache[networkCacheKey]
-        ?: playbackUrlCache[mediaId]
-        ?: playbackUrlCache["${mediaId}_${PlaybackSource.YT_MUSIC.name}"]
-        ?: playbackUrlCache[flacKey])
-        ?.takeIf {
-            it.isValidFor(
-                authFingerprint = authFingerprint,
-                minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
-            )
-        }
-
-    val cachedLossless = if (enableMemoryCache) {
-        losslessUrlCache.get(cacheKey)
-            ?: losslessUrlCache.get(flacKey)
-            ?: losslessUrlCache.get(mediaId)
-            ?: losslessUrlCache.get("${mediaId}_${PlaybackSource.FLAC.name}")
-    } else null
-
     if (effectiveSource == PlaybackSource.FLAC) {
+        val cachedLossless = if (enableMemoryCache) {
+            losslessUrlCache.get(formatIdForSource(mediaId, PlaybackSource.FLAC))
+        } else null
+
         if (cachedLossless != null) {
             Timber.tag("FLAC_PLAYBACK").d("Using cached lossless URL for $mediaId")
-            return buildResolvedFlacDataSpec(dataSpec, mediaId, flacKey, cachedLossless)
-        }
-        if (cachedPlayback != null) {
-            Timber.tag("FLAC_PLAYBACK").d("Using prefetched playback URL fallback for $mediaId")
-            return buildResolvedPlaybackDataSpec(dataSpec, mediaId, cachedPlayback, knownContentLength, storedFormat)
+            return buildResolvedFlacDataSpec(dataSpec, mediaId, cachedLossless)
         }
     } else {
+        val cachedPlayback = playbackUrlCache[formatIdForSource(mediaId, PlaybackSource.YT_MUSIC)]
+            ?.takeIf {
+                it.isValidFor(
+                    authFingerprint = authFingerprint,
+                    minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
+                )
+            }
+
         if (cachedPlayback != null) {
             return buildResolvedPlaybackDataSpec(dataSpec, mediaId, cachedPlayback, knownContentLength, storedFormat)
-        }
-        if (cachedLossless != null) {
-            Timber.tag("FLAC_PLAYBACK").d("Using prefetched lossless URL fallback for $mediaId")
-            return buildResolvedFlacDataSpec(dataSpec, mediaId, flacKey, cachedLossless)
         }
     }
 

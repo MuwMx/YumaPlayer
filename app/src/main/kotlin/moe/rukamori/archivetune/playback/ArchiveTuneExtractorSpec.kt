@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.moriextractor.ArchiveTuneExtractorException
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
@@ -21,7 +22,7 @@ internal fun MusicService.resolveArchiveTuneExtractorDataSpec(
     val userGvsToken = authState.resolveExtractorGvsToken()
     val userCookies = authState.resolveExtractorCookies()
 
-    (extractorPlaybackUrlCache[mediaId] ?: extractorPlaybackUrlCache[flacCacheKey(mediaId)])
+    extractorPlaybackUrlCache[mediaId]
         ?.takeIf {
             it.isValidFor(
                 authFingerprint = authFingerprint,
@@ -29,8 +30,9 @@ internal fun MusicService.resolveArchiveTuneExtractorDataSpec(
             )
         }?.let { cached ->
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-            val specWithMediaId = if (dataSpec.key != mediaId) dataSpec.buildUpon().setKey(mediaId).build() else dataSpec
-            return specWithMediaId.withUri(cached.url.toUri())
+            val targetDataKey = resolveTargetDataKey(mediaId, PlaybackSource.YT_MUSIC)
+            val specWithKey = if (dataSpec.key != targetDataKey) dataSpec.buildUpon().setKey(targetDataKey).build() else dataSpec
+            return specWithKey.withUri(cached.url.toUri())
         }
 
     val streamUrl =
@@ -48,10 +50,10 @@ internal fun MusicService.resolveArchiveTuneExtractorDataSpec(
             authFingerprint = authFingerprint,
         )
     extractorPlaybackUrlCache[mediaId] = extractorCacheValue
-    extractorPlaybackUrlCache[flacCacheKey(mediaId)] = extractorCacheValue
     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-    val specWithMediaId = if (dataSpec.key != mediaId) dataSpec.buildUpon().setKey(mediaId).build() else dataSpec
-    return specWithMediaId.withUri(streamUrl.toUri())
+    val targetDataKey = resolveTargetDataKey(mediaId, PlaybackSource.YT_MUSIC)
+    val specWithKey = if (dataSpec.key != targetDataKey) dataSpec.buildUpon().setKey(targetDataKey).build() else dataSpec
+    return specWithKey.withUri(streamUrl.toUri())
 }
 
 private fun MusicService.extractAudioUrl(
