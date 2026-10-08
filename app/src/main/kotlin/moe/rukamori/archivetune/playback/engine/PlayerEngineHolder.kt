@@ -26,6 +26,9 @@ import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.ExoDeckController
 import moe.rukamori.archivetune.playback.PlaybackConstants
+import moe.rukamori.archivetune.playback.flacCacheKey
+import moe.rukamori.archivetune.playback.flacStreamCacheKey
+import moe.rukamori.archivetune.playback.ytStreamCacheKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.moriextractor.StreamingExtractionManager
 import moe.rukamori.archivetune.playback.resolvers.StreamUrlCache
@@ -128,13 +131,19 @@ class PlayerEngineHolder {
 
     fun invalidatePlaybackUrlCache(mediaId: String) {
         playbackUrlCache.remove(mediaId)
-        playbackUrlCache.remove("${mediaId}_${PlaybackSource.YT_MUSIC.name}")
+        playbackUrlCache.remove(flacCacheKey(mediaId))
         playbackUrlCache.remove("${mediaId}_${PlaybackSource.FLAC.name}")
+        playbackUrlCache.remove(ytStreamCacheKey(mediaId))
+        playbackUrlCache.remove(flacStreamCacheKey(mediaId))
+        playbackUrlCache.remove("${mediaId}_${PlaybackSource.YT_MUSIC.name}")
     }
 
     fun invalidateLosslessUrlCache(mediaId: String) {
         losslessUrlCache.remove(mediaId)
         losslessUrlCache.remove("${mediaId}_${PlaybackSource.YT_MUSIC.name}")
+        losslessUrlCache.remove(flacCacheKey(mediaId))
+        losslessUrlCache.remove(ytStreamCacheKey(mediaId))
+        losslessUrlCache.remove(flacStreamCacheKey(mediaId))
         losslessUrlCache.remove("${mediaId}_${PlaybackSource.FLAC.name}")
     }
 
