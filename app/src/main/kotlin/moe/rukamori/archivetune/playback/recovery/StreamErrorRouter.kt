@@ -67,8 +67,7 @@ class StreamErrorRouter(
 
         if (error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND) {
             scope.launch(Dispatchers.IO) {
-                runCatching { cacheOps.downloadCache.removeResource(currentMediaId) }
-                runCatching { cacheOps.playerCache.removeResource(currentMediaId) }
+                cacheOps.handleStreamFailureRecovery(currentMediaId)
             }
         }
 
@@ -99,21 +98,10 @@ class StreamErrorRouter(
                 isFullyCachedMedia,
             )
 
-            cacheOps.invalidatePlaybackUrlCache(currentMediaId)
-            cacheOps.removeExtractorPlaybackUrl(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
 
             scope.launch(Dispatchers.IO) {
-                runCatching { cacheOps.playerCache.removeResource(currentMediaId) }
-                if (!isFullyCachedMedia) {
-                    runCatching { cacheOps.downloadCache.removeResource(currentMediaId) }
-                } else {
-                    Timber.tag(TAG).w(
-                        "Keeping offline download for %s; corruption may require manual re-download",
-                        currentMediaId,
-                    )
-                }
-
+                cacheOps.handleStreamFailureRecovery(currentMediaId)
                 withContext(Dispatchers.Main) {
                     if (playerActions.registerRetryAttempt(currentMediaId)) {
                         playerActions.seekTo(mediaItemIndex, resumePosition)
@@ -244,8 +232,7 @@ class StreamErrorRouter(
                     } == true
                 )
 
-        cacheOps.invalidatePlaybackUrlCache(mediaId)
-        cacheOps.removeExtractorPlaybackUrl(mediaId)
+        cacheOps.handleStreamFailureRecovery(mediaId)
         YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
         if (!failedExpiredUrl && cachedExtractorFailedUrl == null && requestProfile.clientKey.isNotEmpty()) {
             YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)

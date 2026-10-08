@@ -50,6 +50,7 @@ class PlaybackRecoveryEngine(
         val downloadCache: Cache
         fun isTrackFullyCached(mediaId: String): Boolean
         fun invalidatePlaybackUrlCache(mediaId: String)
+        fun handleStreamFailureRecovery(mediaId: String)
         fun removeExtractorPlaybackUrl(mediaId: String)
         fun getCachedFailedPlaybackUrl(mediaId: String, failedUrl: String): AuthScopedCacheValue?
         fun getCachedExtractorFailedPlaybackUrl(mediaId: String, failedUrl: String): AuthScopedCacheValue?

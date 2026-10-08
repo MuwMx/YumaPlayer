@@ -14,6 +14,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.MainActivity
@@ -35,48 +36,49 @@ internal fun MusicService.resolvePlaybackDataSpec(
     allowCacheShortCircuit: Boolean,
 ): DataSpec {
     if (dataSpec.uri.shouldBypassYouTubeResolver()) return dataSpec
-    val mediaId = (dataSpec.key ?: return dataSpec).removePrefix(FLAC_CACHE_KEY_PREFIX)
+    val mediaId = extractMediaIdFromCacheKey(dataSpec.key ?: return dataSpec)
     val startTime = android.os.SystemClock.elapsedRealtime()
 
     Timber.tag("PlaybackTiming").i("[$mediaId] START resolvePlaybackDataSpec (allowCache=$allowCacheShortCircuit)")
 
     val storedFormat = null
-    if (!audioNormalizationFactorCache.containsKey(mediaId)) {
-        scope.launch(Dispatchers.IO) {
-            database.format(mediaId).first()?.let {
-                audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(it, normalizeAudio = true)
-            }
-        }
-    }
 
     val lowDataEnabled = isLowDataEnabled
     val isMeteredConnection = connectivityManager.isActiveNetworkMetered ||
         (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
     val shouldBypassFlac = shouldBypassFlac(lowData = lowDataEnabled, metered = isMeteredConnection)
     val currentSource = currentPlaybackSource
-    val flacKey = flacCacheKey(mediaId)
-    val hasFlacDiskEntry = runCatching {
-        downloadCache.getCachedSpans(flacKey).isNotEmpty() || playerCache.getCachedSpans(flacKey).isNotEmpty()
-    }.getOrDefault(false)
+    val isFlacFullyCached = isKeyFullyCached(flacStreamCacheKey(mediaId), mediaId) ||
+        (validateLegacyCacheKeyAcrossCaches(downloadCache, playerCache, flacCacheKey(mediaId), PlaybackSource.FLAC) &&
+            isKeyFullyCached(flacCacheKey(mediaId), mediaId))
 
-    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac && !hasFlacDiskEntry)
-    val cacheKey = "${mediaId}_${effectiveSource.name}"
-    val dataSpecCacheKey = if (effectiveSource == PlaybackSource.FLAC) flacKey else mediaId
-
-    val knownContentLength = getOrResolveContentLength(targetKey = dataSpecCacheKey, mediaId = mediaId, storedFormat = storedFormat)
+    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac && !isFlacFullyCached)
+    if (!audioNormalizationFactorCache.containsKey(mediaId)) {
+        scope.launch(Dispatchers.IO) {
+            database.formatForSource(mediaId, effectiveSource).firstOrNull()?.let {
+                audioNormalizationFactorCache[mediaId] = calculateAudioNormalizationFactor(it, normalizeAudio = true)
+            }
+        }
+    }
+    val primaryVersionedKey = streamCacheKey(mediaId, effectiveSource)
+    val knownContentLength = getOrResolveContentLength(targetKey = primaryVersionedKey, mediaId = mediaId, storedFormat = storedFormat)
 
     val cacheProbeStart = android.os.SystemClock.elapsedRealtime()
     val diskShortCircuit = probeDiskCacheShortCircuit(
         dataSpec = dataSpec,
         mediaId = mediaId,
-        dataSpecCacheKey = dataSpecCacheKey,
-        flacKey = flacKey,
+        currentSource = effectiveSource,
         storedFormat = storedFormat,
         allowCacheShortCircuit = allowCacheShortCircuit,
     )
     val cacheProbeDuration = android.os.SystemClock.elapsedRealtime() - cacheProbeStart
 
     if (diskShortCircuit != null) {
+        val actual = when {
+            diskShortCircuit.key?.startsWith(STREAM_V2_FLAC_PREFIX) == true || diskShortCircuit.key?.startsWith(LEGACY_FLAC_CACHE_KEY_PREFIX) == true -> PlaybackSource.FLAC
+            else -> PlaybackSource.YT_MUSIC
+        }
+        setActualPlaybackSource(mediaId, actual)
         Timber.tag("PlaybackTiming").i(
             "[$mediaId] DISK CACHE HIT! Short-circuit in ${cacheProbeDuration}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
         )
@@ -86,6 +88,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
     }
 
     if (preferredStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
+        setActualPlaybackSource(mediaId, PlaybackSource.YT_MUSIC)
         val res = resolveArchiveTuneExtractorDataSpec(dataSpec = dataSpec, mediaId = mediaId)
         Timber.tag("PlaybackTiming").i("[$mediaId] EXTRACTOR RESOLVE in ${android.os.SystemClock.elapsedRealtime() - startTime}ms")
         return res
@@ -99,9 +102,6 @@ internal fun MusicService.resolvePlaybackDataSpec(
     val memoryUrl = resolveFromMemoryUrlPolicy(
         dataSpec = dataSpec,
         mediaId = mediaId,
-        flacKey = flacKey,
-        cacheKey = cacheKey,
-        networkCacheKey = networkCacheKey,
         authFingerprint = authFingerprint,
         effectiveSource = effectiveSource,
         knownContentLength = knownContentLength,
@@ -110,6 +110,11 @@ internal fun MusicService.resolvePlaybackDataSpec(
     val memProbeDuration = android.os.SystemClock.elapsedRealtime() - memProbeStart
 
     if (memoryUrl != null) {
+        val actual = when {
+            memoryUrl.key?.startsWith(STREAM_V2_FLAC_PREFIX) == true || memoryUrl.key?.startsWith(LEGACY_FLAC_CACHE_KEY_PREFIX) == true -> PlaybackSource.FLAC
+            else -> PlaybackSource.YT_MUSIC
+        }
+        setActualPlaybackSource(mediaId, actual)
         Timber.tag("PlaybackTiming").i(
             "[$mediaId] MEMORY URL HIT! Resolved in ${memProbeDuration}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
         )
@@ -122,19 +127,20 @@ internal fun MusicService.resolvePlaybackDataSpec(
     val flacDataSpec = resolveFlacPlaybackDataSpec(
         dataSpec = dataSpec,
         mediaId = mediaId,
-        flacKey = flacKey,
-        cacheKey = cacheKey,
         shouldBypassFlac = shouldBypassFlac,
         currentSource = currentSource,
         lowDataEnabled = lowDataEnabled,
         isMeteredConnection = isMeteredConnection,
     )
     if (flacDataSpec != null) {
+        setActualPlaybackSource(mediaId, PlaybackSource.FLAC)
         Timber.tag("PlaybackTiming").i(
             "[$mediaId] FLAC HIT! Resolved in ${android.os.SystemClock.elapsedRealtime() - flacStart}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
         )
         return flacDataSpec
     }
+
+    setActualPlaybackSource(mediaId, PlaybackSource.YT_MUSIC)
 
     val ytResolveStart = android.os.SystemClock.elapsedRealtime()
     val playbackData = resolveYtPlaybackResponse(
@@ -147,7 +153,6 @@ internal fun MusicService.resolvePlaybackDataSpec(
     val persisted = persistPlaybackFormat(
         dataSpec = dataSpec,
         mediaId = mediaId,
-        flacKey = flacKey,
         networkCacheKey = networkCacheKey,
         knownContentLength = knownContentLength,
         playbackData = playbackData,
@@ -190,13 +195,40 @@ internal fun MusicService.createPlaybackRecoveryEngine(): PlaybackRecoveryEngine
             override val downloadCache: Cache get() = this@createPlaybackRecoveryEngine.downloadCache
             override fun isTrackFullyCached(mediaId: String): Boolean = this@createPlaybackRecoveryEngine.isTrackFullyCached(mediaId)
             override fun invalidatePlaybackUrlCache(mediaId: String) = this@createPlaybackRecoveryEngine.invalidatePlaybackUrlCache(mediaId)
+            override fun handleStreamFailureRecovery(mediaId: String) {
+                val source = actualPlaybackSources.value[mediaId] ?: currentPlaybackSource
+                when (source) {
+                    PlaybackSource.FLAC -> {
+                        invalidateLosslessUrlCache(mediaId)
+                        val v2Key = flacStreamCacheKey(mediaId)
+                        runCatching { playerCache.removeResource(v2Key) }
+                        val hasKnownLength = runCatching {
+                            downloadCache.getContentMetadata(v2Key).get(androidx.media3.datasource.cache.ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
+                        }.getOrDefault(false)
+                        if (hasKnownLength && !isKeyFullyCached(v2Key, mediaId)) {
+                            runCatching { downloadCache.removeResource(v2Key) }
+                        }
+                    }
+                    PlaybackSource.YT_MUSIC -> {
+                        invalidatePlaybackUrlCache(mediaId)
+                        removeExtractorPlaybackUrl(mediaId)
+                        val v2Key = ytStreamCacheKey(mediaId)
+                        runCatching { playerCache.removeResource(v2Key) }
+                        val hasKnownLength = runCatching {
+                            downloadCache.getContentMetadata(v2Key).get(androidx.media3.datasource.cache.ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
+                        }.getOrDefault(false)
+                        if (hasKnownLength && !isKeyFullyCached(v2Key, mediaId)) {
+                            runCatching { downloadCache.removeResource(v2Key) }
+                        }
+                    }
+                }
+            }
             override fun removeExtractorPlaybackUrl(mediaId: String) {
                 extractorPlaybackUrlCache.remove(mediaId)
             }
             override fun getCachedFailedPlaybackUrl(mediaId: String, failedUrl: String): AuthScopedCacheValue? {
                 return (playbackUrlCache[mediaId]
-                    ?: playbackUrlCache["${mediaId}_${PlaybackSource.YT_MUSIC.name}"]
-                    ?: playbackUrlCache["${mediaId}_${PlaybackSource.FLAC.name}"])?.takeIf { it.url == failedUrl }
+                    ?: playbackUrlCache["${mediaId}_${PlaybackSource.YT_MUSIC.name}"])?.takeIf { it.url == failedUrl }
             }
             override fun getCachedExtractorFailedPlaybackUrl(mediaId: String, failedUrl: String): AuthScopedCacheValue? {
                 return extractorPlaybackUrlCache[mediaId]?.takeIf { it.url == failedUrl }
