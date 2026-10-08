@@ -60,6 +60,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -156,15 +157,10 @@ class MusicService :
 
     internal fun setActualPlaybackSource(mediaId: String, source: PlaybackSource) {
         if (mediaId.isBlank()) return
-        val current = actualPlaybackSources.value
-        val updated = LinkedHashMap<String, PlaybackSource>(current)
-        updated.remove(mediaId)
-        updated[mediaId] = source
-        while (updated.size > 32) {
-            val oldest = updated.keys.firstOrNull() ?: break
-            updated.remove(oldest)
+        val currentPlayingId = runCatching { player.currentMediaItem?.mediaId }.getOrNull()
+        actualPlaybackSources.update { current ->
+            updateActualPlaybackSources(current, mediaId, source, currentPlayingId)
         }
-        actualPlaybackSources.value = updated
     }
 
     internal val configCollector by lazy {

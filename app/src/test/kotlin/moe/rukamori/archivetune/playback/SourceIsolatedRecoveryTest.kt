@@ -6,14 +6,28 @@
 
 package moe.rukamori.archivetune.playback
 
+import android.net.Uri
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.cache.Cache
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder
+import moe.rukamori.archivetune.playback.recovery.NetworkStallReviver
+import moe.rukamori.archivetune.playback.recovery.StreamErrorRouter
 import moe.rukamori.archivetune.playback.resolvers.StreamUrl
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -27,7 +41,20 @@ class SourceIsolatedRecoveryTest {
 
     @Before
     fun setup() {
+        mockkStatic(Uri::class)
+        every { Uri.parse(any()) } answers {
+            val str = firstArg<String>()
+            val uri = mockk<Uri>(relaxed = true)
+            every { uri.toString() } returns str
+            every { uri.scheme } returns "https"
+            uri
+        }
         engineHolder = PlayerEngineHolder()
+    }
+
+    @After
+    fun teardown() {
+        unmockkAll()
     }
 
     @Test
@@ -135,5 +162,77 @@ class SourceIsolatedRecoveryTest {
         verify(exactly = 0) { dCache.removeResource(legacyFlac) }
         verify(exactly = 0) { pCache.removeResource(v2Yt) }
         verify(exactly = 0) { dCache.removeResource(mediaId) }
+    }
+
+    @Test
+    fun testRetryPlaybackAfterStreamFailureDoesNotPurgeDiskCache() {
+        val playerActions = mockk<PlaybackRecoveryEngine.PlayerActions>(relaxed = true) {
+            every { registerRetryAttempt(any()) } returns true
+        }
+        val cacheOps = mockk<PlaybackRecoveryEngine.CacheOps>(relaxed = true)
+        val networkState = mockk<PlaybackRecoveryEngine.NetworkState>(relaxed = true)
+        val loginPrompt = mockk<PlaybackRecoveryEngine.LoginPrompt>(relaxed = true)
+        val networkStallReviver = mockk<NetworkStallReviver>(relaxed = true)
+
+        val router = StreamErrorRouter(
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            playerActions = playerActions,
+            cacheOps = cacheOps,
+            networkState = networkState,
+            loginPrompt = loginPrompt,
+            networkStallReviver = networkStallReviver,
+        )
+
+        val dataSpec = DataSpec.Builder().setUri(Uri.parse("https://yt.example/stream")).build()
+        val exception = HttpDataSource.InvalidResponseCodeException(
+            503,
+            "Service Unavailable",
+            null,
+            emptyMap(),
+            dataSpec,
+            byteArrayOf(),
+        )
+
+        val retried = router.retryPlaybackAfterStreamFailure(
+            mediaId = mediaId,
+            isFullyCachedMedia = false,
+            responseException = exception,
+        )
+
+        assertTrue(retried)
+        verify { cacheOps.invalidatePlaybackUrlCache(mediaId) }
+        verify { cacheOps.invalidateLosslessUrlCache(mediaId) }
+        verify { cacheOps.removeExtractorPlaybackUrl(mediaId) }
+        verify(exactly = 0) { cacheOps.handleStreamFailureRecovery(any()) }
+    }
+
+    @Test
+    fun testActualPlaybackSourcesAtomicUpdateProtectsCurrentlyPlayingTrack() {
+        val sourcesFlow = MutableStateFlow<Map<String, PlaybackSource>>(emptyMap())
+        val currentPlayingId = "trackCurrent"
+
+        fun setSource(id: String, source: PlaybackSource) {
+            sourcesFlow.update { current ->
+                updateActualPlaybackSources(current, id, source, currentPlayingId)
+            }
+        }
+
+        setSource("trackCurrent", PlaybackSource.FLAC)
+        assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
+
+        setSource("trackCurrent", PlaybackSource.YT_MUSIC)
+        assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
+
+        runBlocking {
+            val jobs = (1..50).map { i ->
+                launch(Dispatchers.Default) {
+                    setSource("bulk_$i", PlaybackSource.YT_MUSIC)
+                }
+            }
+            jobs.forEach { it.join() }
+        }
+
+        assertTrue(sourcesFlow.value.size <= 32)
+        assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
     }
 }

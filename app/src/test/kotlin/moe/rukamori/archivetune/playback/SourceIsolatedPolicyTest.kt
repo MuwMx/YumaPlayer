@@ -7,17 +7,21 @@
 package moe.rukamori.archivetune.playback
 
 import android.net.Uri
+import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheSpan
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.mockk.verify
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.playback.crossfade.isSourceFullyCached
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder
@@ -33,6 +37,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.util.TreeSet
+import java.util.concurrent.ConcurrentHashMap
 
 class SourceIsolatedPolicyTest {
 
@@ -48,11 +53,21 @@ class SourceIsolatedPolicyTest {
     @Before
     fun setup() {
         mockkStatic(Uri::class)
+        mockkStatic(SystemClock::class)
+        every { SystemClock.elapsedRealtime() } returns 1000L
+        mockkObject(YouTube)
+        every { YouTube.currentPlaybackAuthState() } returns mockk { every { fingerprint } returns "auth_fp" }
+        mockkStatic("moe.rukamori.archivetune.playback.YtPlaybackResolverKt")
+        mockkStatic("moe.rukamori.archivetune.playback.FlacPlaybackResolverKt")
         every { Uri.parse(any()) } answers {
             val str = firstArg<String>()
             val uri = mockk<Uri>(relaxed = true)
             every { uri.toString() } returns str
-            every { uri.scheme } returns "https"
+            every { uri.scheme } returns when {
+                str.startsWith("http://") -> "http"
+                str.startsWith("https://") -> "https"
+                else -> null
+            }
             uri
         }
 
@@ -254,5 +269,62 @@ class SourceIsolatedPolicyTest {
 
         assertTrue(service.isSourceFullyCached(mediaId, PlaybackSource.YT_MUSIC))
         assertFalse(service.isSourceFullyCached(mediaId, PlaybackSource.FLAC))
+    }
+
+    @Test
+    fun testYtResolveWithoutFlacCacheProbes() {
+        val connectivityManager = mockk<android.net.ConnectivityManager>(relaxed = true)
+        every { service.connectivityManager } returns connectivityManager
+        every { service.currentPlaybackSource } returns PlaybackSource.YT_MUSIC
+        every { service.audioNormalizationFactorCache } returns ConcurrentHashMap()
+
+        val ytData = createPlaybackData(contentLength = 4_000_000L, bitrate = 128_000)
+        every { service.resolveYtPlaybackResponse(mediaId, any(), any()) } returns ytData
+
+        val baseSpec = DataSpec.Builder().setUri(mediaId.toUri()).setKey(mediaId).build()
+        val result = service.resolvePlaybackDataSpec(baseSpec, allowCacheShortCircuit = false)
+
+        assertNotNull(result)
+        assertEquals(ytStreamCacheKey(mediaId), result.key)
+        verify(exactly = 0) { downloadCache.getContentMetadata(flacStreamCacheKey(mediaId)) }
+        verify(exactly = 0) { playerCache.getContentMetadata(flacStreamCacheKey(mediaId)) }
+        verify(exactly = 0) { downloadCache.getContentMetadata(flacCacheKey(mediaId)) }
+        verify(exactly = 0) { playerCache.getContentMetadata(flacCacheKey(mediaId)) }
+    }
+
+    @Test
+    fun testFlacUnavailableFallsBackToYouTube() {
+        val connectivityManager = mockk<android.net.ConnectivityManager>(relaxed = true)
+        every { service.connectivityManager } returns connectivityManager
+        every { service.currentPlaybackSource } returns PlaybackSource.FLAC
+        every { service.audioNormalizationFactorCache } returns ConcurrentHashMap()
+
+        every { downloadCache.getContentMetadata(flacStreamCacheKey(mediaId)) } returns mockk { every { get(any<String>(), any<Long>()) } returns -1L }
+        every { playerCache.getContentMetadata(flacStreamCacheKey(mediaId)) } returns mockk { every { get(any<String>(), any<Long>()) } returns -1L }
+        every { downloadCache.getContentMetadata(flacCacheKey(mediaId)) } returns mockk { every { get(any<String>(), any<Long>()) } returns -1L }
+        every { playerCache.getContentMetadata(flacCacheKey(mediaId)) } returns mockk { every { get(any<String>(), any<Long>()) } returns -1L }
+
+        every { service.resolveFlacPlaybackDataSpec(any(), mediaId, any(), any(), any(), any()) } returns null
+
+        val ytData = createPlaybackData(contentLength = 3_500_000L, bitrate = 128_000)
+        every { service.resolveYtPlaybackResponse(mediaId, any(), any()) } returns ytData
+
+        val savedFormats = mutableListOf<FormatEntity>()
+        every { database.query(any<MusicDatabase.() -> Unit>()) } answers {
+            val block = firstArg<MusicDatabase.() -> Unit>()
+            val dbScope = mockk<MusicDatabase>(relaxed = true)
+            every { dbScope.upsert(any<FormatEntity>()) } answers { savedFormats.add(firstArg()) }
+            dbScope.block()
+        }
+
+        val baseSpec = DataSpec.Builder().setUri(mediaId.toUri()).setKey(mediaId).build()
+        val result = service.resolvePlaybackDataSpec(baseSpec, allowCacheShortCircuit = false)
+
+        assertNotNull(result)
+        assertEquals(ytStreamCacheKey(mediaId), result.key)
+        verify { service.setActualPlaybackSource(mediaId, PlaybackSource.YT_MUSIC) }
+        val savedYt = savedFormats.lastOrNull { it.id == "${mediaId}_YT_MUSIC" }
+        assertNotNull(savedYt)
+        assertEquals("${mediaId}_YT_MUSIC", savedYt?.id)
     }
 }

@@ -232,7 +232,9 @@ class StreamErrorRouter(
                     } == true
                 )
 
-        cacheOps.handleStreamFailureRecovery(mediaId)
+        cacheOps.invalidatePlaybackUrlCache(mediaId)
+        cacheOps.invalidateLosslessUrlCache(mediaId)
+        cacheOps.removeExtractorPlaybackUrl(mediaId)
         YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
         if (!failedExpiredUrl && cachedExtractorFailedUrl == null && requestProfile.clientKey.isNotEmpty()) {
             YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)

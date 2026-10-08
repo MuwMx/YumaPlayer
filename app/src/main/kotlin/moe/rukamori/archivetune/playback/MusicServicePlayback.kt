@@ -48,11 +48,14 @@ internal fun MusicService.resolvePlaybackDataSpec(
         (connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true)
     val shouldBypassFlac = shouldBypassFlac(lowData = lowDataEnabled, metered = isMeteredConnection)
     val currentSource = currentPlaybackSource
-    val isFlacFullyCached = isKeyFullyCached(flacStreamCacheKey(mediaId), mediaId) ||
-        (validateLegacyCacheKeyAcrossCaches(downloadCache, playerCache, flacCacheKey(mediaId), PlaybackSource.FLAC) &&
-            isKeyFullyCached(flacCacheKey(mediaId), mediaId))
-
-    val effectiveSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac && !isFlacFullyCached)
+    val effectiveSource = if (currentSource == PlaybackSource.YT_MUSIC) {
+        PlaybackSource.YT_MUSIC
+    } else {
+        val isFlacFullyCached = isKeyFullyCached(flacStreamCacheKey(mediaId), mediaId) ||
+            (validateLegacyCacheKeyAcrossCaches(downloadCache, playerCache, flacCacheKey(mediaId), PlaybackSource.FLAC) &&
+                isKeyFullyCached(flacCacheKey(mediaId), mediaId))
+        effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac && !isFlacFullyCached)
+    }
     if (!audioNormalizationFactorCache.containsKey(mediaId)) {
         scope.launch(Dispatchers.IO) {
             database.formatForSource(mediaId, effectiveSource).firstOrNull()?.let {
@@ -95,8 +98,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
     }
 
     val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
-    val effectiveNetworkSource = effectiveSource(source = currentSource, shouldBypassFlac = shouldBypassFlac)
-    val networkCacheKey = "${mediaId}_${effectiveNetworkSource.name}"
+    val networkCacheKey = "${mediaId}_${PlaybackSource.YT_MUSIC.name}"
 
     val memProbeStart = android.os.SystemClock.elapsedRealtime()
     val memoryUrl = resolveFromMemoryUrlPolicy(
@@ -123,21 +125,23 @@ internal fun MusicService.resolvePlaybackDataSpec(
         Timber.tag("PlaybackTiming").d("[$mediaId] MEMORY URL MISS (checked in ${memProbeDuration}ms)")
     }
 
-    val flacStart = android.os.SystemClock.elapsedRealtime()
-    val flacDataSpec = resolveFlacPlaybackDataSpec(
-        dataSpec = dataSpec,
-        mediaId = mediaId,
-        shouldBypassFlac = shouldBypassFlac,
-        currentSource = currentSource,
-        lowDataEnabled = lowDataEnabled,
-        isMeteredConnection = isMeteredConnection,
-    )
-    if (flacDataSpec != null) {
-        setActualPlaybackSource(mediaId, PlaybackSource.FLAC)
-        Timber.tag("PlaybackTiming").i(
-            "[$mediaId] FLAC HIT! Resolved in ${android.os.SystemClock.elapsedRealtime() - flacStart}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+    if (effectiveSource == PlaybackSource.FLAC) {
+        val flacStart = android.os.SystemClock.elapsedRealtime()
+        val flacDataSpec = resolveFlacPlaybackDataSpec(
+            dataSpec = dataSpec,
+            mediaId = mediaId,
+            shouldBypassFlac = shouldBypassFlac,
+            currentSource = currentSource,
+            lowDataEnabled = lowDataEnabled,
+            isMeteredConnection = isMeteredConnection,
         )
-        return flacDataSpec
+        if (flacDataSpec != null) {
+            setActualPlaybackSource(mediaId, PlaybackSource.FLAC)
+            Timber.tag("PlaybackTiming").i(
+                "[$mediaId] FLAC HIT! Resolved in ${android.os.SystemClock.elapsedRealtime() - flacStart}ms (Total: ${android.os.SystemClock.elapsedRealtime() - startTime}ms)"
+            )
+            return flacDataSpec
+        }
     }
 
     setActualPlaybackSource(mediaId, PlaybackSource.YT_MUSIC)
@@ -195,6 +199,7 @@ internal fun MusicService.createPlaybackRecoveryEngine(): PlaybackRecoveryEngine
             override val downloadCache: Cache get() = this@createPlaybackRecoveryEngine.downloadCache
             override fun isTrackFullyCached(mediaId: String): Boolean = this@createPlaybackRecoveryEngine.isTrackFullyCached(mediaId)
             override fun invalidatePlaybackUrlCache(mediaId: String) = this@createPlaybackRecoveryEngine.invalidatePlaybackUrlCache(mediaId)
+            override fun invalidateLosslessUrlCache(mediaId: String) = this@createPlaybackRecoveryEngine.invalidateLosslessUrlCache(mediaId)
             override fun handleStreamFailureRecovery(mediaId: String) {
                 val source = actualPlaybackSources.value[mediaId] ?: currentPlaybackSource
                 when (source) {

@@ -224,4 +224,29 @@ class SourceIsolatedPlaybackCacheTest {
         assertNotNull(completeFallback)
         assertEquals(v2YtKey, completeFallback?.key)
     }
+
+    @Test
+    fun testDisconnectedSpansNeverTreatedAsFullyCached() {
+        val totalLength = 8_000L
+        every { downloadCache.getContentMetadata(v2FlacKey) } returns mockContentMetadata(totalLength)
+        every { playerCache.getContentMetadata(v2FlacKey) } returns mockContentMetadata(totalLength)
+        every { downloadCache.isCached(v2FlacKey, 0L, totalLength) } returns false
+        every { playerCache.isCached(v2FlacKey, 0L, totalLength) } returns false
+
+        val spans = TreeSet<CacheSpan>().apply {
+            add(CacheSpan(v2FlacKey, 0L, 3_000L, androidx.media3.common.C.TIME_UNSET, null))
+            add(CacheSpan(v2FlacKey, 5_000L, 3_000L, androidx.media3.common.C.TIME_UNSET, null))
+        }
+        every { downloadCache.getCachedSpans(v2FlacKey) } returns spans
+        every { playerCache.getCachedSpans(v2FlacKey) } returns TreeSet()
+
+        assertFalse(service.isKeyFullyCached(v2FlacKey, mediaId))
+
+        val resolved = service.resolveCachedDataSpec(
+            dataSpec = DataSpec.Builder().setUri("https://example.com/audio".toUri()).setKey(v2FlacKey).build(),
+            cacheKey = v2FlacKey,
+            knownContentLength = totalLength,
+        )
+        assertNull(resolved)
+    }
 }
