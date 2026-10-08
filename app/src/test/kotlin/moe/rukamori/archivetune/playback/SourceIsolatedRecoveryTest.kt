@@ -221,7 +221,7 @@ class SourceIsolatedRecoveryTest {
         assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
 
         setSource("trackCurrent", PlaybackSource.YT_MUSIC)
-        assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
+        assertEquals(PlaybackSource.YT_MUSIC, sourcesFlow.value["trackCurrent"])
 
         runBlocking {
             val jobs = (1..50).map { i ->
@@ -233,6 +233,6 @@ class SourceIsolatedRecoveryTest {
         }
 
         assertTrue(sourcesFlow.value.size <= 32)
-        assertEquals(PlaybackSource.FLAC, sourcesFlow.value["trackCurrent"])
+        assertEquals(PlaybackSource.YT_MUSIC, sourcesFlow.value["trackCurrent"])
     }
 }

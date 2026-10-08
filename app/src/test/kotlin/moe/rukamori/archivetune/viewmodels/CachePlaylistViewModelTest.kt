@@ -81,6 +81,34 @@ class CachePlaylistViewModelTest {
     }
 
     @Test
+    fun testDoesNotMergeSpansAcrossDifferentKeys() {
+        val mediaId = "splitKeys"
+        val playerCache = mockk<Cache>(relaxed = true)
+        val downloadCache = mockk<Cache>(relaxed = true)
+
+        val v2Key = ytStreamCacheKey(mediaId)
+        val legacyKey = mediaId
+
+        val v2Spans = TreeSet<CacheSpan>().apply { add(createSpan(v2Key, 0L, 3_000L)) }
+        val legacySpans = TreeSet<CacheSpan>().apply { add(createSpan(legacyKey, 2_000L, 3_000L)) }
+
+        every { playerCache.getCachedSpans(v2Key) } returns v2Spans
+        every { downloadCache.getCachedSpans(v2Key) } returns TreeSet()
+        every { playerCache.getCachedSpans(legacyKey) } returns legacySpans
+        every { downloadCache.getCachedSpans(legacyKey) } returns TreeSet()
+
+        val evaluation = evaluateSongCache(
+            mediaId = mediaId,
+            playerCache = playerCache,
+            downloadCache = downloadCache,
+            storedYtLength = 5_000L,
+        )
+
+        assertEquals(6_000L, evaluation.ytCachedBytes)
+        assertFalse(evaluation.isYtFullyCached)
+    }
+
+    @Test
     fun testSingleSourceOpusAndFlacSeparately() {
         val mediaId = "singleTrack"
         val playerCache = mockk<Cache>(relaxed = true)
@@ -160,22 +188,31 @@ class CachePlaylistViewModelTest {
     }
 
     @Test
-    fun testRemoveSongFromCacheClearsAllFourKeysAcrossCaches() {
+    fun testHasUncachedPlayerSourceRecognition() {
+        val mediaId = "track123"
+        val downloadKeysOnlyYt = setOf(ytStreamCacheKey(mediaId))
+        val playerKeysWithFlac = setOf(flacStreamCacheKey(mediaId))
+
+        assertTrue(hasUncachedPlayerSource(mediaId, playerKeysWithFlac, downloadKeysOnlyYt))
+
+        val playerKeysOnlyYt = setOf(ytStreamCacheKey(mediaId))
+        assertFalse(hasUncachedPlayerSource(mediaId, playerKeysOnlyYt, downloadKeysOnlyYt))
+
+        val emptyDownloadKeys = emptySet<String>()
+        assertTrue(hasUncachedPlayerSource(mediaId, playerKeysOnlyYt, emptyDownloadKeys))
+    }
+
+    @Test
+    fun testRemoveSongFromCacheClearsOnlyPlayerCache() {
         val playerCache = mockk<Cache>(relaxed = true)
-        val downloadCache = mockk<Cache>(relaxed = true)
         val mediaId = "testSong99"
 
-        removeSongResources(mediaId, playerCache, downloadCache)
+        removeSongResources(mediaId, playerCache)
 
         verify(exactly = 1) { playerCache.removeResource(ytStreamCacheKey(mediaId)) }
         verify(exactly = 1) { playerCache.removeResource(flacStreamCacheKey(mediaId)) }
         verify(exactly = 1) { playerCache.removeResource(mediaId) }
         verify(exactly = 1) { playerCache.removeResource(flacCacheKey(mediaId)) }
-
-        verify(exactly = 1) { downloadCache.removeResource(ytStreamCacheKey(mediaId)) }
-        verify(exactly = 1) { downloadCache.removeResource(flacStreamCacheKey(mediaId)) }
-        verify(exactly = 1) { downloadCache.removeResource(mediaId) }
-        verify(exactly = 1) { downloadCache.removeResource(flacCacheKey(mediaId)) }
     }
 
     @Test

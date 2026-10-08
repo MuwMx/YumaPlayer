@@ -107,6 +107,32 @@ internal fun resolveKeyContentLength(
     return -1L
 }
 
+internal data class KeyCacheResult(
+    val cachedBytes: Long,
+    val isFullyCached: Boolean,
+)
+
+internal fun evaluateKeyCache(
+    key: String,
+    playerCache: Cache,
+    downloadCache: Cache,
+    contentLength: Long,
+): KeyCacheResult {
+    val spans = (runCatching { playerCache.getCachedSpans(key).toList() }.getOrNull().orEmpty()) +
+        (runCatching { downloadCache.getCachedSpans(key).toList() }.getOrNull().orEmpty())
+    val merged = mergeSpans(spans)
+    val cachedBytes = merged.sumOf { it.end - it.start }
+
+    val isFull = if (contentLength > 0L) {
+        runCatching { playerCache.isCached(key, 0L, contentLength) }.getOrDefault(false) ||
+            runCatching { downloadCache.isCached(key, 0L, contentLength) }.getOrDefault(false) ||
+            isContinuousRangeComplete(merged, contentLength)
+    } else {
+        false
+    }
+    return KeyCacheResult(cachedBytes, isFull)
+}
+
 @Immutable
 data class SongCacheEvaluation(
     val hasYt: Boolean,
@@ -128,49 +154,27 @@ internal fun evaluateSongCache(
     storedYtLength: Long = -1L,
     storedFlacLength: Long = -1L,
 ): SongCacheEvaluation {
-    val ytKeys = listOf(ytStreamCacheKey(mediaId), mediaId)
-    val ytSpans = ytKeys.flatMap { key ->
-        (runCatching { playerCache.getCachedSpans(key).toList() }.getOrNull().orEmpty()) +
-            (runCatching { downloadCache.getCachedSpans(key).toList() }.getOrNull().orEmpty())
-    }
-    val ytMerged = mergeSpans(ytSpans)
-    val ytCachedBytes = ytMerged.sumOf { it.end - it.start }
+    val v2YtKey = ytStreamCacheKey(mediaId)
+    val legacyYtKey = mediaId
+    val v2YtLength = resolveKeyContentLength(v2YtKey, playerCache, downloadCache).takeIf { it > 0L } ?: storedYtLength
+    val legacyYtLength = resolveKeyContentLength(legacyYtKey, playerCache, downloadCache).takeIf { it > 0L } ?: storedYtLength
 
-    val ytLengthFromKeys = ytKeys.firstNotNullOfOrNull { key ->
-        resolveKeyContentLength(key, playerCache, downloadCache).takeIf { it > 0L }
-    } ?: -1L
-    val ytContentLength = if (ytLengthFromKeys > 0L) ytLengthFromKeys else storedYtLength
+    val v2YtResult = evaluateKeyCache(v2YtKey, playerCache, downloadCache, v2YtLength)
+    val legacyYtResult = evaluateKeyCache(legacyYtKey, playerCache, downloadCache, legacyYtLength)
 
-    val isYtFullyCached = if (ytContentLength > 0L) {
-        ytKeys.any { key ->
-            runCatching { playerCache.isCached(key, 0L, ytContentLength) }.getOrDefault(false) ||
-                runCatching { downloadCache.isCached(key, 0L, ytContentLength) }.getOrDefault(false)
-        } || isContinuousRangeComplete(ytMerged, ytContentLength)
-    } else {
-        false
-    }
+    val ytCachedBytes = v2YtResult.cachedBytes + legacyYtResult.cachedBytes
+    val isYtFullyCached = v2YtResult.isFullyCached || legacyYtResult.isFullyCached
 
-    val flacKeys = listOf(flacStreamCacheKey(mediaId), flacCacheKey(mediaId))
-    val flacSpans = flacKeys.flatMap { key ->
-        (runCatching { playerCache.getCachedSpans(key).toList() }.getOrNull().orEmpty()) +
-            (runCatching { downloadCache.getCachedSpans(key).toList() }.getOrNull().orEmpty())
-    }
-    val flacMerged = mergeSpans(flacSpans)
-    val flacCachedBytes = flacMerged.sumOf { it.end - it.start }
+    val v2FlacKey = flacStreamCacheKey(mediaId)
+    val legacyFlacKey = flacCacheKey(mediaId)
+    val v2FlacLength = resolveKeyContentLength(v2FlacKey, playerCache, downloadCache).takeIf { it > 0L } ?: storedFlacLength
+    val legacyFlacLength = resolveKeyContentLength(legacyFlacKey, playerCache, downloadCache).takeIf { it > 0L } ?: storedFlacLength
 
-    val flacLengthFromKeys = flacKeys.firstNotNullOfOrNull { key ->
-        resolveKeyContentLength(key, playerCache, downloadCache).takeIf { it > 0L }
-    } ?: -1L
-    val flacContentLength = if (flacLengthFromKeys > 0L) flacLengthFromKeys else storedFlacLength
+    val v2FlacResult = evaluateKeyCache(v2FlacKey, playerCache, downloadCache, v2FlacLength)
+    val legacyFlacResult = evaluateKeyCache(legacyFlacKey, playerCache, downloadCache, legacyFlacLength)
 
-    val isFlacFullyCached = if (flacContentLength > 0L) {
-        flacKeys.any { key ->
-            runCatching { playerCache.isCached(key, 0L, flacContentLength) }.getOrDefault(false) ||
-                runCatching { downloadCache.isCached(key, 0L, flacContentLength) }.getOrDefault(false)
-        } || isContinuousRangeComplete(flacMerged, flacContentLength)
-    } else {
-        false
-    }
+    val flacCachedBytes = v2FlacResult.cachedBytes + legacyFlacResult.cachedBytes
+    val isFlacFullyCached = v2FlacResult.isFullyCached || legacyFlacResult.isFullyCached
 
     val hasYt = ytCachedBytes > 0L || isYtFullyCached
     val hasFlac = flacCachedBytes > 0L || isFlacFullyCached
@@ -200,10 +204,25 @@ internal fun evaluateSongCache(
     )
 }
 
+internal fun hasUncachedPlayerSource(
+    mediaId: String,
+    playerKeys: Set<String>,
+    downloadKeys: Set<String>,
+): Boolean {
+    val ytKeys = listOf(ytStreamCacheKey(mediaId), mediaId)
+    val flacKeys = listOf(flacStreamCacheKey(mediaId), flacCacheKey(mediaId))
+
+    val hasYtPlayer = ytKeys.any { it in playerKeys }
+    val hasYtDownload = ytKeys.any { it in downloadKeys }
+    val hasFlacPlayer = flacKeys.any { it in playerKeys }
+    val hasFlacDownload = flacKeys.any { it in downloadKeys }
+
+    return (hasYtPlayer && !hasYtDownload) || (hasFlacPlayer && !hasFlacDownload)
+}
+
 internal fun removeSongResources(
     songId: String,
     playerCache: Cache,
-    downloadCache: Cache,
 ) {
     val keys = listOf(
         ytStreamCacheKey(songId),
@@ -213,7 +232,6 @@ internal fun removeSongResources(
     )
     keys.forEach { key ->
         runCatching { playerCache.removeResource(key) }
-        runCatching { downloadCache.removeResource(key) }
     }
 }
 
@@ -233,9 +251,12 @@ class CachePlaylistViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 while (true) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val cachedIds = playerCache.keys.map(::extractMediaIdFromCacheKey).filter(String::isNotBlank).toSet()
-                    val downloadedIds = downloadCache.keys.map(::extractMediaIdFromCacheKey).filter(String::isNotBlank).toSet()
-                    val pureCacheIds = cachedIds.subtract(downloadedIds)
+                    val playerKeys = runCatching { playerCache.keys }.getOrDefault(emptySet())
+                    val downloadKeys = runCatching { downloadCache.keys }.getOrDefault(emptySet())
+                    val playerMediaIds = playerKeys.map(::extractMediaIdFromCacheKey).filter(String::isNotBlank).toSet()
+                    val pureCacheIds = playerMediaIds.filter { mediaId ->
+                        hasUncachedPlayerSource(mediaId, playerKeys, downloadKeys)
+                    }.toSet()
 
                     val songs =
                         if (pureCacheIds.isNotEmpty()) {
@@ -255,8 +276,7 @@ class CachePlaylistViewModel
                             storedYtLength = storedYtLength,
                             storedFlacLength = storedFlacLength,
                         )
-                        if (evaluation.totalCachedBytes > 0L || evaluation.isFullyCached) {
-                            CachedSong(
+                        if (evaluation.isFullyCached) {                            CachedSong(
                                 song = song,
                                 source = evaluation.source,
                                 cachedBytes = evaluation.totalCachedBytes,
@@ -302,6 +322,6 @@ class CachePlaylistViewModel
         }
 
         fun removeSongFromCache(songId: String) {
-            removeSongResources(songId, playerCache, downloadCache)
+            removeSongResources(songId, playerCache)
         }
     }

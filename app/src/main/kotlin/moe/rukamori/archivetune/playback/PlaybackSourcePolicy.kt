@@ -17,9 +17,6 @@ internal fun updateActualPlaybackSources(
     currentPlayingId: String?,
 ): Map<String, PlaybackSource> {
     if (mediaId.isBlank()) return current
-    if (mediaId == currentPlayingId && current[mediaId] == PlaybackSource.FLAC && source != PlaybackSource.FLAC) {
-        return current
-    }
     val updated = LinkedHashMap<String, PlaybackSource>(current)
     updated.remove(mediaId)
     updated[mediaId] = source
