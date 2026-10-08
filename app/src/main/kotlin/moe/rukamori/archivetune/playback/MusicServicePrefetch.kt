@@ -7,8 +7,10 @@ package moe.rukamori.archivetune.playback
 
 import android.content.Context
 import androidx.media3.common.MediaItem
+import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playback.crossfade.isSourceFullyCached
 import moe.rukamori.archivetune.playback.crossfade.isTrackFullyCached
 import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
 import moe.rukamori.archivetune.utils.dataStore
@@ -43,6 +45,7 @@ internal fun MusicService.getOrCreateStreamPrefetcher(): StreamPrefetcher {
             override val connectivityManager get() = this@getOrCreateStreamPrefetcher.connectivityManager
             override fun isLowDataModeActive() = this@getOrCreateStreamPrefetcher.isLowDataModeActive()
             override fun isTrackFullyCached(mediaId: String) = this@getOrCreateStreamPrefetcher.isTrackFullyCached(mediaId)
+            override fun isSourceFullyCached(mediaId: String, source: PlaybackSource) = this@getOrCreateStreamPrefetcher.isSourceFullyCached(mediaId, source)
 
             override val isLowDataEnabled get() = this@getOrCreateStreamPrefetcher.isLowDataEnabled
             override val currentPlaybackSource get() = this@getOrCreateStreamPrefetcher.currentPlaybackSource
