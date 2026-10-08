@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="playback_source">Zdroj</string>
-    <string name="source_yt_music"></string>
     <string name="flac_streaming_quality">FLAC Quality (Streamovanie)</string>
     <string name="flac_download_quality">FLAC Quality (Sťahovanie )</string>
     <string name="folder_persist_failed">Nepodarilo sa uložiť oprávnenia priečinka</string>
