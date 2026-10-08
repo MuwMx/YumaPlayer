@@ -81,7 +81,7 @@ interface LyricsDao {
     @Upsert
     fun upsert(format: FormatEntity)
 
-    @Query("DELETE FROM format WHERE id NOT IN (SELECT id FROM song)")
+    @Query("DELETE FROM format WHERE id NOT IN (SELECT id FROM song) AND CASE WHEN SUBSTR(id, -5) = '_FLAC' THEN SUBSTR(id, 1, LENGTH(id) - 5) WHEN SUBSTR(id, -9) = '_YT_MUSIC' THEN SUBSTR(id, 1, LENGTH(id) - 9) ELSE id END NOT IN (SELECT id FROM song)")
     fun pruneFormats()
 
     @Delete

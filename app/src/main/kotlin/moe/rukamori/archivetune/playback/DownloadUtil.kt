@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.SongEntity
@@ -41,6 +42,7 @@ import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.playback.formatIdForSource
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.StreamClientUtils
@@ -282,7 +284,7 @@ class DownloadUtil
                     database.query {
                         upsert(
                             FormatEntity(
-                                id = mediaId,
+                                id = formatIdForSource(mediaId, PlaybackSource.YT_MUSIC),
                                 itag = format.itag,
                                 mimeType = format.mimeType.split(";")[0],
                                 codecs = resolvedCodecs,
