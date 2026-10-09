@@ -43,7 +43,7 @@ internal class NavigationTabSelectorState(
         if (animationsDisabledProvider()) {
             snap()
         } else {
-            spring(dampingRatio = 0.55f, stiffness = 300f)
+            spring(dampingRatio = 0.36f, stiffness = 320f)
         }
 
     fun syncToTab(index: Int, animate: Boolean = true) {
@@ -72,11 +72,17 @@ internal class NavigationTabSelectorState(
         val index = items.indexOf(screen)
         if (index in items.indices && tabWidthPx > 0f) {
             val targetCenter = (index + 0.5f) * tabWidthPx
+            val distance = kotlin.math.abs(targetCenter - selectorXAnimatable.value)
+
             coroutineScope.launch {
-                val animX = launch { selectorXAnimatable.animateTo(targetCenter, settleSpring()) }
-                val animW = launch { selectorWidthAnimatable.animateTo(tabWidthPx, settleSpring()) }
-                animX.join()
-                animW.join()
+                if (distance > 10f) {
+                    launch {
+                        val stretchWidth = tabWidthPx * 1.25f // слегка растягивается в рывке
+                        selectorWidthAnimatable.animateTo(stretchWidth, spring(dampingRatio = 0.6f, stiffness = 600f))
+                        selectorWidthAnimatable.animateTo(tabWidthPx, settleSpring())
+                    }
+                }
+                selectorXAnimatable.animateTo(targetCenter, settleSpring())
             }
         }
         onItemClickProvider()(screen, isSelected)
