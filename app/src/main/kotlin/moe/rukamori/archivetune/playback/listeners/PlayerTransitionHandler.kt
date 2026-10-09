@@ -128,7 +128,7 @@ internal class PlayerTransitionHandler(
                         if (player.playbackState != STATE_IDLE) {
                             val wasEndedImmediatelyBeforeMutation = player.playbackState == STATE_ENDED && player.playWhenReady
                             player.addMediaItems(loadedItems)
-                            if (isPlaybackEnded && wasEndedImmediatelyBeforeMutation) {
+                            if (wasEndedImmediatelyBeforeMutation) {
                                 player.seekToNext()
                                 player.prepare()
                                 player.play()
