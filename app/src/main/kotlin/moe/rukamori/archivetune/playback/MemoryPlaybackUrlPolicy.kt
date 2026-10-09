@@ -2,6 +2,9 @@ package moe.rukamori.archivetune.playback
 
 import androidx.core.net.toUri
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.PlaybackSource
@@ -9,7 +12,40 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.playback.resolvers.StreamUrl
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.get
 import timber.log.Timber
+
+internal fun resolveFlacKeyMetadataLength(
+    targetKey: String,
+    caches: List<Cache>,
+): Long {
+    for (cache in caches) {
+        try {
+            val length = cache.getContentMetadata(targetKey).get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
+            if (length > 0L) return length
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("MemoryPlaybackUrlPolicy").w(e, "Failed to read content metadata for $targetKey")
+        }
+    }
+    return 0L
+}
+
+internal fun resolvePreservedFlacContentLength(
+    targetKey: String,
+    existingLength: Long? = null,
+    inMemoryLength: Long? = null,
+    caches: List<Cache> = emptyList(),
+): Long {
+    if (existingLength != null && existingLength > 0L) {
+        return existingLength
+    }
+    if (inMemoryLength != null && inMemoryLength > 0L) {
+        return inMemoryLength
+    }
+    return resolveFlacKeyMetadataLength(targetKey, caches)
+}
 
 internal fun MusicService.resolveTargetDataKey(mediaId: String, source: PlaybackSource): String {
     val versioned = streamCacheKey(mediaId, source)
@@ -39,23 +75,40 @@ internal fun MusicService.buildResolvedFlacDataSpec(
         headers["Referer"] = "https://music.youtube.com/"
     }
 
-    val flacFormat =
-        FormatEntity(
-            id = formatIdForSource(mediaId, PlaybackSource.FLAC),
-            itag = 0,
-            mimeType = "audio/flac",
-            codecs = streamUrl.codec ?: "flac",
-            bitrate = streamUrl.bitrateKbps ?: 0,
-            sampleRate = streamUrl.sampleRateHz,
-            contentLength = 0L,
-            loudnessDb = null,
-            perceptualLoudnessDb = null,
-            playbackUrl = streamUrl.url,
-            bitsPerSample = streamUrl.bitsPerSample,
-        )
-    database.query { upsert(flacFormat) }
-
     val targetKey = explicitKey ?: resolveTargetDataKey(mediaId, PlaybackSource.FLAC)
+    val flacFormatId = formatIdForSource(mediaId, PlaybackSource.FLAC)
+    val inMemoryLength = contentLengthCache[targetKey]
+    val metadataLength = resolveFlacKeyMetadataLength(targetKey, listOf(playerCache, downloadCache))
+    val externalLength = inMemoryLength?.takeIf { it > 0L } ?: metadataLength
+
+    database.transaction {
+        val existing = getFormatById(flacFormatId)
+        val preservedLength = resolvePreservedFlacContentLength(
+            targetKey = targetKey,
+            existingLength = existing?.contentLength,
+            inMemoryLength = externalLength,
+        )
+        if (preservedLength > 0L) {
+            contentLengthCache[targetKey] = preservedLength
+        }
+
+        val flacFormat =
+            FormatEntity(
+                id = flacFormatId,
+                itag = 0,
+                mimeType = "audio/flac",
+                codecs = streamUrl.codec ?: "flac",
+                bitrate = streamUrl.bitrateKbps ?: 0,
+                sampleRate = streamUrl.sampleRateHz,
+                contentLength = preservedLength,
+                loudnessDb = existing?.loudnessDb,
+                perceptualLoudnessDb = existing?.perceptualLoudnessDb,
+                playbackUrl = streamUrl.url,
+                bitsPerSample = streamUrl.bitsPerSample ?: existing?.bitsPerSample,
+            )
+        upsert(flacFormat)
+    }
+
     return dataSpec.buildUpon()
         .setKey(targetKey)
         .setUri(streamUrl.url.toUri())

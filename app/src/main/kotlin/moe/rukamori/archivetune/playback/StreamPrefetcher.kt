@@ -154,9 +154,38 @@ internal class StreamPrefetcher(
                                     requestHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
                                     requestHeaders["Referer"] = "https://music.youtube.com/"
                                 }
-                                val flacFormat = FormatEntity(id = "${mediaId}_${PlaybackSource.FLAC.name}", itag = 0, mimeType = "audio/flac", codecs = flacResult.codec ?: "flac", bitrate = flacResult.bitrateKbps ?: 0, sampleRate = flacResult.sampleRateHz, contentLength = 0L, loudnessDb = null, perceptualLoudnessDb = null, playbackUrl = flacResult.url, bitsPerSample = flacResult.bitsPerSample)
-                                delegate.database.query { upsert(flacFormat) }
-                                resolvedFlac = true; downloadUrl = flacResult.url; targetCacheKey = flacStreamCacheKey(mediaId)
+                                val flacTargetKey = flacStreamCacheKey(mediaId)
+                                val flacFormatId = "${mediaId}_${PlaybackSource.FLAC.name}"
+                                val inMemoryLength = cacheSpec.contentLengthCache[flacTargetKey]
+                                val metadataLength = resolveFlacKeyMetadataLength(flacTargetKey, listOf(cacheSpec.downloadCache))
+                                val externalLength = inMemoryLength?.takeIf { it > 0L } ?: metadataLength
+
+                                delegate.database.transaction {
+                                    val existing = getFormatById(flacFormatId)
+                                    val preservedLength = resolvePreservedFlacContentLength(
+                                        targetKey = flacTargetKey,
+                                        existingLength = existing?.contentLength,
+                                        inMemoryLength = externalLength,
+                                    )
+                                    if (preservedLength > 0L) {
+                                        cacheSpec.contentLengthCache[flacTargetKey] = preservedLength
+                                    }
+                                    val flacFormat = FormatEntity(
+                                        id = flacFormatId,
+                                        itag = 0,
+                                        mimeType = "audio/flac",
+                                        codecs = flacResult.codec ?: "flac",
+                                        bitrate = flacResult.bitrateKbps ?: 0,
+                                        sampleRate = flacResult.sampleRateHz,
+                                        contentLength = preservedLength,
+                                        loudnessDb = existing?.loudnessDb,
+                                        perceptualLoudnessDb = existing?.perceptualLoudnessDb,
+                                        playbackUrl = flacResult.url,
+                                        bitsPerSample = flacResult.bitsPerSample ?: existing?.bitsPerSample,
+                                    )
+                                    upsert(flacFormat)
+                                }
+                                resolvedFlac = true; downloadUrl = flacResult.url; targetCacheKey = flacTargetKey
                             }
                         }
                     }
