@@ -46,6 +46,7 @@ internal class PlayerStateHandler(
     private val notificationDelegate: MusicServicePlayerListeners.NotificationDelegate,
     private val togetherPlaybackEchoPolicy: TogetherPlaybackEchoPolicy = TogetherPlaybackEchoPolicy,
     private val crossfadeHooks: MusicServicePlayerListeners.CrossfadeHooks,
+    private val transitionHandler: PlayerTransitionHandler? = null,
 ) {
     constructor(
         scope: CoroutineScope,
@@ -66,6 +67,7 @@ internal class PlayerStateHandler(
         notificationDelegate = notificationDelegate,
         togetherPlaybackEchoPolicy = TogetherPlaybackEchoPolicy,
         crossfadeHooks = crossfadeHooks,
+        transitionHandler = null,
     )
 
     private val player: Player get() = playerDelegate.player
@@ -92,10 +94,14 @@ internal class PlayerStateHandler(
             }
             if (playbackState == STATE_ENDED &&
                 !queueDelegate.suppressAutoPlayback &&
-                dataStore.get(AutoLoadMoreKey, true) &&
+                !(queueDelegate.isInitializingQueue && queueDelegate.currentQueue.isContextQueue) &&
                 player.repeatMode == REPEAT_MODE_OFF
             ) {
-                queueDelegate.onInfiniteQueueEnabled()
+                if (queueDelegate.currentQueue.hasNextPage() || queueDelegate.currentQueue.hasPendingContextItems) {
+                    transitionHandler?.triggerPagination(isPlaybackEnded = true)
+                } else if (dataStore.get(AutoLoadMoreKey, true)) {
+                    queueDelegate.onInfiniteQueueEnabled()
+                }
             }
         } else if (playbackState == STATE_READY) {
             crossfadeHooks.scheduleCrossfade()

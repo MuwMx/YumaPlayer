@@ -19,7 +19,10 @@ import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Player.STATE_READY
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
@@ -32,10 +35,10 @@ import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.MusicServicePlayerListeners
+import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
@@ -85,6 +88,76 @@ internal class PlayerTransitionHandler(
                 lastRemoteAppliedIndex = queueDelegate.togetherLastRemoteAppliedIndex,
                 lastRemoteAppliedPlayWhenReady = queueDelegate.togetherLastRemoteAppliedPlayWhenReady,
             )
+
+    private var pagingJob: Job? = null
+    private var pagingQueue: Queue? = null
+
+    fun triggerPagination(isPlaybackEnded: Boolean = false) {
+        val targetQueue = queueDelegate.currentQueue
+        if (!targetQueue.hasNextPage() && !targetQueue.hasPendingContextItems) return
+        if (queueDelegate.isInitializingQueue) return
+        if (!targetQueue.isContextQueue && !dataStore.get(AutoLoadMoreKey, true)) return
+
+        if (pagingJob?.isActive == true) {
+            if (pagingQueue === targetQueue) {
+                return
+            } else {
+                pagingJob?.cancel()
+            }
+        }
+
+        val job =
+            scope.launch(start = CoroutineStart.LAZY, context = SilentHandler) {
+                try {
+                    var loadedItems = emptyList<MediaItem>()
+                    while (targetQueue.hasNextPage() && loadedItems.isEmpty()) {
+                        val batch =
+                            withContext(Dispatchers.IO) {
+                                targetQueue
+                                    .nextPage()
+                                    .filterExplicit(dataStore.get(HideExplicitKey, false))
+                                    .filterVideo(dataStore.get(HideVideoKey, false))
+                            }
+                        if (!isActive || queueDelegate.currentQueue !== targetQueue) return@launch
+                        loadedItems = batch
+                    }
+
+                    if (!isActive || queueDelegate.currentQueue !== targetQueue) return@launch
+
+                    if (loadedItems.isNotEmpty()) {
+                        if (player.playbackState != STATE_IDLE) {
+                            val wasEndedImmediatelyBeforeMutation = player.playbackState == STATE_ENDED && player.playWhenReady
+                            player.addMediaItems(loadedItems)
+                            if (isPlaybackEnded && wasEndedImmediatelyBeforeMutation) {
+                                player.seekToNext()
+                                player.prepare()
+                                player.play()
+                            }
+                        } else {
+                            metadataDelegate.requestDiscordSync(
+                                reason = "player_idle_after_queue_extension",
+                                force = true,
+                            )
+                        }
+                    } else if (isPlaybackEnded || player.playbackState == STATE_ENDED) {
+                        if (dataStore.get(AutoLoadMoreKey, true) &&
+                            !queueDelegate.suppressAutoPlayback &&
+                            player.repeatMode == REPEAT_MODE_OFF
+                        ) {
+                            queueDelegate.onInfiniteQueueEnabled()
+                        }
+                    }
+                } finally {
+                    if (pagingJob === coroutineContext[Job]) {
+                        pagingJob = null
+                        pagingQueue = null
+                    }
+                }
+            }
+        pagingJob = job
+        pagingQueue = targetQueue
+        job.start()
+    }
 
     fun onMediaItemTransition(
         mediaItem: MediaItem?,
@@ -154,30 +227,19 @@ internal class PlayerTransitionHandler(
         }
 
         val remainingTracks = player.mediaItemCount - player.currentMediaItemIndex
+        val currentQ = queueDelegate.currentQueue
+
+        val shouldPage = if (currentQ.isContextQueue) true else dataStore.get(AutoLoadMoreKey, true)
+
         if (!queueDelegate.suppressAutoPlayback &&
             !queueDelegate.isInitializingQueue &&
             !timelineEmpty &&
-            dataStore.get(AutoLoadMoreKey, true) &&
+            shouldPage &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF
         ) {
-            if (remainingTracks <= 5 && queueDelegate.currentQueue.hasNextPage()) {
-                scope.launch(SilentHandler) {
-                    val nextBatch =
-                        queueDelegate.currentQueue
-                            .nextPage()
-                            .filterExplicit(
-                                dataStore.get(HideExplicitKey, false),
-                            ).filterVideo(dataStore.get(HideVideoKey, false))
-                    if (player.playbackState != STATE_IDLE) {
-                        player.addMediaItems(nextBatch)
-                    } else {
-                        metadataDelegate.requestDiscordSync(
-                            reason = "player_idle_after_queue_extension",
-                            force = true,
-                        )
-                    }
-                }
+            if (remainingTracks <= 5 && (currentQ.hasNextPage() || currentQ.hasPendingContextItems)) {
+                triggerPagination(isPlaybackEnded = false)
             }
         }
 
@@ -188,11 +250,12 @@ internal class PlayerTransitionHandler(
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF &&
             player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
-            !queueDelegate.currentQueue.hasNextPage()
+            !currentQ.hasNextPage() &&
+            !currentQ.isContextQueue
         ) {
             scope.launch(SilentHandler) {
                 if (queueDelegate.suppressAutoPlayback || player.mediaItemCount == 0) return@launch
-                if (queueDelegate.currentQueue is SpotifyTracksQueue) return@launch
+                if (queueDelegate.currentQueue !== currentQ) return@launch
 
                 val currentMediaMetadata = player.currentMetadata ?: return@launch
                 val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
@@ -201,6 +264,8 @@ internal class PlayerTransitionHandler(
                 try {
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMediaId), followAutomixPreview = true)
                     val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
+                    if (!isActive) return@launch
+                    if (queueDelegate.currentQueue !== currentQ) return@launch
 
                     val queueIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
                     val newItems = status.items.filter { it.mediaId !in queueIds }
@@ -222,7 +287,8 @@ internal class PlayerTransitionHandler(
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF &&
             remainingTracks <= 3 &&
-            !queueDelegate.currentQueue.hasNextPage()
+            !currentQ.hasNextPage() &&
+            !currentQ.isContextQueue
         ) {
             queueDelegate.onInfiniteQueueEnabled()
         }
@@ -249,12 +315,16 @@ internal class PlayerTransitionHandler(
         }
 
         if (!queueDelegate.suppressAutoPlayback &&
+            !(queueDelegate.isInitializingQueue && queueDelegate.currentQueue.isContextQueue) &&
             player.playbackState == STATE_ENDED &&
-            dataStore.get(AutoLoadMoreKey, true) &&
             player.repeatMode == REPEAT_MODE_OFF &&
             player.currentMediaItem != null
         ) {
-            queueDelegate.onInfiniteQueueEnabled()
+            if (queueDelegate.currentQueue.hasNextPage() || queueDelegate.currentQueue.hasPendingContextItems) {
+                triggerPagination(isPlaybackEnded = true)
+            } else if (dataStore.get(AutoLoadMoreKey, true)) {
+                queueDelegate.onInfiniteQueueEnabled()
+            }
         }
 
         metadataDelegate.requestDiscordSync(

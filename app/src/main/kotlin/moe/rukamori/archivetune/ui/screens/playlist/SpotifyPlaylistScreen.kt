@@ -9,6 +9,8 @@
 package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -120,6 +122,7 @@ fun SpotifyPlaylistScreen(
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var resolvingTrackId by remember { mutableStateOf<String?>(null) }
+    var preloadJob by remember { mutableStateOf<Job?>(null) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
 
@@ -221,13 +224,15 @@ fun SpotifyPlaylistScreen(
         if (queueTracks.isEmpty()) return
         val boundedStartIndex = startIndex.coerceIn(queueTracks.indices)
         val preloadTrack = queueTracks[boundedStartIndex]
-        if (resolvingTrackId != null) return
 
-        coroutineScope.launch {
+        val requestToken = playerConnection?.beginPlayQueueRequest() ?: return
+        preloadJob?.cancel()
+        preloadJob = coroutineScope.launch {
             resolvingTrackId = preloadTrack.id
             try {
                 val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
-                playerConnection?.playQueue(
+                if (!isActive || resolvingTrackId != preloadTrack.id) return@launch
+                playerConnection.playQueueIfCurrent(
                     SpotifyPlaylistQueue(
                         playlistId = currentPlaylist.id,
                         title = currentPlaylist.name,
@@ -236,9 +241,12 @@ fun SpotifyPlaylistScreen(
                         preloadItem = preloadItem,
                         totalCount = currentPlaylist.tracks?.total,
                     ),
+                    generation = requestToken,
                 )
             } finally {
-                resolvingTrackId = null
+                if (resolvingTrackId == preloadTrack.id) {
+                    resolvingTrackId = null
+                }
             }
         }
     }

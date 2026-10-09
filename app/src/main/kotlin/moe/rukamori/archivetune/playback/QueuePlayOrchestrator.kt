@@ -61,11 +61,25 @@ internal class QueuePlayOrchestrator(
         fun prepare()
         fun setPlayWhenReady(playWhenReady: Boolean)
         fun onInfiniteQueueEnabled()
+        fun getPlaybackState(): Int
+        fun seekToNext()
+        fun isPlayWhenReady(): Boolean
+        fun isSuppressAutoPlayback(): Boolean
+        fun getRepeatMode(): Int
+        fun triggerPagination(isPlaybackEnded: Boolean)
+    }
+
+    private sealed interface FollowUpAction {
+        data object TriggerPaginationEnded : FollowUpAction
+        data object TriggerPaginationNearEnd : FollowUpAction
+        data object InfiniteQueue : FollowUpAction
     }
 
     internal var currentQueue: Queue = queueHolder.currentQueue
     internal var queueTitle: String? = queueHolder.queueTitle
     private var playQueueJob: Job? = null
+    @Volatile
+    private var playGeneration = 0L
     @Volatile
     internal var isInitializingQueue = false
         private set
@@ -100,6 +114,7 @@ internal class QueuePlayOrchestrator(
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
         if (delegate.gatePlayQueue(queue, playWhenReady)) return
+        val generation = ++playGeneration
         if (playWhenReady) {
             delegate.cancelIdleStop()
             delegate.promoteToStartedService()
@@ -128,29 +143,73 @@ internal class QueuePlayOrchestrator(
             delegate.setPlayWhenReady(playWhenReady)
         }
         playQueueJob = scope.launch(SilentHandler) {
+            var followUpAction: FollowUpAction? = null
             try {
                 val hideExplicit = dataStore.get(HideExplicitKey, false)
                 val hideVideo = dataStore.get(HideVideoKey, false)
                 val initialStatus = withContext(ioDispatcher) {
                     queue.getInitialStatus().filterExplicit(hideExplicit).filterVideo(hideVideo)
                 }
-                if (!isActive) return@launch
+                if (!isActive || generation != playGeneration || getActiveQueue() !== queue) return@launch
                 if (initialStatus.title != null) {
                     queueTitle = initialStatus.title
                     queueHolder.queueTitle = initialStatus.title
                 }
                 if (initialStatus.items.isEmpty()) return@launch
                 if (queue.preloadItem != null) {
-                    val before = initialStatus.items.subList(0, initialStatus.mediaItemIndex)
-                    val after = initialStatus.items.subList(initialStatus.mediaItemIndex + 1, initialStatus.items.size)
-                    if (before.isNotEmpty()) {
-                        delegate.addMediaItems(0, before)
-                    }
-                    if (after.isNotEmpty()) {
-                        delegate.addMediaItems(after)
-                    }
-                    if (delegate.isShuffleModeEnabled()) {
-                        applyCurrentFirstShuffleOrder()
+                    val preloadMediaId = queue.preloadItem!!.toMediaItem().mediaId
+                    val candidateIndex = initialStatus.mediaItemIndex
+                    val preloadIndexInItems =
+                        if (candidateIndex in initialStatus.items.indices && initialStatus.items[candidateIndex].mediaId == preloadMediaId) {
+                            candidateIndex
+                        } else {
+                            val indices = initialStatus.items.indices.filter { initialStatus.items[it].mediaId == preloadMediaId }
+                            indices.minByOrNull { kotlin.math.abs(it - candidateIndex) } ?: -1
+                        }
+
+                    val wasEndedBeforeAdd = delegate.getPlaybackState() == androidx.media3.common.Player.STATE_ENDED && delegate.isPlayWhenReady()
+
+                    if (preloadIndexInItems >= 0) {
+                        val before = initialStatus.items.subList(0, preloadIndexInItems)
+                        val after = initialStatus.items.subList(preloadIndexInItems + 1, initialStatus.items.size)
+                        if (before.isNotEmpty()) {
+                            delegate.addMediaItems(0, before)
+                        }
+                        if (after.isNotEmpty()) {
+                            delegate.addMediaItems(after)
+                        }
+                        if (delegate.isShuffleModeEnabled()) {
+                            applyCurrentFirstShuffleOrder()
+                        }
+                        if (wasEndedBeforeAdd) {
+                            if (after.isNotEmpty()) {
+                                delegate.seekToNext()
+                                delegate.prepare()
+                                delegate.setPlayWhenReady(playWhenReady)
+                            } else if (queue.hasNextPage() || queue.hasPendingContextItems) {
+                                followUpAction = FollowUpAction.TriggerPaginationEnded
+                            } else if (dataStore.get(AutoLoadMoreKey, true) &&
+                                !delegate.isSuppressAutoPlayback() &&
+                                delegate.getRepeatMode() == androidx.media3.common.Player.REPEAT_MODE_OFF
+                            ) {
+                                followUpAction = FollowUpAction.InfiniteQueue
+                            }
+                        } else {
+                            val remaining = delegate.getMediaItemCount() - delegate.getCurrentMediaItemIndex()
+                            if (queue.isContextQueue && remaining <= 5 && (queue.hasNextPage() || queue.hasPendingContextItems)) {
+                                followUpAction = FollowUpAction.TriggerPaginationNearEnd
+                            }
+                        }
+                    } else {
+                        val items = initialStatus.items
+                        val index = initialStatus.mediaItemIndex
+
+                        delegate.setMediaItems(items, index, initialStatus.position)
+                        delegate.prepare()
+                        delegate.setPlayWhenReady(playWhenReady)
+                        if (delegate.isShuffleModeEnabled()) {
+                            applyCurrentFirstShuffleOrder()
+                        }
                     }
                 } else {
                     val items = initialStatus.items
@@ -162,11 +221,36 @@ internal class QueuePlayOrchestrator(
                     if (delegate.isShuffleModeEnabled()) {
                         applyCurrentFirstShuffleOrder()
                     }
+                    val remaining = delegate.getMediaItemCount() - delegate.getCurrentMediaItemIndex()
+                    if (queue.isContextQueue && remaining <= 5 && (queue.hasNextPage() || queue.hasPendingContextItems)) {
+                        followUpAction = FollowUpAction.TriggerPaginationNearEnd
+                    }
                 }
             } finally {
-                setInitializingQueue(false)
+                if (generation == playGeneration) {
+                    setInitializingQueue(false)
+                }
+            }
+
+            if (!isActive || generation != playGeneration || getActiveQueue() !== queue) return@launch
+            when (followUpAction) {
+                FollowUpAction.TriggerPaginationEnded -> {
+                    delegate.triggerPagination(isPlaybackEnded = true)
+                }
+                FollowUpAction.TriggerPaginationNearEnd -> {
+                    delegate.triggerPagination(isPlaybackEnded = false)
+                }
+                FollowUpAction.InfiniteQueue -> {
+                    delegate.onInfiniteQueueEnabled()
+                }
+                null -> Unit
+            }
+
+            if (queue.isContextQueue) {
+                return@launch
             }
             scope.launch(SilentHandler) {
+                if (generation != playGeneration || getActiveQueue() !== queue) return@launch
                 if (delegate.getMediaItemCount() - delegate.getCurrentMediaItemIndex() <= 3 &&
                     !getActiveQueue().hasNextPage() &&
                     dataStore.get(AutoLoadMoreKey, true)

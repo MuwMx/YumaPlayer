@@ -184,6 +184,11 @@ private fun MusicService.createPlaybackQueueManager(): PlaybackQueueManager {
             }
             override suspend fun resolveVoiceMediaItems(query: String): List<MediaItem> =
                 service.mediaLibrarySessionCallback.resolveVoiceMediaItems(query)
+            override fun triggerPagination(isPlaybackEnded: Boolean) {
+                service.playerListeners.triggerPagination(isPlaybackEnded)
+            }
+            override fun isSuppressAutoPlayback(): Boolean = service.suppressAutoPlayback
+            override fun getRepeatMode(): Int = service.player.repeatMode
         },
     )
 }

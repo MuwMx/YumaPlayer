@@ -63,6 +63,9 @@ internal class PlaybackQueueManager(
         fun isCurrentSongLocal(): Boolean; fun isCurrentPlaybackItemLocal(metadata: MediaMetadata): Boolean
         fun getCurrentSong(): Song?; fun getCurrentMediaMetadata(): MediaMetadata?; fun downloadSong(song: SongEntity)
         suspend fun resolveVoiceMediaItems(query: String): List<MediaItem>
+        fun triggerPagination(isPlaybackEnded: Boolean)
+        fun isSuppressAutoPlayback(): Boolean
+        fun getRepeatMode(): Int
     }
 
     private val togetherGuestCoordinator =
@@ -133,6 +136,10 @@ internal class PlaybackQueueManager(
         override fun getCurrentMediaMetadata() = delegate.getCurrentMediaMetadata()
         override fun downloadSong(song: SongEntity) = delegate.downloadSong(song)
         override suspend fun resolveVoiceMediaItems(query: String) = delegate.resolveVoiceMediaItems(query)
+        override fun isPlayWhenReady(): Boolean = delegate.isPlayWhenReady()
+        override fun triggerPagination(isPlaybackEnded: Boolean) = delegate.triggerPagination(isPlaybackEnded)
+        override fun isSuppressAutoPlayback(): Boolean = delegate.isSuppressAutoPlayback()
+        override fun getRepeatMode(): Int = delegate.getRepeatMode()
     }
 
     private val automixController: QueueAutomixController =

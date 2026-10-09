@@ -128,12 +128,35 @@ class PlayerConnection(
         }
     }
 
+    private var playRequestGeneration = 0L
+
+    fun beginPlayQueueRequest(): Long {
+        return synchronized(this) {
+            ++playRequestGeneration
+        }
+    }
+
     fun playQueue(queue: Queue) {
-        service.playQueue(queue)
+        synchronized(this) {
+            playRequestGeneration++
+            service.playQueue(queue)
+        }
+    }
+
+    fun playQueueIfCurrent(queue: Queue, generation: Long): Boolean {
+        synchronized(this) {
+            if (generation != playRequestGeneration) return false
+            playRequestGeneration++
+            service.playQueue(queue)
+            return true
+        }
     }
 
     fun startRadioSeamlessly() {
-        service.startRadioSeamlessly()
+        synchronized(this) {
+            playRequestGeneration++
+            service.startRadioSeamlessly()
+        }
     }
 
     fun playNext(item: MediaItem) = playNext(listOf(item))
@@ -149,11 +172,17 @@ class PlayerConnection(
     }
 
     fun clearQueue() {
-        service.clearQueue()
+        synchronized(this) {
+            playRequestGeneration++
+            service.clearQueue()
+        }
     }
 
     fun playFromVoiceSearch(query: String) {
-        service.playFromVoiceSearch(query)
+        synchronized(this) {
+            playRequestGeneration++
+            service.playFromVoiceSearch(query)
+        }
     }
 
     fun toggleLike() {
@@ -242,16 +271,16 @@ class PlayerConnection(
         var foundBitrate = -1
         var foundSampleRate = -1
         var foundMimeType = "UNKNOWN"
-        
+
         for (group in tracks.groups) {
             if (group.type == C.TRACK_TYPE_AUDIO && group.isSelected) {
                 val format = group.getTrackFormat(0)
                 foundMimeType = format.sampleMimeType?.substringAfter("audio/")?.uppercase() ?: "UNKNOWN"
-                
+
                 var bitrate = format.bitrate
                 if (bitrate <= 0) bitrate = format.peakBitrate
                 if (bitrate <= 0) bitrate = format.averageBitrate
-                
+
                 foundBitrate = bitrate
                 foundSampleRate = format.sampleRate
                 break

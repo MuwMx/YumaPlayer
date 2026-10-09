@@ -191,6 +191,7 @@ internal class MusicServicePlayerListeners(
             notificationDelegate = notificationDelegate,
             togetherPlaybackEchoPolicy = TogetherPlaybackEchoPolicy,
             crossfadeHooks = crossfadeHooks,
+            transitionHandler = playerTransitionHandler,
         )
 
     val audioEffectPlayerListener: Player.Listener =
@@ -261,6 +262,10 @@ internal class MusicServicePlayerListeners(
 
     internal fun onMediaItemTransitionInternal() {
         playerTransitionHandler.onMediaItemTransitionInternal()
+    }
+
+    internal fun triggerPagination(isPlaybackEnded: Boolean) {
+        playerTransitionHandler.triggerPagination(isPlaybackEnded)
     }
 
     override fun onEvents(

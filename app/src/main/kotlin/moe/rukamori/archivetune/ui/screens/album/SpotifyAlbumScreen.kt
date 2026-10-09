@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -79,6 +81,7 @@ fun SpotifyAlbumScreen(
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
     var resolvingTrackId by remember { mutableStateOf<String?>(null) }
+    var preloadJob by remember { mutableStateOf<Job?>(null) }
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val showTopBarTitle by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
     val successState = uiState as? SpotifyAlbumUiState.Success
@@ -86,15 +89,18 @@ fun SpotifyAlbumScreen(
     fun playTracks(tracks: List<SpotifyTrack>, startIndex: Int = 0, shuffled: Boolean = false) {
         val album = successState?.album ?: return
         val queueTracks = if (shuffled) tracks.shuffled() else tracks
-        if (queueTracks.isEmpty() || resolvingTrackId != null) return
+        if (queueTracks.isEmpty()) return
         val boundedIndex = startIndex.coerceIn(queueTracks.indices)
         val preloadTrack = queueTracks[boundedIndex]
 
-        coroutineScope.launch {
+        val requestToken = playerConnection.beginPlayQueueRequest()
+        preloadJob?.cancel()
+        preloadJob = coroutineScope.launch {
             resolvingTrackId = preloadTrack.id
             try {
                 val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
-                playerConnection.playQueue(
+                if (!isActive || resolvingTrackId != preloadTrack.id) return@launch
+                playerConnection.playQueueIfCurrent(
                     SpotifyTracksQueue(
                         title = album.name,
                         allTracks = queueTracks,
@@ -103,9 +109,12 @@ fun SpotifyAlbumScreen(
                         totalCount = queueTracks.size,
                         hasCustomOrder = true,
                     ),
+                    generation = requestToken,
                 )
             } finally {
-                resolvingTrackId = null
+                if (resolvingTrackId == preloadTrack.id) {
+                    resolvingTrackId = null
+                }
             }
         }
     }

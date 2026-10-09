@@ -16,11 +16,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.extensions.SilentHandler
@@ -29,7 +32,6 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -117,12 +119,12 @@ internal class QueueAutomixController(
         delegate.setSuppressAutoPlayback(false)
         val currentMediaMetadata = delegate.getCurrentMetadata() ?: return
 
-        val currentIndex = delegate.getCurrentMediaItemIndex()
         val currentMediaId = currentMediaMetadata.id
         if (delegate.isCurrentSongLocal() || currentMediaId.isLocalMediaId()) {
             return
         }
 
+        val targetQueue = delegate.getActiveQueue()
         scope.launch(
             CoroutineExceptionHandler { _, throwable ->
                 Timber.e(throwable, "Failed to start radio seamlessly")
@@ -143,6 +145,10 @@ internal class QueueAutomixController(
                         .filterExplicit(hideExplicit)
                         .filterVideo(hideVideo)
                 }
+            if (!isActive) return@launch
+            if (delegate.getActiveQueue() !== targetQueue) return@launch
+            val nowMeta = delegate.getCurrentMetadata()
+            if (nowMeta?.id != currentMediaId) return@launch
 
             if (initialStatus.title != null) {
                 delegate.queueTitle = initialStatus.title
@@ -154,19 +160,23 @@ internal class QueueAutomixController(
                 }
 
             if (radioItems.isNotEmpty()) {
+                val latestIndex = delegate.getCurrentMediaItemIndex()
                 val itemCount = delegate.getMediaItemCount()
 
-                if (itemCount > currentIndex + 1) {
-                    delegate.removeMediaItems(currentIndex + 1, itemCount)
+                if (itemCount > latestIndex + 1) {
+                    delegate.removeMediaItems(latestIndex + 1, itemCount)
                 }
 
-                delegate.addMediaItems(currentIndex + 1, radioItems)
+                delegate.addMediaItems(latestIndex + 1, radioItems)
             } else {
                 withContext(Dispatchers.Main) {
                     delegate.showToast(R.string.no_results_found)
                 }
             }
 
+            if (!isActive || delegate.getActiveQueue() !== targetQueue) return@launch
+            val nowMetaAfterToast = delegate.getCurrentMetadata()
+            if (nowMetaAfterToast?.id != currentMediaId) return@launch
             delegate.currentQueue = radioQueue
         }
     }
@@ -201,21 +211,46 @@ internal class QueueAutomixController(
 
     fun onInfiniteQueueEnabled() {
         if (infiniteQueueJob?.isActive == true) return
-        if (delegate.getActiveQueue() is SpotifyTracksQueue) return
+        val activeQueue = delegate.getActiveQueue()
+        if (activeQueue.isContextQueue) {
+            if (!activeQueue.isFullyLoaded || activeQueue.isLoadFailed || activeQueue.isContextLoading || activeQueue.hasPendingContextItems || activeQueue.hasNextPage()) {
+                return
+            }
+            if (delegate.getPlaybackState() != Player.STATE_ENDED) {
+                return
+            }
+        }
         val currentMeta = delegate.getCurrentMetadata() ?: return
         if (delegate.isCurrentPlaybackItemLocal(currentMeta)) return
         if (isInfiniteQueueLoading) return
         setInfiniteQueueLoading(true)
 
-        infiniteQueueJob =
-            scope.launch(SilentHandler) {
+        val targetQueue = delegate.getActiveQueue()
+        val job =
+            scope.launch(start = CoroutineStart.LAZY, context = SilentHandler) {
                 try {
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMeta.id), followAutomixPreview = true)
                     val status = withContext(ioDispatcher) { radioQueue.getInitialStatus() }
+                    if (!isActive) return@launch
+                    val ds = effectiveDataStore
+                    val autoLoadMore = ds?.get(AutoLoadMoreKey, true) ?: true
+                    if (!autoLoadMore) return@launch
+                    val currentActive = delegate.getActiveQueue()
+                    if (currentActive !== targetQueue) return@launch
+                    if (currentActive.isContextQueue) {
+                        if (!currentActive.isFullyLoaded || currentActive.isLoadFailed || currentActive.isContextLoading || currentActive.hasPendingContextItems || currentActive.hasNextPage()) {
+                            return@launch
+                        }
+                        if (delegate.getPlaybackState() != Player.STATE_ENDED) {
+                            return@launch
+                        }
+                    }
 
                     val count = delegate.getMediaItemCount()
                     val existingIds = (0 until count).map { delegate.getMediaItemAt(it).mediaId }.toSet()
                     val newItems = status.items.filter { it.mediaId !in existingIds }
+
+                    val wasEndedBeforeMutation = delegate.getPlaybackState() == Player.STATE_ENDED
 
                     if (newItems.isNotEmpty()) {
                         delegate.addMediaItems(newItems)
@@ -227,7 +262,15 @@ internal class QueueAutomixController(
 
                     delegate.currentQueue = radioQueue
 
-                    if (delegate.getPlaybackState() == Player.STATE_ENDED || delegate.getMediaItemCount() == delegate.getCurrentMediaItemIndex() + 1) {
+                    val shouldResume =
+                        if (currentActive.isContextQueue) {
+                            wasEndedBeforeMutation
+                        } else {
+                            delegate.getPlaybackState() == Player.STATE_ENDED ||
+                                delegate.getMediaItemCount() == delegate.getCurrentMediaItemIndex() + 1
+                        }
+
+                    if (shouldResume) {
                         delegate.seekToNext()
                         delegate.play()
                     }
@@ -236,10 +279,15 @@ internal class QueueAutomixController(
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to bootstrap auto-queue")
                 } finally {
-                    infiniteQueueJob = null
-                    setInfiniteQueueLoading(false)
+                    val currentJob = coroutineContext[Job]
+                    if (infiniteQueueJob === currentJob) {
+                        infiniteQueueJob = null
+                        setInfiniteQueueLoading(false)
+                    }
                 }
             }
+        infiniteQueueJob = job
+        job.start()
     }
 
     fun cancelInfiniteQueueBootstrap() {

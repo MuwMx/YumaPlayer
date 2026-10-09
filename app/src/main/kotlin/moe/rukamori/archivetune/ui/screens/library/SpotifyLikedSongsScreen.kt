@@ -48,6 +48,8 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -99,6 +101,7 @@ fun SpotifyLikedSongsScreen(
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var resolvingTrackId by remember { mutableStateOf<String?>(null) }
+    var preloadJob by remember { mutableStateOf<Job?>(null) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
 
@@ -174,13 +177,15 @@ fun SpotifyLikedSongsScreen(
         if (queueTracks.isEmpty()) return
         val boundedStartIndex = startIndex.coerceIn(queueTracks.indices)
         val preloadTrack = queueTracks[boundedStartIndex]
-        if (resolvingTrackId != null) return
 
-        coroutineScope.launch {
+        val requestToken = playerConnection?.beginPlayQueueRequest() ?: return
+        preloadJob?.cancel()
+        preloadJob = coroutineScope.launch {
             resolvingTrackId = preloadTrack.id
             try {
                 val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
-                playerConnection?.playQueue(
+                if (!isActive || resolvingTrackId != preloadTrack.id) return@launch
+                playerConnection.playQueueIfCurrent(
                     SpotifyLikedSongsQueue(
                         title = context.getString(R.string.spotify_liked_songs),
                         allTracks = queueTracks,
@@ -189,9 +194,12 @@ fun SpotifyLikedSongsScreen(
                         totalCount = total.takeIf { it > 0 },
                         hasCustomOrder = isSearching,
                     ),
+                    generation = requestToken,
                 )
             } finally {
-                resolvingTrackId = null
+                if (resolvingTrackId == preloadTrack.id) {
+                    resolvingTrackId = null
+                }
             }
         }
     }

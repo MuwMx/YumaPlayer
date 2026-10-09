@@ -22,6 +22,12 @@ interface Queue {
 
     suspend fun nextPage(): List<MediaItem>
 
+    val isContextQueue: Boolean get() = false
+    val isContextLoading: Boolean get() = false
+    val hasPendingContextItems: Boolean get() = false
+    val isFullyLoaded: Boolean get() = !hasNextPage()
+    val isLoadFailed: Boolean get() = false
+
     data class Status(
         val title: String?,
         val items: List<MediaItem>,
@@ -76,6 +82,10 @@ interface Queue {
             )
         }
     }
+}
+
+interface SpotifyQueue : Queue {
+    override val isContextQueue: Boolean get() = true
 }
 
 fun List<MediaItem>.filterExplicit(enabled: Boolean = true) =
