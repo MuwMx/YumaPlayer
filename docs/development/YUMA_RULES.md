@@ -118,3 +118,35 @@ If a rule conflicts with an implementation, the rule takes precedence.
 - **Diff Cleanliness:** Zero trailing whitespace. Verify that any newly added modifier produces a verifiable layout or visual change before finalizing changes.
 - **Zero-Remeasurement Kinematics:** Dynamic motion, sliding, collapsing, or docking of UI elements must never modify container layout constraints, bounds, or dimension multipliers (e.g. `height * factor`) during active interaction. All real-time movement must be purely transform-based via GPU-accelerated draw properties (`graphicsLayer { translationX/Y, scaleX/Y }`).
 - **Deferred Routing & State Commits in Gestures:** Continuous touch gestures (swipes, drags) must remain entirely decoupled from structural navigation or heavy composition tree changes. Visual feedback during a gesture must be lightweight and isolated. Route changes, screen navigations, and heavy state commits are permitted exclusively upon gesture completion (`onDragEnd`, `onFling`).
+
+---
+
+## 9. Testing Strategy & Verification Tiers
+
+- **Rule Compliance Before Implementation:** Before modifying any subsystem, agents must identify applicable rules in `YUMA_RULES.md` and ensure proposed changes do not contradict them. Introducing new UX behaviors or breaking existing invariants without explicit instructions is strictly prohibited.
+
+- **Risk-Based Testing:** Tests must prevent silent regressions (data loss, cache corruption, broken queue, broken playback) without artificially slowing down iteration. Never generate tests merely to inflate metrics or test counts.
+
+- **Mandatory Logic Coverage:** Automated unit tests are strictly required for:
+  - **Cache & Storage:** Spans, byte ranges, `contentLength` preservation, key isolation (`stream_v2_*`), signature matching, Room migrations and queries.
+  - **Playback & Queue State:** Track ordering, Media3 timeline mutations, source isolation, generation tokens, and race condition guards.
+  - **Data & Parsing:** InnerTube parser contracts, API mapping, and typed failure propagation.
+  - **Concurrency & Lifecycle:** Cancellation propagation, atomic StateFlow updates, and mutex synchronization.
+
+- **UI & Motion Test Restrictions:**
+  - **No Physics / Visual Tests:** Strictly forbidden to write unit tests for spring values (`dampingRatio`, `stiffness`), intermediate frame coordinates, jelly stretch factors, colors, or spacing. Motion quality and feel must be validated exclusively on a physical device.
+  - **Behavioral Invariants Only:** Gesture and navigation state tests are permitted strictly for logical contracts:
+    1. Active drag never triggers navigation before release.
+    2. Release triggers target navigation exactly once.
+    3. Cancel triggers zero navigations.
+  - **No Subjective Timing Locks:** Do not encode subjective UX timing, animation thresholds, or gesture tuning constants into tests. Test timing and thresholds only when they protect functional correctness, concurrency safety, or explicit business requirements.
+
+- **Verification Tiers (Gradle Execution Scope):**
+  - **FAST (Default for minor edits & visual tuning):** Review diff and diagnostics. Skip Gradle by default for visual-only adjustments. Run the smallest relevant compile/test task if code correctness cannot be guaranteed by inspection alone.
+  - **TARGETED (Required for completed subsystem logic):** Compile the smallest affected module or consumer needed to verify the change (e.g. `:designsystem:compileDebugKotlin`). Run only directly relevant test classes via `--tests "package.ClassName"`. Expanding scope to full project test suites is strictly forbidden.
+  - **FULL (Release & High-Risk Core Refactoring):** Full build, R8 minification check, and physical device run. Never trigger FULL tier automatically after isolated changes.
+
+- **Agent Verification Rules:**
+  - When a test fails, determine whether the implementation or the test violates the intended contract. Update or remove a test only when its expected behavior is demonstrably obsolete. Never weaken or delete a valid regression test merely to make the suite pass.
+  - Do not re-run expensive Gradle tasks if the underlying source code was not modified.
+  - Always report explicitly: what was verified via CLI, what was skipped, and what requires physical device testing.
