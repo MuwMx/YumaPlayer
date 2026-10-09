@@ -191,3 +191,20 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         YouTubeBrowseScreen(navController)
     }
 }
+
+internal fun encodeNavigationParam(value: String): String =
+    java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8.name())
+        .replace("+", "%20")
+
+internal fun buildYouTubeBrowseRoute(
+    browseId: String,
+    params: String? = null,
+): String {
+    val encodedBrowseId = encodeNavigationParam(browseId)
+    val trimmedParams = params?.takeIf { it.isNotBlank() && it != "null" }
+    return if (trimmedParams != null) {
+        "youtube_browse/$encodedBrowseId?params=${encodeNavigationParam(trimmedParams)}"
+    } else {
+        "youtube_browse/$encodedBrowseId"
+    }
+}

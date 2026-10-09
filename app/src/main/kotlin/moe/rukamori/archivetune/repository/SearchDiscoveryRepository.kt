@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,6 +45,7 @@ class SearchDiscoveryRepository
     ) {
         suspend fun loadDiscovery(): Result<SearchDiscoveryData> =
             withContext(Dispatchers.IO) {
+                val startTime = System.currentTimeMillis()
                 try {
                     coroutineScope {
                         val explorePageDeferred = async { YouTube.explore().getOrThrow() }
@@ -60,6 +62,8 @@ class SearchDiscoveryRepository
 
                         val explorePage = explorePageDeferred.await()
                         val chartsPage = chartsPageDeferred.await()
+                        val duration = System.currentTimeMillis() - startTime
+                        Timber.d("SearchDiscoveryRepository: loadDiscovery completed in ${duration}ms")
 
                         Result.success(
                             SearchDiscoveryData(

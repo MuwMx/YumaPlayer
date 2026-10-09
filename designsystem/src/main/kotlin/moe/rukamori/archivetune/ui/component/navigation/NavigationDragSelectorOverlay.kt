@@ -26,12 +26,8 @@ internal fun NavigationDragSelectorOverlay(
         modifier = modifier
             .fillMaxSize()
             .drawWithContent {
-                if (selectorState.isDragging && selectorState.tabWidthPx > 0f) {
-                    val currentWidth = if (selectorState.selectorWidthAnimatable.value > 0f) {
-                        selectorState.selectorWidthAnimatable.value
-                    } else {
-                        selectorState.tabWidthPx
-                    }
+                if (selectorState.tabWidthPx > 0f && selectorState.selectorWidthAnimatable.value > 0f) {
+                    val currentWidth = selectorState.selectorWidthAnimatable.value
                     val currentX = selectorState.selectorXAnimatable.value
                     val height = size.height - (verticalPaddingPx * 2)
                     val top = verticalPaddingPx

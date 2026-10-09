@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.screens.Screens
+import moe.rukamori.archivetune.ui.screens.findTabForRoute
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
@@ -112,8 +113,17 @@ internal fun BoxScope.NavigationToolbarBridge(
                 null
             },
         isSelected = { screen ->
-            navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
+            val destinationRoute = navBackStackEntry?.destination?.route
+            if (destinationRoute == screen.route) {
                 true
+            } else {
+                val owningTab = findTabForRoute(destinationRoute)
+                if (owningTab != null) {
+                    owningTab == screen
+                } else {
+                    navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
+                }
+            }
         },
         onItemClick = { screen, isSelected ->
             handlePrimaryNavigationClick(screen, isSelected)

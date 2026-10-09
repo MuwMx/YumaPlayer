@@ -72,7 +72,9 @@ fun MoodAndGenresScreen(
         moodAndGenresSection(
             moodAndGenres = moodAndGenres,
             onItemClick = { endpoint ->
-                navController.navigate("youtube_browse/${endpoint.browseId}?params=${endpoint.params}")
+                endpoint.browseId.takeIf { it.isNotBlank() }?.let { browseId ->
+                    navController.navigate(buildYouTubeBrowseRoute(browseId, endpoint.params))
+                }
             },
         )
     }

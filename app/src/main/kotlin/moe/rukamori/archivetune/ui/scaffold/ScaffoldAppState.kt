@@ -23,6 +23,7 @@ import androidx.compose.ui.util.fastAny
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.window.core.layout.WindowSizeClass
@@ -48,6 +49,7 @@ import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.haptics.YumaHapticsImpl
 import moe.rukamori.archivetune.ui.screens.Screens
+import moe.rukamori.archivetune.ui.screens.findTabForRoute
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.UpdateState
@@ -185,11 +187,15 @@ fun rememberScaffoldAppState(
                 navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                 if (screen == Screens.Home) coroutineScope.launch { scrollController.resetHomeOffset() }
             }
-        } else if (navController.currentDestination?.route != screen.route) {
-            navController.navigate(screen.route) {
-                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
+        } else {
+            val currentRoute = navController.currentDestination?.route
+            val isCurrentTabOwner = findTabForRoute(currentRoute) == screen
+            if (!isCurrentTabOwner || currentRoute != screen.route) {
+                navController.navigate(screen.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             }
         }
     }

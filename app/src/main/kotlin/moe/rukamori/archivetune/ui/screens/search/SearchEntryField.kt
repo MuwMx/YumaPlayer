@@ -40,6 +40,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.search.SearchDiscoveryUiModel
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButton
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButtonHeight
+import moe.rukamori.archivetune.ui.screens.buildYouTubeBrowseRoute
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -155,7 +156,9 @@ internal fun SearchMoodAndGenresGrid(
                     stripeColor = item.stripeColor,
                     endpoint = item.endpoint,
                     onClick = {
-                        navController.navigate("youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}")
+                        item.endpoint.browseId.takeIf { it.isNotBlank() }?.let { browseId ->
+                            navController.navigate(buildYouTubeBrowseRoute(browseId, item.endpoint.params))
+                        }
                     },
                     modifier =
                         Modifier

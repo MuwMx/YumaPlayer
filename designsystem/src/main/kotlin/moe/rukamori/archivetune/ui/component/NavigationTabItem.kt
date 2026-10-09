@@ -54,7 +54,7 @@ internal fun RowScope.NavigationTabItem(
     onClick: () -> Unit,
     onDoubleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    drawSelector: Boolean = true,
+    drawSelector: Boolean = false,
 ) {
     val selectionFactor by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,

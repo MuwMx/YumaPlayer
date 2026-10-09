@@ -32,6 +32,7 @@ data class MusicResponsiveListItemRenderer(
     val playlistItemData: PlaylistItemData?,
     val overlay: Overlay?,
     val navigationEndpoint: NavigationEndpoint?,
+    val customIndexColumn: CustomIndexColumn? = null,
 ) {
     val isSong: Boolean
         get() = navigationEndpoint == null || navigationEndpoint.watchEndpoint != null || navigationEndpoint.watchPlaylistEndpoint != null
@@ -107,5 +108,15 @@ data class MusicResponsiveListItemRenderer(
                 )
             }
         }
+    }
+
+    @Serializable
+    data class CustomIndexColumn(
+        val musicCustomIndexColumnRenderer: MusicCustomIndexColumnRenderer,
+    ) {
+        @Serializable
+        data class MusicCustomIndexColumnRenderer(
+            val text: Runs?,
+        )
     }
 }

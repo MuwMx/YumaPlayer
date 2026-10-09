@@ -41,6 +41,9 @@ fun LazyListScope.chartsSongSections(
     onMoreClick: (SongItem) -> Unit,
 ) {
     sections.forEach { section ->
+        val songItems = section.items.filterIsInstance<SongItem>().distinctBy { it.id }
+        if (songItems.isEmpty()) return@forEach
+
         item(contentType = CONTENT_TYPE_CHARTS_HEADER) {
             NavigationTitle(
                 title =
@@ -80,7 +83,7 @@ fun LazyListScope.chartsSongSections(
                             .height(ListItemHeight * 4),
                 ) {
                     items(
-                        items = section.items.filterIsInstance<SongItem>().distinctBy { it.id },
+                        items = songItems,
                         key = { it.id },
                         contentType = { CONTENT_TYPE_CHARTS_SONG },
                     ) { song ->
