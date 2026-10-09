@@ -2,14 +2,10 @@ package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,12 +15,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.ActiveDragSheet
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
@@ -65,43 +61,34 @@ internal fun PlayerQueueLayer(
         derivedStateOf { queueFractionProvider() > 0.05f }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val fraction = queueFractionProvider().coerceIn(0f, 1f)
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val fraction = queueFractionProvider().coerceIn(0f, 1f)
 
-                alpha = 1f
-                translationY = (1f - fraction) * size.height
+                    alpha = 1f
+                    translationY = (1f - fraction) * size.height
 
-                shape = RoundedCornerShape(
-                    topStart = 32.dp,
-                    topEnd = 32.dp
-                )
-                clip = true
-            }
-            .background(Color(state.darkMutedColor))
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            QueueSheetHeader(
-                queueState = queueState,
-                queueFractionProvider = queueFractionProvider,
-                onCloseClick = onCloseQueueClick,
-                onMoreQueueClick = onMoreQueueClick,
-                onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
-                isAutoMixEnabled = state.isAutoMixEnabled,
-                state = state,
-                isVisible = isQueueVisible
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+                    shape = RoundedCornerShape(
+                        topStart = 32.dp,
+                        topEnd = 32.dp
+                    )
+                    clip = true
+                }
+        ) {
+            val peekTopPadding = 16.dp
+            val expandedHeaderHeight = CapsuleDefaults.totalHeaderHeight()
+            val currentFraction = queueFractionProvider().coerceIn(0f, 1f)
+            val expandProgress = ((currentFraction - 0.45f) / 0.55f).coerceIn(0f, 1f)
+            val dynamicTopPadding = lerp(peekTopPadding, expandedHeaderHeight, expandProgress)
 
             PlayerSheetBorderContainer(
                 state = state,
+                drawBackground = false,
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .then(
                         if (queueNestedScrollConnection != null && !isQueueReordering) {
                             Modifier.nestedScroll(queueNestedScrollConnection)
@@ -118,13 +105,31 @@ internal fun PlayerQueueLayer(
                     onCloseClick = onCloseQueueClick,
                     lazyListState = queueListState,
                     contentPadding = PaddingValues(
-                        top = 16.dp,
+                        top = dynamicTopPadding,
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
                     ),
                     onReorderStateChange = { isQueueReordering = it },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+        }
+
+        val isHeaderVisible by remember {
+            derivedStateOf { queueFractionProvider() > 0.85f }
+        }
+
+        if (isHeaderVisible) {
+            QueueSheetHeader(
+                queueState = queueState,
+                queueFractionProvider = queueFractionProvider,
+                onCloseClick = onCloseQueueClick,
+                onMoreQueueClick = onMoreQueueClick,
+                onToggleAutoMix = { onAction(PlayerAction.ToggleAutoMix) },
+                isAutoMixEnabled = state.isAutoMixEnabled,
+                state = state,
+                isVisible = true,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
     }
 }

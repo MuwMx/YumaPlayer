@@ -71,6 +71,10 @@ fun FullPlayer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
+                        .graphicsLayer {
+                            val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
+                            alpha = (1f - (queueFraction - 0.75f) / (0.95f - 0.75f)).coerceIn(0f, 1f)
+                        }
                 )
             },
             cover = {
@@ -79,8 +83,10 @@ fun FullPlayer(
                         .fillMaxSize()
                         .padding(horizontal = 22.dp)
                         .graphicsLayer {
+                            val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
+                            val queueCoverFade = (1f - (queueFraction - 0.45f) / (0.80f - 0.45f)).coerceIn(0f, 1f)
                             val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
-                            alpha = if (isCoverVisible) 1f else 0f
+                            alpha = if (isCoverVisible) queueCoverFade else 0f
                         }
                 ) {
                     PlayerCoverCard(

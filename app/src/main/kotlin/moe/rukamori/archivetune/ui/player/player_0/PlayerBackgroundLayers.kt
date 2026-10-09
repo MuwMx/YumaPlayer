@@ -57,7 +57,7 @@ fun PlayerBackgroundLayers(
 
     val isOverlayVisible by remember {
         derivedStateOf {
-            state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+            state.isLyricsVisible || lyricsFractionProvider() > 0.5f
         }
     }
     
@@ -173,6 +173,12 @@ fun PlayerBackgroundLayers(
             }
         }
 
+        val queueArtworkFade by remember {
+            derivedStateOf {
+                (1f - (queueFractionProvider() - 0.45f) / (0.85f - 0.45f)).coerceIn(0f, 1f)
+            }
+        }
+
         val painter = painters.currentClearPainter
         if (painter != null && !(isCanvasActive && isCanvasReady)) {
             Image(
@@ -182,7 +188,7 @@ fun PlayerBackgroundLayers(
                     .fillMaxWidth()
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha),
+                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.TopCenter
             )
@@ -192,7 +198,7 @@ fun PlayerBackgroundLayers(
             PlayerCanvasArtworkHost(
                 state = state,
                 canvasState = canvasState,
-                immersiveTransitionAlpha = immersiveTransitionAlpha,
+                immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
                 lyricsFractionProvider = lyricsFractionProvider,
                 queueFractionProvider = queueFractionProvider,
                 onReadyChange = { isCanvasReady = it },
@@ -200,7 +206,7 @@ fun PlayerBackgroundLayers(
                     .fillMaxWidth()
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha)
+                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
             )
         }
     }

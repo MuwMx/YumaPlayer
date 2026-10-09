@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.player.player_0.CapsuleDefaults
+import moe.rukamori.archivetune.ui.player.player_0.OverlayCapsuleShell
 import moe.rukamori.archivetune.ui.component.MarqueeText
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
@@ -65,24 +67,15 @@ fun LyricsHeader(
         }
     }
 
-    val capsuleShape = RoundedCornerShape(24.dp)
-    val capsuleColor = if (state.isBlurBackgroundEnabled) Color.Black else Color(state.darkMutedColor)
-
-    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarTop > 0.dp) statusBarTop + 8.dp else 44.dp
-
-    Box(
-        modifier = modifier
-            .padding(top = topPadding, start = 24.dp, end = 24.dp)
-            .fillMaxWidth()
-            .height(64.dp)
-            .shadow(elevation = 12.dp, shape = capsuleShape, clip = false)
-            .background(capsuleColor, capsuleShape)
+    OverlayCapsuleShell(
+        isBlurBackgroundEnabled = state.isBlurBackgroundEnabled,
+        darkMutedColor = state.darkMutedColor,
+        modifier = modifier,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(capsuleShape)
+                .clip(CapsuleDefaults.Shape)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -168,14 +161,6 @@ fun LyricsHeader(
             ) {
                 Image(painter = painterResource(id = R.drawable.ic_more), contentDescription = stringResource(R.string.more_label), modifier = Modifier.size(20.dp))
             }
-        }
-
-        if (state.isBlurBackgroundEnabled) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .border(BorderStroke(1.dp, Color(0x22FFFFFF)), capsuleShape)
-            )
         }
     }
 }

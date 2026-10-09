@@ -61,7 +61,8 @@ internal fun QueueSheetHeader(
     onToggleAutoMix: () -> Unit,
     isAutoMixEnabled: Boolean = false,
     state: PlayerUiState,
-    isVisible: Boolean
+    isVisible: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val haptics = rememberYumaHaptics()
 
@@ -94,29 +95,18 @@ internal fun QueueSheetHeader(
     val songPlural = pluralStringResource(R.plurals.n_song, songCount, songCount)
     val subtitle = remember(songPlural, queueDurationMs) { "$songPlural  •  ${makeTimeString(queueDurationMs)}" }
 
-    val capsuleShape = RoundedCornerShape(24.dp)
-    val capsuleColor = if (state.isBlurBackgroundEnabled) Color.Black else Color(state.darkMutedColor)
-    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topPadding = if (statusBarTop > 0.dp) statusBarTop + 8.dp else 44.dp
-
-    Box(
-        modifier = Modifier
-            .padding(top = topPadding, start = 24.dp, end = 24.dp)
-            .fillMaxWidth()
-            .height(64.dp)
-            .shadow(elevation = 12.dp, shape = capsuleShape, clip = false)
-            .graphicsLayer {
-                val progress = queueFractionProvider()
-                alpha = progress
-                scaleX = 0.8f + (0.2f * progress)
-                scaleY = 0.8f + (0.2f * progress)
-            }
-            .background(capsuleColor, capsuleShape)
+    OverlayCapsuleShell(
+        isBlurBackgroundEnabled = state.isBlurBackgroundEnabled,
+        darkMutedColor = state.darkMutedColor,
+        modifier = modifier,
+        progressProvider = {
+            ((queueFractionProvider().coerceIn(0f, 1f) - 0.85f) / 0.15f).coerceIn(0f, 1f)
+        },
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(capsuleShape)
+                .clip(CapsuleDefaults.Shape)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -187,13 +177,6 @@ internal fun QueueSheetHeader(
             ) {
                 Image(painter = painterResource(id = R.drawable.ic_more), contentDescription = stringResource(R.string.more_label), modifier = Modifier.size(20.dp))
             }
-        }
-        if (state.isBlurBackgroundEnabled) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .border(BorderStroke(1.dp, Color(0x22FFFFFF)), capsuleShape)
-            )
         }
     }
 }
