@@ -20,8 +20,8 @@ class NavigationTabSelectorStateTest {
     private val items = listOf(Screens.Home, Screens.Search, Screens.Library)
 
     @Test
-    fun dwell_selectsCandidateAfterDelay() = testScope.runTest {
-        var currentSelected: Screens = Screens.Home
+    fun hoveringDoesNotNavigate_navigatesOnlyOnRelease() = testScope.runTest {
+        val currentSelected: Screens = Screens.Home
         val invocations = mutableListOf<Pair<Screens, Boolean>>()
 
         val state = NavigationTabSelectorState(
@@ -41,24 +41,24 @@ class NavigationTabSelectorStateTest {
         assertTrue(state.isDragging)
         assertEquals(0, state.candidateIndex)
 
-        // Move to Search (index 1, center at 150f)
+        // Move to Search (index 1)
         state.onDrag(100f)
         assertEquals(1, state.candidateIndex)
         assertEquals(0, invocations.size)
 
-        // Advance 200ms - below 250ms threshold, no dwell yet
-        advanceTimeBy(200)
+        // Wait a long time — hovering must NEVER trigger navigation
+        advanceTimeBy(1000)
         assertEquals(0, invocations.size)
 
-        // Advance past threshold
-        advanceTimeBy(60)
+        // Release on Search triggers navigation exactly once
+        state.onRelease()
         assertEquals(1, invocations.size)
         assertEquals(Screens.Search to false, invocations[0])
     }
 
     @Test
-    fun movementOffCandidate_cancelsPriorDwell() = testScope.runTest {
-        var currentSelected: Screens = Screens.Home
+    fun dragAcrossMultipleTabs_onlyNavigatesToFinalTabOnRelease() = testScope.runTest {
+        val currentSelected: Screens = Screens.Home
         val invocations = mutableListOf<Pair<Screens, Boolean>>()
 
         val state = NavigationTabSelectorState(
@@ -71,59 +71,43 @@ class NavigationTabSelectorStateTest {
         )
 
         state.rowWidthPx = 300f
-
         state.onDragStart(50f)
-        // Move to Search
-        state.onDrag(100f)
-        assertEquals(1, state.candidateIndex)
 
-        // Dwell partially (150ms)
-        advanceTimeBy(150)
+        // Move to Search, wait
+        state.onDrag(100f)
+        advanceTimeBy(300)
         assertEquals(0, invocations.size)
 
-        // Move to Library (index 2) before dwell completes
+        // Move to Library, wait
         state.onDrag(100f)
-        assertEquals(2, state.candidateIndex)
-
-        // Advance 150ms: Search was cancelled, Library only at 150ms
-        advanceTimeBy(150)
+        advanceTimeBy(300)
         assertEquals(0, invocations.size)
 
-        // Advance another 110ms: Library completes dwell
-        advanceTimeBy(110)
+        // Release on Library
+        state.onRelease()
         assertEquals(1, invocations.size)
         assertEquals(Screens.Library to false, invocations[0])
     }
 
     @Test
-    fun release_doesNotDuplicateIfAlreadyDwellSelected() = testScope.runTest {
-        var currentSelected: Screens = Screens.Home
+    fun releaseOnAlreadySelectedTab_doesNotNavigate() = testScope.runTest {
+        val currentSelected: Screens = Screens.Home
         val invocations = mutableListOf<Pair<Screens, Boolean>>()
 
         val state = NavigationTabSelectorState(
             items = items,
             isSelectedProvider = { { it == currentSelected } },
-            onItemClickProvider = { { screen, isSelected ->
-                invocations.add(screen to isSelected)
-                currentSelected = screen
-            } },
+            onItemClickProvider = { { screen, isSelected -> invocations.add(screen to isSelected) } },
             hapticsProvider = { NoOpYumaHaptics },
             animationsDisabledProvider = { true },
             coroutineScope = this,
         )
 
         state.rowWidthPx = 300f
-        state.onDragStart(50f)
-        state.onDrag(100f) // Move to Search
+        state.onDragStart(50f) // Home
 
-        // Complete dwell
-        advanceTimeBy(260)
-        assertEquals(1, invocations.size)
-
-        // Release on Search
         state.onRelease()
-        // Must NOT emit duplicate
-        assertEquals(1, invocations.size)
+        assertEquals(0, invocations.size)
     }
 
     @Test
@@ -153,26 +137,24 @@ class NavigationTabSelectorStateTest {
 
     @Test
     fun onTabTap_triggersImmediateSpringAndCallback() = testScope.runTest {
-        val clock =
-            object : androidx.compose.runtime.MonotonicFrameClock {
-                override suspend fun <R> withFrameNanos(onFrame: (frameTimeNanos: Long) -> R): R {
-                    return onFrame(System.nanoTime())
-                }
+        val clock = object : androidx.compose.runtime.MonotonicFrameClock {
+            override suspend fun <R> withFrameNanos(onFrame: (frameTimeNanos: Long) -> R): R {
+                return onFrame(System.nanoTime())
             }
+        }
 
         val currentSelected: Screens = Screens.Home
         val invocations = mutableListOf<Pair<Screens, Boolean>>()
 
         kotlinx.coroutines.withContext(clock) {
-            val state =
-                NavigationTabSelectorState(
-                    items = items,
-                    isSelectedProvider = { { it == currentSelected } },
-                    onItemClickProvider = { { screen, isSelected -> invocations.add(screen to isSelected) } },
-                    hapticsProvider = { NoOpYumaHaptics },
-                    animationsDisabledProvider = { true },
-                    coroutineScope = this,
-                )
+            val state = NavigationTabSelectorState(
+                items = items,
+                isSelectedProvider = { { it == currentSelected } },
+                onItemClickProvider = { { screen, isSelected -> invocations.add(screen to isSelected) } },
+                hapticsProvider = { NoOpYumaHaptics },
+                animationsDisabledProvider = { true },
+                coroutineScope = this,
+            )
 
             state.rowWidthPx = 300f
             state.syncToTab(0, animate = false)

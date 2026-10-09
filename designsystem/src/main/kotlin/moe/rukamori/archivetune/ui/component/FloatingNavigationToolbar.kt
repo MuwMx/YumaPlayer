@@ -104,9 +104,18 @@ fun FloatingNavigationToolbar(
         onItemClick = onItemClick,
     )
 
-    val selectedIndex = items.indexOfFirst { isSelected(it) }.coerceAtLeast(0)
-    androidx.compose.runtime.LaunchedEffect(selectedIndex, gestureState.selectorState.rowWidthPx, gestureState.isDragging) {
-        if (!gestureState.isDragging && gestureState.selectorState.tabWidthPx > 0f) {
+    val selectedIndex = items.indexOfFirst { isSelected(it) }
+
+    androidx.compose.runtime.LaunchedEffect(
+        selectedIndex,
+        gestureState.selectorState.rowWidthPx,
+        gestureState.isDragging,
+    ) {
+        if (
+            selectedIndex >= 0 &&
+            !gestureState.isDragging &&
+            gestureState.selectorState.tabWidthPx > 0f
+        ) {
             gestureState.selectorState.syncToTab(selectedIndex)
         }
     }

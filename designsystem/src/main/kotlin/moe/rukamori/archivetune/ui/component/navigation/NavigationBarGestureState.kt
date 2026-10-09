@@ -13,6 +13,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
@@ -27,12 +28,16 @@ internal class NavigationBarGestureState(
     var isDragging by mutableStateOf(false)
         internal set
 
+    private var settlingJob: Job? = null
     val barScaleAnimatable get() = repulsionState.barScaleAnimatable
     val barTranslationXAnimatable get() = repulsionState.barTranslationXAnimatable
     val barTranslationYAnimatable get() = repulsionState.barTranslationYAnimatable
 
     fun onDragStart(offsetX: Float, offsetY: Float, maxRepulsionXPx: Float, maxRepulsionYPx: Float) {
         if (selectorState.items.isEmpty() || selectorState.tabWidthPx <= 0f) return
+        settlingJob?.cancel()
+        settlingJob = null
+
         isDragging = true
         selectorState.isDragging = true
 
@@ -77,12 +82,14 @@ internal class NavigationBarGestureState(
 
         selectorState.onRelease()
 
-        coroutineScope.launch {
+        settlingJob?.cancel()
+        settlingJob = coroutineScope.launch {
             val animSelector = launch { selectorState.animateRelease() }
             val animRepulsion = launch { repulsionState.animateRelease() }
 
             animSelector.join()
             animRepulsion.join()
+
             isDragging = false
             selectorState.isDragging = false
             selectorState.candidateIndex = -1
@@ -99,12 +106,14 @@ internal class NavigationBarGestureState(
 
         selectorState.onCancel()
 
-        coroutineScope.launch {
+        settlingJob?.cancel()
+        settlingJob = coroutineScope.launch {
             val animSelector = launch { selectorState.animateCancel() }
             val animRepulsion = launch { repulsionState.animateRelease() }
 
             animSelector.join()
             animRepulsion.join()
+
             isDragging = false
             selectorState.isDragging = false
             selectorState.candidateIndex = -1

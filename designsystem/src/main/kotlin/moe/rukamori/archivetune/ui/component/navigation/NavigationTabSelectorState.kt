@@ -11,9 +11,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.screens.Screens
@@ -32,10 +30,6 @@ internal class NavigationTabSelectorState(
     var candidateIndex by mutableIntStateOf(-1)
         internal set
 
-    var hoveredSelectedTab: Screens? = null
-        internal set
-    private var dwellJob: Job? = null
-
     var rowWidthPx by mutableFloatStateOf(0f)
     var isInitialized by mutableStateOf(false)
 
@@ -49,7 +43,7 @@ internal class NavigationTabSelectorState(
         if (animationsDisabledProvider()) {
             snap()
         } else {
-            spring(dampingRatio = 0.72f, stiffness = 380f)
+            spring(dampingRatio = 0.55f, stiffness = 300f)
         }
 
     fun syncToTab(index: Int, animate: Boolean = true) {
@@ -91,8 +85,6 @@ internal class NavigationTabSelectorState(
     suspend fun onDragStart(offsetX: Float) {
         hapticsProvider().longPress()
         isDragging = true
-        hoveredSelectedTab = null
-        dwellJob?.cancel()
 
         val initialIndex = (offsetX / tabWidthPx).toInt().coerceIn(0, items.size - 1)
         candidateIndex = initialIndex
@@ -100,8 +92,6 @@ internal class NavigationTabSelectorState(
 
         selectorXAnimatable.snapTo(center)
         selectorWidthAnimatable.snapTo(tabWidthPx)
-
-        startDwell(initialIndex)
     }
 
     suspend fun onDrag(dragAmountX: Float) {
@@ -114,37 +104,19 @@ internal class NavigationTabSelectorState(
         val baseIndex = fraction.toInt().coerceIn(0, items.size - 1)
         val t = (fraction - baseIndex).coerceIn(0f, 1f)
         val stretchFactor = 4f * t * (1f - t)
-        val targetWidth = tabWidthPx * (1f + 0.18f * stretchFactor)
+        val targetWidth = tabWidthPx * (1f + 0.28f * stretchFactor)
 
         selectorXAnimatable.snapTo(clampedX)
         selectorWidthAnimatable.snapTo(targetWidth)
 
         val newIndex = (clampedX / tabWidthPx).toInt().coerceIn(0, items.size - 1)
         if (newIndex != candidateIndex) {
-            dwellJob?.cancel()
             candidateIndex = newIndex
             hapticsProvider().click()
-            startDwell(newIndex)
-        }
-    }
-
-    private fun startDwell(index: Int) {
-        if (index !in items.indices) return
-        val candidate = items[index]
-        if (isSelectedProvider()(candidate) || hoveredSelectedTab == candidate) return
-
-        dwellJob?.cancel()
-        dwellJob = coroutineScope.launch {
-            delay(DWELL_DELAY_MS)
-            if (candidateIndex == index && !isSelectedProvider()(candidate) && hoveredSelectedTab != candidate) {
-                hoveredSelectedTab = candidate
-                onItemClickProvider()(candidate, false)
-            }
         }
     }
 
     fun onRelease() {
-        dwellJob?.cancel()
         val targetIndex = if (candidateIndex in items.indices) {
             candidateIndex
         } else {
@@ -153,8 +125,7 @@ internal class NavigationTabSelectorState(
 
         if (targetIndex in items.indices) {
             val candidate = items[targetIndex]
-            if (!isSelectedProvider()(candidate) && hoveredSelectedTab != candidate) {
-                hoveredSelectedTab = candidate
+            if (!isSelectedProvider()(candidate)) {
                 onItemClickProvider()(candidate, false)
             }
         }
@@ -186,9 +157,7 @@ internal class NavigationTabSelectorState(
     }
 
     fun onCancel() {
-        dwellJob?.cancel()
         candidateIndex = -1
-        hoveredSelectedTab = null
     }
 
     suspend fun animateCancel() = coroutineScope {
@@ -210,9 +179,5 @@ internal class NavigationTabSelectorState(
 
         animX.join()
         animWidth.join()
-    }
-
-    companion object {
-        const val DWELL_DELAY_MS = 250L
     }
 }
