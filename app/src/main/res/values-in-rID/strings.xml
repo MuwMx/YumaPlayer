@@ -786,7 +786,7 @@
     <string name="on_device">Di perangkat ini</string>
     <string name="recently_played">Baru saja Diputar</string>
     <string name="top_mixes">Mix Teratas untuk Anda</string>
-    <string name="library_top_mixes_loading">Menyiapkan mix AI anda…</string>
+    <string name="library_top_mixes_loading">Menyiapkan mix AI Anda…</string>
     <string name="library_top_mixes_refresh">Segarkan mix</string>
     <string name="library_top_mixes_configure_ai">Konfigurasikan AI</string>
     <string name="library_top_mixes_ai_not_configured_title">Konfigurasikan AI untuk membuat mix</string>
