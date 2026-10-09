@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -161,6 +163,8 @@ fun PlayerBackgroundLayers(
             }
         }
 
+        var isCanvasReady by remember(state.trackUrl) { mutableStateOf(false) }
+
         val isCanvasActive by remember {
             derivedStateOf {
                 canvasState.isCanvasEnabled &&
@@ -170,7 +174,7 @@ fun PlayerBackgroundLayers(
         }
 
         val painter = painters.currentClearPainter
-        if (painter != null && !isCanvasActive) {
+        if (painter != null) {
             Image(
                 painter = painter,
                 contentDescription = null,
@@ -191,6 +195,7 @@ fun PlayerBackgroundLayers(
                 immersiveTransitionAlpha = immersiveTransitionAlpha,
                 lyricsFractionProvider = lyricsFractionProvider,
                 queueFractionProvider = queueFractionProvider,
+                onReadyChange = { isCanvasReady = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.75f)

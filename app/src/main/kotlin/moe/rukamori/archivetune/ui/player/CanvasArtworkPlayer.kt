@@ -13,6 +13,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,7 +75,9 @@ internal fun CanvasArtworkPlayer(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT,
+    onReadyChange: (Boolean) -> Unit = {},
 ) {
+    val currentOnReadyChange by rememberUpdatedState(onReadyChange)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val canvasCache =
@@ -88,11 +91,27 @@ internal fun CanvasArtworkPlayer(
         }
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
     val fallback = fallbackUrl?.takeIf { it.isNotBlank() }
-    val initial = primary ?: fallback ?: return
+    val initial = primary ?: fallback
+    if (initial == null) {
+        SideEffect {
+            currentOnReadyChange(false)
+        }
+        return
+    }
     var currentUrl by remember(initial) { mutableStateOf(initial) }
     var isVideoReady by remember(initial) { mutableStateOf(false) }
     var hasPlaybackFailed by remember(initial) { mutableStateOf(false) }
     val shouldPlay by rememberUpdatedState(isPlaying)
+
+    LaunchedEffect(isVideoReady) {
+        currentOnReadyChange(isVideoReady)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            currentOnReadyChange(false)
+        }
+    }
 
     LaunchedEffect(primary, fallback) {
         val target = primary ?: fallback
@@ -100,6 +119,7 @@ internal fun CanvasArtworkPlayer(
             currentUrl = target
             isVideoReady = false
             hasPlaybackFailed = false
+            currentOnReadyChange(false)
         }
     }
 
@@ -236,6 +256,7 @@ internal fun CanvasArtworkPlayer(
                 currentUrl = fallback
                 isVideoReady = false
                 hasPlaybackFailed = false
+                currentOnReadyChange(false)
                 return@LaunchedEffect
             }
 
@@ -243,7 +264,7 @@ internal fun CanvasArtworkPlayer(
         }
     }
 
-    DisposableEffect(exoPlayer, lifecycleOwner, okHttpClient) {
+    DisposableEffect(exoPlayer, lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
                 when (event) {
@@ -260,7 +281,6 @@ internal fun CanvasArtworkPlayer(
                     }
                     Lifecycle.Event.ON_STOP -> {
                         exoPlayer.stop()
-                        okHttpClient.dispatcher.cancelAll()
                     }
                     else -> Unit
                 }
@@ -286,9 +306,12 @@ internal fun CanvasArtworkPlayer(
                         currentUrl = next
                         isVideoReady = false
                         hasPlaybackFailed = false
+                        currentOnReadyChange(false)
                     } else {
                         Timber.tag(CanvasPlaybackLogTag).e("All canvas URLs failed, stopping canvas player")
                         hasPlaybackFailed = true
+                        isVideoReady = false
+                        currentOnReadyChange(false)
                         exoPlayer.stop()
                     }
                 }
@@ -351,6 +374,7 @@ internal fun CanvasArtworkPlayer(
         hasPlaybackFailed = false
         val normalized = currentUrl.trim()
         isVideoReady = false
+        currentOnReadyChange(false)
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
         val mimeType =
             when {

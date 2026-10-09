@@ -12,6 +12,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
@@ -35,6 +36,9 @@ class PlayerCanvasState internal constructor(
         get() = artwork?.let { it.videoUrl.takeIf { url -> url != it.preferredAnimationUrl } }
 }
 
+internal fun hasCanvasMetadata(songTitle: String?, artistName: String?): Boolean =
+    !songTitle.isNullOrBlank() || !artistName.isNullOrBlank()
+
 @Composable
 fun rememberPlayerCanvasState(
     mediaId: String?,
@@ -46,15 +50,23 @@ fun rememberPlayerCanvasState(
         PlayerCanvasState(isCanvasEnabled, null)
     }
 
-    LaunchedEffect(isCanvasEnabled, mediaId, songTitle, artistName) {
-        canvasState.artwork = null
-        Timber.tag("PlayerCanvas").d("Lookup trigger: isCanvasEnabled=$isCanvasEnabled, mediaId=$mediaId, title=$songTitle, artist=$artistName")
+    val hasMetadata = hasCanvasMetadata(songTitle, artistName)
+    val currentTitle by rememberUpdatedState(songTitle)
+    val currentArtist by rememberUpdatedState(artistName)
+
+    LaunchedEffect(isCanvasEnabled, mediaId, hasMetadata) {
+        Timber.tag("PlayerCanvas").d("Lookup trigger: isCanvasEnabled=$isCanvasEnabled, mediaId=$mediaId, title=$currentTitle, artist=$currentArtist")
         if (!isCanvasEnabled) {
+            canvasState.artwork = null
             Timber.tag("PlayerCanvas").d("Canvas is disabled in settings (archiveTuneCanvas = false)")
             return@LaunchedEffect
         }
         if (mediaId.isNullOrBlank()) {
+            canvasState.artwork = null
             Timber.tag("PlayerCanvas").d("mediaId is null or blank, skipping lookup")
+            return@LaunchedEffect
+        }
+        if (canvasState.artwork != null) {
             return@LaunchedEffect
         }
 
@@ -64,21 +76,25 @@ fun rememberPlayerCanvasState(
             return@LaunchedEffect
         }
 
-        val requestedMediaId = mediaId
-        Timber.tag("PlayerCanvas").d("Cache miss, resolving from network for '$songTitle' by '$artistName' (mediaId=$mediaId)...")
+        if (!hasMetadata) {
+            canvasState.artwork = null
+            Timber.tag("PlayerCanvas").d("Metadata missing for $mediaId, waiting for metadata...")
+            return@LaunchedEffect
+        }
+
+        canvasState.artwork = null
+        Timber.tag("PlayerCanvas").d("Cache miss, resolving from network for '$currentTitle' by '$currentArtist' (mediaId=$mediaId)...")
         val resolved =
             resolveCanvasArtworkForPlayback(
                 mediaId = mediaId,
-                songTitleRaw = songTitle ?: "",
-                artistNameRaw = artistName ?: "",
+                songTitleRaw = currentTitle ?: "",
+                artistNameRaw = currentArtist ?: "",
                 storefront = "us",
                 requireVertical = false,
                 allowNetwork = true,
             )
         Timber.tag("PlayerCanvas").i("Resolved result for $mediaId: ${if (resolved != null) "primaryUrl=${resolved.preferredAnimationUrl}, videoUrl=${resolved.videoUrl}" else "null"}")
-        if (mediaId == requestedMediaId) {
-            canvasState.artwork = resolved
-        }
+        canvasState.artwork = resolved
     }
 
     return canvasState
