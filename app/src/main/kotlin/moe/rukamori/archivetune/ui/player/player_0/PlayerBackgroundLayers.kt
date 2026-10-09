@@ -174,7 +174,7 @@ fun PlayerBackgroundLayers(
         }
 
         val painter = painters.currentClearPainter
-        if (painter != null) {
+        if (painter != null && !(isCanvasActive && isCanvasReady)) {
             Image(
                 painter = painter,
                 contentDescription = null,

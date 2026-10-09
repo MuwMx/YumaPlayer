@@ -51,7 +51,6 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.Credentials
-import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.TimeUnit
