@@ -57,8 +57,8 @@ fun FullPlayer(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val overlayFraction = maxOf(lyricsFractionProvider(), queueFractionProvider())
-                    alpha = (1f - overlayFraction).coerceIn(0f, 1f)
+                    val lyricsFraction = lyricsFractionProvider()
+                    alpha = (1f - lyricsFraction).coerceIn(0f, 1f)
                 },
             toolbar = {
                 PlayerToolbar(
@@ -105,6 +105,7 @@ fun FullPlayer(
                     playbackProgress = playbackProgress,
                     slideOffset = slideOffset,
                     controlsOffsetY = { motionState.controlsOffsetY },
+                    queueFractionProvider = queueFractionProvider,
                     onAction = onAction,
                     onSeek = onSeek,
                     onSeekStarted = onSeekStarted,

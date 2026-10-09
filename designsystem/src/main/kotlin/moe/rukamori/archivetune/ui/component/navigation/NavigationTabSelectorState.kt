@@ -77,7 +77,7 @@ internal class NavigationTabSelectorState(
             coroutineScope.launch {
                 if (distance > 10f) {
                     launch {
-                        val stretchWidth = tabWidthPx * 1.25f // слегка растягивается в рывке
+                        val stretchWidth = tabWidthPx * 1.25f
                         selectorWidthAnimatable.animateTo(stretchWidth, spring(dampingRatio = 0.6f, stiffness = 600f))
                         selectorWidthAnimatable.animateTo(tabWidthPx, settleSpring())
                     }

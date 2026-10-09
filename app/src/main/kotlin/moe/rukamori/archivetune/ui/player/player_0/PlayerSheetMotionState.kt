@@ -67,6 +67,8 @@ internal class PlayerSheetMotionScope(
     private val isSheetSettlingState: MutableState<Boolean>,
     val handleOpenQueue: () -> Unit,
     val handleCloseQueue: () -> Unit,
+    val onOpenQueue: () -> Unit,
+    val onCloseQueueClick: () -> Unit,
 ) {
     var currentSheetState: PlayerSheetState
         get() = currentSheetStateState.value
@@ -189,12 +191,20 @@ internal fun rememberPlayerSheetMotionScope(
     }
 
     LaunchedEffect(state.isQueueVisible) {
-        val target = if (state.isQueueVisible) 1f else 0f
-        if (queueFraction.targetValue != target) {
-            queueFraction.animateTo(
-                targetValue = target,
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
-            )
+        if (!state.isQueueVisible) {
+            if (queueFraction.targetValue != 0f) {
+                queueFraction.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
+        } else {
+            if (queueFraction.value < 0.05f && queueFraction.targetValue < 0.05f) {
+                queueFraction.animateTo(
+                    targetValue = 0.45f,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                )
+            }
         }
     }
 
@@ -203,16 +213,27 @@ internal fun rememberPlayerSheetMotionScope(
 
     val handleOpenQueue: () -> Unit = {
         scope.launch {
-            queueFraction.animateTo(1f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+            val target = if (queueFraction.value < 0.40f) 0.45f else 1f
+            queueFraction.animateTo(
+                targetValue = target,
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+            )
         }
-        onOpenQueue()
+        if (!state.isQueueVisible) {
+            onOpenQueue()
+        }
     }
 
     val handleCloseQueue: () -> Unit = {
         scope.launch {
-            queueFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
+            queueFraction.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+            )
         }
-        onCloseQueueClick()
+        if (state.isQueueVisible) {
+            onCloseQueueClick()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -335,6 +356,8 @@ internal fun rememberPlayerSheetMotionScope(
             isSheetSettlingState = isSheetSettlingState,
             handleOpenQueue = handleOpenQueue,
             handleCloseQueue = handleCloseQueue,
+            onOpenQueue = onOpenQueue,
+            onCloseQueueClick = onCloseQueueClick,
         )
     }
 }

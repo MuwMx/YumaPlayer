@@ -52,7 +52,7 @@ internal fun rememberFullPlayerMotionState(
 
     val isOverlayVisibleState = remember(state.isLyricsVisible) {
         derivedStateOf {
-            state.isLyricsVisible || lyricsFractionProvider() > 0.5f || queueFractionProvider() > 0.5f
+            state.isLyricsVisible || lyricsFractionProvider() > 0.5f
         }
     }
 

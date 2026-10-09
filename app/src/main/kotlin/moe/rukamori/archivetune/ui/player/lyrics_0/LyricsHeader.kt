@@ -77,12 +77,6 @@ fun LyricsHeader(
             .fillMaxWidth()
             .height(64.dp)
             .shadow(elevation = 12.dp, shape = capsuleShape, clip = false)
-            .graphicsLayer {
-                val progress = animateProgressProvider()
-                alpha = progress
-                scaleX = 0.8f + (0.2f * progress)
-                scaleY = 0.8f + (0.2f * progress)
-            }
             .background(capsuleColor, capsuleShape)
     ) {
         Row(
@@ -92,7 +86,6 @@ fun LyricsHeader(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Кнопка сворачивания
             Box(
                 modifier = Modifier
                     .graphicsLayer { scaleX = closeScale; scaleY = closeScale }
@@ -104,7 +97,6 @@ fun LyricsHeader(
                 Image(painter = painterResource(id = R.drawable.ic_collapse), contentDescription = stringResource(R.string.collapse), modifier = Modifier.size(20.dp))
             }
 
-            // Центральная часть: Пластинка + Бегущий текст
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -132,14 +124,12 @@ fun LyricsHeader(
                     )
                 }
 
-                // ВНЕДРЕНИЕ ИМБЫ: Текст теперь полностью адаптивный
                 Column(
                     modifier = Modifier
                         .padding(start = 12.dp)
                         .weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Название трека
                     MarqueeText(
                         text = state.title,
                         style = TextStyle(
@@ -168,7 +158,6 @@ fun LyricsHeader(
                 }
             }
 
-            // Кнопка меню
             Box(
                 modifier = Modifier
                     .graphicsLayer { scaleX = moreScale; scaleY = moreScale }

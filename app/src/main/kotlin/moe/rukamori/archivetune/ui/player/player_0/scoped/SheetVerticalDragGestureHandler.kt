@@ -93,7 +93,11 @@ internal class SheetVerticalDragGestureHandler(
         val expandedY = expandedYProvider()
         val collapsedY = collapsedYProvider()
         val miniHeightPx = miniHeightPxProvider()
-        val layerTwoDistance = (screenHeightPxProvider() * 0.4f).coerceAtLeast(300f)
+        val layerTwoDistance = if (activeDragSheet == ActiveDragSheet.QUEUE) {
+            screenHeightPxProvider().coerceAtLeast(1f)
+        } else {
+            (screenHeightPxProvider() * 0.4f).coerceAtLeast(300f)
+        }
 
         val currentY = currentSheetTranslationY.value
         val targetFractionAnimatable = if (activeDragSheet == ActiveDragSheet.LYRICS) lyricsFraction else queueFraction
@@ -190,14 +194,19 @@ internal class SheetVerticalDragGestureHandler(
         val currentFraction = playerContentExpansionFraction.value
         val minDragThresholdPx = with(densityProvider()) { 5.dp.toPx() }
         val velocityThreshold = 500f
-        val layerTwoDistance = (screenHeightPxProvider() * 0.4f).coerceAtLeast(300f)
-        val l2Velocity = (-verticalVelocity / layerTwoDistance).coerceIn(-20f, 20f)
 
         val activeSheet = when {
             lyricsFraction.value > 0f && queueFraction.value == 0f -> ActiveDragSheet.LYRICS
             queueFraction.value > 0f && lyricsFraction.value == 0f -> ActiveDragSheet.QUEUE
             else -> activeDragSheet
         }
+
+        val layerTwoDistance = if (activeSheet == ActiveDragSheet.QUEUE) {
+            screenHeightPxProvider().coerceAtLeast(1f)
+        } else {
+            (screenHeightPxProvider() * 0.4f).coerceAtLeast(300f)
+        }
+        val l2Velocity = (-verticalVelocity / layerTwoDistance).coerceIn(-20f, 20f)
 
         val targetFractionAnimatable = if (activeSheet == ActiveDragSheet.LYRICS) lyricsFraction else queueFraction
         val currentTargetFraction = targetFractionAnimatable.value
@@ -206,11 +215,36 @@ internal class SheetVerticalDragGestureHandler(
         val onCollapseTarget = if (activeSheet == ActiveDragSheet.LYRICS) onCollapseLyrics else onCollapseQueue
 
         if (currentTargetFraction > 0f) {
-            val targetExpanded = when {
-                verticalVelocity < -velocityThreshold -> true
-                verticalVelocity > velocityThreshold -> false
-                initialFraction > 0.5f -> currentTargetFraction > 0.5f
-                else -> currentTargetFraction > 0.3f
+            val targetFraction = if (activeSheet == ActiveDragSheet.QUEUE) {
+                when {
+                    verticalVelocity < -velocityThreshold -> {
+                        when {
+                            initialFraction <= 0.05f -> if (currentTargetFraction >= 0.45f) 1f else 0.45f
+                            else -> 1f
+                        }
+                    }
+                    verticalVelocity > velocityThreshold -> {
+                        when {
+                            initialFraction >= 0.90f -> if (currentTargetFraction > 0.45f) 0.45f else 0f
+                            else -> 0f
+                        }
+                    }
+                    else -> {
+                        when {
+                            currentTargetFraction < 0.225f -> 0f
+                            currentTargetFraction < 0.725f -> 0.45f
+                            else -> 1f
+                        }
+                    }
+                }
+            } else {
+                val targetExpanded = when {
+                    verticalVelocity < -velocityThreshold -> true
+                    verticalVelocity > velocityThreshold -> false
+                    initialFraction > 0.5f -> currentTargetFraction > 0.5f
+                    else -> currentTargetFraction > 0.3f
+                }
+                if (targetExpanded) 1f else 0f
             }
 
             scope.launch {
@@ -224,10 +258,10 @@ internal class SheetVerticalDragGestureHandler(
                     )
                 }
 
-                if (targetExpanded) {
+                if (targetFraction > 0f) {
                     launch {
                         targetFractionAnimatable.animateTo(
-                            targetValue = 1f,
+                            targetValue = targetFraction,
                             animationSpec = spring(
                                 dampingRatio = 0.78f,
                                 stiffness = Spring.StiffnessMediumLow

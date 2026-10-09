@@ -78,8 +78,16 @@ internal fun rememberPlayerSheetGestures(
             onCollapseLyrics = {
                 onCloseLyricsClick()
             },
-            onExpandQueue = motionScope.handleOpenQueue,
-            onCollapseQueue = motionScope.handleCloseQueue
+            onExpandQueue = {
+                if (!state.isQueueVisible) {
+                    motionScope.onOpenQueue()
+                }
+            },
+            onCollapseQueue = {
+                if (state.isQueueVisible) {
+                    motionScope.onCloseQueueClick()
+                }
+            }
         )
     }
 

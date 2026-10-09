@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -27,6 +29,7 @@ internal fun FullPlayerControlsGroup(
     playbackProgress: StateFlow<Long>,
     slideOffset: () -> Float,
     controlsOffsetY: () -> Dp,
+    queueFractionProvider: () -> Float,
     onAction: (PlayerAction) -> Unit,
     onSeek: (Float) -> Unit,
     onSeekStarted: () -> Unit,
@@ -43,51 +46,85 @@ internal fun FullPlayerControlsGroup(
             .widthIn(max = 420.dp)
             .offset { IntOffset(x = 0, y = controlsOffsetY().roundToPx()) }
     ) {
-        PlayerMetadata(
-            title = state.title,
-            artist = state.artist,
-            state = state,
-            onAction = onAction,
-            onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
-            isVisible = isVisible
-        )
-
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .queueFade(queueFractionProvider, 0.45f, 0.75f)
+        ) {
+            PlayerMetadata(
+                title = state.title,
+                artist = state.artist,
+                state = state,
+                onAction = onAction,
+                onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
+                isVisible = isVisible
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
-        PlayerSeekBar(
-            state = state,
-            playbackProgress = playbackProgress,
-            durationMs = state.durationMs,
-            vibrantColor = Color(state.vibrantColor),
-            slideOffset = slideOffset,
-            showCodecInfo = state.showCodecInfo,
-            codecInfo = state.codecInfo,
-            sleepTimerRemainingSeconds = state.sleepTimerRemainingSeconds,
-            onOpenSleepTimer = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
-            onSeek = onSeek,
-            onSeekStarted = onSeekStarted,
-            isVisible = isVisible
-        )
-
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .queueFade(queueFractionProvider, 0.22f, 0.45f)
+        ) {
+            PlayerSeekBar(
+                state = state,
+                playbackProgress = playbackProgress,
+                durationMs = state.durationMs,
+                vibrantColor = Color(state.vibrantColor),
+                slideOffset = slideOffset,
+                showCodecInfo = state.showCodecInfo,
+                codecInfo = state.codecInfo,
+                sleepTimerRemainingSeconds = state.sleepTimerRemainingSeconds,
+                onOpenSleepTimer = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
+                onSeek = onSeek,
+                onSeekStarted = onSeekStarted,
+                isVisible = isVisible
+            )
+        }
         Spacer(modifier = Modifier.height(14.dp))
 
-        PlayerTransportControls(
-            isPlaying = state.isPlaying,
-            vibrantColor = Color(state.vibrantColor),
-            slideOffset = slideOffset,
-            onAction = onAction,
-            isLarge = true,
-            state = state,
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .queueFade(queueFractionProvider, 0.12f, 0.32f)
+        ) {
+            PlayerTransportControls(
+                isPlaying = state.isPlaying,
+                vibrantColor = Color(state.vibrantColor),
+                slideOffset = slideOffset,
+                onAction = onAction,
+                isLarge = true,
+                state = state,
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .queueFade(queueFractionProvider, 0.05f, 0.20f)
+        ) {
         PlayerBottomBar(
             state = state,
             onAction = onAction,
             onOpenQueue = onOpenQueue
         )
+            }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+private fun Modifier.queueFade(
+    fractionProvider: () -> Float,
+    start: Float,
+    end: Float,
+): Modifier = graphicsLayer {
+    val fraction = fractionProvider().coerceIn(0f, 1f)
+
+    alpha = (1f - (fraction - start) / (end - start))
+        .coerceIn(0f, 1f)
+}
+
