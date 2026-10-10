@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +39,22 @@ internal fun PlayerQueueLayer(
     dragHandler: SheetVerticalDragGestureHandler? = null,
 ) {
     var isQueueReordering by remember { mutableStateOf(false) }
-    val queueListState = rememberLazyListState()
+    val initialTrackIndex = remember {
+        queueState.currentWindowIndex.takeIf { it in queueState.queueWindows.indices } ?: 0
+    }
+    val queueListState = rememberLazyListState(initialFirstVisibleItemIndex = initialTrackIndex)
+
+    val isQueueVisible by remember {
+        derivedStateOf { queueFractionProvider() > 0.05f }
+    }
+
+    LaunchedEffect(isQueueVisible, queueState.currentWindowIndex) {
+        if (isQueueVisible && queueState.currentWindowIndex in queueState.queueWindows.indices) {
+            val targetIndex = (queueState.currentWindowIndex - 1).coerceAtLeast(0)
+            queueListState.scrollToItem(targetIndex)
+        }
+    }
+
     val canDragQueue by remember(queueListState, isQueueReordering) {
         derivedStateOf {
             queueFractionProvider() > 0.05f &&
@@ -52,12 +69,6 @@ internal fun PlayerQueueLayer(
             targetSheet = ActiveDragSheet.QUEUE
         )
     }
-
-    val isQueueVisible by remember {
-        derivedStateOf { queueFractionProvider() > 0.05f }
-    }
-
-
 
     PlayerOverlaySheet(
         fractionProvider = queueFractionProvider,
@@ -85,7 +96,7 @@ internal fun PlayerQueueLayer(
             }
         },
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -96,6 +107,16 @@ internal fun PlayerQueueLayer(
                     }
                 )
         ) {
+            val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+            val dynamicBottomPadding = remember(maxHeight, navBottomPadding) {
+                derivedStateOf {
+                    val q = queueFractionProvider().coerceIn(0f, 1f)
+                    val hiddenPortion = maxHeight * (1f - q)
+                    navBottomPadding + 24.dp + hiddenPortion
+                }
+            }
+
             QueueScreen(
                 state = queueState,
                 onAction = onAction,
@@ -105,7 +126,7 @@ internal fun PlayerQueueLayer(
                 lazyListState = queueListState,
                 contentPadding = PaddingValues(
                     top = 28.dp,
-                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
+                    bottom = dynamicBottomPadding.value
                 ),
                 onReorderStateChange = { isQueueReordering = it },
                 modifier = Modifier.fillMaxSize(),
