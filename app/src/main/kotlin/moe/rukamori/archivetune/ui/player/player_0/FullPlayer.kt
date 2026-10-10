@@ -213,20 +213,26 @@ fun FullPlayer(
                                     }
                                 }
                         ) {
-                            PlayerCoverCard(
-                                coverUrl = state.coverUrl,
-                                placeholderResId = state.placeholderResId,
-                                isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
-                                vibrantColor = Color(state.vibrantColor),
-                                gestureEnabled = motionState.coverGestureEnabled,
-                                mediaId = state.trackUrl,
-                                songTitle = state.title,
-                                artistName = state.artist,
-                                isPlaying = motionState.canPlayCanvas,
-                                canvasState = canvasState,
-                                onNext = { onAction(PlayerAction.Next) },
-                                onPrevious = { onAction(PlayerAction.Previous) }
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .playerArtworkFade(queueFractionProvider)
+                            ) {
+                                PlayerCoverCard(
+                                    coverUrl = state.coverUrl,
+                                    placeholderResId = state.placeholderResId,
+                                    isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
+                                    vibrantColor = Color(state.vibrantColor),
+                                    gestureEnabled = motionState.coverGestureEnabled,
+                                    mediaId = state.trackUrl,
+                                    songTitle = state.title,
+                                    artistName = state.artist,
+                                    isPlaying = motionState.canPlayCanvas,
+                                    canvasState = canvasState,
+                                    onNext = { onAction(PlayerAction.Next) },
+                                    onPrevious = { onAction(PlayerAction.Previous) }
+                                )
+                            }
                         }
                     }
                 },
