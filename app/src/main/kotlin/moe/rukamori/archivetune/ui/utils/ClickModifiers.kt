@@ -23,8 +23,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 fun Modifier.bounceClick(
     pressedScale: Float = 0.94f,
     onLongClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     onClick: () -> Unit,
-): Modifier = composed {
+): Modifier = if (enabled) composed {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -48,4 +49,4 @@ fun Modifier.bounceClick(
             onClick = onClick,
             onLongClick = onLongClick
         )
-}
+} else this

@@ -44,6 +44,7 @@ fun PlayerToolbar(
     state: PlayerUiState,
     onBackgroundStyleChanged: (Boolean) -> Unit,
     hasUpdate: Boolean = false,
+    enabled: Boolean = true,
     colorScheme: ColorScheme = MaterialTheme.colorScheme
 ) {
     val haptics = rememberYumaHaptics()
@@ -119,6 +120,7 @@ fun PlayerToolbar(
                 SleepTimerTopBadge(
                     state = state,
                     onClick = onTimerBadgeClick,
+                    enabled = enabled,
                     colorScheme = colorScheme
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -126,20 +128,24 @@ fun PlayerToolbar(
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
-                            scaleX = moreScale
-                            scaleY = moreScale
+                            scaleX = if (enabled) moreScale else 1f
+                            scaleY = if (enabled) moreScale else 1f
                         }
                         .size(40.dp)
                         .clip(RoundedCornerShape(50))
                         .background(buttonBackground)
                         .border(1.dp, buttonBorderColor, RoundedCornerShape(50))
-                        .clickable(
-                            interactionSource = moreInteractionSource,
-                            indication = null
-                        ) {
-                            haptics.click()
-                            onMoreClick()
-                        },
+                        .then(
+                            if (enabled) {
+                                Modifier.clickable(
+                                    interactionSource = moreInteractionSource,
+                                    indication = null
+                                ) {
+                                    haptics.click()
+                                    onMoreClick()
+                                }
+                            } else Modifier
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(modifier = Modifier.size(24.dp)) {
@@ -166,20 +172,24 @@ fun PlayerToolbar(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 0.dp, top = 0.dp)
-                .graphicsLayer {
-                    scaleX = collapseScale
-                    scaleY = collapseScale
-                }
+                    .graphicsLayer {
+                        scaleX = if (enabled) collapseScale else 1f
+                        scaleY = if (enabled) collapseScale else 1f
+                    }
                     .size(40.dp)
                     .clip(RoundedCornerShape(50))
                     .background(buttonBackground)
                     .border(1.dp, buttonBorderColor, RoundedCornerShape(50))
-                    .clickable(
-                        interactionSource = collapseInteractionSource,
-                        indication = null
-                    ) {
-                        onCollapseClick()
-                    },
+                    .then(
+                        if (enabled) {
+                            Modifier.clickable(
+                                interactionSource = collapseInteractionSource,
+                                indication = null
+                            ) {
+                                onCollapseClick()
+                            }
+                        } else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -197,6 +207,7 @@ fun SleepTimerTopBadge(
     state: PlayerUiState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     colorScheme: ColorScheme = MaterialTheme.colorScheme
 ) {
     val totalSecs = state.sleepTimerRemainingSeconds
@@ -211,7 +222,7 @@ fun SleepTimerTopBadge(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed && enabled) 0.90f else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
         label = "BadgeBounce"
     )
@@ -221,10 +232,14 @@ fun SleepTimerTopBadge(
     Box(
         modifier = modifier
             .minimumInteractiveComponentSize()
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
+            .then(
+                if (enabled) {
+                    Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onClick
+                    )
+                } else Modifier
             ),
         contentAlignment = Alignment.Center
     ) {

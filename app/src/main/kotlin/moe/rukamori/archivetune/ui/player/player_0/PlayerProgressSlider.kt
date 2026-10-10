@@ -37,6 +37,7 @@ internal fun PlayerProgressSlider(
     durationMs: Long,
     maxRange: Float,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var isDragged by remember { mutableStateOf(false) }
@@ -67,57 +68,62 @@ internal fun PlayerProgressSlider(
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(currentFraction, 0f..1f)
             }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        val released = tryAwaitRelease()
-                        isPressed = false
-                        if (released) {
-                            currentOnValueChangeFinished()
+            .then(
+                if (enabled) {
+                    Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isPressed = true
+                                    val released = tryAwaitRelease()
+                                    isPressed = false
+                                    if (released) {
+                                        currentOnValueChangeFinished()
+                                    }
+                                },
+                                onTap = { offset ->
+                                    currentOnValueChangeStarted()
+                                    val range = currentValueRange
+                                    val span = range.endInclusive - range.start
+                                    val fraction = if (size.width > 0) (offset.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
+                                    val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
+                                    currentOnValueChange(newValue)
+                                    currentOnValueChangeFinished()
+                                },
+                            )
                         }
-                    },
-                    onTap = { offset ->
-                        currentOnValueChangeStarted()
-                        val range = currentValueRange
-                        val span = range.endInclusive - range.start
-                        val fraction = if (size.width > 0) (offset.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
-                        val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
-                        currentOnValueChange(newValue)
-                        currentOnValueChangeFinished()
-                    },
-                )
-            }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        isPressed = false
-                        isDragged = true
-                        currentOnValueChangeStarted()
-                        val range = currentValueRange
-                        val span = range.endInclusive - range.start
-                        val fraction = if (size.width > 0) (offset.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
-                        val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
-                        currentOnValueChange(newValue)
-                    },
-                    onHorizontalDrag = { change, _ ->
-                        change.consume()
-                        val range = currentValueRange
-                        val span = range.endInclusive - range.start
-                        val fraction = if (size.width > 0) (change.position.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
-                        val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
-                        currentOnValueChange(newValue)
-                    },
-                    onDragEnd = {
-                        isDragged = false
-                        currentOnValueChangeFinished()
-                    },
-                    onDragCancel = {
-                        isDragged = false
-                        currentOnValueChangeFinished()
-                    },
-                )
-            },
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { offset ->
+                                    isPressed = false
+                                    isDragged = true
+                                    currentOnValueChangeStarted()
+                                    val range = currentValueRange
+                                    val span = range.endInclusive - range.start
+                                    val fraction = if (size.width > 0) (offset.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
+                                    val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
+                                    currentOnValueChange(newValue)
+                                },
+                                onHorizontalDrag = { change, _ ->
+                                    change.consume()
+                                    val range = currentValueRange
+                                    val span = range.endInclusive - range.start
+                                    val fraction = if (size.width > 0) (change.position.x / size.width.toFloat()).coerceIn(0f, 1f) else 0f
+                                    val newValue = if (span > 0f) (range.start + fraction * span).coerceIn(range) else range.start
+                                    currentOnValueChange(newValue)
+                                },
+                                onDragEnd = {
+                                    isDragged = false
+                                    currentOnValueChangeFinished()
+                                },
+                                onDragCancel = {
+                                    isDragged = false
+                                    currentOnValueChangeFinished()
+                                },
+                            )
+                        }
+                } else Modifier
+            ),
     ) {
         val trackHeightPx = trackHeight.toPx()
         val top = (size.height - trackHeightPx) / 2f

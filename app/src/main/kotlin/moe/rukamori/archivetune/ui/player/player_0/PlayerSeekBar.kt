@@ -59,6 +59,7 @@ fun PlayerSeekBar(
     onSeek: (Float) -> Unit,
     onSeekStarted: () -> Unit,
     isVisible: Boolean = true,
+    enabled: Boolean = true,
     trackAnalysis: TrackAnalysisResult? = state.trackAnalysis,
 ) {
     var progressMs by remember { mutableLongStateOf(playbackProgress.value) }
@@ -170,6 +171,7 @@ fun PlayerSeekBar(
             markerMs = markerMs,
             durationMs = durationMs,
             maxRange = maxRange,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
@@ -238,7 +240,8 @@ fun PlayerSeekBar(
                 ) {
                     SleepTimerTopBadge(
                         state = state,
-                        onClick = onOpenSleepTimer
+                        onClick = onOpenSleepTimer,
+                        enabled = enabled
                     )
                 }
             }

@@ -35,6 +35,7 @@ fun PlayerBottomBar(
     onAction: (PlayerAction) -> Unit,
     onOpenQueue: () -> Unit = {},
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     colorScheme: ColorScheme = MaterialTheme.colorScheme
 ) {
     val inactiveButtonColor = Color.White.copy(alpha = 0.75f)
@@ -51,10 +52,20 @@ fun PlayerBottomBar(
         horizontalArrangement = Arrangement.spacedBy(ButtonSpacing, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AiryIconButton(iconRes = R.drawable.lyrics, tint = lyricsColor, size = BottomBarIconSize) {
+        AiryIconButton(
+            iconRes = R.drawable.lyrics,
+            tint = lyricsColor,
+            size = BottomBarIconSize,
+            enabled = enabled
+        ) {
             onAction(PlayerAction.Lyrics)
         }
-        AiryIconButton(iconRes = R.drawable.queue_music, tint = queueColor, size = BottomBarIconSize) {
+        AiryIconButton(
+            iconRes = R.drawable.queue_music,
+            tint = queueColor,
+            size = BottomBarIconSize,
+            enabled = enabled
+        ) {
             onOpenQueue()
         }
     }
@@ -66,12 +77,13 @@ private fun AiryIconButton(
     tint: Color,
     size: androidx.compose.ui.unit.Dp,
     isActive: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
+        targetValue = if (isPressed && enabled) 0.85f else 1f,
         animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
         label = "AiryButtonBounce"
     )
@@ -81,7 +93,13 @@ private fun AiryIconButton(
             .size(ButtonClickAreaSize)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+            .then(
+                if (enabled) {
+                    Modifier.clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                } else {
+                    Modifier
+                }
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

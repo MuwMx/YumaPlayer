@@ -2,15 +2,28 @@ package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -48,78 +61,166 @@ fun FullPlayer(
         queueFractionProvider = queueFractionProvider,
     )
 
+    val localDensity = LocalDensity.current
+    val capsuleHeaderHeightPx = with(localDensity) { CapsuleDefaults.totalHeaderHeight().roundToPx().toFloat() }
+
+    var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var rootHeightPx by remember { mutableFloatStateOf(0f) }
+    var safeWidthPx by remember { mutableFloatStateOf(0f) }
+    var toolbarTopInRoot by remember { mutableFloatStateOf(0f) }
+    var toolbarBottomInRoot by remember { mutableFloatStateOf(0f) }
+    var cardWidthPx by remember { mutableFloatStateOf(0f) }
+    var cardTopInRoot by remember { mutableFloatStateOf(0f) }
+
+    val isToolbarInteractive by remember {
+        derivedStateOf { queueFractionProvider() < 0.94f }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .onSizeChanged { rootHeightPx = it.height.toFloat() }
+            .onGloballyPositioned { rootCoordinates = it }
     ) {
-        PlayerLayout(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    val lyricsFraction = lyricsFractionProvider()
-                    alpha = (1f - lyricsFraction).coerceIn(0f, 1f)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
+            PlayerLayout(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { safeWidthPx = it.width.toFloat() }
+                    .graphicsLayer {
+                        val lyricsFraction = lyricsFractionProvider()
+                        alpha = (1f - lyricsFraction).coerceIn(0f, 1f)
+                    },
+                toolbar = {
+                    PlayerToolbar(
+                        state = state,
+                        onCollapseClick = onCollapseClick,
+                        onBackgroundStyleChanged = onBackgroundStyleChanged,
+                        onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
+                        onTimerBadgeClick = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
+                        hasUpdate = updateState is UpdateState.SoftUpdate,
+                        enabled = isToolbarInteractive,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
+                            .onGloballyPositioned { coords ->
+                                val root = rootCoordinates
+                                if (root != null && root.isAttached && coords.isAttached) {
+                                    toolbarTopInRoot = root.localPositionOf(coords, Offset.Zero).y
+                                    toolbarBottomInRoot = root.localPositionOf(coords, Offset(0f, coords.size.height.toFloat())).y
+                                }
+                            }
+                            .graphicsLayer {
+                                val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
+                                alpha = (1f - (queueFraction - 0.75f) / (0.95f - 0.75f)).coerceIn(0f, 1f)
+                            }
+                    )
                 },
-            toolbar = {
-                PlayerToolbar(
-                    state = state,
-                    onCollapseClick = onCollapseClick,
-                    onBackgroundStyleChanged = onBackgroundStyleChanged,
-                    onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
-                    onTimerBadgeClick = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
-                    hasUpdate = updateState is UpdateState.SoftUpdate,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
-                        .graphicsLayer {
-                            val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
-                            alpha = (1f - (queueFraction - 0.75f) / (0.95f - 0.75f)).coerceIn(0f, 1f)
+                cover = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 22.dp)
+                            .onGloballyPositioned { slotCoords ->
+                                val root = rootCoordinates
+                                if (root != null && root.isAttached && slotCoords.isAttached) {
+                                    cardTopInRoot = root.localPositionOf(slotCoords, Offset.Zero).y
+                                }
+                            }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .onSizeChanged { size ->
+                                    cardWidthPx = if (size.width > 0) size.width.toFloat() else 0f
+                                }
+                                .graphicsLayer {
+                                    val q = queueFractionProvider().coerceIn(0f, 1f)
+                                    val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
+                                    val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
+                                    if (!isCoverVisible) {
+                                        alpha = 0f
+                                        scaleX = 1f
+                                        scaleY = 1f
+                                        translationY = 0f
+                                    } else if (isCanvasActive || state.isImmersiveEnabled) {
+                                        val queueCoverFade = (1f - (q - 0.45f) / (0.80f - 0.45f)).coerceIn(0f, 1f)
+                                        alpha = queueCoverFade
+                                        scaleX = 1f
+                                        scaleY = 1f
+                                        translationY = 0f
+                                    } else {
+                                        val w = safeWidthPx
+                                        val a = cardWidthPx
+                                        val targetScale = if (a > 0f && w > 0f) w / a else 1f
+
+                                        if (q <= 0.45f) {
+                                            val p = (q / 0.45f).coerceIn(0f, 1f)
+                                            val curScale = 1f + p * (targetScale - 1f)
+                                            scaleX = curScale
+                                            scaleY = curScale
+                                            transformOrigin = TransformOrigin(0.5f, 0f)
+
+                                            val desiredTop = cardTopInRoot + p * (toolbarTopInRoot - cardTopInRoot)
+                                            translationY = desiredTop - cardTopInRoot
+                                            alpha = 1f
+                                        } else {
+                                            val p2 = ((q - 0.45f) / 0.55f).coerceIn(0f, 1f)
+                                            scaleX = targetScale
+                                            scaleY = targetScale
+                                            transformOrigin = TransformOrigin(0.5f, 0f)
+
+                                            val scaledHeight = a * targetScale
+                                            val finalTop = -scaledHeight
+                                            val desiredTop = toolbarTopInRoot + p2 * (finalTop - toolbarTopInRoot)
+                                            translationY = desiredTop - cardTopInRoot
+                                            alpha = (1f - (q - 0.45f) / (0.85f - 0.45f)).coerceIn(0f, 1f)
+                                        }
+                                    }
+                                }
+                        ) {
+                            PlayerCoverCard(
+                                coverUrl = state.coverUrl,
+                                placeholderResId = state.placeholderResId,
+                                isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
+                                vibrantColor = Color(state.vibrantColor),
+                                gestureEnabled = motionState.coverGestureEnabled,
+                                mediaId = state.trackUrl,
+                                songTitle = state.title,
+                                artistName = state.artist,
+                                isPlaying = motionState.canPlayCanvas,
+                                canvasState = canvasState,
+                                onNext = { onAction(PlayerAction.Next) },
+                                onPrevious = { onAction(PlayerAction.Previous) }
+                            )
                         }
-                )
-            },
-            cover = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 22.dp)
-                        .graphicsLayer {
-                            val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
-                            val queueCoverFade = (1f - (queueFraction - 0.45f) / (0.80f - 0.45f)).coerceIn(0f, 1f)
-                            val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
-                            alpha = if (isCoverVisible) queueCoverFade else 0f
-                        }
-                ) {
-                    PlayerCoverCard(
-                        coverUrl = state.coverUrl,
-                        placeholderResId = state.placeholderResId,
-                        isAlbumCoverGlowEnabled = state.isAlbumCoverGlowEnabled,
-                        vibrantColor = Color(state.vibrantColor),
-                        gestureEnabled = motionState.coverGestureEnabled,
-                        mediaId = state.trackUrl,
-                        songTitle = state.title,
-                        artistName = state.artist,
-                        isPlaying = motionState.canPlayCanvas,
-                        canvasState = canvasState,
-                        onNext = { onAction(PlayerAction.Next) },
-                        onPrevious = { onAction(PlayerAction.Previous) }
+                    }
+                },
+                controls = {
+                    FullPlayerControlsGroup(
+                        state = state,
+                        playbackProgress = playbackProgress,
+                        slideOffset = slideOffset,
+                        controlsOffsetY = { motionState.controlsOffsetY },
+                        queueFractionProvider = queueFractionProvider,
+                        onAction = onAction,
+                        onSeek = onSeek,
+                        onSeekStarted = onSeekStarted,
+                        onOpenSettingsMenu = onOpenSettingsMenu,
+                        onOpenQueue = onOpenQueue,
+                        isVisible = isVisible,
+                        rootHeightPx = rootHeightPx,
+                        capsuleHeaderHeightPx = capsuleHeaderHeightPx,
+                        toolbarBottomInRootPx = toolbarBottomInRoot,
+                        rootCoordinates = rootCoordinates,
                     )
                 }
-            },
-            controls = {
-                FullPlayerControlsGroup(
-                    state = state,
-                    playbackProgress = playbackProgress,
-                    slideOffset = slideOffset,
-                    controlsOffsetY = { motionState.controlsOffsetY },
-                    queueFractionProvider = queueFractionProvider,
-                    onAction = onAction,
-                    onSeek = onSeek,
-                    onSeekStarted = onSeekStarted,
-                    onOpenSettingsMenu = onOpenSettingsMenu,
-                    onOpenQueue = onOpenQueue,
-                    isVisible = isVisible
-                )
-            }
-        )
+            )
+        }
     }
 }

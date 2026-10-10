@@ -68,6 +68,7 @@ fun PlayerTransportControls(
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
     isLarge: Boolean = true,
+    enabled: Boolean = true,
 ) {
     val haptics = rememberYumaHaptics()
 
@@ -113,7 +114,7 @@ fun PlayerTransportControls(
             // Shuffle
             Box(
                 modifier = Modifier
-                    .bounceClick(pressedScale = 0.90f) {
+                    .bounceClick(pressedScale = 0.90f, enabled = enabled) {
                         haptics.click()
                         onAction(PlayerAction.Shuffle)
                     }
@@ -155,7 +156,7 @@ fun PlayerTransportControls(
                 // Previous
                 Box(
                     modifier = Modifier
-                        .bounceClick(pressedScale = 0.90f) {
+                        .bounceClick(pressedScale = 0.90f, enabled = enabled) {
                             haptics.click()
                             onAction(PlayerAction.Previous)
                         }
@@ -174,7 +175,7 @@ fun PlayerTransportControls(
                 // Play / Pause
                 Box(
                     modifier = Modifier
-                        .bounceClick(pressedScale = 0.92f) {
+                        .bounceClick(pressedScale = 0.92f, enabled = enabled) {
                             if (!state.isLoading) {
                                 haptics.click()
                                 onAction(PlayerAction.PlayPause)
@@ -205,7 +206,7 @@ fun PlayerTransportControls(
                 // Next
                 Box(
                     modifier = Modifier
-                        .bounceClick(pressedScale = 0.90f) {
+                        .bounceClick(pressedScale = 0.90f, enabled = enabled) {
                             haptics.click()
                             onAction(PlayerAction.Next)
                         }
@@ -225,7 +226,7 @@ fun PlayerTransportControls(
             // Repeat
             Box(
                 modifier = Modifier
-                    .bounceClick(pressedScale = 0.90f) {
+                    .bounceClick(pressedScale = 0.90f, enabled = enabled) {
                         haptics.click()
                         onAction(PlayerAction.Repeat)
                     }

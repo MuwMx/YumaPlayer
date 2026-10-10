@@ -48,7 +48,10 @@ fun PlayerMetadata(
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
     onMoreClick: () -> Unit = {},
-    isVisible: Boolean = true
+    isVisible: Boolean = true,
+    enabled: Boolean = true,
+    likeFractionProvider: (() -> Float)? = null,
+    likeEnabled: Boolean = true,
 ) {
     val haptics = rememberYumaHaptics()
     val gradientEdgeColor = Color.Black
@@ -77,21 +80,25 @@ fun PlayerMetadata(
             Box(
                 modifier = Modifier
                     .graphicsLayer {
-                        scaleX = trackScale
-                        scaleY = trackScale
+                        scaleX = if (enabled) trackScale else 1f
+                        scaleY = if (enabled) trackScale else 1f
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .clip(RoundedCornerShape(4.dp))
-                    .clickable(
-                        interactionSource = trackInteraction,
-                        indication = null
-                    ) {
+                    .then(
+                        if (enabled) {
+                            Modifier.clickable(
+                                interactionSource = trackInteraction,
+                                indication = null
+                            ) {
                         val now = System.currentTimeMillis()
                         if (now - lastTrackClickTime > 450L) {
                             lastTrackClickTime = now
                             onAction(PlayerAction.OpenAlbum)
                         }
                     }
+                } else Modifier
+            )
             ) {
                 MarqueeText(
                     text = title,
@@ -122,21 +129,25 @@ fun PlayerMetadata(
                 modifier = Modifier
                     .padding(top = 2.dp)
                     .graphicsLayer {
-                        scaleX = artistScale
-                        scaleY = artistScale
+                        scaleX = if (enabled) artistScale else 1f
+                        scaleY = if (enabled) artistScale else 1f
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
                     .clip(RoundedCornerShape(4.dp))
-                    .clickable(
-                        interactionSource = artistInteraction,
-                        indication = null
-                    ) {
+                    .then(
+                        if (enabled) {
+                            Modifier.clickable(
+                                interactionSource = artistInteraction,
+                                indication = null
+                            ) {
                         val now = System.currentTimeMillis()
                         if (now - lastArtistClickTime > 450L) {
                             lastArtistClickTime = now
                             onAction(PlayerAction.OpenArtist)
                         }
                     }
+                } else Modifier
+            )
             ) {
                 MarqueeText(
                     text = artist,
@@ -173,25 +184,35 @@ fun PlayerMetadata(
                 label = "LikeBounce"
             )
 
+            val resolvedLikeEnabled = enabled && likeEnabled
+
             Box(
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(48.dp)
                     .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
+                        scaleX = if (resolvedLikeEnabled) scale else 1f
+                        scaleY = if (resolvedLikeEnabled) scale else 1f
+                        if (likeFractionProvider != null) {
+                            val p = (likeFractionProvider.invoke() / 0.45f).coerceIn(0f, 1f)
+                            alpha = (1f - p).coerceIn(0f, 1f)
+                        }
                     }
                     .clip(CircleShape)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
+                    .then(
+                        if (resolvedLikeEnabled) {
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
                         val now = System.currentTimeMillis()
                         if (now - lastLikeClickTime > 450L) {
                             lastLikeClickTime = now
                             onAction(PlayerAction.Like)
                         }
-                    },
+                    }
+                } else Modifier
+            ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -216,21 +237,25 @@ fun PlayerMetadata(
                         .padding(start = 4.dp)
                         .size(48.dp)
                         .graphicsLayer {
-                            scaleX = moreScale
-                            scaleY = moreScale
+                            scaleX = if (enabled) moreScale else 1f
+                            scaleY = if (enabled) moreScale else 1f
                         }
                         .clip(CircleShape)
-                        .clickable(
-                            interactionSource = moreInteractionSource,
-                            indication = null
-                        ) {
+                        .then(
+                            if (enabled) {
+                                Modifier.clickable(
+                                    interactionSource = moreInteractionSource,
+                                    indication = null
+                                ) {
                             val now = System.currentTimeMillis()
                             if (now - lastMoreClickTime > 450L) {
                                 lastMoreClickTime = now
                                 haptics.click()
                                 onMoreClick()
                             }
-                        },
+                        }
+                    } else Modifier
+                ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
