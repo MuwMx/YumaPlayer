@@ -5,7 +5,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.PlayerSheetPredictiveBackHandler
@@ -27,6 +29,9 @@ internal fun rememberPlayerSheetGestures(
     view: View,
     hapticFeedbackEnabled: Boolean,
 ): PlayerSheetGestures {
+    val currentOnAction by rememberUpdatedState(onAction)
+    val currentOnCloseLyricsClick by rememberUpdatedState(onCloseLyricsClick)
+
     val miniDismissGestureHandler = rememberMiniPlayerDismissGestureHandler(
         scope = motionScope.scope,
         density = motionScope.density,
@@ -34,7 +39,7 @@ internal fun rememberPlayerSheetGestures(
         hapticFeedbackEnabled = hapticFeedbackEnabled,
         offsetAnimatable = motionScope.offsetAnimatable,
         screenWidthPx = motionScope.screenWidthPx,
-        onDismissPlaylistAndShowUndo = { onAction(PlayerAction.Dismiss) }
+        onDismissPlaylistAndShowUndo = { currentOnAction(PlayerAction.Dismiss) }
     )
 
     val dragHandler = remember(
@@ -73,20 +78,16 @@ internal fun rememberPlayerSheetGestures(
             onExpandSheetState = { motionScope.currentSheetState = PlayerSheetState.EXPANDED },
             onCollapseSheetState = { motionScope.currentSheetState = PlayerSheetState.COLLAPSED },
             onExpandLyrics = {
-                onAction(PlayerAction.Lyrics)
+                currentOnAction(PlayerAction.Lyrics)
             },
             onCollapseLyrics = {
-                onCloseLyricsClick()
+                currentOnCloseLyricsClick()
             },
             onExpandQueue = {
-                if (!state.isQueueVisible) {
-                    motionScope.onOpenQueue()
-                }
+                motionScope.onOpenQueue()
             },
             onCollapseQueue = {
-                if (state.isQueueVisible) {
-                    motionScope.onCloseQueueClick()
-                }
+                motionScope.onCloseQueueClick()
             }
         )
     }
@@ -98,7 +99,7 @@ internal fun rememberPlayerSheetGestures(
             motionScope.scope.launch {
                 motionScope.lyricsFraction.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
             }
-            onCloseLyricsClick()
+            currentOnCloseLyricsClick()
         }
         if (motionScope.queueFraction.value > 0.01f || state.isQueueVisible) {
             motionScope.handleCloseQueue()

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -127,6 +128,12 @@ internal fun rememberPlayerSheetMotionScope(
     onOpenQueue: () -> Unit,
     onCloseQueueClick: () -> Unit,
 ): PlayerSheetMotionScope {
+    val currentState by rememberUpdatedState(state)
+    val currentOnExpansionFractionChanged by rememberUpdatedState(onExpansionFractionChanged)
+    val currentOnCloseLyricsClick by rememberUpdatedState(onCloseLyricsClick)
+    val currentOnOpenQueue by rememberUpdatedState(onOpenQueue)
+    val currentOnCloseQueueClick by rememberUpdatedState(onCloseQueueClick)
+
     val screenHeightDp = maxHeight
     val screenHeightPx = with(density) { screenHeightDp.toPx() }
     val screenWidthDp = maxWidth
@@ -168,7 +175,7 @@ internal fun rememberPlayerSheetMotionScope(
 
     LaunchedEffect(Unit) {
         snapshotFlow { expansionFraction.value }.collect { fraction ->
-            onExpansionFractionChanged(fraction)
+            currentOnExpansionFractionChanged(fraction)
         }
     }
 
@@ -219,9 +226,7 @@ internal fun rememberPlayerSheetMotionScope(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
             )
         }
-        if (!state.isQueueVisible) {
-            onOpenQueue()
-        }
+        currentOnOpenQueue()
     }
 
     val handleCloseQueue: () -> Unit = {
@@ -231,19 +236,17 @@ internal fun rememberPlayerSheetMotionScope(
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
             )
         }
-        if (state.isQueueVisible) {
-            onCloseQueueClick()
-        }
+        currentOnCloseQueueClick()
     }
 
     LaunchedEffect(Unit) {
         snapshotFlow { expansionFraction.value }.collect { fraction ->
             if (fraction == 0f) {
-                if (state.isLyricsVisible) {
-                    onCloseLyricsClick()
+                if (currentState.isLyricsVisible) {
+                    currentOnCloseLyricsClick()
                 }
-                if (state.isQueueVisible) {
-                    onCloseQueueClick()
+                if (currentState.isQueueVisible) {
+                    currentOnCloseQueueClick()
                 }
                 if (lyricsFraction.value > 0f) {
                     lyricsFraction.snapTo(0f)
@@ -356,8 +359,8 @@ internal fun rememberPlayerSheetMotionScope(
             isSheetSettlingState = isSheetSettlingState,
             handleOpenQueue = handleOpenQueue,
             handleCloseQueue = handleCloseQueue,
-            onOpenQueue = onOpenQueue,
-            onCloseQueueClick = onCloseQueueClick,
+            onOpenQueue = { currentOnOpenQueue() },
+            onCloseQueueClick = { currentOnCloseQueueClick() },
         )
     }
 }
