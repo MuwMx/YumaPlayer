@@ -31,8 +31,8 @@ internal object PlayerSeekBarDefaults {
     val TouchTargetHeight = 24.dp
     val ProgressToTimeGap = 0.dp
     val CompactProgressToTimeGap = 0.dp
+    val TimeRowLift = 8.dp
     val HorizontalPadding = 16.dp
-    val BadgeSpacing = 6.dp
 }
 
 // The marker has to sit exactly where the ear hears the effect begin, so it comes from the same
@@ -211,8 +211,8 @@ fun PlayerSeekBar(
                 .graphicsLayer {
                     val q = codecFractionProvider().coerceIn(0f, 1f)
                     val p = (q / 0.45f).coerceIn(0f, 1f)
-                    val gapDeltaPx = (PlayerSeekBarDefaults.ProgressToTimeGap - PlayerSeekBarDefaults.CompactProgressToTimeGap).toPx()
-                    translationY = -p * gapDeltaPx
+                    val liftPx = PlayerSeekBarDefaults.TimeRowLift.toPx()
+                    translationY = -p * liftPx
 
                     val offset = slideOffset()
                     alpha = if (offset > 0.5f) ((offset - 0.5f) / 0.5f) else 0f
