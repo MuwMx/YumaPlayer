@@ -54,7 +54,6 @@ internal fun OverlayCapsuleShell(
             .padding(top = topPadding, start = CapsuleDefaults.HorizontalPadding, end = CapsuleDefaults.HorizontalPadding)
             .fillMaxWidth()
             .height(CapsuleDefaults.Height)
-            .shadow(elevation = CapsuleDefaults.Elevation, shape = CapsuleDefaults.Shape, clip = false)
             .then(
                 if (progressProvider != null) {
                     Modifier.graphicsLayer {

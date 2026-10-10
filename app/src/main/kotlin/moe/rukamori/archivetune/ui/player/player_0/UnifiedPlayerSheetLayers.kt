@@ -53,23 +53,19 @@ internal fun UnifiedPlayerSheetLayers(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val expansion = expansionFractionProvider()
-                    val isTranslucent = state.isBlurBackgroundEnabled || state.isImmersiveEnabled
-                    val overlayFraction = if (isTranslucent) 0f else lyricsFractionProvider()
-                    alpha = (expansion * (1f - overlayFraction)).coerceIn(0f, 1f)
+                    alpha = expansionFractionProvider().coerceIn(0f, 1f)
                 }
         ) {
-                PlayerBackgroundLayers(
-                    state = state,
-                    canvasState = canvasState,
-                    expansionFractionProvider = expansionFractionProvider,
-                    lyricsFractionProvider = lyricsFractionProvider,
-                    queueFractionProvider = queueFractionProvider,
-                    onColorsExtracted = { vibrant, darkMuted, gradient ->
-                        onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
-                    },
-                )
-
+            PlayerBackgroundLayers(
+                state = state,
+                canvasState = canvasState,
+                expansionFractionProvider = expansionFractionProvider,
+                lyricsFractionProvider = lyricsFractionProvider,
+                queueFractionProvider = queueFractionProvider,
+                onColorsExtracted = { vibrant, darkMuted, gradient ->
+                    onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
+                },
+            )
         }
 
         val isMiniPlayerVisible by remember {

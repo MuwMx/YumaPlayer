@@ -30,7 +30,7 @@ internal fun PlayerCanvasArtworkHost(
         derivedStateOf {
             state.isPlaying &&
                 lyricsFractionProvider() < 0.05f &&
-                queueFractionProvider() < 0.05f &&
+                queueFractionProvider() <= 0.80f &&
                     (state.isImmersiveEnabled && immersiveTransitionAlpha > 0.05f)
         }
     }

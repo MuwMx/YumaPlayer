@@ -51,17 +51,11 @@ internal fun PlayerLyricsLayer(
         )
     }
 
-    val lyricsBackgroundColor = remember(state.darkMutedColor, state.isBlurBackgroundEnabled) {
-        if (state.isBlurBackgroundEnabled) {
-            Color(0xFF0F0F0F)
-        } else {
-            Color(state.darkMutedColor)
-        }
-    }
+
 
     PlayerOverlaySheet(
         fractionProvider = lyricsFractionProvider,
-        backgroundColor = lyricsBackgroundColor,
+        backgroundColor = Color.Transparent,
         modifier = modifier,
         showDragHandle = false,
         dragHandler = dragHandler,

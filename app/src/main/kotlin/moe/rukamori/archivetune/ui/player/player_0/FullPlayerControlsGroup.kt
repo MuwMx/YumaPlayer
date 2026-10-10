@@ -168,7 +168,7 @@ internal fun FullPlayerControlsGroup(
         derivedStateOf { queueFractionProvider() < 0.4275f }
     }
     val isBottomBarInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.4275f }
+        derivedStateOf { queueFractionProvider() < 0.15f }
     }
 
     Column(
@@ -281,7 +281,7 @@ internal fun FullPlayerControlsGroup(
                 .fillMaxWidth()
                 .graphicsLayer {
                     val q = queueFractionProvider().coerceIn(0f, 1f)
-                    val p = (q / 0.45f).coerceIn(0f, 1f)
+                    val p = (q / 0.20f).coerceIn(0f, 1f)
                     alpha = (1f - p).coerceIn(0f, 1f)
                 }
         ) {

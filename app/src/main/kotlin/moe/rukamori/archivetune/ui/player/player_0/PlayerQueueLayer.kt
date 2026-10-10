@@ -57,17 +57,11 @@ internal fun PlayerQueueLayer(
         derivedStateOf { queueFractionProvider() > 0.05f }
     }
 
-    val queueBackgroundColor = remember(state.darkMutedColor, state.isBlurBackgroundEnabled) {
-        if (state.isBlurBackgroundEnabled) {
-            Color(0xFF0F0F0F)
-        } else {
-            Color(state.darkMutedColor)
-        }
-    }
+
 
     PlayerOverlaySheet(
         fractionProvider = queueFractionProvider,
-        backgroundColor = queueBackgroundColor,
+        backgroundColor = Color.Transparent,
         modifier = modifier,
         showDragHandle = true,
         dragHandler = dragHandler,
