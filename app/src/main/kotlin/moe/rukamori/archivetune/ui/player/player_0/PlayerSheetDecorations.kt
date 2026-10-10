@@ -66,10 +66,9 @@ internal fun Modifier.sheetBackground(state: PlayerUiState): Modifier {
 }
 
 @Composable
-internal fun PlayerSheetBorderContainer(
+internal fun ColumnScope.PlayerSheetBorderContainer(
     state: PlayerUiState,
     modifier: Modifier = Modifier,
-    drawBackground: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val cardShape = remember { RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) }
@@ -77,50 +76,34 @@ internal fun PlayerSheetBorderContainer(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .weight(1f)
             .then(modifier)
             .clip(cardShape) // Режет контент строго по дуге скругления углов, а не прямоугольником
     ) {
-        if (drawBackground) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .layout { measurable, constraints ->
-                        if (!constraints.hasBoundedWidth) {
-                            val placeable = measurable.measure(constraints)
-                            return@layout layout(placeable.width, placeable.height) {
-                                placeable.placeRelative(0, 0)
-                            }
-                        }
-                        val borderPx = 1.dp.roundToPx()
-                        val expandedConstraints = constraints.copy(
-                            minWidth = constraints.maxWidth + (borderPx * 2),
-                            maxWidth = constraints.maxWidth + (borderPx * 2),
-                            minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
-                            maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
-                        )
-                        val placeable = measurable.measure(expandedConstraints)
-                        layout(constraints.maxWidth, placeable.height) {
-                            placeable.placeRelative(-borderPx, 0)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .layout { measurable, constraints ->
+                    if (!constraints.hasBoundedWidth) {
+                        val placeable = measurable.measure(constraints)
+                        return@layout layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(0, 0)
                         }
                     }
-                    .sheetBackground(state)
-            )
-        }
+                    val borderPx = 1.dp.roundToPx()
+                    val expandedConstraints = constraints.copy(
+                        minWidth = constraints.maxWidth + (borderPx * 2),
+                        maxWidth = constraints.maxWidth + (borderPx * 2),
+                        minHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.minHeight,
+                        maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + borderPx else constraints.maxHeight
+                    )
+                    val placeable = measurable.measure(expandedConstraints)
+                    layout(constraints.maxWidth, placeable.height) {
+                        placeable.placeRelative(-borderPx, 0)
+                    }
+                }
+                .sheetBackground(state)
+        )
         content()
     }
-}
-
-@Composable
-internal fun ColumnScope.PlayerSheetBorderContainer(
-    state: PlayerUiState,
-    modifier: Modifier = Modifier,
-    drawBackground: Boolean = true,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    PlayerSheetBorderContainer(
-        state = state,
-        modifier = Modifier.weight(1f).then(modifier),
-        drawBackground = drawBackground,
-        content = content,
-    )
 }
