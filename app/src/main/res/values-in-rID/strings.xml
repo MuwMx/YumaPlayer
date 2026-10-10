@@ -194,7 +194,7 @@
     <string name="appearance">Tampilan</string>
     <string name="theme">Tema</string>
     <string name="enable_dynamic_theme">Aktifkan tema dinamis</string>
-    <string name="random_theme_on_startup">Tema acak saat startup</string>
+    <string name="random_theme_on_startup">Tema acak saat memulai aplikasi</string>
     <string name="random_theme_on_startup_desc">Terapkan palet warna acak setiap kali aplikasi dimulai</string>
     <string name="color_palette">Palet Warna</string>
     <string name="customize_theme_colors">Pilih warna tema aplikasi Anda</string>
@@ -212,7 +212,7 @@
     <string name="palette_mint_fresh">Mint</string>
     <string name="palette_olive_garden">Zaitun</string>
     <string name="palette_sage_green">Sage</string>
-    <string name="palette_sunset_orange">Senja</string>
+    <string name="palette_sunset_orange">Sunset</string>
     <string name="palette_golden_hour">Emas</string>
     <string name="palette_warm_amber">kuning</string>
     <string name="palette_tangerine_blast">Tangerine</string>
@@ -282,7 +282,7 @@
     <string name="blur">Buram</string>
     <string name="contrast">Kontras</string>
     <string name="brightness">Kecerahan</string>
-    <string name="custom_value">Nilai khusus</string>
+    <string name="custom_value">Nilai kustom</string>
     <string name="archivetune_canvas">Kanvas YumaPlayer</string>
     <string name="archivetune_canvas_desc">Menganimasikan sampul album saat diputar (Didukung oleh BetterLyrics)</string>
     <string name="show_button1_description">Alihkan visibilitas tombol 1 di Discord Rich Presence</string>
@@ -754,7 +754,7 @@
     <string name="play_all">Putar semua</string>
     <string name="sort_ascending">Urutkan menaik</string>
     <string name="all_songs">Semua Lagu</string>
-    <string name="shortest_duration">‐Durasi tersingkat</string>
+    <string name="shortest_duration">Durasi tersingkat</string>
     <string name="year_sort">Tahun</string>
     <string name="newest_first">Terbaru dahulu</string>
     <string name="see_all">Lihat semua</string>
@@ -816,7 +816,7 @@
     <string name="list_view">Tampilan Daftar</string>
     <string name="grid_view">Tampilan Grid</string>
     <string name="personal_label">Pribadi</string>
-    <string name="youtube_synced">YouTube tersinkron</string>
+    <string name="youtube_synced">YouTube tersinkronisasi</string>
     <string name="options_label">Pilihan</string>
     <string name="top_artist_badge">ARTIS TERATAS</string>
     <string name="no_artist_yet">Belum Ada Artis</string>
