@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -92,15 +93,33 @@ internal fun PlayerQueueLayer(
                     shape = cardShape
                     clip = true
                 }
-                .glassBorder(
-                    shape = cardShape,
-                    strokeWidth = SettingsDimensions.GlassBorderThickness,
-                    topAlpha = SettingsDimensions.GlassBorderTopAlpha,
-                    bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha,
-                )
                 .background(queueBackgroundColor, cardShape)
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val inset = 1.dp.roundToPx()
+                        val width = constraints.maxWidth + inset * 2
 
+                        val placeable = measurable.measure(
+                            constraints.copy(
+                                minWidth = width,
+                                maxWidth = width
+                            )
+                        )
+
+                        layout(constraints.maxWidth, placeable.height) {
+                            placeable.placeRelative(-inset, 0)
+                        }
+                    }
+                    .glassBorder(
+                        shape = cardShape,
+                        strokeWidth = SettingsDimensions.GlassBorderThickness,
+                        topAlpha = SettingsDimensions.GlassBorderTopAlpha,
+                        bottomAlpha = SettingsDimensions.GlassBorderBottomAlpha,
+                    )
+            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
