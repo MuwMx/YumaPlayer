@@ -14,8 +14,7 @@ class CompactedControlsLayoutTest {
         val toolbarBottom = 300f
         val m0 = 1200f
         val b0 = 1900f
-        val measuredGap = 42f
-        val targetGap = 36f
+        val transportLift = 42f
         val gapG = 48f
 
         val layout = computeCompactedControlsLayout(
@@ -24,16 +23,15 @@ class CompactedControlsLayoutTest {
             toolbarBottom = toolbarBottom,
             m0 = m0,
             b0 = b0,
-            measuredGap = measuredGap,
-            targetGap = targetGap,
+            transportLift = transportLift,
             gapG = gapG,
         )
 
-        val expectedD = 0f
-        val expectedBc = 1900f
-        val expectedGc = 700f
+        val expectedD = 42f
+        val expectedBc = 1858f
+        val expectedGc = 658f
         val expectedQPeek = 1432.5f
-        val expectedDeltaPeek = -515.5f
+        val expectedDeltaPeek = -473.5f
 
         assertEquals(expectedD, layout.d, 1e-4f)
         assertEquals(expectedBc, layout.bc, 1e-4f)
@@ -52,8 +50,7 @@ class CompactedControlsLayoutTest {
         val toolbarBottom = 400f
         val m0 = 600f
         val b0 = 950f
-        val measuredGap = 42f
-        val targetGap = 36f
+        val transportLift = 42f
         val gapG = 48f
 
         val layout = computeCompactedControlsLayout(
@@ -62,12 +59,11 @@ class CompactedControlsLayoutTest {
             toolbarBottom = toolbarBottom,
             m0 = m0,
             b0 = b0,
-            measuredGap = measuredGap,
-            targetGap = targetGap,
+            transportLift = transportLift,
             gapG = gapG,
         )
 
-        assertEquals(135.5f, layout.deficit, 1e-4f)
+        assertEquals(93.5f, layout.deficit, 1e-4f)
         assertFalse(layout.isFeasible)
         assertEquals(0f, layout.effectiveDeltaPeek, 1e-4f)
     }
@@ -80,8 +76,7 @@ class CompactedControlsLayoutTest {
             toolbarBottom = 100f,
             m0 = 100f,
             b0 = 200f,
-            measuredGap = 14f,
-            targetGap = 12f,
+            transportLift = 14f,
             gapG = 16f,
         )
 

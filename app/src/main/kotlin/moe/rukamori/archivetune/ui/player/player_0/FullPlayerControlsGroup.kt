@@ -33,8 +33,13 @@ import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import timber.log.Timber
-private val SeekbarToTransportGap = 14.dp
-private val CompactSeekbarToTransportGap = 4.dp
+internal object FullPlayerControlsDefaults {
+    val MetadataToSeekbarGap = 8.dp
+    val CompactMetadataToSeekbarGap = 4.dp
+    val SeekbarToTransportGap = 14.dp
+    val CompactSeekbarToTransportGap = 4.dp
+}
+
 @Immutable
 internal data class CompactedControlsLayout(
     val rootHeight: Float = 0f,
@@ -48,19 +53,20 @@ internal data class CompactedControlsLayout(
     val isReady: Boolean
         get() = rootHeight > 0f && capsuleHeaderHeight > 0f && toolbarBottom > 0f && m0 > 0f && b0 > m0
     val bc: Float
-        get() = b0
+        get() = b0 - d
 
     val gc: Float
-        get() = bc - (m0 + d)
+        get() = bc - m0
     val qPeek: Float
         get() = capsuleHeaderHeight + 0.55f * (rootHeight - capsuleHeaderHeight)
     val deltaPeek: Float
         get() = if (isReady) minOf(0f, qPeek - g - bc) else 0f
     val deficit: Float
-        get() = if (isReady) maxOf(
-            0f,
-            toolbarBottom - (m0 + d + deltaPeek)
-        ) else 0f
+        get() = if (isReady) {
+            maxOf(0f, toolbarBottom - (m0 + deltaPeek))
+        } else {
+            0f
+        }
     val isFeasible: Boolean
         get() = isReady && deficit <= 0f
     val effectiveDeltaPeek: Float
@@ -72,18 +78,16 @@ internal fun computeCompactedControlsLayout(
     toolbarBottom: Float,
     m0: Float,
     b0: Float,
-    measuredGap: Float,
-    targetGap: Float,
+    transportLift: Float,
     gapG: Float,
 ): CompactedControlsLayout {
-    val d = 0f
     return CompactedControlsLayout(
         rootHeight = rootHeight,
         capsuleHeaderHeight = capsuleHeaderHeight,
         toolbarBottom = toolbarBottom,
         m0 = m0,
         b0 = b0,
-        d = d,
+        d = transportLift.coerceAtLeast(0f),
         g = gapG,
     )
 }
@@ -107,16 +111,22 @@ internal fun FullPlayerControlsGroup(
     rootCoordinates: LayoutCoordinates? = null,
 ) {
     val density = LocalDensity.current
-    val targetGapPx = with(density) {
-        CompactSeekbarToTransportGap.roundToPx().toFloat()
-    }
+    val transportLiftDp = 20.dp
+        FullPlayerControlsDefaults.SeekbarToTransportGap -
+            FullPlayerControlsDefaults.CompactSeekbarToTransportGap
+
+    val metadataShiftDp =
+        FullPlayerControlsDefaults.MetadataToSeekbarGap -
+            FullPlayerControlsDefaults.CompactMetadataToSeekbarGap
+
+    val transportLiftPx = with(density) { transportLiftDp.toPx() }
+    val metadataShiftPx = with(density) { metadataShiftDp.toPx() }
     val gapGPx = with(density) { SettingsDimensions.PlayerControlsVerticalGap.roundToPx().toFloat() }
-    val measuredGapPx = with(density) { SeekbarToTransportGap.roundToPx().toFloat() }
     var m0Px by remember { mutableFloatStateOf(0f) }
     var b0Px by remember { mutableFloatStateOf(0f) }
     val layoutInfo = remember(
         rootHeightPx, capsuleHeaderHeightPx, toolbarBottomInRootPx,
-        m0Px, b0Px, measuredGapPx, targetGapPx, gapGPx
+        m0Px, b0Px, transportLiftPx, gapGPx
     ) {
         computeCompactedControlsLayout(
             rootHeight = rootHeightPx,
@@ -124,8 +134,7 @@ internal fun FullPlayerControlsGroup(
             toolbarBottom = toolbarBottomInRootPx,
             m0 = m0Px,
             b0 = b0Px,
-            measuredGap = measuredGapPx,
-            targetGap = targetGapPx,
+            transportLift = transportLiftPx,
             gapG = gapGPx,
         )
     }
@@ -147,16 +156,6 @@ internal fun FullPlayerControlsGroup(
     val isBottomBarInteractive by remember {
         derivedStateOf { queueFractionProvider() < 0.4275f }
     }
-    val queueProgress =
-        (queueFractionProvider().coerceIn(0f, 1f) / 0.45f)
-            .coerceIn(0f, 1f)
-
-    val seekbarTransportGap =
-        SeekbarToTransportGap +
-                (CompactSeekbarToTransportGap - SeekbarToTransportGap) * queueProgress
-
-    val metadataSeekbarGap =
-        8.dp + (4.dp - 8.dp) * queueProgress
 
     Column(
         modifier = modifier
@@ -192,7 +191,13 @@ internal fun FullPlayerControlsGroup(
                     }
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            val q = queueFractionProvider().coerceIn(0f, 1f)
+                            val p = (q / 0.45f).coerceIn(0f, 1f)
+                            translationY = p * metadataShiftPx
+                        }
                 ) {
                     PlayerMetadata(
                         title = state.title,
@@ -206,27 +211,37 @@ internal fun FullPlayerControlsGroup(
                         likeEnabled = isLikeInteractive,
                     )
                 }
-                Spacer(modifier = Modifier.height(metadataSeekbarGap))
-                PlayerSeekBar(
-                    state = state,
-                    playbackProgress = playbackProgress,
-                    durationMs = state.durationMs,
-                    vibrantColor = Color(state.vibrantColor),
-                    slideOffset = slideOffset,
-                    showCodecInfo = state.showCodecInfo,
-                    codecInfo = state.codecInfo,
-                    sleepTimerRemainingSeconds = state.sleepTimerRemainingSeconds,
-                    onOpenSleepTimer = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
-                    onSeek = onSeek,
-                    onSeekStarted = onSeekStarted,
-                    isVisible = isVisible,
-                    enabled = isMainControlsInteractive,
-                    codecFractionProvider = queueFractionProvider,
-                )
-                Spacer(modifier = Modifier.height(seekbarTransportGap))
-
+                Spacer(modifier = Modifier.height(FullPlayerControlsDefaults.MetadataToSeekbarGap))
                 Box(
                     modifier = Modifier.fillMaxWidth()
+                ) {
+                    PlayerSeekBar(
+                        state = state,
+                        playbackProgress = playbackProgress,
+                        durationMs = state.durationMs,
+                        vibrantColor = Color(state.vibrantColor),
+                        slideOffset = slideOffset,
+                        showCodecInfo = state.showCodecInfo,
+                        codecInfo = state.codecInfo,
+                        sleepTimerRemainingSeconds = state.sleepTimerRemainingSeconds,
+                        onOpenSleepTimer = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
+                        onSeek = onSeek,
+                        onSeekStarted = onSeekStarted,
+                        isVisible = isVisible,
+                        enabled = isMainControlsInteractive,
+                        codecFractionProvider = queueFractionProvider,
+                    )
+                }
+                Spacer(modifier = Modifier.height(FullPlayerControlsDefaults.SeekbarToTransportGap))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            val q = queueFractionProvider().coerceIn(0f, 1f)
+                            val p = (q / 0.45f).coerceIn(0f, 1f)
+                            translationY = -p * transportLiftPx
+                        }
                 ) {
                     PlayerTransportControls(
                         isPlaying = state.isPlaying,

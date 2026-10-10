@@ -64,7 +64,7 @@ internal fun PlayerProgressSlider(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(24.dp)
+            .height(PlayerSeekBarDefaults.TouchTargetHeight)
             .semantics {
                 progressBarRangeInfo = ProgressBarRangeInfo(currentFraction, 0f..1f)
             }
