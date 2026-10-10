@@ -515,17 +515,6 @@
     <string name="import_m3u_format">Playlist de áudio M3U</string>
     <string name="import_csv_format">Arquivo de playlist CSV</string>
     <string name="spotify_connect">Conectar Spotify</string>
-    <string name="home_screen_provider_desc">YouTube Music / Spotify</string>
-    <string name="home_provider_youtube_music">YouTube Music</string>
-    <string name="home_provider_spotify">Spotify</string>
-    <string name="spotify_because_you_like">Because you like %1$s</string>
-    <string name="spotify_top_tracks">Top Tracks</string>
-    <string name="spotify_top_artists">Top Artists</string>
-    <string name="spotify_made_for_you">Made For You</string>
-    <string name="spotify_discover">Discover</string>
-    <string name="spotify_your_playlists">Your Playlists</string>
-    <string name="spotify_new_releases">New Releases</string>
-    <string name="home_switch_to_yt">Open YouTube Music</string>
     <string name="spotify_available_count">%1$d playlists disponíveis</string>
     <string name="spotify_connected_as">Conectado como %1$s</string>
     <string name="spotify_not_connected">Spotify não está conectado</string>

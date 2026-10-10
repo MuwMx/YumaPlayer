@@ -45,4 +45,26 @@
     <string name="album_backdrop_desc">प्लेयर पर कलाकृति को धुंधली पृष्ठभूमि के रूप में दिखाएं</string>
     <string name="backdrop_blur_amount">पृष्ठभूमि धुंधलापन मात्रा</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <string name="playback_source">स्रोत</string>
+    <string name="source_yt_music">वाईटी संगीत</string>
+    <string name="source_flac">एफएलएसी</string>
+    <string name="flac_quality_cd">CD (16-बिट/44.1 kHz)</string>
+    <string name="flac_quality_hi_res">हाई-रिज़ॉल्यूशन (24-बिट/96 kHz)</string>
+    <string name="flac_quality_max">अधिकतम (24-बिट/192 kHz)</string>
+    <string name="flac_streaming_quality">FLAC क्वालिटी (स्ट्रीमिंग)</string>
+    <string name="flac_download_quality">FLAC क्वालिटी (डाउनलोड)</string>
+    <string name="folder_persist_failed">फ़ोल्डर की अनुमति सेव करने में विफल</string>
+    <string name="top_results">सबसे अच्छे नतीजे</string>
+    <string name="library_title">आपकी लाइब्रेरी</string>
+    <string name="library_subtitle">आपका म्यूज़िक, आपके लिए व्यवस्थित</string>
+    <string name="library_playlists_subtitle">सभी प्लेलिस्ट, व्यवस्थित रूप में</string>
+    <string name="library_songs_subtitle">आपके सभी गाने, व्यवस्थित रूप में</string>
+    <string name="library_artists_subtitle">आपके सभी कलाकार, एक ही जगह</string>
+    <string name="library_albums_subtitle">आपके सभी एल्बम, खूबसूरती से व्यवस्थित</string>
+    <string name="most_played_badge">सबसे ज़्यादा सुने गए</string>
+    <string name="play_all">सभी चलाएँ</string>
+    <string name="offline_shortcut">ऑफलाइन</string>
+    <string name="cached">कैश में संग्रहीत</string>
+    <string name="local_files">लोकल फ़ाइलें</string>
+    <string name="downloaded_desc">डाउनलोड किए गए</string>
 </resources>
