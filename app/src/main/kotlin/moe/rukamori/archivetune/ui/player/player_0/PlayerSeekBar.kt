@@ -60,6 +60,7 @@ fun PlayerSeekBar(
     onSeekStarted: () -> Unit,
     isVisible: Boolean = true,
     enabled: Boolean = true,
+    codecFractionProvider: () -> Float = { 0f },
     trackAnalysis: TrackAnalysisResult? = state.trackAnalysis,
 ) {
     var progressMs by remember { mutableLongStateOf(playbackProgress.value) }
@@ -217,32 +218,44 @@ fun PlayerSeekBar(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AnimatedVisibility(
-                    visible = showCodecInfo && codecInfo.isNotEmpty(),
-                    enter = fadeIn(tween(300)),
-                    exit = fadeOut(tween(300))
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        val q = codecFractionProvider().coerceIn(0f, 1f)
+                        alpha = (1f - q / 0.45f).coerceIn(0f, 1f)
+                    }
                 ) {
-                    Text(
-                        text = codecInfo,
-                        color = Color(0x80FFFFFF),
-                        fontFamily = LocalArchiveTuneFontFamily.current,
-                        fontSize = 10.sp,
-                        modifier = Modifier
-                            .background(Color(0x1AFFFFFF), CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AnimatedVisibility(
+                            visible = showCodecInfo && codecInfo.isNotEmpty(),
+                            enter = fadeIn(tween(300)),
+                            exit = fadeOut(tween(300))
+                        ) {
+                            Text(
+                                text = codecInfo,
+                                color = Color(0x80FFFFFF),
+                                fontFamily = LocalArchiveTuneFontFamily.current,
+                                fontSize = 10.sp,
+                                modifier = Modifier
+                                    .background(Color(0x1AFFFFFF), CircleShape)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
 
-                AnimatedVisibility(
-                    visible = state.isImmersiveEnabled && sleepTimerRemainingSeconds != null,
-                    enter = fadeIn(tween(300)),
-                    exit = fadeOut(tween(300))
-                ) {
-                    SleepTimerTopBadge(
-                        state = state,
-                        onClick = onOpenSleepTimer,
-                        enabled = enabled
-                    )
+                        AnimatedVisibility(
+                            visible = state.isImmersiveEnabled && sleepTimerRemainingSeconds != null,
+                            enter = fadeIn(tween(300)),
+                            exit = fadeOut(tween(300))
+                        ) {
+                            SleepTimerTopBadge(
+                                state = state,
+                                onClick = onOpenSleepTimer,
+                                enabled = enabled
+                            )
+                        }
+                    }
                 }
             }
 

@@ -142,45 +142,74 @@ fun FullPlayer(
                                 .graphicsLayer {
                                     val q = queueFractionProvider().coerceIn(0f, 1f)
                                     val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
-                                    val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
                                     if (!isCoverVisible) {
                                         alpha = 0f
-                                        scaleX = 1f
-                                        scaleY = 1f
-                                        translationY = 0f
-                                    } else if (isCanvasActive || state.isImmersiveEnabled) {
-                                        val queueCoverFade = (1f - (q - 0.45f) / (0.80f - 0.45f)).coerceIn(0f, 1f)
-                                        alpha = queueCoverFade
                                         scaleX = 1f
                                         scaleY = 1f
                                         translationY = 0f
                                     } else {
                                         val w = safeWidthPx
                                         val a = cardWidthPx
-                                        val targetScale = if (a > 0f && w > 0f) w / a else 1f
+
+                                        val targetScale = if (a > 0f && w > 0f) {
+                                            (w / a) * 1.04f
+                                        } else {
+                                            1f
+                                        }
+
+                                        val peekProgress = (q / 0.45f).coerceIn(0f, 1f)
+                                        val coverHeight = a * targetScale
+
+                                        val rootH = rootHeightPx
+                                        val headerH = capsuleHeaderHeightPx
+                                        val queueTravel = (rootH - headerH).coerceAtLeast(0f)
+
+                                        val queuePeekTop = rootH - 0.45f * queueTravel
+                                        val queueCurrentTop = rootH - q * queueTravel
+
+                                        val extraLiftPx = 40.dp.toPx()
+                                        val gapPx = 16.dp.toPx()
+
+                                        val peekTop = minOf(
+                                            toolbarTopInRoot - extraLiftPx,
+                                            queuePeekTop - coverHeight - gapPx
+                                        )
+
+                                        transformOrigin = TransformOrigin(0.5f, 0f)
 
                                         if (q <= 0.45f) {
-                                            val p = (q / 0.45f).coerceIn(0f, 1f)
-                                            val curScale = 1f + p * (targetScale - 1f)
-                                            scaleX = curScale
-                                            scaleY = curScale
-                                            transformOrigin = TransformOrigin(0.5f, 0f)
+                                            scaleX = 1f + peekProgress * (targetScale - 1f)
+                                            scaleY = scaleX
 
-                                            val desiredTop = cardTopInRoot + p * (toolbarTopInRoot - cardTopInRoot)
-                                            translationY = desiredTop - cardTopInRoot
+                                            translationY =
+                                                (peekTop - cardTopInRoot) * peekProgress
+
                                             alpha = 1f
+
                                         } else {
-                                            val p2 = ((q - 0.45f) / 0.55f).coerceIn(0f, 1f)
                                             scaleX = targetScale
                                             scaleY = targetScale
-                                            transformOrigin = TransformOrigin(0.5f, 0f)
 
-                                            val scaledHeight = a * targetScale
-                                            val finalTop = -scaledHeight
-                                            val desiredTop = toolbarTopInRoot + p2 * (finalTop - toolbarTopInRoot)
-                                            translationY = desiredTop - cardTopInRoot
-                                            alpha = (1f - (q - 0.45f) / (0.85f - 0.45f)).coerceIn(0f, 1f)
+                                            val queueTop = rootH - q * queueTravel
+
+                                            val coverTop = minOf(
+                                                peekTop,
+                                                queueTop - coverHeight - gapPx
+                                            )
+
+                                            translationY = coverTop - cardTopInRoot
+
+                                            val coverBottom = coverTop + coverHeight
+
+                                            val exitBottom = headerH - gapPx
+
+                                            val fadeDistance = headerH.coerceAtLeast(1f)
+
+                                            alpha = (
+                                                    (coverBottom - exitBottom) / fadeDistance
+                                                    ).coerceIn(0f, 1f)
                                         }
+
                                     }
                                 }
                         ) {

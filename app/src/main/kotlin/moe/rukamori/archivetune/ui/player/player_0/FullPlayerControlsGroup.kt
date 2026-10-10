@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import timber.log.Timber
 private val SeekbarToTransportGap = 14.dp
+private val CompactSeekbarToTransportGap = 4.dp
 @Immutable
 internal data class CompactedControlsLayout(
     val rootHeight: Float = 0f,
@@ -47,15 +48,19 @@ internal data class CompactedControlsLayout(
     val isReady: Boolean
         get() = rootHeight > 0f && capsuleHeaderHeight > 0f && toolbarBottom > 0f && m0 > 0f && b0 > m0
     val bc: Float
-        get() = b0 - d
+        get() = b0
+
     val gc: Float
-        get() = bc - m0
+        get() = bc - (m0 + d)
     val qPeek: Float
         get() = capsuleHeaderHeight + 0.55f * (rootHeight - capsuleHeaderHeight)
     val deltaPeek: Float
         get() = if (isReady) minOf(0f, qPeek - g - bc) else 0f
     val deficit: Float
-        get() = if (isReady) maxOf(0f, toolbarBottom - (m0 + deltaPeek)) else 0f
+        get() = if (isReady) maxOf(
+            0f,
+            toolbarBottom - (m0 + d + deltaPeek)
+        ) else 0f
     val isFeasible: Boolean
         get() = isReady && deficit <= 0f
     val effectiveDeltaPeek: Float
@@ -71,7 +76,7 @@ internal fun computeCompactedControlsLayout(
     targetGap: Float,
     gapG: Float,
 ): CompactedControlsLayout {
-    val d = (measuredGap - targetGap).coerceAtLeast(0f)
+    val d = 0f
     return CompactedControlsLayout(
         rootHeight = rootHeight,
         capsuleHeaderHeight = capsuleHeaderHeight,
@@ -102,7 +107,9 @@ internal fun FullPlayerControlsGroup(
     rootCoordinates: LayoutCoordinates? = null,
 ) {
     val density = LocalDensity.current
-    val targetGapPx = with(density) { SettingsDimensions.SectionSpacing.roundToPx().toFloat() }
+    val targetGapPx = with(density) {
+        CompactSeekbarToTransportGap.roundToPx().toFloat()
+    }
     val gapGPx = with(density) { SettingsDimensions.PlayerControlsVerticalGap.roundToPx().toFloat() }
     val measuredGapPx = with(density) { SeekbarToTransportGap.roundToPx().toFloat() }
     var m0Px by remember { mutableFloatStateOf(0f) }
@@ -132,7 +139,7 @@ internal fun FullPlayerControlsGroup(
         }
     }
     val isMainControlsInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.83f }
+        derivedStateOf { queueFractionProvider() < 0.57f }
     }
     val isLikeInteractive by remember {
         derivedStateOf { queueFractionProvider() < 0.4275f }
@@ -140,6 +147,17 @@ internal fun FullPlayerControlsGroup(
     val isBottomBarInteractive by remember {
         derivedStateOf { queueFractionProvider() < 0.4275f }
     }
+    val queueProgress =
+        (queueFractionProvider().coerceIn(0f, 1f) / 0.45f)
+            .coerceIn(0f, 1f)
+
+    val seekbarTransportGap =
+        SeekbarToTransportGap +
+                (CompactSeekbarToTransportGap - SeekbarToTransportGap) * queueProgress
+
+    val metadataSeekbarGap =
+        8.dp + (4.dp - 8.dp) * queueProgress
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -166,21 +184,29 @@ internal fun FullPlayerControlsGroup(
                         val q = queueFractionProvider().coerceIn(0f, 1f)
                         val p = (q / 0.45f).coerceIn(0f, 1f)
                         translationY = p * layoutInfo.effectiveDeltaPeek
-                        alpha = if (q <= 0.45f) 1f else (1f - (q - 0.45f) / (0.85f - 0.45f)).coerceIn(0f, 1f)
+                        alpha = if (q <= 0.45f) {
+                            1f
+                        } else {
+                            (1f - (q - 0.45f) / 0.13f).coerceIn(0f, 1f)
+                        }
                     }
             ) {
-                PlayerMetadata(
-                    title = state.title,
-                    artist = state.artist,
-                    state = state,
-                    onAction = onAction,
-                    onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
-                    isVisible = isVisible,
-                    enabled = isMainControlsInteractive,
-                    likeFractionProvider = queueFractionProvider,
-                    likeEnabled = isLikeInteractive,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PlayerMetadata(
+                        title = state.title,
+                        artist = state.artist,
+                        state = state,
+                        onAction = onAction,
+                        onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
+                        isVisible = isVisible,
+                        enabled = isMainControlsInteractive,
+                        likeFractionProvider = queueFractionProvider,
+                        likeEnabled = isLikeInteractive,
+                    )
+                }
+                Spacer(modifier = Modifier.height(metadataSeekbarGap))
                 PlayerSeekBar(
                     state = state,
                     playbackProgress = playbackProgress,
@@ -195,16 +221,12 @@ internal fun FullPlayerControlsGroup(
                     onSeekStarted = onSeekStarted,
                     isVisible = isVisible,
                     enabled = isMainControlsInteractive,
+                    codecFractionProvider = queueFractionProvider,
                 )
-                Spacer(modifier = Modifier.height(SeekbarToTransportGap))
+                Spacer(modifier = Modifier.height(seekbarTransportGap))
+
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            val q = queueFractionProvider().coerceIn(0f, 1f)
-                            val p = (q / 0.45f).coerceIn(0f, 1f)
-                            translationY = -p * layoutInfo.d
-                        }
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     PlayerTransportControls(
                         isPlaying = state.isPlaying,

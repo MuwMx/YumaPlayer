@@ -29,11 +29,11 @@ class CompactedControlsLayoutTest {
             gapG = gapG,
         )
 
-        val expectedD = 6f
-        val expectedBc = 1894f
-        val expectedGc = 694f
+        val expectedD = 0f
+        val expectedBc = 1900f
+        val expectedGc = 700f
         val expectedQPeek = 1432.5f
-        val expectedDeltaPeek = -509.5f
+        val expectedDeltaPeek = -515.5f
 
         assertEquals(expectedD, layout.d, 1e-4f)
         assertEquals(expectedBc, layout.bc, 1e-4f)
@@ -67,7 +67,7 @@ class CompactedControlsLayoutTest {
             gapG = gapG,
         )
 
-        assertEquals(129.5f, layout.deficit, 1e-4f)
+        assertEquals(135.5f, layout.deficit, 1e-4f)
         assertFalse(layout.isFeasible)
         assertEquals(0f, layout.effectiveDeltaPeek, 1e-4f)
     }
