@@ -42,13 +42,16 @@ internal fun FullPlayerControlsGroup(
     modifier: Modifier = Modifier,
 ) {
     val isBottomBarInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.10f }
+        derivedStateOf { queueFractionProvider() < 0.18f }
     }
     val isSeekbarInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.50f }
+        derivedStateOf { queueFractionProvider() < 0.74f }
     }
     val isTransportInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.50f }
+        derivedStateOf { queueFractionProvider() < 0.79f }
+    }
+    val isMetadataInteractive by remember {
+        derivedStateOf { queueFractionProvider() < 0.70f }
     }
 
     Column(
@@ -68,8 +71,16 @@ internal fun FullPlayerControlsGroup(
                 title = state.title,
                 artist = state.artist,
                 state = state,
-                onAction = onAction,
-                onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
+                onAction = {
+                    if (isMetadataInteractive) {
+                        onAction(it)
+                    }
+                },
+                onMoreClick = {
+                    if (isMetadataInteractive) {
+                        onOpenSettingsMenu(PlayerMenuScreen.SETTINGS)
+                    }
+                },
                 isVisible = isVisible
             )
         }
