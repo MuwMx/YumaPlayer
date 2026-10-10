@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -41,16 +38,6 @@ internal fun FullPlayerControlsGroup(
     isVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val isBottomBarInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.10f }
-    }
-    val isSeekbarInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.50f }
-    }
-    val isTransportInteractive by remember {
-        derivedStateOf { queueFractionProvider() < 0.50f }
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -78,7 +65,7 @@ internal fun FullPlayerControlsGroup(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .queueFade(queueFractionProvider, 0.50f, 0.80f)
+                .queueFade(queueFractionProvider, 0.22f, 0.45f)
         ) {
             PlayerSeekBar(
                 state = state,
@@ -89,21 +76,9 @@ internal fun FullPlayerControlsGroup(
                 showCodecInfo = state.showCodecInfo,
                 codecInfo = state.codecInfo,
                 sleepTimerRemainingSeconds = state.sleepTimerRemainingSeconds,
-                onOpenSleepTimer = {
-                    if (isSeekbarInteractive) {
-                        onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER)
-                    }
-                },
-                onSeek = {
-                    if (isSeekbarInteractive) {
-                        onSeek(it)
-                    }
-                },
-                onSeekStarted = {
-                    if (isSeekbarInteractive) {
-                        onSeekStarted()
-                    }
-                },
+                onOpenSleepTimer = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
+                onSeek = onSeek,
+                onSeekStarted = onSeekStarted,
                 isVisible = isVisible
             )
         }
@@ -112,17 +87,13 @@ internal fun FullPlayerControlsGroup(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .queueFade(queueFractionProvider, 0.55f, 0.85f)
+                .queueFade(queueFractionProvider, 0.12f, 0.32f)
         ) {
             PlayerTransportControls(
                 isPlaying = state.isPlaying,
                 vibrantColor = Color(state.vibrantColor),
                 slideOffset = slideOffset,
-                onAction = {
-                    if (isTransportInteractive) {
-                        onAction(it)
-                    }
-                },
+                onAction = onAction,
                 isLarge = true,
                 state = state,
             )
@@ -135,20 +106,12 @@ internal fun FullPlayerControlsGroup(
                 .fillMaxWidth()
                 .queueFade(queueFractionProvider, 0.05f, 0.20f)
         ) {
-            PlayerBottomBar(
-                state = state,
-                onAction = {
-                    if (isBottomBarInteractive) {
-                        onAction(it)
-                    }
-                },
-                onOpenQueue = {
-                    if (isBottomBarInteractive) {
-                        onOpenQueue()
-                    }
-                }
-            )
-        }
+        PlayerBottomBar(
+            state = state,
+            onAction = onAction,
+            onOpenQueue = onOpenQueue
+        )
+            }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -160,6 +123,8 @@ private fun Modifier.queueFade(
     end: Float,
 ): Modifier = graphicsLayer {
     val fraction = fractionProvider().coerceIn(0f, 1f)
-    alpha = 1f - normalizeFraction(fraction, start, end)
+
+    alpha = (1f - (fraction - start) / (end - start))
+        .coerceIn(0f, 1f)
 }
 

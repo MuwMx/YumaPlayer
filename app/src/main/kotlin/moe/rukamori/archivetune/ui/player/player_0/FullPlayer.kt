@@ -73,7 +73,7 @@ fun FullPlayer(
                         .padding(horizontal = SettingsDimensions.PlayerControlsHorizontalPadding)
                         .graphicsLayer {
                             val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
-                            alpha = 1f - normalizeFraction(queueFraction, 0.75f, 0.95f)
+                            alpha = (1f - (queueFraction - 0.75f) / (0.95f - 0.75f)).coerceIn(0f, 1f)
                         }
                 )
             },
@@ -84,16 +84,7 @@ fun FullPlayer(
                         .padding(horizontal = 22.dp)
                         .graphicsLayer {
                             val queueFraction = queueFractionProvider().coerceIn(0f, 1f)
-                            val peekProgress = normalizeFraction(queueFraction, 0f, 0.45f)
-                            val expandProgress = normalizeFraction(queueFraction, 0.45f, 1f)
-
-                            val coverScale = 1f + 0.10f * peekProgress
-                            scaleX = coverScale
-                            scaleY = coverScale
-
-                            translationY = -(80f * density) * expandProgress
-
-                            val queueCoverFade = 1f - normalizeFraction(queueFraction, 0.45f, 0.80f)
+                            val queueCoverFade = (1f - (queueFraction - 0.45f) / (0.80f - 0.45f)).coerceIn(0f, 1f)
                             val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
                             alpha = if (isCoverVisible) queueCoverFade else 0f
                         }
@@ -131,9 +122,4 @@ fun FullPlayer(
             }
         )
     }
-}
-
-internal fun normalizeFraction(value: Float, start: Float, end: Float): Float {
-    if (end <= start) return 0f
-    return ((value - start) / (end - start)).coerceIn(0f, 1f)
 }
