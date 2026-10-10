@@ -152,7 +152,7 @@ fun PlayerBackgroundLayers(
                             state = playerHazeState,
                             style = HazeDefaults.style(
                                 backgroundColor = Color.Transparent,
-                                tint = HazeTint(Color.Transparent),
+                                tint = HazeTint(Color.Black.copy(alpha = 0.35f)),
                                 blurRadius = 56.dp,
                                 noiseFactor = SettingsDimensions.HazeNoiseFactor,
                             )

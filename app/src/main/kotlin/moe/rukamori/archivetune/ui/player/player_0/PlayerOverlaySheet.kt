@@ -81,38 +81,28 @@ internal fun PlayerOverlaySheet(
             content()
 
             if (showDragHandle) {
-                val isHandleMounted by remember {
-                    derivedStateOf { fractionProvider() < 0.85f }
-                }
-
-                if (isHandleMounted) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .align(Alignment.TopCenter)
+                        .then(
+                            if (dragHandler != null) {
+                                Modifier.playerSheetVerticalDragGesture(
+                                    enabled = true,
+                                    handler = dragHandler,
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(28.dp)
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer {
-                                val fraction = fractionProvider().coerceIn(0f, 1f)
-                                alpha = (1f - (fraction - 0.45f) / (0.75f - 0.45f)).coerceIn(0f, 1f)
-                            }
-                            .then(
-                                if (dragHandler != null) {
-                                    Modifier.playerSheetVerticalDragGesture(
-                                        enabled = true,
-                                        handler = dragHandler,
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 36.dp, height = 4.dp)
-                                .background(Color.White.copy(alpha = 0.40f), RoundedCornerShape(2.dp))
-                        )
-                    }
+                            .size(width = 36.dp, height = 4.dp)
+                            .background(Color.White.copy(alpha = 0.40f), RoundedCornerShape(2.dp))
+                    )
                 }
             }
         }
