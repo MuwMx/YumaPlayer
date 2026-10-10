@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +82,7 @@ internal fun PlayerQueueLayer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(top = CapsuleDefaults.totalHeaderHeight())
                 .graphicsLayer {
                     val fraction = queueFractionProvider().coerceIn(0f, 1f)
 
@@ -98,11 +100,6 @@ internal fun PlayerQueueLayer(
                 )
                 .background(queueBackgroundColor, cardShape)
         ) {
-            val peekTopPadding = 28.dp
-            val expandedHeaderHeight = CapsuleDefaults.totalHeaderHeight()
-            val currentFraction = queueFractionProvider().coerceIn(0f, 1f)
-            val expandProgress = ((currentFraction - 0.45f) / 0.55f).coerceIn(0f, 1f)
-            val dynamicTopPadding = lerp(peekTopPadding, expandedHeaderHeight, expandProgress)
 
             Box(
                 modifier = Modifier
@@ -123,7 +120,7 @@ internal fun PlayerQueueLayer(
                     onCloseClick = onCloseQueueClick,
                     lazyListState = queueListState,
                     contentPadding = PaddingValues(
-                        top = dynamicTopPadding,
+                        top = 28.dp,
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp
                     ),
                     onReorderStateChange = { isQueueReordering = it },
