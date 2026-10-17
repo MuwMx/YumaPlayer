@@ -1059,4 +1059,22 @@
     <string name="onboarding_permission_notifications_title">Notificaciones</string>
     <string name="onboarding_permission_notifications_desc">Mostrar los controles de reproducción y la actividad musical en el panel de notificaciones.</string>
     <string name="onboarding_permission_bluetooth_connect_title">Conexión de audio por Bluetooth</string>
+    <string name="onboarding_permission_bluetooth_scan_title">Escaneo de Bluetooth</string>
+    <string name="onboarding_permission_bluetooth_scan_desc">Descubre dispositivos Cast y dispositivos de reproducción cercanos.</string>
+    <string name="onboarding_community_github_desc">Marca el repositorio con una estrella y sigue las versiones.</string>
+    <string name="onboarding_community_discord_title">Únete a Discord</string>
+    <string name="onboarding_community_telegram_title">Únete a Telegram</string>
+    <string name="onboarding_community_telegram_desc">Conversa con la comunidad y recibe actualizaciones.</string>
+    <string name="onboarding_community_donate_desc">Apoya el desarrollo continuo.</string>
+    <string name="together_current_playback">Reproducción actual</string>
+    <string name="together_playback_empty">No se está reproduciendo nada</string>
+    <string name="together_playback_playing">Reproduciendo</string>
+    <string name="together_playback_paused">Pausado</string>
+    <string name="together_queue_count">%1$d en cola</string>
+    <string name="together_shuffle_on">Reproduccion aleatoria encendida</string>
+    <string name="together_shuffle_off">Reproduccion aleatoria apagada</string>
+    <string name="together_repeat_mode">Repetir %1$d</string>
+    <string name="together_participants_empty">Aún no hay participantes</string>
+    <string name="together_participants_empty_body">Las personas que se unan a esta sesión aparecerán aquí.</string>
+    <string name="together_activity_log">Registro de actividad</string>
 </resources>

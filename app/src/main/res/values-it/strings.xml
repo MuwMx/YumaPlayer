@@ -1231,4 +1231,18 @@
     <string name="splash_shape_random">Alterna</string>
     <string name="random_home_background_on_startup">Sfondo casuale all\'avvio</string>
     <string name="random_home_background_on_startup_desc">Scegli uno sfondo diverso ad ogni avvio dell\'app</string>
+    <string name="sponsor_block_group">SponsorBlock</string>
+    <string name="sponsor_block_use">Usa SponsorBlock</string>
+    <string name="sponsor_block_categories">Categorie</string>
+    <string name="sponsor_block_categories_desc">Seleziona filtraggio SponsorBlock</string>
+    <string name="sponsor_block_api_url">SponsorBlock API URL</string>
+    <string name="sponsor_block_music_off_topic">Sezioni non musicali e off-topic</string>
+    <string name="sponsor_block_sponsors">Sponsors</string>
+    <string name="sponsor_block_intro">Intro</string>
+    <string name="sponsor_block_outro">Outro</string>
+    <string name="sponsor_block_self_promotions">Promozioni personali</string>
+    <string name="sponsor_block_previews">Anteprime</string>
+    <string name="sponsor_block_fillers">Fillers</string>
+    <string name="sponsor_block_subscription_reminders">Promemoria sottosrizione</string>
+    <string name="sponsor_block_hooks">Hook/Greetings</string>
 </resources>
