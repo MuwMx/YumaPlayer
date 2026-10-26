@@ -1261,4 +1261,14 @@
     <string name="release_notes_section_build_ci">Versi / CI</string>
     <string name="home_background_none">Tidak ada</string>
     <string name="home_background_lava">Lampu Lava</string>
+    <string name="canvas_better_lyrics">BetterLyrics</string>
+    <string name="canvas_apple_music">Apple Music</string>
+    <string name="canvas_tidal">TIDAL</string>
+    <string name="canvas_health_offline">Offline</string>
+    <string name="canvas_enable">Gunakan Kanvas</string>
+    <string name="canvas_source_all">Semua</string>
+    <string name="canvas_source_all_desc">Coba BetterLyrics, Apple Music, lalu TIDAL</string>
+    <string name="canvas_health_available">Tersedia</string>
+    <string name="canvas_health_unavailable">Tidak tersedia</string>
+    <string name="canvas_health_checking">Memeriksa…</string>
 </resources>
