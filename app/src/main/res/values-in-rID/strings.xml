@@ -1271,4 +1271,13 @@
     <string name="canvas_health_available">Tersedia</string>
     <string name="canvas_health_unavailable">Tidak tersedia</string>
     <string name="canvas_health_checking">Memeriksa…</string>
+    <string name="canvas_settings_subtitle">Sumber dan cache pemutaran</string>
+    <string name="canvas_source">Sumber Kanvas</string>
+    <string name="canvas_provider_health">Status penyedia</string>
+    <string name="canvas_health_not_selected">Tidak dipilih</string>
+    <string name="canvas_health_not_checked">Belum diperiksa</string>
+    <string name="canvas_health_disabled">Kanvas nonaktif</string>
+    <string name="canvas_cache_desc">Video yang disimpan dapat diputar secara offline. Entri terlama akan dihapus saat cache penuh.</string>
+    <string name="canvas_settings_load_failed">Tidak dapat memuat pengaturan Kanvas</string>
+    <string name="canvas_settings_update_failed">Tidak dapat memperbarui pengaturan Kanvas</string>
 </resources>
