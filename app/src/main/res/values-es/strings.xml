@@ -1283,4 +1283,23 @@
     <string name="release_notes_section_refactors">Refactorizaciones</string>
     <string name="release_state_expanded">Expandido</string>
     <string name="release_badge_latest">Último</string>
+    <string name="canvas_enable">Usar Canvas</string>
+    <string name="canvas_settings_subtitle">Fuentes y caché de reproducción</string>
+    <string name="canvas_source">Fuente del lienzo</string>
+    <string name="canvas_better_lyrics">BetterLyrics</string>
+    <string name="canvas_apple_music">Apple Music</string>
+    <string name="canvas_tidal">TIDAL</string>
+    <string name="canvas_source_all">Todo</string>
+    <string name="canvas_source_all_desc">Prueba BetterLyrics, Apple Music y, después, TIDAL</string>
+    <string name="canvas_provider_health">Estado de los proveedores</string>
+    <string name="canvas_health_not_checked">No comprobado</string>
+    <string name="canvas_health_checking">Comprobando…</string>
+    <string name="canvas_health_available">Disponible</string>
+    <string name="canvas_health_unavailable">No disponible</string>
+    <string name="canvas_health_not_selected">No seleccionado</string>
+    <string name="canvas_health_disabled">Canvas está desactivado</string>
+    <string name="canvas_health_offline">Sin conexión</string>
+    <string name="canvas_cache_desc">Los vídeos guardados se reproducen sin conexión. Las entradas más antiguas se eliminarán cuando la caché esté llena.</string>
+    <string name="canvas_settings_load_failed">No se han podido cargar los ajustes de Canvas</string>
+    <string name="canvas_settings_update_failed">No se han podido actualizar los ajustes de Canvas</string>
 </resources>
