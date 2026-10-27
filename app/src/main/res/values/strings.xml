@@ -205,6 +205,9 @@
     <string name="add_to_playlist">Add to playlist</string>
     <string name="copy_to_playlist">Copy to playlist…</string>
     <string name="copy_choose_target">Choose where to copy this playlist</string>
+    <string name="make_editable_copy">Make editable copy</string>
+    <string name="update_editable_copy">Update editable copy</string>
+    <string name="editable_copy_description">A Personal playlist you can edit. It is kept up to date with new songs from Spotify.</string>
     <string name="copy_new_personal">New Personal playlist</string>
     <string name="copy_new_youtube">New YouTube playlist</string>
     <string name="copy_reading">Reading playlist…</string>

@@ -67,6 +67,8 @@ class SpotifyLibraryRepository
 
         suspend fun refreshPlaylists(): List<SpotifyPlaylist> = playlistsRepository.refreshPlaylists()
 
+        suspend fun playlistsWithoutCounts(): List<SpotifyPlaylist> = playlistsRepository.playlistsWithoutCounts()
+
         suspend fun playlist(playlistId: String): SpotifyPlaylist = playlistsRepository.playlist(playlistId)
 
         suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> = playlistsRepository.playlistTracks(playlistId)

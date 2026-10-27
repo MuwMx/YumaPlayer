@@ -34,6 +34,21 @@ fun tracksToAdd(
     return tracks.filter { seen.add(it.songId) }
 }
 
+data class SpotifyCopyPlan(
+    val spotifyId: String,
+    val name: String,
+    val thumbnailUrl: String?,
+    val remoteCount: Int,
+    val tracks: List<CopyTrack>,
+    val existingCopyId: String?,
+)
+
+data class SpotifyCopyWriteResult(
+    val created: Int,
+    val updated: Int,
+    val addedTracks: Int,
+)
+
 class PlaylistCopyWriter
     @Inject
     constructor(
@@ -47,6 +62,11 @@ class PlaylistCopyWriter
         ): PlaylistWrite =
             withContext(Dispatchers.IO) {
                 database.withTransaction {
+                    // A playlist has one editable copy: when another request made it first, add to that one.
+                    val existing = sourceSpotifyId?.let { playlistBySpotifySourceId(it) }
+                    if (existing != null) {
+                        return@withTransaction PlaylistWrite(existing.id, addMissingTracks(existing, tracks).size)
+                    }
                     val entity = newPlaylistEntity(name, browseId = null, sourceSpotifyId, thumbnailUrl, tracks.size)
                     insert(entity)
                     insertTracks(getPlaylistById(entity.id) ?: error("Playlist insert failed"), tracks)
@@ -65,6 +85,39 @@ class PlaylistCopyWriter
                     insertTracks(playlist, missing)
                     missing.size
                 }
+            }
+
+        suspend fun writeSpotifyCopies(plans: List<SpotifyCopyPlan>): SpotifyCopyWriteResult =
+            withContext(Dispatchers.IO) {
+                var created = 0
+                var updated = 0
+                var addedTracks = 0
+                database.withTransaction {
+                    plans.forEach { plan ->
+                        val existing =
+                            plan.existingCopyId?.let { getPlaylistById(it) } ?: playlistBySpotifySourceId(plan.spotifyId)
+                        if (existing == null) {
+                            val entity =
+                                newPlaylistEntity(plan.name, browseId = null, plan.spotifyId, plan.thumbnailUrl, plan.remoteCount)
+                            insert(entity)
+                            insertTracks(getPlaylistById(entity.id) ?: error("Playlist insert failed"), plan.tracks)
+                            created++
+                            addedTracks += plan.tracks.size
+                        } else {
+                            val missing = addMissingTracks(existing, plan.tracks)
+                            update(
+                                existing.playlist.copy(
+                                    remoteSongCount = plan.remoteCount,
+                                    thumbnailUrl = existing.playlist.thumbnailUrl ?: plan.thumbnailUrl,
+                                    lastUpdateTime = LocalDateTime.now(),
+                                ),
+                            )
+                            updated++
+                            addedTracks += missing.size
+                        }
+                    }
+                }
+                SpotifyCopyWriteResult(created, updated, addedTracks)
             }
 
         suspend fun createYouTube(
@@ -106,6 +159,15 @@ class PlaylistCopyWriter
                 database.withTransaction { insertTracks(playlist, missing, setVideoIds) }
                 missing.size
             }
+
+        /** Adds the tracks [playlist] does not have yet and returns them. */
+        private suspend fun MusicDatabase.addMissingTracks(
+            playlist: Playlist,
+            tracks: List<CopyTrack>,
+        ): List<CopyTrack> {
+            val present = playlistSongIds(playlist.id).toHashSet()
+            return tracks.filter { present.add(it.songId) }.also { insertTracks(playlist, it) }
+        }
 
         private fun newPlaylistEntity(
             name: String,

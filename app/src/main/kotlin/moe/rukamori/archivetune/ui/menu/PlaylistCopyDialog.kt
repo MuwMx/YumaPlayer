@@ -73,6 +73,11 @@ fun PlaylistCopyDialog(
     val (cookie) = rememberPreference(InnerTubeCookieKey, "")
     val isLoggedIn = remember(cookie) { hasYouTubeLoginCookie(cookie) }
     val targets = remember(playlists, isLoggedIn, source) { copyTargets(playlists, isLoggedIn, source) }
+    val editableCopy =
+        (source as? PlaylistCopySource.Spotify)?.let { spotify ->
+            playlists.firstOrNull { it.playlist.spotifySourceId == spotify.playlistId }
+        }
+
 
     LaunchedEffect(Unit) {
         if (manager.state.value is PlaylistCopyState.Success || manager.state.value is PlaylistCopyState.Failure) {
@@ -109,6 +114,15 @@ fun PlaylistCopyDialog(
         when (val current = state) {
             PlaylistCopyState.Idle -> {
                 Text(stringResource(R.string.copy_choose_target), modifier = Modifier.fillMaxWidth())
+                if (source is PlaylistCopySource.Spotify) {
+                    NewPlaylistRow(
+                        label =
+                            stringResource(
+                                if (editableCopy == null) R.string.make_editable_copy else R.string.update_editable_copy,
+                            ),
+                        supporting = stringResource(R.string.editable_copy_description),
+                    ) { manager.startEditableCopy(source) }
+                }
                 NewPlaylistRow(stringResource(R.string.copy_new_personal)) {
                     manager.start(PlaylistCopyRequest(source, PlaylistCopyDestination.NewPersonal(source.name)))
                 }
@@ -210,10 +224,12 @@ private fun PlaylistEntity.sourceLabel(): String =
 @Composable
 private fun NewPlaylistRow(
     label: String,
+    supporting: String? = null,
     onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(label, fontWeight = FontWeight.Medium) },
+        supportingContent = supporting?.let { { Text(it) } },
         leadingContent = {
             Box(
                 contentAlignment = Alignment.Center,

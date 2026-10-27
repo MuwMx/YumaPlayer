@@ -108,6 +108,17 @@ class PlaylistCopier internal constructor(
         return PlaylistCopyState.Success(PlaylistCopyResult(written.playlistId, written.added, failed))
     }
 
+    /**
+     * Where the editable copy of a Spotify playlist lives: the existing Personal copy linked to
+     * it, or a new one named [name].
+     */
+    suspend fun editableCopyDestination(
+        spotifyId: String,
+        name: String,
+    ): PlaylistCopyDestination =
+        database.playlistBySpotifySourceId(spotifyId)?.let { PlaylistCopyDestination.Existing(it.id) }
+            ?: PlaylistCopyDestination.NewPersonal(name, sourceSpotifyId = spotifyId)
+
     private suspend fun readSource(
         source: PlaylistCopySource,
         toYouTube: Boolean,

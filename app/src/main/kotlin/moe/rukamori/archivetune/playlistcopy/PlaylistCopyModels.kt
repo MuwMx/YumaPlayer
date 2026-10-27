@@ -40,8 +40,7 @@ sealed interface PlaylistCopyDestination {
 
     data class Existing(
         val playlistId: String,
-    ) : PlaylistCopyDestination
-}
+    ) : PlaylistCopyDestination}
 
 data class PlaylistCopyRequest(
     val source: PlaylistCopySource,

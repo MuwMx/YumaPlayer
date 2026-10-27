@@ -102,4 +102,29 @@ class PlaylistCopyManagerTest {
             withTimeout(5_000) { cancelled.await() }
             assertEquals(PlaylistCopyState.Idle, manager.state.value)
         }
+
+    @Test
+    fun editableCopyOfASpotifyPlaylistGoesToItsLinkedPlaylist() =
+        runBlocking {
+            val spotify = PlaylistCopySource.Spotify("sp", "Road trip", thumbnailUrl = null)
+            val result = PlaylistCopyResult("linked", added = 1, failed = emptyList())
+            coEvery { copier.editableCopyDestination("sp", "Road trip") } returns PlaylistCopyDestination.Existing("linked")
+            coEvery { copier.copy(PlaylistCopyRequest(spotify, PlaylistCopyDestination.Existing("linked")), any()) } returns
+                PlaylistCopyState.Success(result)
+
+            manager.startEditableCopy(spotify)
+
+            assertEquals(PlaylistCopyState.Success(result), awaitState { it is PlaylistCopyState.Success })
+        }
+
+    @Test
+    fun aCopyWhoseDestinationCannotBeResolvedFails() =
+        runBlocking {
+            val spotify = PlaylistCopySource.Spotify("sp", "Road trip", thumbnailUrl = null)
+            coEvery { copier.editableCopyDestination("sp", "Road trip") } throws IllegalStateException("database closed")
+
+            manager.startEditableCopy(spotify)
+
+            assertEquals(PlaylistCopyState.Failure(), awaitState { it is PlaylistCopyState.Failure })
+        }
 }

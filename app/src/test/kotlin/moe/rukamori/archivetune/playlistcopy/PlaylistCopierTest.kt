@@ -202,4 +202,23 @@ class PlaylistCopierTest {
 
             assertEquals(listOf(PlaylistCopyStage.READING, PlaylistCopyStage.WRITING), stages)
         }
+
+    @Test
+    fun theEditableCopyIsTheLinkedPlaylistWhenThereIsOne() =
+        runBlocking {
+            coEvery { database.playlistBySpotifySourceId("sp") } returns existingPlaylist(browseId = null)
+
+            assertEquals(PlaylistCopyDestination.Existing("target"), copier.editableCopyDestination("sp", "Road trip"))
+        }
+
+    @Test
+    fun theEditableCopyIsCreatedLinkedToItsSourceWhenThereIsNone() =
+        runBlocking {
+            coEvery { database.playlistBySpotifySourceId("sp") } returns null
+
+            assertEquals(
+                PlaylistCopyDestination.NewPersonal("Road trip", sourceSpotifyId = "sp"),
+                copier.editableCopyDestination("sp", "Road trip"),
+            )
+        }
 }
