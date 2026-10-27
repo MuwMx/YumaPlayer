@@ -28,6 +28,13 @@ class TrackMatcher {
         /** Regex to strip "feat", "ft", "featuring" and everything after. */
         private val FEAT_REGEX = Regex("""\s*(feat\.?|ft\.?|featuring)\s+.*""", RegexOption.IGNORE_CASE)
 
+        /** A trailing " - 2011 Remaster", " - Official Video" or " Official Audio" style suffix. */
+        private val TRAILING_DECORATION_REGEX =
+            Regex("""\s+[-–—|]\s*(?:\d{4}\s+)?(?:remaster(?:ed)?|official|lyrics?|audio|video)\b.*$|\s+(?:official\s+)?(?:lyrics?|audio|video)\s*$""")
+
+        private val NON_WORD_REGEX = Regex("""[^\p{L}\p{N}\s]+""")
+        private val WHITESPACE_REGEX = Regex("""\s+""")
+
         /** Common artist separators. */
         private val ARTIST_SEPARATOR_REGEX = Regex("""\s*[,;&/]\s*|\s+(?:and|&)\s+""", RegexOption.IGNORE_CASE)
     }
@@ -66,6 +73,28 @@ class TrackMatcher {
             .sorted()
             .joinToString(", ")
     }
+
+    /**
+     * Share of unique words the two texts have in common, ignoring brackets,
+     * featured artists and trailing "remaster/official" suffixes. More forgiving
+     * than Jaro-Winkler for uploads whose artist suffix or formatting differs.
+     */
+    fun tokenSimilarity(a: String, b: String): Double {
+        val left = normalizeForTokenMatch(a).split(' ').filter(String::isNotBlank).toSet()
+        val right = normalizeForTokenMatch(b).split(' ').filter(String::isNotBlank).toSet()
+        if (left.isEmpty() || right.isEmpty()) return 0.0
+        return left.count { it in right }.toDouble() / maxOf(left.size, right.size)
+    }
+
+    private fun normalizeForTokenMatch(text: String): String =
+        text
+            .lowercase()
+            .replace(PARENTHETICAL_REGEX, " ")
+            .replace(FEAT_REGEX, " ")
+            .replace(TRAILING_DECORATION_REGEX, " ")
+            .replace(NON_WORD_REGEX, " ")
+            .replace(WHITESPACE_REGEX, " ")
+            .trim()
 
     /**
      * Check whether two tracks are an exact match based on canonical

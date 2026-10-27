@@ -76,6 +76,112 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         return Decision(res.accepted, res.reason)
     }
 
+    /**
+     * Looser alternative to [pickGeneric] for candidates the strict gates reject,
+     * such as official uploads whose title carries the artist or whose duration is missing.
+     * Candidates are accepted on token overlap with the Spotify title and artist, but only
+     * when the Spotify artist appears on the candidate and it is not a different version
+     * (remix, sped up, live and so on) of the song.
+     */
+    fun <T> pickByTokenOverlap(
+        track: TrackQuery,
+        candidates: List<T>,
+        titleOf: (T) -> String,
+        artistsOf: (T) -> List<String>,
+        durationMsOf: (T) -> Long,
+    ): CandidateDecision<T>? {
+        val wantsVersion = VERSION_UPLOAD_WORDS.containsMatchIn(track.title)
+        val trackDurationSec = (track.durationMs ?: 0L) / 1000.0
+        val trackArtists = listOf(track.artist)
+        var best: T? = null
+        var bestScore = 0.0
+        var bestTitleSim = 0.0
+
+        for (candidate in candidates) {
+            val candidateTitle = titleOf(candidate)
+            if (!wantsVersion && VERSION_UPLOAD_WORDS.containsMatchIn(candidateTitle)) continue
+            if (versionConflict(track.title, candidateTitle)) continue
+            // A title-only search returns same-named songs by other artists.
+            if (!hasArtistEvidence(trackArtists, candidateTitle, artistsOf(candidate))) continue
+
+            val candidateArtists = artistsOf(candidate).joinToString(" ")
+            val textSim =
+                matcher.tokenSimilarity(
+                    "${track.title} ${track.artist}",
+                    "$candidateTitle $candidateArtists",
+                )
+            // "Artist - Song" uploads: compare the title without the artist as well.
+            val titleSim =
+                maxOf(
+                    matcher.tokenSimilarity(track.title, candidateTitle),
+                    matcher.tokenSimilarity(track.title, stripArtists(candidateTitle, track.artist)),
+                )
+            val candidateDurationSec = durationMsOf(candidate) / 1000.0
+            val durationOk =
+                trackDurationSec > 0.0 &&
+                    candidateDurationSec > 0.0 &&
+                    abs(trackDurationSec - candidateDurationSec) <= TOKEN_OVERLAP_DURATION_TOLERANCE_SEC
+            val score = textSim + (if (durationOk) 0.6 else 0.0) + titleSim * 0.3
+            val accepted = titleSim >= 0.5 && (durationOk || titleSim >= 0.6 || textSim >= 0.55)
+            if (accepted && score > bestScore) {
+                best = candidate
+                bestScore = score
+                bestTitleSim = titleSim
+            }
+        }
+
+        val accepted = best ?: return null
+        return CandidateDecision(
+            accepted = accepted,
+            score = bestScore,
+            reason = "token overlap titleSimilarity=$bestTitleSim",
+        )
+    }
+
+    /**
+     * True when at least one of the Spotify artists shows up on the candidate,
+     * either as a credited artist or in the title (`Artist - Song` uploads).
+     * Tracks without artist information cannot be checked and pass.
+     */
+    fun hasArtistEvidence(
+        trackArtists: List<String>,
+        candidateTitle: String,
+        candidateArtists: List<String>,
+    ): Boolean {
+        val parts = trackArtists.flatMap { ArtistMatching.artistParts(it) }.distinct()
+        if (parts.isEmpty()) return true
+        val compactArtists =
+            candidateArtists
+                .flatMap { ArtistMatching.artistParts(it) + compact(it) }
+                .filter { it.length >= 2 }
+        val compactTitle = compact(candidateTitle)
+        return parts.any { part ->
+            compactTitle.contains(part) ||
+                compactArtists.any { artist ->
+                    artist == part ||
+                        artist.contains(part) ||
+                        (artist.length >= 3 && part.contains(artist)) ||
+                        matcher.jaroWinklerSimilarity(part, artist) >= ARTIST_SIM_THRESHOLD
+                } ||
+                candidateArtists.any { isCrossScript(part, it) }
+        }
+    }
+
+    private fun compact(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
+
+    private fun stripArtists(
+        candidateTitle: String,
+        trackArtist: String,
+    ): String =
+        trackArtist
+            .split(ArtistMatching.ARTIST_PART_SEPARATOR)
+            .map(String::trim)
+            .filter { it.length >= 2 }
+            .fold(candidateTitle) { title, artist ->
+                title.replace(Regex(Regex.escape(artist), RegexOption.IGNORE_CASE), " ")
+            }.replace(EDGE_SEPARATORS, "")
+            .trim()
+
     fun passesGeneric(
         track: TrackQuery,
         candTitle: String,
@@ -231,6 +337,16 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         const val AMBIGUOUS_TITLE_SIM = 0.02
         const val AMBIGUOUS_DUR_SEC = 2L
         const val SAME_RECORDING_DUR_SEC = 2L
+        const val TOKEN_OVERLAP_DURATION_TOLERANCE_SEC = 3.0
+
+        private val EDGE_SEPARATORS = Regex("""^[\s\-–—|:~]+|[\s\-–—|:~]+$""")
+
+        /** Uploads that are a different version of the song, even when their duration is close. */
+        val VERSION_UPLOAD_WORDS =
+            Regex(
+                """\b(remix|sped[ -]?up|slowed|nightcore|reverb|8d|bass[ -]?boost(ed)?|cover|flip|mashup|instrumental|karaoke|loop|bootleg)\b""",
+                RegexOption.IGNORE_CASE,
+            )
 
         val VERSION_TOKENS = listOf(
             "live", "concert", "unplugged", "session", "acoustic", "instrumental",
