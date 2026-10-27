@@ -42,6 +42,7 @@ Development rules, standards, step-by-step guides, and agent guidelines.
 - **YUMA_RULES.md** — Non-negotiable project constitution and strict constraints.
 - **CODING_STANDARD.md** — Code style, ViewModel conventions, Mappers, and Coroutine safety.
 - **DEVELOPMENT_GUIDE.md** — Step-by-step recipes (adding screens, lyrics providers, new modules).
+- **PLAYLIST_COPY.md** — How Spotify placeholders, playlist copies and editable Spotify copies work.
 
 ### 3. 🎨 [Design](./design/)
 UI design system, tokens, and component guidelines.
