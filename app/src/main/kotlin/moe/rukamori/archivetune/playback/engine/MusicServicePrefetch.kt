@@ -81,5 +81,6 @@ internal fun MusicService.cancelPrefetch() {
 }
 
 internal fun MusicService.prefetchAround(currentIndex: Int = player.currentMediaItemIndex) {
+    placeholderLookahead.onQueuePosition(currentIndex)
     getOrCreateStreamPrefetcher().prefetchAround(currentIndex)
 }

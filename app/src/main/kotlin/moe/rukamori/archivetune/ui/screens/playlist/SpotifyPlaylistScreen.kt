@@ -9,8 +9,6 @@
 package moe.rukamori.archivetune.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -44,7 +42,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,7 +61,6 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -73,8 +69,9 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyMapper
-import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
-import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
+import moe.rukamori.archivetune.spotify.spotifyAwareQueue
+import moe.rukamori.archivetune.spotify.toPlaceholderId
+import moe.rukamori.archivetune.spotify.toPlaceholderMetadata
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistViewModel
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
@@ -105,7 +102,6 @@ fun SpotifyPlaylistScreen(
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
-    val coroutineScope = rememberCoroutineScope()
     val isPlaying by playerConnection?.isPlaying?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle()
@@ -144,9 +140,6 @@ fun SpotifyPlaylistScreen(
         playerAwareInsets
     }
     val contentPadding = contentInsets.union(imeInsets).asPaddingValues()
-
-    var resolvingTrackId by remember { mutableStateOf<String?>(null) }
-    var preloadJob by remember { mutableStateOf<Job?>(null) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
 
@@ -186,33 +179,22 @@ fun SpotifyPlaylistScreen(
         val currentPlaylist = playlist ?: return
         val queueTracks = if (shuffled) tracks.shuffled() else tracks
         if (queueTracks.isEmpty()) return
-        val boundedStartIndex = startIndex.coerceIn(queueTracks.indices)
-        val preloadTrack = queueTracks[boundedStartIndex]
+        // Local files have no Spotify id and cannot be played from here.
+        val startId = queueTracks[startIndex.coerceIn(queueTracks.indices)].toPlaceholderId() ?: return
+        // Queue the whole playlist in order, like Spotify does. Tracks are queued as
+        // placeholders and matched to YouTube just before they play.
+        val items = queueTracks.mapNotNull { it.toPlaceholderMetadata() }
+        val queueStart = items.indexOfFirst { it.id == startId }.takeIf { it >= 0 } ?: return
 
         val requestToken = playerConnection?.beginPlayQueueRequest() ?: return
-        preloadJob?.cancel()
-        preloadJob = coroutineScope.launch {
-            resolvingTrackId = preloadTrack.id
-            try {
-                val preloadItem = SpotifyPlaybackResolver.resolveToMetadata(preloadTrack)
-                if (!isActive || resolvingTrackId != preloadTrack.id) return@launch
-                playerConnection.playQueueIfCurrent(
-                    SpotifyPlaylistQueue(
-                        playlistId = currentPlaylist.id,
-                        title = currentPlaylist.name,
-                        initialTracks = queueTracks,
-                        startIndex = boundedStartIndex,
-                        preloadItem = preloadItem,
-                        totalCount = currentPlaylist.tracks?.total,
-                    ),
-                    generation = requestToken,
-                )
-            } finally {
-                if (resolvingTrackId == preloadTrack.id) {
-                    resolvingTrackId = null
-                }
-            }
-        }
+        playerConnection.playQueueIfCurrent(
+            spotifyAwareQueue(
+                title = currentPlaylist.name,
+                items = items,
+                startIndex = queueStart,
+            ),
+            generation = requestToken,
+        )
     }
 
     val artworkBackground = rememberArtworkBackground(thumbnailUrl)
@@ -295,7 +277,6 @@ fun SpotifyPlaylistScreen(
             spotifyPlaylistTrackRows(
                 filteredTracks = filteredTracks,
                 mediaMetadata = mediaMetadata,
-                resolvingTrackId = resolvingTrackId,
                 isPlaying = isPlaying,
                 onTrackClick = { track, index, trackIsActive ->
                     if (trackIsActive) {
