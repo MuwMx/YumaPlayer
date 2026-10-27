@@ -203,6 +203,27 @@
     <string name="update_button">Update</string>
     <string name="add">Add</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="copy_to_playlist">Copy to playlist…</string>
+    <string name="copy_choose_target">Choose where to copy this playlist</string>
+    <string name="copy_new_personal">New Personal playlist</string>
+    <string name="copy_new_youtube">New YouTube playlist</string>
+    <string name="copy_reading">Reading playlist…</string>
+    <string name="copy_matching">Matching %1$d of %2$d</string>
+    <string name="copy_writing">Writing playlist…</string>
+    <plurals name="copy_complete">
+        <item quantity="one">Copied %1$d track</item>
+        <item quantity="other">Copied %1$d tracks</item>
+    </plurals>
+    <string name="copy_failed">The playlist could not be copied</string>
+    <plurals name="copy_missing">
+        <item quantity="one">%1$d track was not copied</item>
+        <item quantity="other">%1$d tracks were not copied</item>
+    </plurals>
+    <string name="copy_failure_item">%1$s - %2$s: %3$s</string>
+    <string name="copy_retry_missing">Retry missing</string>
+    <string name="copy_reason_no_match">no match on YouTube Music</string>
+    <string name="copy_reason_search_failed">the search failed</string>
+    <string name="copy_reason_local_file">local files cannot be uploaded to YouTube</string>
     <string name="add_to_n_playlists">Add to %1$d</string>
     <string name="no_playlists_yet">No playlists yet</string>
     <string name="pin_to_speed_dial">Pin to speed dial</string>

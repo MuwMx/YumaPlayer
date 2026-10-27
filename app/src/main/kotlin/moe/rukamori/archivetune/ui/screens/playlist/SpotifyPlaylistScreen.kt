@@ -68,6 +68,7 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.playlistcopy.PlaylistCopySource
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.spotifyAwareQueue
 import moe.rukamori.archivetune.spotify.toPlaceholderId
@@ -85,6 +86,7 @@ import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
+import moe.rukamori.archivetune.ui.menu.PlaylistCopyDialog
 import moe.rukamori.archivetune.ui.screens.playlist.spotify.SpotifyPlaylistHeader
 import moe.rukamori.archivetune.ui.screens.playlist.spotify.spotifyPlaylistTrackRows
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -140,6 +142,7 @@ fun SpotifyPlaylistScreen(
         playerAwareInsets
     }
     val contentPadding = contentInsets.union(imeInsets).asPaddingValues()
+    var showCopyDialog by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
 
@@ -383,10 +386,33 @@ fun SpotifyPlaylistScreen(
                             contentDescription = null,
                         )
                     }
+                    IconButton(
+                        onClick = { showCopyDialog = true },
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.playlist_add),
+                            contentDescription = stringResource(R.string.copy_to_playlist),
+                        )
+                    }
                 }
             },
             scrollBehavior = scrollBehavior,
         )
+
+        if (showCopyDialog) {
+            playlist?.let { currentPlaylist ->
+                PlaylistCopyDialog(
+                    source =
+                        PlaylistCopySource.Spotify(
+                            playlistId = currentPlaylist.id,
+                            name = currentPlaylist.name,
+                            thumbnailUrl = SpotifyMapper.getPlaylistThumbnail(currentPlaylist),
+                        ),
+                    onDismiss = { showCopyDialog = false },
+                )
+            }
+        }
         }
     }
 }
