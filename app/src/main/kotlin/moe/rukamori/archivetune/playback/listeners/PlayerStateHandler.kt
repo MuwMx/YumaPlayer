@@ -297,9 +297,10 @@ internal class PlayerStateHandler(
     ) {
         if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
             metadataDelegate.cancelPrefetch()
-            if (player.isPlaying) {
-                metadataDelegate.prefetchAround(player.currentMediaItemIndex)
-            }
+            // Also before playback starts: the songs around the current one are
+            // matched and their stream URLs resolved while it buffers. The
+            // download of the next song still waits until playback runs.
+            metadataDelegate.prefetchAround(player.currentMediaItemIndex)
         }
     }
 

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.SyncUtils
 import java.text.Collator
 import javax.inject.Inject
@@ -97,6 +98,8 @@ class SpotifyLibraryViewModel
         private val repository: SpotifyLibraryRepository,
         private val syncUtils: SyncUtils,
     ) : ViewModel() {
+        suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> = repository.playlistTracks(playlistId)
+
         val playlists: StateFlow<List<SpotifyPlaylist>> =
             repository.playlists.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
