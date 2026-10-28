@@ -167,6 +167,43 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         }
     }
 
+    /**
+     * True when a match saved earlier still looks like the same recording as the Spotify track: the
+     * artist is credited or named in the title, and the title resembles the Spotify title or the
+     * length agrees. Matches saved by older versions can point at an unrelated video.
+     */
+    fun isPlausibleMatch(
+        trackTitle: String,
+        trackArtists: List<String>,
+        trackDurationSec: Long?,
+        candidateTitle: String,
+        candidateArtists: List<String>,
+        candidateDurationSec: Long?,
+    ): Boolean {
+        // A candidate saved without any artist cannot be checked on it, so title and length decide.
+        val artistKnown = candidateArtists.any { it.isNotBlank() }
+        if (artistKnown && !hasArtistEvidence(trackArtists, candidateTitle, candidateArtists)) return false
+        val sameLength =
+            trackDurationSec != null &&
+                candidateDurationSec != null &&
+                trackDurationSec > 0 &&
+                candidateDurationSec > 0 &&
+                abs(trackDurationSec - candidateDurationSec) <= DUR_TOLERANCE_SEC
+        return sameLength || titlesResemble(trackTitle, candidateTitle)
+    }
+
+    private fun titlesResemble(
+        trackTitle: String,
+        candidateTitle: String,
+    ): Boolean {
+        val left = compact(matcher.canonicalTitle(trackTitle))
+        val right = compact(matcher.canonicalTitle(candidateTitle))
+        if (left.isEmpty() || right.isEmpty()) return false
+        if (left == right) return true
+        return matcher.tokenSimilarity(trackTitle, candidateTitle) >= STORED_TITLE_TOKEN_SIM ||
+            effectiveTitleSim(trackTitle, candidateTitle) >= TITLE_SIM_THRESHOLD
+    }
+
     private fun compact(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
 
     private fun stripArtists(
@@ -335,6 +372,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         const val TITLE_SIM_THRESHOLD = 0.92
         const val ARTIST_SIM_THRESHOLD = 0.85
         const val CREDITED_ARTIST_SIM = 0.92
+        const val STORED_TITLE_TOKEN_SIM = 0.5
         const val AMBIGUOUS_TITLE_SIM = 0.02
         const val AMBIGUOUS_DUR_SEC = 2L
         const val SAME_RECORDING_DUR_SEC = 2L
