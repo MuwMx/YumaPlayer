@@ -167,7 +167,7 @@ class ReleaseNotesParserTest {
     }
 
     @Test
-    fun `canary prose falls back without fabricated sections`() {
+    fun `canary prose is kept as one uncounted section`() {
         val notes =
             """
             ## ⚡ YumaPlayer Canary (2026-10-21)
@@ -176,10 +176,12 @@ class ReleaseNotesParserTest {
             > ⚠️ **Notice:** Contains experimental changes and works in progress.
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
+        val section = parsed.sections.single()
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals(ReleaseNoteCategory.OTHER, section.category)
+        assertEquals(1, section.items.size)
+        assertEquals(ReleaseNotesSummary(), parsed.summary)
     }
 
     @Test
@@ -201,7 +203,7 @@ class ReleaseNotesParserTest {
     }
 
     @Test
-    fun `unsupported top-level markdown falls back the whole document`() {
+    fun `a fenced block with no bullet before it is skipped and later bullets are kept`() {
         val notes =
             """
             ## Features
@@ -213,10 +215,10 @@ class ReleaseNotesParserTest {
             - A real change
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals(1, parsed.sections.single().items.size)
+        assertEquals(1, parsed.summary.features)
     }
 
     @Test
@@ -264,7 +266,7 @@ class ReleaseNotesParserTest {
     }
 
     @Test
-    fun `prose under an unknown heading falls back instead of being counted`() {
+    fun `prose under an unknown heading is kept without being counted`() {
         val notes =
             """
             ## Notes
@@ -272,14 +274,16 @@ class ReleaseNotesParserTest {
             This release needs a manual migration.
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
+        val section = parsed.sections.single()
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals("Notes", section.title)
+        assertEquals(1, section.items.size)
+        assertEquals(ReleaseNotesSummary(), parsed.summary)
     }
 
     @Test
-    fun `root table after a bullet falls back the whole document`() {
+    fun `a table after a bullet stays inside that bullet`() {
         val notes =
             """
             ## Features
@@ -291,14 +295,14 @@ class ReleaseNotesParserTest {
             | Nested | Table |
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals(1, parsed.sections.single().items.size)
+        assertEquals(1, parsed.summary.features)
     }
 
     @Test
-    fun `root html block after a bullet falls back the whole document`() {
+    fun `an html block after a bullet stays inside that bullet`() {
         val notes =
             """
             ## Features
@@ -308,10 +312,10 @@ class ReleaseNotesParserTest {
             </table>
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals(1, parsed.sections.single().items.size)
+        assertEquals(1, parsed.summary.features)
     }
 
     @Test
@@ -416,7 +420,7 @@ class ReleaseNotesParserTest {
     }
 
     @Test
-    fun `empty unknown heading falls back instead of vanishing`() {
+    fun `an empty unknown heading is dropped`() {
         val notes =
             """
             ## Notes
@@ -426,10 +430,10 @@ class ReleaseNotesParserTest {
             - One
             """.trimIndent()
 
-        val result = ReleaseNotesParser.parse(notes)
+        val parsed = parsed(notes)
 
-        assertTrue(result is ReleaseNotes.Fallback)
-        assertEquals(notes, result.source)
+        assertEquals(ReleaseNoteCategory.FEATURES, parsed.sections.single().category)
+        assertEquals(1, parsed.summary.features)
     }
 
     @Test

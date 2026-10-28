@@ -91,6 +91,15 @@ class PlayerViewModelLyricsTest {
         stateFlow.value = state
     }
 
+    /** The delegate parses lyrics on Dispatchers.Default, so the result arrives from another thread. */
+    private fun awaitLyricsParsed() {
+        repeat(100) {
+            testDispatcher.scheduler.advanceUntilIdle()
+            if (viewModel.uiState.value.lyricsList.isNotEmpty()) return
+            Thread.sleep(20)
+        }
+    }
+
     @Test
     fun `fetchLyrics with DB hit emits cached lyrics and does not call lyricsHelper`() = runTest {
         // Arrange
@@ -117,7 +126,7 @@ class PlayerViewModelLyricsTest {
 
         // Act
         viewModel.fetchLyrics()
-        testDispatcher.scheduler.advanceUntilIdle()
+        awaitLyricsParsed()
 
         // Assert
         viewModel.uiState.test {
@@ -158,7 +167,7 @@ class PlayerViewModelLyricsTest {
         // Act
         viewModel.fetchLyrics()
         currentLyricsFlow.value = entity
-        testDispatcher.scheduler.advanceUntilIdle()
+        awaitLyricsParsed()
 
         // Assert
         viewModel.uiState.test {
