@@ -183,4 +183,48 @@ class SpotifySearchScorerTest {
 
         assertNull(scorer.pick(query, listOf(candidate)).accepted)
     }
+
+    @Test
+    fun `a stored match with the same title and artist is plausible`() {
+        assertEquals(
+            true,
+            scorer.isPlausibleMatch("Sweater Weather", listOf("The Neighbourhood"), 240, "Sweater Weather", listOf("The Neighbourhood - Topic"), 238),
+        )
+    }
+
+    @Test
+    fun `a stored match with a differently written title but the same length is plausible`() {
+        assertEquals(true, scorer.isPlausibleMatch("SpeedStar", listOf("TOKYOPILL"), 150, "Speed Star", listOf("TOKYOPILL"), 150))
+        assertEquals(true, scorer.isPlausibleMatch("Yoru no Himawari", listOf("Artist"), 200, "夜のひまわり", listOf("Artist"), 201))
+    }
+
+    @Test
+    fun `a stored match for an unrelated video is not plausible`() {
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch(
+                "ナイトクルージング", emptyList(), 241,
+                "YEAT - VVV FT. PLAYBOI CARTI (MUSIC VIDEO OFFICIAL)", emptyList(), 165,
+            ),
+        )
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Another Song Entirely", listOf("Artist"), 90),
+        )
+    }
+
+    @Test
+    fun `a stored match without an artist is judged by its title`() {
+        assertEquals(true, scorer.isPlausibleMatch("Divine Failure", listOf("Artist"), 120, "Divine Failure", emptyList(), null))
+        assertEquals(
+            true,
+            scorer.isPlausibleMatch("They Tryna Be Cray", listOf("Playboi Carti"), 170, "Playboi Carti - They Tryna Be Cray [Featuring X] (@someone)", emptyList(), null),
+        )
+        assertEquals(false, scorer.isPlausibleMatch("Glock", listOf("Playboi Carti"), 130, "JoJo's Bizarre Adventure Opening 6 Full", emptyList(), null))
+    }
+
+    @Test
+    fun `a stored match by a different artist is not plausible even with the same title`() {
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
+    }
 }

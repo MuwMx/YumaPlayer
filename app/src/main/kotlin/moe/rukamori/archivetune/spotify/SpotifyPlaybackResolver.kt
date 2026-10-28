@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SpotifyMatchEntity
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.innertube.YouTube
@@ -97,7 +98,16 @@ object SpotifyPlaybackResolver {
                 matches.forEach { match ->
                     val source = bySpotifyId[match.spotifyId] ?: return@forEach
                     val song = songs[match.youtubeId]
-                    if (song != null && !match.isManualOverride && !hasSharedArtist(source, song.toMediaMetadata())) {
+                    if (!match.isManualOverride &&
+                        !isStoredMatchPlausible(
+                            title = source.title,
+                            artists = source.artists.map { it.name },
+                            durationSec = source.duration.toLong(),
+                            match = match,
+                            song = song,
+                        )
+                    ) {
+                        Timber.tag("SpotifyMatching").w("Ignoring stored match '%s' -> '%s'", source.title, song?.song?.title ?: match.title)
                         return@forEach
                     }
                     val matched = song?.toMediaMetadata()
@@ -115,14 +125,25 @@ object SpotifyPlaybackResolver {
             }
         }
 
-    private fun hasSharedArtist(
-        source: MediaMetadata,
-        candidate: MediaMetadata,
+    /**
+     * A match saved by an older version can point at an unrelated video, and a stored match is
+     * otherwise trusted for good. It has to look like the same recording: its artist, and its title
+     * or length, must fit the Spotify track. Without the song's row only the stored title is known.
+     */
+    private fun isStoredMatchPlausible(
+        title: String,
+        artists: List<String>,
+        durationSec: Long?,
+        match: SpotifyMatchEntity,
+        song: Song?,
     ): Boolean =
-        scorer.hasArtistEvidence(
-            trackArtists = source.artists.map { it.name },
-            candidateTitle = candidate.title,
-            candidateArtists = candidate.artists.map { it.name },
+        scorer.isPlausibleMatch(
+            trackTitle = title,
+            trackArtists = artists,
+            trackDurationSec = durationSec,
+            candidateTitle = song?.song?.title ?: match.title,
+            candidateArtists = song?.artists?.map { it.name } ?: listOf(match.artist).filter { it.isNotBlank() },
+            candidateDurationSec = song?.song?.duration?.toLong(),
         )
 
     suspend fun resolveToMediaItem(
@@ -161,16 +182,17 @@ object SpotifyPlaybackResolver {
                 val dbSong = match?.let { db.getSongByIdBlocking(it.youtubeId) }
                 val implausible =
                     match != null &&
-                        dbSong != null &&
                         !match.isManualOverride &&
-                        !scorer.hasArtistEvidence(
-                            trackArtists = track.artists.map { it.name },
-                            candidateTitle = dbSong.song.title,
-                            candidateArtists = dbSong.artists.map { it.name },
+                        !isStoredMatchPlausible(
+                            title = track.name,
+                            artists = track.artists.map { it.name },
+                            durationSec = track.durationMs / 1000L,
+                            match = match,
+                            song = dbSong,
                         )
                 if (implausible) {
                     Timber.tag("SpotifyMatching").w(
-                        "Ignoring stored match '${track.name}' -> '${dbSong?.song?.title}': artist mismatch",
+                        "Ignoring stored match '${track.name}' -> '${dbSong?.song?.title ?: match?.title}': does not look like the same song",
                     )
                 }
                 if (match != null && !implausible) {
