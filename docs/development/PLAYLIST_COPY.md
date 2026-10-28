@@ -55,4 +55,3 @@ Copies are additive. New songs from Spotify are appended, and songs the user add
 
 - A track that is not on YouTube Music cannot be played from a copy. It is skipped.
 - A cancelled append to an existing YouTube playlist cannot be rolled back on YouTube.
-- Spotify local files are not copied.

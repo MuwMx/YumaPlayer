@@ -19,15 +19,20 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.spotify.mapping.SpotifyEntityMapper
+import moe.rukamori.archivetune.spotify.matching.SpotifySearchScorer
+import moe.rukamori.archivetune.spotify.matching.TrackMatcher
 import moe.rukamori.archivetune.spotify.models.SpotifySimpleAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.spotify.parser.SpotifyLocalFile
 import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 
 const val SPOTIFY_PLACEHOLDER_PREFIX = "spotify:"
+
+const val SPOTIFY_LOCAL_FILE_PLACEHOLDER_PREFIX = SPOTIFY_PLACEHOLDER_PREFIX + SpotifyLocalFile.ID_PREFIX
 
 fun SpotifyTrack.toPlaceholderId(): String? {
     val spotifyId =
@@ -39,7 +44,6 @@ fun SpotifyTrack.toPlaceholderId(): String? {
 }
 
 fun SpotifyTrack.toPlaceholderMetadata(): MediaMetadata? {
-    if (isLocal) return null
     val placeholderId = toPlaceholderId() ?: return null
     return MediaMetadata(
         id = placeholderId,
@@ -171,6 +175,24 @@ object SpotifyPlaceholders {
             throw IOException("Matching $placeholderId took longer than ${RESOLVE_TIMEOUT_MS / 1000} s", e)
         }
 
+    /**
+     * A Spotify local file is often on this phone too. The device's own song with the same title
+     * (and artist, when Spotify knows one) is played instead of a YouTube upload.
+     */
+    private fun findOnDevice(
+        source: MediaMetadata,
+        database: MusicDatabase,
+    ): MediaMetadata? {
+        val artists = source.artists.map { it.name }.filter { it.isNotBlank() }
+        return database
+            .localSongsByTitle(source.title)
+            .firstOrNull { song ->
+                artists.isEmpty() || localFileScorer.hasArtistEvidence(artists, song.song.title, song.artists.map { it.name })
+            }?.toMediaMetadata()
+    }
+
+    private val localFileScorer = SpotifySearchScorer(TrackMatcher())
+
     private suspend fun resolveUncached(
         placeholderId: String,
         database: MusicDatabase,
@@ -183,6 +205,9 @@ object SpotifyPlaceholders {
                     Timber.tag("SpotifyMatching").w("No metadata for placeholder %s", placeholderId)
                     return null
                 }
+        if (placeholderId.startsWith(SPOTIFY_LOCAL_FILE_PLACEHOLDER_PREFIX)) {
+            findOnDevice(source, database)?.let { return it }
+        }
         val resolved =
             SpotifyPlaybackResolver.resolveToMetadata(
                 track = source.toPlaceholderSpotifyTrack(),
