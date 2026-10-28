@@ -169,8 +169,9 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
 
     /**
      * True when a match saved earlier still looks like the same recording as the Spotify track: the
-     * artist is credited or named in the title, and the title resembles the Spotify title or the
-     * length agrees. Matches saved by older versions can point at an unrelated video.
+     * artist is credited or named in the title, it is not a different version (instrumental, cover,
+     * live, sped up and so on), and the title resembles the Spotify title or the length agrees.
+     * Matches saved by older versions can point at an unrelated video.
      */
     fun isPlausibleMatch(
         trackTitle: String,
@@ -183,6 +184,8 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         // A candidate saved without any artist cannot be checked on it, so title and length decide.
         val artistKnown = candidateArtists.any { it.isNotBlank() }
         if (artistKnown && !hasArtistEvidence(trackArtists, candidateTitle, candidateArtists)) return false
+        if (versionConflict(trackTitle, candidateTitle)) return false
+        if (!VERSION_UPLOAD_WORDS.containsMatchIn(trackTitle) && VERSION_UPLOAD_WORDS.containsMatchIn(candidateTitle)) return false
         val sameLength =
             trackDurationSec != null &&
                 candidateDurationSec != null &&
