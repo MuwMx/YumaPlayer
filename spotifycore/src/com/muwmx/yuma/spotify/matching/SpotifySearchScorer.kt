@@ -342,7 +342,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val b = candName.lowercase()
         return VERSION_TOKENS.any { token ->
             containsWord(a, token) != containsWord(b, token)
-        }
+        } || KARAOKE_MARKERS.containsMatchIn(a) != KARAOKE_MARKERS.containsMatchIn(b)
     }
 
     private fun containsWord(haystack: String, token: String): Boolean {
@@ -386,6 +386,16 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val VERSION_UPLOAD_WORDS =
             Regex(
                 """\b(remix|sped[ -]?up|slowed|nightcore|reverb|8d|bass[ -]?boost(ed)?|cover|flip|mashup|instrumental|karaoke|loop|bootleg)\b""",
+                RegexOption.IGNORE_CASE,
+            )
+
+        /**
+         * Karaoke and backing-track uploads, which often keep the original title and length.
+         * Japanese labels write "原曲歌手" (original singer), "カラオケ", "オフボーカル" or "インスト".
+         */
+        val KARAOKE_MARKERS =
+            Regex(
+                """no guide melody|guide melody|off[ -]?vocal|backing track|originally performed|in the style of|カラオケ|オフボーカル|オフ・ボーカル|インスト|原曲歌手|ガイドメロディ""",
                 RegexOption.IGNORE_CASE,
             )
 

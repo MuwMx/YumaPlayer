@@ -231,6 +231,30 @@ class SpotifySearchScorerTest {
     }
 
     @Test
+    fun `a karaoke upload is not taken for the original even with the same title and length`() {
+        val karaokeTitle = "LOST IN PARADISE (原曲歌手:ALI) - LOST IN PARADISE No Guide melody Original by ALI (feat. AKLO)"
+        assertEquals(false, scorer.isPlausibleMatch("LOST IN PARADISE", listOf("ALI", "AKLO"), 327, karaokeTitle, listOf("歌っちゃ王"), 327))
+
+        val query = TrackQuery(artist = "ALI, AKLO", title = "LOST IN PARADISE", durationMs = 327_000L)
+        val karaoke = SpotifyTrack(id = "karaoke", name = karaokeTitle, artists = listOf(SpotifySimpleArtist(name = "歌っちゃ王")), durationMs = 327_000)
+        val official = SpotifyTrack(
+            id = "official",
+            name = "LOST IN PARADISE (Jujutsu Kaisen Ending Theme Song) (feat. AKLO)",
+            artists = listOf(SpotifySimpleArtist(name = "ALI")),
+            durationMs = 328_000,
+        )
+        val picked =
+            scorer.pickByTokenOverlap(
+                query,
+                listOf(karaoke, official),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertEquals("official", picked?.accepted?.id)
+    }
+
+    @Test
     fun `a stored match by a different artist is not plausible even with the same title`() {
         assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
     }
