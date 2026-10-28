@@ -38,10 +38,14 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val passers = candidates.filter { cand ->
             passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
         }
+        // An upload credited to the artist beats one that only names the artist in its title
+        // (lyric videos, re-uploads, tributes), even when the other one is a second closer in length.
         val best = passers.minWithOrNull(
-            compareBy<T> { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
+            compareBy<T> { !isCreditedTo(track.artist, artistsOf(it)) }
+                .thenBy { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
                 .thenByDescending { effectiveTitleSim(track.title, titleOf(it)) },
         ) ?: return CandidateDecision(null, 0.0, "no candidate passed gates")
+        val bestCredited = isCreditedTo(track.artist, artistsOf(best))
 
         val bestDur = abs(track.durationMs!! - durationMsOf(best)) / 1000
         val bestSim = effectiveTitleSim(track.title, titleOf(best))
@@ -50,6 +54,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             val otherDur = abs(track.durationMs - durationMsOf(other)) / 1000
             val otherSim = effectiveTitleSim(track.title, titleOf(other))
             other !== best &&
+                isCreditedTo(track.artist, artistsOf(other)) == bestCredited &&
                 abs(otherSim - bestSim) <= AMBIGUOUS_TITLE_SIM &&
                 abs(otherDur - bestDur) <= AMBIGUOUS_DUR_SEC &&
                 !sameRecordingGeneric(
@@ -121,7 +126,8 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                 trackDurationSec > 0.0 &&
                     candidateDurationSec > 0.0 &&
                     abs(trackDurationSec - candidateDurationSec) <= TOKEN_OVERLAP_DURATION_TOLERANCE_SEC
-            val score = textSim + (if (durationOk) 0.6 else 0.0) + titleSim * 0.3
+            val credited = isCreditedTo(track.artist, artistsOf(candidate))
+            val score = textSim + (if (durationOk) 0.6 else 0.0) + (if (credited) 0.5 else 0.0) + titleSim * 0.3
             val accepted = titleSim >= 0.5 && (durationOk || titleSim >= 0.6 || textSim >= 0.55)
             if (accepted && score > bestScore) {
                 best = candidate
@@ -164,6 +170,17 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                         matcher.jaroWinklerSimilarity(part, artist) >= ARTIST_SIM_THRESHOLD
                 } ||
                 candidateArtists.any { isCrossScript(part, it) }
+        }
+    }
+
+    /** True when a credited artist of the candidate is the Spotify artist itself, not only a name in the title. */
+    private fun isCreditedTo(
+        trackArtist: String,
+        candidateArtists: List<String>,
+    ): Boolean {
+        val wanted = ArtistMatching.artistParts(trackArtist).map(matcher::canonicalArtist).filter { it.isNotEmpty() }
+        return candidateArtists.map(::cleanArtist).any { credited ->
+            wanted.any { credited == it || matcher.jaroWinklerSimilarity(credited, it) >= CREDITED_ARTIST_SIM }
         }
     }
 
@@ -334,6 +351,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         const val DUR_TOLERANCE_SEC = 5L
         const val TITLE_SIM_THRESHOLD = 0.92
         const val ARTIST_SIM_THRESHOLD = 0.85
+        const val CREDITED_ARTIST_SIM = 0.92
         const val AMBIGUOUS_TITLE_SIM = 0.02
         const val AMBIGUOUS_DUR_SEC = 2L
         const val SAME_RECORDING_DUR_SEC = 2L
@@ -354,6 +372,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             "nightcore", "cover", "remix", "rework", "edit", "radio edit",
             "extended", "demo", "mono", "re-recorded", "rerecorded",
             "taylor's version", "commentary", "mtv",
+            "piano", "lofi", "lo-fi", "tribute", "orchestral", "violin", "tutorial",
         )
     }
 }
