@@ -1302,4 +1302,5 @@
     <string name="canvas_cache_desc">Los vídeos guardados se reproducen sin conexión. Las entradas más antiguas se eliminarán cuando la caché esté llena.</string>
     <string name="canvas_settings_load_failed">No se han podido cargar los ajustes de Canvas</string>
     <string name="canvas_settings_update_failed">No se han podido actualizar los ajustes de Canvas</string>
+    <string name="login_browser">Navegador web</string>
 </resources>
