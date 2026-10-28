@@ -224,6 +224,13 @@ class SpotifySearchScorerTest {
     }
 
     @Test
+    fun `a stored match for another version of the song is not plausible`() {
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song (Instrumental)", listOf("Artist"), 200))
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Artist - Song (sped up)", emptyList(), 160))
+        assertEquals(true, scorer.isPlausibleMatch("Song - Instrumental", listOf("Artist"), 200, "Song (Instrumental)", listOf("Artist"), 200))
+    }
+
+    @Test
     fun `a stored match by a different artist is not plausible even with the same title`() {
         assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
     }
