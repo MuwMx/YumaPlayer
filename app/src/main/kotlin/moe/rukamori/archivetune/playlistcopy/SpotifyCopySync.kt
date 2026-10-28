@@ -80,6 +80,8 @@ class SpotifyCopySync
                 val spotifyPlaylists = repository.playlists.value.ifEmpty { repository.playlistsWithoutCounts() }
                 if (spotifyPlaylists.isEmpty()) return@withLock null
                 val listedAt = System.currentTimeMillis()
+                // Every local file of the same length shared one of these, so none can be trusted.
+                database.deleteLegacyLocalFileMatches()
 
                 val copiesBySource =
                     database
@@ -125,8 +127,14 @@ class SpotifyCopySync
         ): PlanResult {
             val total = playlist.tracks?.total
             // A copy that already has every song Spotify reports is left alone, and so is a
-            // copy that was moved to YouTube, which is only changed by explicit actions.
-            if (copy != null && (copy.playlist.browseId != null || (copy.songCount > 0 && total == copy.playlist.remoteSongCount))) {
+            // copy that was moved to YouTube, which is only changed by explicit actions. A copy
+            // with rows older versions wrote for local files is read again so they get repaired.
+            if (copy != null && copy.playlist.browseId != null) return PlanResult.UpToDate
+            if (copy != null &&
+                copy.songCount > 0 &&
+                total == copy.playlist.remoteSongCount &&
+                database.legacyLocalFileMaps(copy.id).isEmpty()
+            ) {
                 return PlanResult.UpToDate
             }
             return try {
