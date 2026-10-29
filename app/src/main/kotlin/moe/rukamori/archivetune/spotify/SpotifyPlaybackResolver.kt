@@ -36,6 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object SpotifyPlaybackResolver {
     private const val CACHE_MAX_SIZE = 512
+
+    // 2026-10-29: matches saved before this may point at the clean release of an explicit song.
+    private const val EXPLICIT_PREFERENCE_SINCE_MS = 1_793_232_000_000L
     private const val SONG_LOOKUP_CHUNK = 500
     private const val YIELD_MS = 100L
     private const val BACKGROUND_YIELD_MS = 250L
@@ -103,6 +106,7 @@ object SpotifyPlaybackResolver {
                             title = source.title,
                             artists = source.artists.map { it.name },
                             durationSec = source.duration.toLong(),
+                            explicit = source.explicit,
                             match = match,
                             song = song,
                         )
@@ -110,6 +114,8 @@ object SpotifyPlaybackResolver {
                         Timber.tag("SpotifyMatching").w("Ignoring stored match '%s' -> '%s'", source.title, song?.song?.title ?: match.title)
                         return@forEach
                     }
+                    // Left as a placeholder, so it is searched once more just before it plays.
+                    if (needsExplicitRecheck(match, source.explicit)) return@forEach
                     val matched = song?.toMediaMetadata()
                     put(
                         source.id,
@@ -126,6 +132,16 @@ object SpotifyPlaybackResolver {
         }
 
     /**
+     * The matcher did not prefer explicit releases before [EXPLICIT_PREFERENCE_SINCE_MS], and the
+     * stored song cannot tell which release it was, so an explicit Spotify song with an older
+     * automatic match is searched once more.
+     */
+    private fun needsExplicitRecheck(
+        match: SpotifyMatchEntity,
+        explicit: Boolean,
+    ): Boolean = explicit && !match.isManualOverride && match.cachedAt < EXPLICIT_PREFERENCE_SINCE_MS
+
+    /**
      * A match saved by an older version can point at an unrelated video, and a stored match is
      * otherwise trusted for good. It has to look like the same recording: its artist, and its title
      * or length, must fit the Spotify track. Without the song's row only the stored title is known.
@@ -134,6 +150,7 @@ object SpotifyPlaybackResolver {
         title: String,
         artists: List<String>,
         durationSec: Long?,
+        explicit: Boolean,
         match: SpotifyMatchEntity,
         song: Song?,
     ): Boolean =
@@ -144,6 +161,8 @@ object SpotifyPlaybackResolver {
             candidateTitle = song?.song?.title ?: match.title,
             candidateArtists = song?.artists?.map { it.name } ?: listOf(match.artist).filter { it.isNotBlank() },
             candidateDurationSec = song?.song?.duration?.toLong(),
+            trackExplicit = explicit,
+            candidateExplicit = song?.song?.explicit,
         )
 
     suspend fun resolveToMediaItem(
@@ -172,6 +191,9 @@ object SpotifyPlaybackResolver {
                 }
             }
 
+            // A stored match that is searched once more; it is used when the search finds nothing.
+            var storedFallback: MediaMetadata? = null
+            var storedMatch: SpotifyMatchEntity? = null
             if (db != null) {
                 val match =
                     if (rawSpotifyId.isNotBlank()) {
@@ -187,6 +209,7 @@ object SpotifyPlaybackResolver {
                             title = track.name,
                             artists = track.artists.map { it.name },
                             durationSec = track.durationMs / 1000L,
+                            explicit = track.explicit,
                             match = match,
                             song = dbSong,
                         )
@@ -222,14 +245,20 @@ object SpotifyPlaybackResolver {
                             )
                         }
 
-                    mutex.withLock {
-                        cache[track.id] = metadata
-                        if (rawSpotifyId.isNotBlank()) {
-                            cache[rawSpotifyId] = metadata
+                    if (needsExplicitRecheck(match, track.explicit)) {
+                        Timber.tag("SpotifyMatching").d("RECHECK '${track.name}': stored before explicit releases were preferred")
+                        storedFallback = metadata
+                        storedMatch = match
+                    } else {
+                        mutex.withLock {
+                            cache[track.id] = metadata
+                            if (rawSpotifyId.isNotBlank()) {
+                                cache[rawSpotifyId] = metadata
+                            }
                         }
+                        Timber.tag("SpotifyMatching").d("DB MATCH HIT: '${track.name}' -> YT ${metadata.id}")
+                        return@withContext metadata
                     }
-                    Timber.tag("SpotifyMatching").d("DB MATCH HIT: '${track.name}' -> YT ${metadata.id}")
-                    return@withContext metadata
                 }
             }
 
@@ -278,12 +307,14 @@ object SpotifyPlaybackResolver {
                         titleOf = { it.title },
                         artistsOf = { it.artists.map { a -> a.name } },
                         durationMsOf = { (it.duration ?: 0) * 1000L },
+                        explicitOf = { it.explicit },
                     )
                 if (strict.accepted != null) return strict
 
                 return scorer.pickByTokenOverlap(
                     track = trackQuery,
                     candidates = candidates,
+                    explicitOf = { it.explicit },
                     titleOf = { it.title },
                     artistsOf = { it.artists.map { a -> a.name } },
                     durationMsOf = { (it.duration ?: 0) * 1000L },
@@ -356,6 +387,15 @@ object SpotifyPlaybackResolver {
 
             val (best, score) =
                 decision?.accepted?.let { it to decision.score } ?: run {
+                    storedFallback?.let { fallback ->
+                        // Nothing better was found: keep the stored match and do not search for it again.
+                        storedMatch?.let { db?.insert(it.copy(cachedAt = System.currentTimeMillis())) }
+                        mutex.withLock {
+                            cache[track.id] = fallback
+                            if (rawSpotifyId.isNotBlank()) cache[rawSpotifyId] = fallback
+                        }
+                        return@withContext fallback
+                    }
                     if (throwOnSearchFailure && failedSearches.get() > 0) {
                         throw IOException("YouTube search failed for '${track.name}' (${failedSearches.get()} requests)")
                     }

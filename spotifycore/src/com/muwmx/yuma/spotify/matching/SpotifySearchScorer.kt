@@ -34,12 +34,14 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         titleOf: (T) -> String,
         artistsOf: (T) -> List<String>,
         durationMsOf: (T) -> Long,
+        explicitOf: (T) -> Boolean = { false },
     ): CandidateDecision<T> {
         val passers = candidates.filter { cand ->
             passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
         }
         val best = passers.minWithOrNull(
             compareBy<T> { !isCreditedTo(track.artist, artistsOf(it)) }
+                .thenBy { !explicitOf(it) }
                 .thenBy { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
                 .thenByDescending { effectiveTitleSim(track.title, titleOf(it)) },
         ) ?: return CandidateDecision(null, 0.0, "no candidate passed gates")
@@ -85,6 +87,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         titleOf: (T) -> String,
         artistsOf: (T) -> List<String>,
         durationMsOf: (T) -> Long,
+        explicitOf: (T) -> Boolean = { false },
     ): CandidateDecision<T>? {
         val wantsVersion = VERSION_UPLOAD_WORDS.containsMatchIn(track.title)
         val trackDurationSec = (track.durationMs ?: 0L) / 1000.0
@@ -116,7 +119,8 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                     candidateDurationSec > 0.0 &&
                     abs(trackDurationSec - candidateDurationSec) <= TOKEN_OVERLAP_DURATION_TOLERANCE_SEC
             val credited = isCreditedTo(track.artist, artistsOf(candidate))
-            val score = textSim + (if (durationOk) 0.6 else 0.0) + (if (credited) 0.5 else 0.0) + titleSim * 0.3
+            val explicitBonus = if (explicitOf(candidate)) 0.2 else 0.0
+            val score = textSim + (if (durationOk) 0.6 else 0.0) + (if (credited) 0.5 else 0.0) + explicitBonus + titleSim * 0.3
             val accepted = titleSim >= 0.5 && (durationOk || titleSim >= 0.6 || textSim >= 0.55)
             if (accepted && score > bestScore) {
                 best = candidate
@@ -180,7 +184,11 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         candidateTitle: String,
         candidateArtists: List<String>,
         candidateDurationSec: Long?,
+        trackExplicit: Boolean = false,
+        candidateExplicit: Boolean? = null,
     ): Boolean {
+        // The explicit song saved with its clean release is matched again.
+        if (trackExplicit && candidateExplicit == false) return false
         // A candidate saved without any artist cannot be checked on it, so title and length decide.
         val artistKnown = candidateArtists.any { it.isNotBlank() }
         if (artistKnown && !hasArtistEvidence(trackArtists, candidateTitle, candidateArtists)) return false
@@ -406,6 +414,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             "extended", "demo", "mono", "re-recorded", "rerecorded",
             "taylor's version", "commentary", "mtv",
             "piano", "lofi", "lo-fi", "tribute", "orchestral", "violin", "tutorial",
+            "clean", "clean version", "edited",
         )
     }
 }
