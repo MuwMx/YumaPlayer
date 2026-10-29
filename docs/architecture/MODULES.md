@@ -27,7 +27,7 @@ YumaPlayer consists of **20 Gradle modules** (verified against `settings.gradle.
  ▼                      ▼                                  ▼
 ┌──────────────┐ ┌──────────────┐ ┌───────────────────────────────────────┐
 │:designsystem │ │  :database  │ │ Integrations & Lyrics                 │
-│ (YDS tokens, │ │ (Room, v36) │ │ (:lyrics:* ×7, :spotifycore,          │
+│ (YDS tokens, │ │ (Room, v38) │ │ (:lyrics:* ×7, :spotifycore,          │
 │  UI Kit)     │ │              │ │  :shazamkit, :canvas, :lastfm,        │
 └──────────────┘ └──────────────┘ │  :flaccore)                           │
                                   └───────────────────┬───────────────────┘
