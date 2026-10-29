@@ -4,21 +4,15 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package moe.rukamori.archivetune.ui.screens.playlist.spotify
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
@@ -28,34 +22,24 @@ import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
 internal fun SpotifyPlaylistTrackRow(
     track: SpotifyTrack,
     isActive: Boolean,
-    isResolving: Boolean,
     isPlaying: Boolean,
-    canClick: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SpotifyTrackListItem(
         track = track,
-        isActive = isActive || isResolving,
-        isPlaying = isPlaying && !isResolving,
-        trailingContent = {
-            if (isResolving) {
-                CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
-            }
-        },
+        isActive = isActive,
+        isPlaying = isPlaying,
         modifier =
             modifier
                 .fillMaxWidth()
-                .clickable(enabled = canClick) {
-                    onClick()
-                },
+                .clickable(onClick = onClick),
     )
 }
 
 internal fun LazyListScope.spotifyPlaylistTrackRows(
     filteredTracks: List<SpotifyTrack>,
     mediaMetadata: MediaMetadata?,
-    resolvingTrackId: String?,
     isPlaying: Boolean,
     onTrackClick: (track: SpotifyTrack, index: Int, isActive: Boolean) -> Unit,
 ) {
@@ -68,14 +52,11 @@ internal fun LazyListScope.spotifyPlaylistTrackRows(
             remember(track, mediaMetadata) {
                 track.isResolvedAs(mediaMetadata)
             }
-        val trackIsResolving = resolvingTrackId == track.id
 
         SpotifyPlaylistTrackRow(
             track = track,
             isActive = trackIsActive,
-            isResolving = trackIsResolving,
             isPlaying = isPlaying,
-            canClick = resolvingTrackId == null || trackIsActive,
             onClick = {
                 onTrackClick(track, index, trackIsActive)
             },
