@@ -8,7 +8,11 @@ package moe.rukamori.archivetune.spotify
 
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -26,13 +30,29 @@ import moe.rukamori.archivetune.spotify.matching.TrackMatcher
 import moe.rukamori.archivetune.spotify.matching.TrackQuery
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import timber.log.Timber
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 object SpotifyPlaybackResolver {
     private const val CACHE_MAX_SIZE = 512
+    private const val SONG_LOOKUP_CHUNK = 500
+    private const val YIELD_MS = 100L
+    private const val BACKGROUND_YIELD_MS = 250L
+
+    // Sustained background searching is what gets an IP rate-limited.
+    private const val BACKGROUND_SPACING_MS = 2_500L
 
     private val matcher = TrackMatcher()
     private val scorer = SpotifySearchScorer(matcher)
-    private val searchSemaphore = kotlinx.coroutines.sync.Semaphore(3)
+
+    // Searches for the song being played never wait; searches for songs that are
+    // only being prepared yield to them and to each other, so preparing a queue
+    // cannot slow down the current song or get the IP rate-limited.
+    private val searchSemaphore = Semaphore(4)
+    private val upcomingSemaphore = Semaphore(2)
+    private val backgroundSemaphore = Semaphore(1)
+    private val playingSearches = AtomicInteger(0)
+    private val upcomingSearches = AtomicInteger(0)
 
     private val mutex = Mutex()
     private val cache =
@@ -43,14 +63,86 @@ object SpotifyPlaybackResolver {
     @Volatile
     private var databaseRef: MusicDatabase? = null
 
+    /** Gives the resolver the database to read stored matches from before the first lookup. */
+    fun attachDatabase(database: MusicDatabase) {
+        databaseRef = database
+    }
+
+    fun database(): MusicDatabase? = databaseRef
+
+    /**
+     * Looks up the stored YouTube matches for the Spotify placeholders in [items] in one
+     * database pass, keyed by placeholder id. It never searches YouTube, so a full
+     * playlist can be queued instantly; placeholders without a usable match are left out.
+     */
+    suspend fun resolveStoredPlaceholders(items: List<MediaMetadata>): Map<String, MediaMetadata> =
+        withContext(Dispatchers.IO) {
+            val db = databaseRef ?: return@withContext emptyMap()
+            val bySpotifyId =
+                items
+                    .filter { SpotifyPlaceholders.isPlaceholder(it.id) }
+                    .associateBy { it.id.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX) }
+            if (bySpotifyId.isEmpty()) return@withContext emptyMap()
+
+            val matches = db.getSpotifyMatches(bySpotifyId.keys.toList())
+            val songs =
+                matches
+                    .map { it.youtubeId }
+                    .distinct()
+                    .chunked(SONG_LOOKUP_CHUNK)
+                    .flatMap { ids -> db.getSongsByIds(ids) }
+                    .associateBy { it.id }
+
+            buildMap {
+                matches.forEach { match ->
+                    val source = bySpotifyId[match.spotifyId] ?: return@forEach
+                    val song = songs[match.youtubeId]
+                    if (song != null && !match.isManualOverride && !hasSharedArtist(source, song.toMediaMetadata())) {
+                        return@forEach
+                    }
+                    val matched = song?.toMediaMetadata()
+                    put(
+                        source.id,
+                        (matched ?: source.copy(id = match.youtubeId)).copy(
+                            title = song?.song?.title ?: source.title,
+                            thumbnailUrl = source.thumbnailUrl ?: song?.song?.thumbnailUrl,
+                            duration = if (source.duration > 0) source.duration else song?.song?.duration ?: -1,
+                            album = source.album ?: matched?.album,
+                            spotifyTrackId = match.spotifyId,
+                        ),
+                    )
+                }
+            }
+        }
+
+    private fun hasSharedArtist(
+        source: MediaMetadata,
+        candidate: MediaMetadata,
+    ): Boolean =
+        scorer.hasArtistEvidence(
+            trackArtists = source.artists.map { it.name },
+            candidateTitle = candidate.title,
+            candidateArtists = candidate.artists.map { it.name },
+        )
+
     suspend fun resolveToMediaItem(
         track: SpotifyTrack,
         database: MusicDatabase? = null,
     ): MediaItem? = resolveToMetadata(track, database)?.toMediaItem()
 
+    /**
+     * Finds the YouTube song for [track], using a stored match when there is one.
+     *
+     * @param priority who is waiting for the match; see [MatchPriority].
+     * @param throwOnSearchFailure throw an [IOException] instead of returning null
+     * when nothing matched and YouTube searches failed (rate limit, no network),
+     * so callers can tell "try again" from "not on YouTube".
+     */
     suspend fun resolveToMetadata(
         track: SpotifyTrack,
         database: MusicDatabase? = null,
+        priority: MatchPriority = MatchPriority.PLAYING,
+        throwOnSearchFailure: Boolean = false,
     ): MediaMetadata? =
         withContext(Dispatchers.IO) {
             val db = database ?: databaseRef
@@ -74,8 +166,22 @@ object SpotifyPlaybackResolver {
                     } else {
                         db.getSpotifyMatch(track.id)
                     }
-                if (match != null) {
-                    val dbSong = db.getSongByIdBlocking(match.youtubeId)
+                val dbSong = match?.let { db.getSongByIdBlocking(it.youtubeId) }
+                val implausible =
+                    match != null &&
+                        dbSong != null &&
+                        !match.isManualOverride &&
+                        !scorer.hasArtistEvidence(
+                            trackArtists = track.artists.map { it.name },
+                            candidateTitle = dbSong.song.title,
+                            candidateArtists = dbSong.artists.map { it.name },
+                        )
+                if (implausible) {
+                    Timber.tag("SpotifyMatching").w(
+                        "Ignoring stored match '${track.name}' -> '${dbSong?.song?.title}': artist mismatch",
+                    )
+                }
+                if (match != null && !implausible) {
                     val metadata =
                         if (dbSong != null) {
                             dbSong.toMediaMetadata().copy(
@@ -113,14 +219,17 @@ object SpotifyPlaybackResolver {
                 }
             }
 
-            val artistsList = track.artists.map { it.name }.filter { it.isNotBlank() }
+            val artistsList = track.artists.map { collapseSpacedLetters(it.name) }.filter { it.isNotBlank() }
             val queryArtist = artistsList.joinToString(", ")
             Timber.tag("SpotifyMatching").d(
                 "INPUT: title='${track.name}', artists=[$queryArtist], dur=${track.durationMs}ms, " +
                 "isrc=${track.externalIds?.isrc}, explicit=${track.explicit}",
             )
 
-            val query = SpotifyQueryBuilder.buildSearchQuery(track)
+            val query =
+                SpotifyQueryBuilder.buildSearchQuery(
+                    track.copy(artists = track.artists.map { it.copy(name = collapseSpacedLetters(it.name)) }),
+                )
             Timber.tag("SpotifyMatching").d("QUERY: '$query'")
 
             val trackQuery =
@@ -133,69 +242,119 @@ object SpotifyPlaybackResolver {
                     explicit = track.explicit,
                 )
 
-            val decision = searchSemaphore.withPermit {
-                val songSearchResult =
-                    YouTube.search(
-                        query = query,
-                        filter = YouTube.SearchFilter.FILTER_SONG,
-                    ).getOrNull()
-
-                var candidates =
-                    songSearchResult?.items
-                        ?.filterIsInstance<SongItem>()
-                        ?.filter { (it.duration ?: 0) > 0 }
-                        ?.distinctBy { it.id }
-                        .orEmpty()
-
-                var dec =
-                    if (candidates.isNotEmpty()) {
-                        scorer.pickGeneric(
-                            track = trackQuery,
-                            candidates = candidates,
-                            titleOf = { it.title },
-                            artistsOf = { it.artists.map { a -> a.name } },
-                            durationMsOf = { (it.duration ?: 0) * 1000L },
-                        )
-                    } else {
-                        null
+            // At most three requests, most precise first: official songs by
+            // artist + title, then the general search (uploads and videos, which
+            // carry the artist in the title), then songs by title alone.
+            val rawTitle = track.name.trim()
+            val artistAndTitle = "${artistsList.joinToString(" ")} $rawTitle".trim()
+            val attempts =
+                buildList {
+                    add(query to SearchMode.SONGS)
+                    if (rawTitle.isNotBlank()) {
+                        add(artistAndTitle to SearchMode.SUMMARY)
+                        add(rawTitle to SearchMode.SONGS)
                     }
+                }.distinct()
 
-                if (dec?.accepted == null) {
-                    val fallbackResult = YouTube.search(query = query, filter = null).getOrNull()
-                    val fallbackCandidates =
-                        fallbackResult?.items
-                            ?.filterIsInstance<SongItem>()
-                            ?.filter { (it.duration ?: 0) > 0 }
-                            ?.distinctBy { it.id }
-                            .orEmpty()
+            val failedSearches = AtomicInteger()
 
-                    if (fallbackCandidates.isNotEmpty()) {
-                        dec =
-                            scorer.pickGeneric(
-                                track = trackQuery,
-                                candidates = fallbackCandidates,
-                                titleOf = { it.title },
-                                artistsOf = { it.artists.map { a -> a.name } },
-                                durationMsOf = { (it.duration ?: 0) * 1000L },
-                            )
-                    }
-                }
-                dec
+            fun decide(candidates: List<SongItem>): SpotifySearchScorer.CandidateDecision<SongItem>? {
+                if (candidates.isEmpty()) return null
+                val strict =
+                    scorer.pickGeneric(
+                        track = trackQuery,
+                        candidates = candidates.filter { (it.duration ?: 0) > 0 },
+                        titleOf = { it.title },
+                        artistsOf = { it.artists.map { a -> a.name } },
+                        durationMsOf = { (it.duration ?: 0) * 1000L },
+                    )
+                if (strict.accepted != null) return strict
+
+                // Uploads often come back without a duration, so this fallback
+                // also considers them; it still needs the Spotify artist on the YouTube side.
+                return scorer.pickByTokenOverlap(
+                    track = trackQuery,
+                    candidates = candidates,
+                    titleOf = { it.title },
+                    artistsOf = { it.artists.map { a -> a.name } },
+                    durationMsOf = { (it.duration ?: 0) * 1000L },
+                ) ?: strict
             }
 
-            val nonNullDecision =
-                decision ?: run {
-                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': no candidates returned")
-                    return@withContext null
+            suspend fun search(
+                searchText: String,
+                mode: SearchMode,
+            ): SpotifySearchScorer.CandidateDecision<SongItem>? {
+                val results =
+                    when (mode) {
+                        SearchMode.SONGS ->
+                            YouTube
+                                .search(query = searchText, filter = YouTube.SearchFilter.FILTER_SONG)
+                                .map { it.items }
+                        SearchMode.SUMMARY ->
+                            YouTube
+                                .searchSummary(searchText)
+                                .map { page -> page.summaries.flatMap { it.items } }
+                    }
+                results.onFailure { failedSearches.incrementAndGet() }
+                return decide(results.getOrNull().orEmpty().filterIsInstance<SongItem>().distinctBy { it.id })
+            }
+
+            suspend fun searchOneByOne() =
+                attempts.firstNotNullOfOrNull { (searchText, mode) ->
+                    search(searchText, mode)?.takeIf { it.accepted != null }
                 }
 
-            val best =
-                nonNullDecision.accepted ?: run {
-                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': reason='${nonNullDecision.reason}'")
+            // For the song being played, send every search at once and take the
+            // first acceptable one in order of preference; a miss then costs one
+            // round trip instead of three.
+            suspend fun searchAllAtOnce() =
+                coroutineScope {
+                    val searches = attempts.map { (searchText, mode) -> async { search(searchText, mode) } }
+                    try {
+                        searches.firstNotNullOfOrNull { it.await()?.takeIf { decision -> decision.accepted != null } }
+                    } finally {
+                        searches.forEach { it.cancel() }
+                    }
+                }
+
+            val decision =
+                when (priority) {
+                    MatchPriority.PLAYING -> {
+                        playingSearches.incrementAndGet()
+                        try {
+                            searchSemaphore.withPermit { searchAllAtOnce() }
+                        } finally {
+                            playingSearches.decrementAndGet()
+                        }
+                    }
+                    MatchPriority.UPCOMING ->
+                        upcomingSemaphore.withPermit {
+                            while (playingSearches.get() > 0) delay(YIELD_MS)
+                            upcomingSearches.incrementAndGet()
+                            try {
+                                searchOneByOne()
+                            } finally {
+                                upcomingSearches.decrementAndGet()
+                            }
+                        }
+                    MatchPriority.BACKGROUND ->
+                        backgroundSemaphore.withPermit {
+                            while (playingSearches.get() > 0 || upcomingSearches.get() > 0) delay(BACKGROUND_YIELD_MS)
+                            searchOneByOne().also { delay(BACKGROUND_SPACING_MS) }
+                        }
+                }
+
+            val (best, score) =
+                decision?.accepted?.let { it to decision.score } ?: run {
+                    if (throwOnSearchFailure && failedSearches.get() > 0) {
+                        throw IOException("YouTube search failed for '${track.name}' (${failedSearches.get()} requests)")
+                    }
+                    Timber.tag("SpotifyMatching").w("REJECTED '${track.name}': no candidate was accepted")
                     return@withContext null
                 }
             Timber.tag("SpotifyMatching").i(
-                "ACCEPTED '${track.name}' -> YT id=${best.id}, title='${best.title}', score=${nonNullDecision.score}",
+                "ACCEPTED '${track.name}' -> YT id=${best.id}, title='${best.title}', score=$score",
             )
 
             val bestMetadata = best.toMediaMetadata()
@@ -232,7 +391,7 @@ object SpotifyPlaybackResolver {
                         youtubeId = metadata.id,
                         title = track.name,
                         artist = track.artists.joinToString(" ") { it.name },
-                        matchScore = decision.score,
+                        matchScore = score,
                         isrc = metadata.isrc,
                     ),
                 )
@@ -241,3 +400,23 @@ object SpotifyPlaybackResolver {
             metadata
         }
 }
+
+/** Who is waiting for a match; it decides how soon the search may run. */
+enum class MatchPriority {
+    /** The song is playing or about to be: its searches are sent at once and do not wait for the others. */
+    PLAYING,
+
+    /** A song being prepared, or a bulk copy: at most two searches at a time, and none while a playing song is searching. */
+    UPCOMING,
+
+    /** A song further away: one search at a time, spaced out, and only while nothing else is searching. */
+    BACKGROUND,
+}
+
+private enum class SearchMode { SONGS, SUMMARY }
+
+private val SPACED_LETTERS = Regex("(?<![\\p{L}\\p{N}])(?:[\\p{L}\\p{N}] ){2,}[\\p{L}\\p{N}](?![\\p{L}\\p{N}])")
+
+/** "G a t e w a y" -> "Gateway": letter-spaced names match nothing on YouTube. */
+internal fun collapseSpacedLetters(name: String): String =
+    SPACED_LETTERS.replace(name) { match -> match.value.replace(" ", "") }.trim()

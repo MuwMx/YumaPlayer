@@ -16,11 +16,14 @@ import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.PlaylistSortType
+import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
+import moe.rukamori.archivetune.db.entities.SongArtistMap
+import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import java.text.Collator
 import java.time.LocalDateTime
@@ -147,6 +150,12 @@ interface PlaylistDao {
     )
     fun playlistByBrowseId(browseId: String): Flow<Playlist?>
 
+    @Transaction
+    @Query(
+        "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifySourceId = :spotifySourceId LIMIT 1",
+    )
+    suspend fun playlistBySpotifySourceId(spotifySourceId: String): Playlist?
+
     @Query("SELECT * FROM playlist WHERE browseId = :browseId LIMIT 1")
     fun playlistEntityByBrowseId(browseId: String): PlaylistEntity?
 
@@ -232,6 +241,20 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: PlaylistSongMap)
 
+    // Batch inserts for writing a whole playlist at once: one prepared statement per
+    // table instead of one call per row. Rows that already exist are kept as they are.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertSongsIfAbsent(songs: List<SongEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertArtistsIfAbsent(artists: List<ArtistEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertSongArtistMapsIfAbsent(maps: List<SongArtistMap>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertPlaylistSongMaps(maps: List<PlaylistSongMap>)
+
     @Update
     fun update(playlist: PlaylistEntity)
 
@@ -269,6 +292,9 @@ interface PlaylistDao {
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position")
     fun playlistSongs(playlistId: String): Flow<List<PlaylistSong>>
+
+    @Query("SELECT songId FROM playlist_song_map WHERE playlistId = :playlistId")
+    suspend fun playlistSongIds(playlistId: String): List<String>
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")

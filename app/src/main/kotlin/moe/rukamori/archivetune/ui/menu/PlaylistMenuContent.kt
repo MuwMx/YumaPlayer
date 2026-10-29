@@ -45,6 +45,7 @@ internal fun PlaylistMenuContent(
     onShowAssignTagsDialog: () -> Unit,
     onShowRemoveDownloadDialog: () -> Unit,
     onSyncPlaylist: () -> Unit,
+    onCopyPlaylist: () -> Unit,
     onShowHidePlaylistDialog: () -> Unit,
     onShowDeletePlaylistDialog: () -> Unit,
     onUnhidePlaylist: () -> Unit,
@@ -133,6 +134,7 @@ internal fun PlaylistMenuContent(
                         }
                     },
                     onDeleteClick = onShowDeletePlaylistDialog,
+                    onCopyClick = onCopyPlaylist,
                 )
             }
         }

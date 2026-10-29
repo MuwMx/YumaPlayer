@@ -8,6 +8,7 @@ package moe.rukamori.archivetune.utils
 
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.playlistcopy.SpotifyCopySync
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,7 @@ class SyncUtils
         private val syncLikes: SyncLikes,
         private val ytmSync: YtmSync,
         private val spotifySyncOps: SpotifySyncOps,
+        private val spotifyCopySync: SpotifyCopySync,
     ) {
         suspend fun performFullSync(authoritative: Boolean = false) = ytmSync.performFullSync(authoritative)
 
@@ -66,5 +68,9 @@ class SyncUtils
             spotifySyncOps.syncSpotifyLikedSongs(authoritative, onProgress)
         }
 
-        fun trySpotifyAutoSync(authoritative: Boolean = false) = spotifySyncOps.trySpotifyAutoSync(authoritative)
+        fun trySpotifyAutoSync(authoritative: Boolean = false) {
+            // The editable copies are read from Spotify directly, so they do not wait for the mirror sync.
+            spotifyCopySync.syncInBackground()
+            spotifySyncOps.trySpotifyAutoSync(authoritative)
+        }
     }

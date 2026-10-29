@@ -111,8 +111,22 @@ internal fun PlaylistMenuSyncHideDeleteSection(
     onSyncClick: () -> Unit,
     onHideClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onCopyClick: () -> Unit,
 ) {
     MenuSurfaceSection {
+        NewMenuItem(
+            headlineContent = { Text(text = stringResource(R.string.copy_to_playlist)) },
+            leadingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.playlist_add),
+                    contentDescription = null,
+                )
+            },
+            onClick = onCopyClick,
+            index = 0,
+            count = 4,
+        )
+
         NewMenuItem(
             headlineContent = { Text(text = stringResource(R.string.sync_playlist)) },
             leadingContent = {
@@ -122,8 +136,8 @@ internal fun PlaylistMenuSyncHideDeleteSection(
                 )
             },
             onClick = onSyncClick,
-            index = 0,
-            count = 3,
+            index = 1,
+            count = 4,
         )
 
         NewMenuItem(
@@ -146,8 +160,8 @@ internal fun PlaylistMenuSyncHideDeleteSection(
                 )
             },
             onClick = onHideClick,
-            index = 1,
-            count = 3,
+            index = 2,
+            count = 4,
         )
 
         NewMenuItem(
@@ -165,8 +179,8 @@ internal fun PlaylistMenuSyncHideDeleteSection(
                 )
             },
             onClick = onDeleteClick,
-            index = 2,
-            count = 3,
+            index = 3,
+            count = 4,
         )
     }
 }

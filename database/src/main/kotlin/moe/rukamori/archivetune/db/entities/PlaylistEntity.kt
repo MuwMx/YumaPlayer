@@ -20,12 +20,20 @@ import org.apache.commons.lang3.RandomStringUtils
 import java.time.LocalDateTime
 
 @Immutable
-@Entity(tableName = "playlist", indices = [Index(value = ["spotifyId"])])
+@Entity(
+    tableName = "playlist",
+    indices = [
+        Index(value = ["spotifyId"]),
+        Index(value = ["spotifySourceId"]),
+    ],
+)
 data class PlaylistEntity(
     @PrimaryKey val id: String = generatePlaylistId(),
     val name: String,
     val browseId: String? = null,
     @ColumnInfo(defaultValue = "NULL") val spotifyId: String? = null,
+    /** Spotify playlist this editable copy was made from; null for mirrors and other playlists. */
+    @ColumnInfo(defaultValue = "NULL") val spotifySourceId: String? = null,
     val createdAt: LocalDateTime? = LocalDateTime.now(),
     val lastUpdateTime: LocalDateTime? = LocalDateTime.now(),
     @ColumnInfo(name = "isEditable", defaultValue = true.toString())

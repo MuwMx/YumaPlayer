@@ -17,6 +17,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.PlaybackRecoveryEngine
 import moe.rukamori.archivetune.playback.RecoveryDecision
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -36,9 +37,32 @@ class StreamErrorRouter(
     private val setConsecutivePlaybackErr: (Int) -> Unit = {},
 ) {
     private var lastLoginRecoveryPrompt: Pair<String, Long>? = null
+    private val skippedUnmatched = HashSet<String>()
+    private var lastUnmatchedSkipAt = 0L
 
     fun onPlayerError(error: PlaybackException): RecoveryDecision {
         val currentMediaId = playerActions.currentMediaItem?.mediaId ?: return RecoveryDecision.None
+        // A Spotify track with no YouTube version can never play, so move on to
+        // the next song. This is not a playback failure and does not count towards
+        // the consecutive-error limit; a run of unavailable songs is skipped
+        // straight through because each one fails instantly once known.
+        if (SpotifyPlaceholders.isKnownUnmatched(currentMediaId)) {
+            val nextIndex = playerActions.nextMediaItemIndex
+            Timber.tag(TAG).i("Skipping %s: no YouTube match", currentMediaId)
+            // Stop once a run of skips comes back to a song it already skipped, so a
+            // queue that repeats and has nothing playable does not skip forever.
+            val now = System.nanoTime()
+            if (now - lastUnmatchedSkipAt > UNMATCHED_RUN_GAP_NS) skippedUnmatched.clear()
+            lastUnmatchedSkipAt = now
+            if (nextIndex == C.INDEX_UNSET || !skippedUnmatched.add(currentMediaId)) {
+                playerActions.pause()
+                return RecoveryDecision.Stop
+            }
+            playerActions.seekTo(nextIndex, C.TIME_UNSET)
+            playerActions.prepare()
+            playerActions.play()
+            return RecoveryDecision.SkipNext
+        }
         val isLocalMedia = currentMediaId.isLocalMediaId()
         val isFullyCachedMedia = cacheOps.isTrackFullyCached(currentMediaId)
         val hasAnyCachedData =
@@ -277,6 +301,9 @@ class StreamErrorRouter(
 
     private companion object {
         const val TAG = "StreamErrorRouter"
+
+        // Skips of unavailable songs that come this close together belong to one run.
+        const val UNMATCHED_RUN_GAP_NS = 10_000_000_000L
         const val MAX_CONSECUTIVE_ERR = 5
         const val LOGIN_RECOVERY_DEBOUNCE_MS = 10_000L
         const val EXTRACTOR_CACHE_FINGERPRINT_PREFIX = "archivetune_extractor:"

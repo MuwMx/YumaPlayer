@@ -31,6 +31,7 @@ import moe.rukamori.archivetune.spotify.Spotify
 import moe.rukamori.archivetune.spotify.SpotifyGraphqlClient
 import moe.rukamori.archivetune.spotify.arr
 import moe.rukamori.archivetune.spotify.str
+import okhttp3.Dispatcher
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -73,6 +74,14 @@ object SpotifyGqlExecutor {
                     connectTimeout(15, TimeUnit.SECONDS)
                     readTimeout(30, TimeUnit.SECONDS)
                     writeTimeout(15, TimeUnit.SECONDS)
+                    // OkHttp allows 5 parallel calls per host by default, which would
+                    // queue the parallel playlist page reads behind each other.
+                    dispatcher(
+                        Dispatcher().apply {
+                            maxRequests = 64
+                            maxRequestsPerHost = 16
+                        },
+                    )
                 }
             }
             defaultRequest {

@@ -111,6 +111,7 @@ fun PlaylistMenu(
     var showHidePlaylistDialog by remember { mutableStateOf(false) }
     var showDeletePlaylistDialog by remember { mutableStateOf(false) }
     var showAssignTagsDialog by remember { mutableStateOf(false) }
+    var showCopyDialog by remember { mutableStateOf(false) }
 
     if (showEditDialog) {
         EditPlaylistDialog(
@@ -196,6 +197,7 @@ fun PlaylistMenu(
         onShowEditDialog = { showEditDialog = true },
         onShowAssignTagsDialog = { showAssignTagsDialog = true },
         onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
+        onCopyPlaylist = { showCopyDialog = true },
         onSyncPlaylist = {
             syncJob?.cancel()
             syncJob =
@@ -219,6 +221,13 @@ fun PlaylistMenu(
             }
         },
     )
+
+    if (showCopyDialog) {
+        PlaylistCopyDialog(
+            source = playlist.playlist.toCopySource(),
+            onDismiss = { showCopyDialog = false },
+        )
+    }
 
     syncProgress?.let { progress ->
         LoadingScreen(
