@@ -49,7 +49,7 @@ Spotify mirrors are not copy targets, and YouTube playlists are only offered whi
 
 `SpotifyCopySync` does the same for every Spotify playlist in the background whenever the Spotify auto-sync is triggered (app start, opening the Spotify library). It does not wait for that sync's cooldown, which is cheap because a copy whose stored track count equals Spotify's is skipped without a request. Track lists are read in parallel and written as placeholders in one transaction. A change that keeps a playlist's track count the same is only noticed once the count changes.
 
-Copies are additive. New songs from Spotify are appended, and songs the user added or kept are never removed. The reverse also holds: a song the user deletes from a copy comes back the next time Spotify's track count changes, and a copy the user deletes is created again by the next sync. Copies made through **Copy to playlist** are independent and not linked to the source.
+Copies are additive. New songs from Spotify are appended, and songs the user added or kept are never removed. A song the user deletes from a copy stays deleted: `SpotifyCopySnapshots` records which Spotify songs each copy was given, and a sync only adds songs Spotify gained since. A copy with no record yet is read once to make one and gains nothing. A copy the user deletes is created again by the next sync. Copies made through **Copy to playlist** are independent and not linked to the source.
 
 ## Known limitations
 

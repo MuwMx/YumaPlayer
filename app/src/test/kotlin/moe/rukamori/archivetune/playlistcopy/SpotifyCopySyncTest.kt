@@ -25,7 +25,8 @@ class SpotifyCopySyncTest {
     private val database = mockk<MusicDatabase>(relaxed = true)
     private val repository = mockk<SpotifyLibraryRepository>()
     private val writer = mockk<PlaylistCopyWriter>()
-    private val sync = SpotifyCopySync(database, repository, writer)
+    private val snapshots = mockk<SpotifyCopySnapshots>(relaxed = true)
+    private val sync = SpotifyCopySync(database, repository, writer, snapshots)
     private val spotifyPlaylists = MutableStateFlow<List<SpotifyPlaylist>>(emptyList())
 
     init {
@@ -33,6 +34,7 @@ class SpotifyCopySyncTest {
         coEvery { repository.restoreSession() } returns SpotifyAccountSession(isAuthenticated = true)
         coEvery { repository.playlistsWithoutCounts() } returns emptyList()
         every { database.playlistsByCreateDateAsc() } returns flowOf(emptyList())
+        every { snapshots.read(any()) } returns setOf("spotify:1", "spotify:2")
     }
 
     private fun spotifyPlaylist(
@@ -85,6 +87,39 @@ class SpotifyCopySyncTest {
             assertEquals(listOf("spotify:1", "spotify:2"), plans.captured[0].tracks.map { it.songId })
             assertEquals(listOf(null, null), plans.captured.map { it.existingCopyId })
             coVerify(exactly = 1) { writer.writeSpotifyCopies(any()) }
+            // What each copy was given is recorded, so songs removed from it later stay removed.
+            coVerify { snapshots.write("a", listOf("spotify:1", "spotify:2")) }
+            coVerify { snapshots.write("b", listOf("spotify:3")) }
+        }
+
+    @Test
+    fun aCopyIsToldWhichSongsEarlierSyncsGaveIt() =
+        runBlocking {
+            spotifyPlaylists.value = listOf(spotifyPlaylist("a", 3))
+            every { database.playlistsByCreateDateAsc() } returns flowOf(listOf(copy("a", remoteSongCount = 2, songCount = 1)))
+            coEvery { repository.playlistTracks("a") } returns listOf(spotifyTrack("1"), spotifyTrack("2"), spotifyTrack("3"))
+            val plans = slot<List<SpotifyCopyPlan>>()
+            coEvery { writer.writeSpotifyCopies(capture(plans)) } returns SpotifyCopyWriteResult(0, 1, 1)
+
+            sync.sync()
+
+            assertEquals(setOf("spotify:1", "spotify:2"), plans.captured.single().syncedSongIds)
+        }
+
+    @Test
+    fun aCopyWithNoRecordOfItsSongsIsReadOnceToRecordThem() =
+        runBlocking {
+            spotifyPlaylists.value = listOf(spotifyPlaylist("a", 2))
+            every { database.playlistsByCreateDateAsc() } returns flowOf(listOf(copy("a", remoteSongCount = 2, songCount = 2)))
+            every { snapshots.read("a") } returns null
+            coEvery { repository.playlistTracks("a") } returns listOf(spotifyTrack("1"), spotifyTrack("2"))
+            val plans = slot<List<SpotifyCopyPlan>>()
+            coEvery { writer.writeSpotifyCopies(capture(plans)) } returns SpotifyCopyWriteResult(0, 1, 0)
+
+            sync.sync()
+
+            assertNull(plans.captured.single().syncedSongIds)
+            coVerify { snapshots.write("a", listOf("spotify:1", "spotify:2")) }
         }
 
     @Test

@@ -32,6 +32,21 @@ class PlaylistCopyWriterTest {
     }
 
     @Test
+    fun aSyncOffersOnlyTheSongsSpotifyGainedSinceTheLastOne() {
+        // "b" was given to the copy before; if it is missing now, the user removed it.
+        val offered = tracksNewOnSpotify(setOf("a", "b"), listOf(track("a"), track("b"), track("c")))
+
+        assertEquals(listOf("c"), offered.map { it.songId })
+    }
+
+    @Test
+    fun aCopyWithNoRecordOfItsSongsIsOfferedNothing() {
+        val offered = tracksNewOnSpotify(null, listOf(track("a"), track("b")))
+
+        assertEquals(emptyList<String>(), offered.map { it.songId })
+    }
+
+    @Test
     fun youTubeCopyThatCannotBeWrittenLocallyIsRemovedFromYouTube() =
         runBlocking {
             mockkObject(YouTube)

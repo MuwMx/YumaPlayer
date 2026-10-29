@@ -35,6 +35,11 @@ fun tracksToAdd(
     return tracks.filter { seen.add(it.songId) }
 }
 
+fun tracksNewOnSpotify(
+    syncedSongIds: Set<String>?,
+    tracks: List<CopyTrack>,
+): List<CopyTrack> = if (syncedSongIds == null) emptyList() else tracks.filter { it.songId !in syncedSongIds }
+
 data class SpotifyCopyPlan(
     val spotifyId: String,
     val name: String,
@@ -42,6 +47,7 @@ data class SpotifyCopyPlan(
     val remoteCount: Int,
     val tracks: List<CopyTrack>,
     val existingCopyId: String?,
+    val syncedSongIds: Set<String>? = null,
 )
 
 data class SpotifyCopyWriteResult(
@@ -106,7 +112,7 @@ class PlaylistCopyWriter
                             addedTracks += plan.tracks.size
                         } else {
                             val repaired = replaceLegacyLocalFiles(existing, plan.tracks)
-                            val missing = addMissingTracks(repaired, plan.tracks)
+                            val missing = addMissingTracks(repaired, tracksNewOnSpotify(plan.syncedSongIds, plan.tracks))
                             update(
                                 existing.playlist.copy(
                                     remoteSongCount = plan.remoteCount,

@@ -41,7 +41,8 @@ data class SpotifyCopySyncReport(
 /**
  * Keeps one editable Personal copy of every Spotify playlist. The track lists are read from
  * Spotify in parallel and written as placeholder rows in a single transaction, so nothing waits
- * for YouTube matching. Copies only ever gain songs.
+ * for YouTube matching. A copy gains the songs added on Spotify; songs removed from the copy stay
+ * removed, see [SpotifyCopySnapshots].
  */
 @Singleton
 class SpotifyCopySync
@@ -50,6 +51,7 @@ class SpotifyCopySync
         private val database: MusicDatabase,
         private val repository: SpotifyLibraryRepository,
         private val writer: PlaylistCopyWriter,
+        private val snapshots: SpotifyCopySnapshots,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val mutex = Mutex()
@@ -102,6 +104,7 @@ class SpotifyCopySync
                 val readAt = System.currentTimeMillis()
 
                 val written = if (plans.isEmpty()) SpotifyCopyWriteResult(0, 0, 0) else writer.writeSpotifyCopies(plans)
+                plans.forEach { plan -> snapshots.write(plan.spotifyId, plan.tracks.map { it.songId }) }
                 SpotifyCopySyncReport(
                     playlists = spotifyPlaylists.size,
                     created = written.created,
@@ -126,12 +129,14 @@ class SpotifyCopySync
             copy: Playlist?,
         ): PlanResult {
             val total = playlist.tracks?.total
-            // A copy that already has every song Spotify reports is left alone, and so is a
-            // copy that was moved to YouTube, which is only changed by explicit actions. A copy
-            // with rows older versions wrote for local files is read again so they get repaired.
+            val synced = copy?.let { snapshots.read(playlist.id) }
+            // A copy whose Spotify playlist has the same number of songs as last time is left
+            // alone, and so is a copy that was moved to YouTube, which is only changed by explicit
+            // actions. A copy with rows older versions wrote for local files, or with no record of
+            // the songs it was given, is read again.
             if (copy != null && copy.playlist.browseId != null) return PlanResult.UpToDate
             if (copy != null &&
-                copy.songCount > 0 &&
+                synced != null &&
                 total == copy.playlist.remoteSongCount &&
                 database.legacyLocalFileMaps(copy.id).isEmpty()
             ) {
@@ -147,6 +152,7 @@ class SpotifyCopySync
                         remoteCount = total ?: tracks.size,
                         tracks = tracks.mapNotNull { it.toPlaceholderMetadata() }.map { CopyTrack(songId = it.id, metadata = it) },
                         existingCopyId = copy?.id,
+                        syncedSongIds = synced,
                     ),
                 )
             } catch (e: CancellationException) {
