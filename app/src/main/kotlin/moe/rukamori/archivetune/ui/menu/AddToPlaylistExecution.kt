@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.utils.completed
 
 internal data class AddToPlaylistExecutionResult(
     val songIds: List<String>,
@@ -18,6 +19,14 @@ internal data class AddToPlaylistExecutionResult(
     val duplicatesMap: Map<String, List<String>>,
     val addedPlaylistNames: List<String>,
 )
+
+private suspend fun remoteSongIds(browseId: String): Set<String>? =
+    YouTube
+        .playlist(browseId)
+        .completed()
+        .getOrNull()
+        ?.songs
+        ?.mapTo(linkedSetOf()) { it.id }
 
 internal suspend fun addSongsToPlaylistSafely(
     playlist: Playlist,
@@ -29,8 +38,19 @@ internal suspend fun addSongsToPlaylistSafely(
 
     val browseId = playlist.playlist.browseId
     if (isLoggedIn && browseId != null) {
+        val batch = YouTube.addSongsToPlaylist(browseId, requestedSongIds)
+        if (batch.isSuccess) {
+            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(batch.getOrThrow()))
+            return requestedSongIds.size
+        }
+
+        // A failed batch may already have added some songs; do not add them again.
+        val alreadyOnPlaylist = remoteSongIds(browseId) ?: return 0
         val acceptedSongEntries = mutableListOf<Pair<String, String?>>()
-        requestedSongIds.forEach { songId ->
+        requestedSongIds.filter { it in alreadyOnPlaylist }.forEach { songId ->
+            acceptedSongEntries += songId to null
+        }
+        requestedSongIds.filterNot { it in alreadyOnPlaylist }.forEach { songId ->
             var remoteAdded = false
             var addedSetVideoId: String? = null
             for (attempt in 0 until 3) {

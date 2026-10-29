@@ -102,6 +102,8 @@ import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.SpotifyQueue
 import moe.rukamori.archivetune.playback.session.ServiceSessionHolder
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
+import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -308,6 +310,7 @@ class MusicService :
     internal val djFilterByPlayer: ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor> get() = playerEngineHolder.djFilterByPlayer
     internal var lyricsPreloadManager: LyricsPreloadManager? = null
     internal var streamPrefetcher: StreamPrefetcher? = null
+    internal val placeholderLookahead by lazy { SpotifyPlaceholderLookahead(this) }
     internal lateinit var playerListeners: MusicServicePlayerListeners
 
     internal val secondaryCrossfadeListener: Player.Listener get() = playerListeners.secondaryCrossfadeListener
@@ -461,6 +464,8 @@ class MusicService :
 
     override fun onCreate() {
         super.onCreate()
+        SpotifyPlaceholders.isOnline = { isNetworkConnected.value }
+        SpotifyPlaybackResolver.attachDatabase(database)
         val timingStartNanos = if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
             val t = PlaybackTiming.nowNanos()
             PlaybackTiming.log("SERVICE_CREATE_START", startNanos = PlaybackTiming.processStartNanos.takeIf { it > 0L } ?: t)
@@ -716,6 +721,7 @@ class MusicService :
         moe.rukamori.archivetune.playback.createTransientSongFromMedia(media)
 
     override fun onDestroy() {
+        SpotifyPlaceholders.isOnline = { true }
         sponsorBlockPlaybackController.detach()
         serviceLifecycle.onDestroy {
             super.onDestroy()

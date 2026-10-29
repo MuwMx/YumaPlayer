@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
@@ -207,6 +208,8 @@ internal class QueuePersistenceStore(
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideo = dataStore.get(HideVideoKey, false)
         val initialStatus = itemQueue.getInitialStatus().filterExplicit(hideExplicit).filterVideo(hideVideo)
+        // Unmatched Spotify tracks in a restored queue are matched from their title and artists.
+        SpotifyPlaceholders.register(initialStatus.items.mapNotNull { it.metadata })
 
         withContext(Dispatchers.Main) {
             val items = initialStatus.items

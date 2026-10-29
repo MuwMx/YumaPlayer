@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -41,7 +42,8 @@ import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.spotify.SpotifyLibraryViewModel
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
-import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
+import moe.rukamori.archivetune.spotify.spotifyAwareQueue
+import moe.rukamori.archivetune.spotify.toPlaceholderMetadata
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LibraryEmptyState
@@ -51,6 +53,7 @@ import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.utils.reportException
 
 @Composable
 fun LibrarySpotifyPlaylistsScreen(
@@ -88,16 +91,18 @@ fun LibrarySpotifyPlaylistsScreen(
     val playPlaylist: (SpotifyPlaylist) -> Unit = { playlist ->
         playerConnection?.let { conn ->
             coroutineScope.launch {
-                val preloadTrack =
-                    Spotify.playlistTracks(playlistId = playlist.id, limit = 1, offset = 0).getOrNull()?.items?.firstOrNull()?.track
-                val preloadItem = preloadTrack?.let { SpotifyPlaybackResolver.resolveToMetadata(it) }
-                conn.playQueue(
-                    SpotifyPlaylistQueue(
-                        playlistId = playlist.id,
-                        title = playlist.name,
-                        preloadItem = preloadItem,
-                    ),
-                )
+                // Same as the playlist screen: the whole playlist is queued in order and
+                // each track is matched to YouTube just before it plays.
+                val items =
+                    try {
+                        viewModel.playlistTracks(playlist.id).mapNotNull { it.toPlaceholderMetadata() }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
+                        return@launch
+                    }
+                if (items.isNotEmpty()) conn.playQueue(spotifyAwareQueue(playlist.name, items))
             }
         }
     }
