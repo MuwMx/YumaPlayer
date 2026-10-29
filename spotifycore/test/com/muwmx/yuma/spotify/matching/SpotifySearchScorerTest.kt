@@ -255,6 +255,42 @@ class SpotifySearchScorerTest {
     }
 
     @Test
+    fun `the explicit release wins over the clean one`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 200_000L, explicit = true)
+        val clean = SpotifyTrack(id = "clean", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 200_000)
+        val explicit = SpotifyTrack(id = "explicit", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 201_000, explicit = true)
+
+        for (candidates in listOf(listOf(clean, explicit), listOf(explicit, clean))) {
+            val picked =
+                scorer.pickGeneric(
+                    query,
+                    candidates,
+                    titleOf = { it.name },
+                    artistsOf = { it.artists.map { artist -> artist.name } },
+                    durationMsOf = { it.durationMs.toLong() },
+                    explicitOf = { it.explicit },
+                )
+            assertEquals("explicit", picked.accepted?.id)
+        }
+    }
+
+    @Test
+    fun `an upload labelled clean is another version`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 200_000L)
+        val clean = SpotifyTrack(id = "clean", name = "Song (Clean)", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 200_000)
+
+        assertNull(scorer.pick(query, listOf(clean)).accepted)
+    }
+
+    @Test
+    fun `a stored clean match for an explicit song is not plausible`() {
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Artist"), 200, trackExplicit = true, candidateExplicit = false),
+        )
+    }
+
+    @Test
     fun `a stored match by a different artist is not plausible even with the same title`() {
         assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
     }
