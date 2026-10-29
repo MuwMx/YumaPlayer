@@ -181,6 +181,41 @@ class SpotifyCopySyncTest {
         }
 
     @Test
+    fun aCopyIsOnlyReadWhenItsPlaylistsCountChanged() =
+        runBlocking {
+            // Spotify's library list has no counts, so each one is asked for with a small request.
+            spotifyPlaylists.value = listOf(SpotifyPlaylist(id = "a", name = "Playlist a"), SpotifyPlaylist(id = "b", name = "Playlist b"))
+            every { database.playlistsByCreateDateAsc() } returns
+                flowOf(listOf(copy("a", remoteSongCount = 2, songCount = 2), copy("b", remoteSongCount = 2, songCount = 2)))
+            coEvery { repository.playlistTrackCount("a") } returns 2
+            coEvery { repository.playlistTrackCount("b") } returns 3
+            coEvery { repository.playlistTracks("b") } returns listOf(spotifyTrack("1"), spotifyTrack("2"), spotifyTrack("3"))
+            val plans = slot<List<SpotifyCopyPlan>>()
+            coEvery { writer.writeSpotifyCopies(capture(plans)) } returns SpotifyCopyWriteResult(0, 1, 1)
+
+            sync.sync()
+
+            assertEquals(listOf("b"), plans.captured.map { it.spotifyId })
+            assertEquals(3, plans.captured.single().remoteCount)
+            coVerify(exactly = 0) { repository.playlistTracks("a") }
+        }
+
+    @Test
+    fun aCopyWhoseCountCannotBeReadIsReadInFull() =
+        runBlocking {
+            spotifyPlaylists.value = listOf(SpotifyPlaylist(id = "a", name = "Playlist a"))
+            every { database.playlistsByCreateDateAsc() } returns flowOf(listOf(copy("a", remoteSongCount = 2, songCount = 2)))
+            coEvery { repository.playlistTrackCount("a") } returns null
+            coEvery { repository.playlistTracks("a") } returns listOf(spotifyTrack("1"), spotifyTrack("2"))
+            val plans = slot<List<SpotifyCopyPlan>>()
+            coEvery { writer.writeSpotifyCopies(capture(plans)) } returns SpotifyCopyWriteResult(0, 1, 0)
+
+            sync.sync()
+
+            assertEquals(listOf("a"), plans.captured.map { it.spotifyId })
+        }
+
+    @Test
     fun aColdStartListsPlaylistsWithoutAskingForEachTrackCount() =
         runBlocking {
             coEvery { repository.playlistsWithoutCounts() } returns listOf(SpotifyPlaylist(id = "a", name = "Playlist a"))

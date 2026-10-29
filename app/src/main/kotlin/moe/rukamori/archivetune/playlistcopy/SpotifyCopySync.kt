@@ -92,12 +92,13 @@ class SpotifyCopySync
                         .filter { it.playlist.spotifySourceId != null }
                         .associateBy { it.playlist.spotifySourceId!! }
 
-                val permits = Semaphore(READ_PARALLELISM)
+                val countPermits = Semaphore(COUNT_PARALLELISM)
+                val readPermits = Semaphore(READ_PARALLELISM)
                 val results =
                     coroutineScope {
                         spotifyPlaylists
                             .map { playlist ->
-                                async { permits.withPermit { planFor(playlist, copiesBySource[playlist.id]) } }
+                                async { planFor(playlist, copiesBySource[playlist.id], countPermits, readPermits) }
                             }.awaitAll()
                     }
                 val plans = results.filterIsInstance<PlanResult.Write>().map { it.plan }
@@ -127,23 +128,24 @@ class SpotifyCopySync
         private suspend fun planFor(
             playlist: SpotifyPlaylist,
             copy: Playlist?,
+            countPermits: Semaphore,
+            readPermits: Semaphore,
         ): PlanResult {
-            val total = playlist.tracks?.total
-            val synced = copy?.let { snapshots.read(playlist.id) }
-            // A copy whose Spotify playlist has the same number of songs as last time is left
-            // alone, and so is a copy that was moved to YouTube, which is only changed by explicit
-            // actions. A copy with rows older versions wrote for local files, or with no record of
-            // the songs it was given, is read again.
+            // A copy that was moved to YouTube is only changed by explicit actions.
             if (copy != null && copy.playlist.browseId != null) return PlanResult.UpToDate
-            if (copy != null &&
-                synced != null &&
-                total == copy.playlist.remoteSongCount &&
-                database.legacyLocalFileMaps(copy.id).isEmpty()
-            ) {
-                return PlanResult.UpToDate
-            }
+            val synced = copy?.let { snapshots.read(playlist.id) }
+            // A copy whose Spotify playlist has the same number of songs as last time is left alone.
+            // Spotify's library list usually has no counts, so the count is asked for with a
+            // one-track request rather than reading the whole playlist. A copy with rows older
+            // versions wrote for local files, or with no record of the songs it was given, is read.
+            val canSkip = copy != null && synced != null && database.legacyLocalFileMaps(copy.id).isEmpty()
+            val total =
+                playlist.tracks?.total
+                    ?: if (canSkip) countPermits.withPermit { repository.playlistTrackCount(playlist.id) } else null
+            if (canSkip && total != null && total == copy!!.playlist.remoteSongCount) return PlanResult.UpToDate
             return try {
-                val tracks = repository.playlistTracks(playlist.id)
+                // Track lists are large, so only a few are read at once to keep memory low.
+                val tracks = readPermits.withPermit { repository.playlistTracks(playlist.id) }
                 PlanResult.Write(
                     SpotifyCopyPlan(
                         spotifyId = playlist.id,
@@ -175,6 +177,7 @@ class SpotifyCopySync
 
         private companion object {
             const val TAG = "SpotifyCopySync"
-            const val READ_PARALLELISM = 12
+            const val COUNT_PARALLELISM = 8
+            const val READ_PARALLELISM = 2
         }
     }
