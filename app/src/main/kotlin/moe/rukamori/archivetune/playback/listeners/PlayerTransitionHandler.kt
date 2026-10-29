@@ -42,6 +42,8 @@ import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.playback.queue.buildAppendShuffleOrder
+import moe.rukamori.archivetune.playback.queue.songsLeftInPlayOrder
 import timber.log.Timber
 
 @OptIn(UnstableApi::class)
@@ -226,7 +228,9 @@ internal class PlayerTransitionHandler(
             // No redundant seeding update check.
         }
 
-        val remainingTracks = player.mediaItemCount - player.currentMediaItemIndex
+        // Counted in play order: with shuffle on, the last songs of the list can play first.
+        val remainingTracks =
+            songsLeftInPlayOrder(player.currentTimeline, player.currentMediaItemIndex, player.shuffleModeEnabled, limit = 6)
         val currentQ = queueDelegate.currentQueue
 
         val shouldPage = if (currentQ.isContextQueue) true else dataStore.get(AutoLoadMoreKey, true)
@@ -249,7 +253,7 @@ internal class PlayerTransitionHandler(
             dataStore.get(AutoLoadMoreKey, true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF &&
-            player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
+            remainingTracks <= 3 &&
             !currentQ.hasNextPage() &&
             !currentQ.isContextQueue
         ) {
@@ -271,7 +275,9 @@ internal class PlayerTransitionHandler(
                     val newItems = status.items.filter { it.mediaId !in queueIds }
 
                     if (newItems.isNotEmpty()) {
+                        val shuffleOrder = if (player.shuffleModeEnabled) buildAppendShuffleOrder(player.currentTimeline, newItems.size) else null
                         player.addMediaItems(newItems)
+                        shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
                         newItems.forEach { queueDelegate.autoAddedMediaIds.add(it.mediaId) }
                     }
                     queueDelegate.currentQueue = radioQueue
@@ -281,7 +287,10 @@ internal class PlayerTransitionHandler(
             }
         }
 
+        // While a queue is being built it can briefly hold only the song that was tapped; that is not
+        // the end of the queue.
         if (!queueDelegate.suppressAutoPlayback &&
+            !queueDelegate.isInitializingQueue &&
             !timelineEmpty &&
             dataStore.get(AutoLoadMoreKey, true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
