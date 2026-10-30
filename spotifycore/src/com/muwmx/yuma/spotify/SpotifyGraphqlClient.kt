@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.spotify
 
 import io.ktor.client.statement.HttpResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -72,6 +74,8 @@ object SpotifyGraphqlClient {
             log("E", "GQL $operationName — no token")
         }
 
+        // hashes learned in an earlier session are read from disk here, off the main thread, before the first request
+        hashRefresher?.applyLearnedOnce()
         val hashCandidates = SpotifyGqlPayloadBuilder.resolveHashCandidates(operationName)
         for ((hashIdx, sha256Hash) in hashCandidates.withIndex()) {
             val body = SpotifyGqlPayloadBuilder.buildGqlBody(operationName, sha256Hash, variables)
@@ -111,13 +115,18 @@ object SpotifyGraphqlClient {
         if (result.isPersistedQueryNotFound) {
             throw Spotify.SpotifyException(412, "PersistedQueryNotFound for $operationName — the web player's hash was rejected too")
         }
+        // Only an answer with data proves the hash works; anything else is not applied or remembered.
+        val answer = result.json
+        if (answer == null || !SpotifyHashRefresher.isWorkingAnswer(answer)) {
+            throw Spotify.SpotifyException(412, "GQL $operationName gave no usable answer with the web player's hash")
+        }
         log("I", "GQL $operationName recovered with the web player's current hash")
         SpotifyHashProvider.updateHashes(
             remoteHashes = mapOf(operationName to SpotifyHashProvider.RemoteHashEntry(hash = liveHash, previousHash = rejected.firstOrNull())),
             source = SpotifyHashProvider.HashSource.REMOTE,
         )
-        refresher.learn(operationName, liveHash)
-        return result.json!!
+        withContext(Dispatchers.IO) { refresher.learn(operationName, liveHash) }
+        return answer
     }
 
     suspend inline fun <reified T> authenticatedGet(

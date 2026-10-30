@@ -1,10 +1,14 @@
 package moe.rukamori.archivetune.spotify
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import moe.rukamori.archivetune.spotify.net.SpotifyGqlPayloadBuilder
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -160,5 +164,30 @@ class SpotifyHashRefresherTest {
 
         assertEquals(liveHash, SpotifyHashProvider.getHash("fetchPlaylist"))
         assertEquals(otherHash, SpotifyHashProvider.getHash("libraryV3"))
+    }
+
+    @Test
+    fun learnedHashesAreAppliedOnceBeforeTheFirstRequest() =
+        runBlocking {
+            refresher().learn("fetchPlaylist", liveHash)
+            val refresher = refresher()
+
+            refresher.applyLearnedOnce()
+            // a later change to the store is not read again within the session
+            store.writeText("not json")
+            refresher.applyLearnedOnce()
+
+            assertEquals(liveHash, SpotifyHashProvider.getHash("fetchPlaylist"))
+        }
+
+    @Test
+    fun onlyAnAnswerWithDataProvesAHashWorks() {
+        val json = { text: String -> Json.parseToJsonElement(text).jsonObject }
+
+        assertTrue(SpotifyHashRefresher.isWorkingAnswer(json("""{"data":{"playlistV2":{}}}""")))
+        assertFalse(SpotifyHashRefresher.isWorkingAnswer(null))
+        assertFalse(SpotifyHashRefresher.isWorkingAnswer(json("""{}""")))
+        assertFalse(SpotifyHashRefresher.isWorkingAnswer(json("""{"data":null}""")))
+        assertFalse(SpotifyHashRefresher.isWorkingAnswer(json("""{"data":{},"errors":[{"message":"Something broke"}]}""")))
     }
 }

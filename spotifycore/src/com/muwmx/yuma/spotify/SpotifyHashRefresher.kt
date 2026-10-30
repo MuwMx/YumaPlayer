@@ -7,9 +7,12 @@
 package moe.rukamori.archivetune.spotify
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -25,7 +28,7 @@ import java.io.File
  * The hashes shipped in [SpotifyHashProvider] keep working until Spotify retires them. When a
  * request is rejected with every hash we know, [liveHash] looks up what the web player uses today.
  * A hash that then works is remembered with [learn], kept in [store], and applied again on the
- * next start by [applyLearned], so the app heals without a new release.
+ * next start by [applyLearnedOnce], so the app heals without a new release.
  */
 class SpotifyHashRefresher(
     private val discovery: SpotifyHashDiscovery,
@@ -36,6 +39,25 @@ class SpotifyHashRefresher(
     private var table: SpotifyHashDiscovery.Table? = null
     private var tableAt = 0L
     private var failedAt = 0L
+
+    private val learnedMutex = Mutex()
+
+    @Volatile
+    private var learnedApplied = false
+
+    /**
+     * Applies the remembered hashes the first time it is called, reading [store] on the IO dispatcher. The
+     * client calls this before every request, so the app's start does not wait on the disk and no request
+     * goes out before the remembered hashes are in place.
+     */
+    suspend fun applyLearnedOnce() {
+        if (learnedApplied) return
+        learnedMutex.withLock {
+            if (learnedApplied) return
+            withContext(Dispatchers.IO) { applyLearned() }
+            learnedApplied = true
+        }
+    }
 
     /**
      * The hash the web player uses for [operationName] today, or null when it is unknown, equals
@@ -136,9 +158,19 @@ class SpotifyHashRefresher(
         }
     }
 
-    private companion object {
+    companion object {
         // The web player changes a few times a month, and reading it costs about 13 MB.
-        const val TABLE_TTL_MS = 30 * 60 * 1000L
-        const val RETRY_AFTER_FAILURE_MS = 5 * 60 * 1000L
+        private const val TABLE_TTL_MS = 30 * 60 * 1000L
+        private const val RETRY_AFTER_FAILURE_MS = 5 * 60 * 1000L
+
+        /**
+         * True only for a response that proves a hash works: it carries data and no errors. Anything else
+         * (no body, an error, an empty answer) must not get a hash remembered, or every later start would
+         * begin with a broken one.
+         */
+        internal fun isWorkingAnswer(response: JsonObject?): Boolean =
+            response != null &&
+                response["data"] is JsonObject &&
+                (response["errors"] as? JsonArray).isNullOrEmpty()
     }
 }
