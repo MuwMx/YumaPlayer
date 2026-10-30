@@ -26,6 +26,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.SupportSQLiteQuery
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.db.entities.AlbumArtistMap
@@ -82,6 +89,16 @@ class MusicDatabase(
     TrackAnalysisDao by delegate.trackAnalysisDao() {
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
+
+    // Blocked artists are checked before almost every online page is shown and rarely change, so
+    // they are kept in memory and Room refreshes them whenever the artist table changes. Reading
+    // them from the table each time cost up to 0.2 s per page with a large library.
+    private val blockedArtistIdsCache =
+        delegate.artistDao
+            .blockedArtistIds()
+            .stateIn(CoroutineScope(SupervisorJob() + Dispatchers.IO), SharingStarted.Eagerly, null)
+
+    override suspend fun getBlockedArtistIds(): List<String> = blockedArtistIdsCache.filterNotNull().first()
 
     fun trackAnalysisDao(): TrackAnalysisDao = delegate.trackAnalysisDao()
 

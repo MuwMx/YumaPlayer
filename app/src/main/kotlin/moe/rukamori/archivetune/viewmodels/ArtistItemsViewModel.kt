@@ -12,9 +12,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.artist.ArtistItemsPrefetcher
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
@@ -35,6 +38,7 @@ class ArtistItemsViewModel
     constructor(
         @ApplicationContext val context: Context,
         private val database: MusicDatabase,
+        private val prefetcher: ArtistItemsPrefetcher,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val browseId = savedStateHandle.get<String>("browseId")!!
@@ -47,18 +51,29 @@ class ArtistItemsViewModel
         val itemsPage = MutableStateFlow<ItemsPage?>(null)
         val itemsLayout = MutableStateFlow(ArtistItemsPageLayout.LIST)
 
+        /** True when the list could not be loaded, so the screen offers a retry instead of loading forever. */
+        val loadFailed = MutableStateFlow(false)
+
         init {
+            retry()
+        }
+
+        fun retry() {
             Timber.tag("ArtistItemsTrace").d(
                 "ViewModelLoadStart: browseId=$browseId, paramsPresent=${params != null}, paramsLength=${params?.length ?: 0}"
             )
+            loadFailed.value = false
             viewModelScope.launch {
-                YouTube
-                    .artistItems(
-                        BrowseEndpoint(
-                            browseId = browseId,
-                            params = params,
-                        ),
-                    ).onSuccess { artistItemsPage ->
+                val endpoint = BrowseEndpoint(browseId = browseId, params = params)
+                // The artist page usually started this list already; otherwise (or if that failed) load it here.
+                // YouTube sometimes turns a request away for a moment; one quiet second try saves
+                // the user from a failed page.
+                (prefetcher.prefetched(endpoint)?.let { Result.success(it) } ?: YouTube.artistItems(endpoint))
+                    .recoverCatching { error ->
+                        if (error is CancellationException) throw error
+                        delay(RETRY_DELAY_MS)
+                        YouTube.artistItems(endpoint).getOrThrow()
+                    }.onSuccess { artistItemsPage ->
                         title.value = artistItemsPage.title
                         itemsLayout.value = artistItemsPage.layout
                         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
@@ -91,6 +106,7 @@ class ArtistItemsViewModel
                             "ViewModelLoadError: browseId=$browseId, message=${it.message}"
                         )
                         reportException(it)
+                        loadFailed.value = true
                     }
             }
         }
@@ -136,5 +152,9 @@ class ArtistItemsViewModel
                         reportException(it)
                     }
             }
+        }
+
+        private companion object {
+            const val RETRY_DELAY_MS = 1_000L
         }
     }

@@ -58,6 +58,7 @@ import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.screens.AlbumErrorContent
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
@@ -94,6 +95,7 @@ fun ArtistItemsScreen(
     val title by viewModel.title.collectAsStateWithLifecycle()
     val itemsPage by viewModel.itemsPage.collectAsStateWithLifecycle()
     val itemsLayout by viewModel.itemsLayout.collectAsStateWithLifecycle()
+    val loadFailed by viewModel.loadFailed.collectAsStateWithLifecycle()
 
     val headerProgress = if (itemsLayout == ArtistItemsPageLayout.GRID) gridProgress else listProgress
 
@@ -118,7 +120,14 @@ fun ArtistItemsScreen(
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (itemsPage == null) {
+        if (itemsPage == null && loadFailed) {
+            AlbumErrorContent(
+                isNotFound = false,
+                topPadding = 0.dp,
+                onRetry = viewModel::retry,
+                modifier = Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current),
+            )
+        } else if (itemsPage == null) {
             ShimmerHost(
                 modifier = Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current),
             ) {

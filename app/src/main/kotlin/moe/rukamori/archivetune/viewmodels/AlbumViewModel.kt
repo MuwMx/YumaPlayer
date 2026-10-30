@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
@@ -92,10 +93,12 @@ class AlbumViewModel
         fun retry() {
             viewModelScope.launch {
                 _fetchState.value = FetchState.Pending
-                val album = database.album(albumId).first()
+                // The saved copy is read while the album is requested rather than before it.
+                val savedAlbum = async { database.album(albumId).first() }
                 YouTube
                     .album(albumId)
                     .onSuccess {
+                        val album = savedAlbum.await()
                         playlistId.value = it.album.playlistId
                         val blockedArtistIds = database.getBlockedArtistIds().toSet()
                         otherVersions.value =
@@ -111,6 +114,7 @@ class AlbumViewModel
                         }
                         _fetchState.value = FetchState.Success
                     }.onFailure {
+                        val album = savedAlbum.await()
                         reportException(it)
                         val isNotFound = it.message?.contains("NOT_FOUND") == true
                         if (isNotFound) {

@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -35,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.artist.ArtistBlockRequest
+import moe.rukamori.archivetune.artist.ArtistItemsPrefetcher
 import moe.rukamori.archivetune.artist.ObserveArtistBlockedUseCase
 import moe.rukamori.archivetune.artist.SetArtistBlockedUseCase
 import moe.rukamori.archivetune.constants.HideExplicitKey
@@ -100,10 +102,15 @@ class ArtistViewModel
         private val database: MusicDatabase,
         observeArtistBlocked: ObserveArtistBlockedUseCase,
         private val setArtistBlocked: SetArtistBlockedUseCase,
+        private val artistItemsPrefetcher: ArtistItemsPrefetcher,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         val artistId = savedStateHandle.get<String>("artistId")!!
         var artistPage by mutableStateOf<ArtistPage?>(null)
+
+        /** True when the page could not be loaded, so the screen offers a retry instead of loading forever. */
+        var loadFailed by mutableStateOf(false)
+            private set
         private val eventChannel = Channel<ArtistEvent>(capacity = Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
         private var blockJob: Job? = null
@@ -155,9 +162,16 @@ class ArtistViewModel
             viewModelScope.launch {
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                 val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                loadFailed = false
+                // YouTube sometimes turns a request away for a moment; one quiet second try saves
+                // the user from a failed page.
                 YouTube
                     .artist(artistId)
-                    .onSuccess { page ->
+                    .recoverCatching { error ->
+                        if (error is CancellationException) throw error
+                        delay(RETRY_DELAY_MS)
+                        YouTube.artist(artistId).getOrThrow()
+                    }.onSuccess { page ->
                         val filteredSections =
                             page.sections
                                 .map { section ->
@@ -170,6 +184,8 @@ class ArtistViewModel
                                 }
 
                         artistPage = page.copy(sections = filteredSections)
+                        // the full album list is the usual next tap: start loading it now
+                        artistItemsPrefetcher.prefetchAlbums(page.sections)
 
                         withContext(Dispatchers.IO) {
                             database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
@@ -178,6 +194,7 @@ class ArtistViewModel
                         }
                     }.onFailure {
                         reportException(it)
+                        if (artistPage == null) loadFailed = true
                     }
             }
         }
@@ -220,4 +237,8 @@ class ArtistViewModel
         }
 
         private fun artistShareLink(): String = artistPage?.artist?.shareLink ?: "https://music.youtube.com/channel/$artistId"
+
+        private companion object {
+            const val RETRY_DELAY_MS = 1_000L
+        }
     }

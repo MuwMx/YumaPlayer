@@ -60,6 +60,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.ui.component.HeaderType
+import moe.rukamori.archivetune.ui.screens.AlbumErrorContent
 import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -167,7 +168,15 @@ fun ArtistScreen(
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
             modifier = Modifier.fillMaxSize().hazeSource(fabHazeState),
         ) {
-            if (uiState.artistPage == null && !uiState.showLocal) {
+            if (uiState.artistPage == null && !uiState.showLocal && viewModel.loadFailed) {
+                item(key = "artist_error") {
+                    AlbumErrorContent(
+                        isNotFound = false,
+                        topPadding = topPadding,
+                        onRetry = viewModel::fetchArtistsFromYTM,
+                    )
+                }
+            } else if (uiState.artistPage == null && !uiState.showLocal) {
                 artistShimmerItem(
                     expandedHeight = expandedHeight,
                     topPadding = topPadding,
