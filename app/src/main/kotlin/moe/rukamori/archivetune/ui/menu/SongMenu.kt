@@ -144,6 +144,7 @@ fun SongMenu(
         splitArtists = splitArtists,
         navController = navController,
         onDismiss = { showSelectArtistDialog = false },
+        onDismissMenu = onDismiss,
     )
 
     val likeSource =
