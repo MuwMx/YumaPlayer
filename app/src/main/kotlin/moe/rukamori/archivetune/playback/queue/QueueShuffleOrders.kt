@@ -45,6 +45,51 @@ internal fun applyCurrentFirstShuffleOrder(
     return DefaultShuffleOrder(shuffledIndices, randomSeed)
 }
 
+/**
+ * How many songs are left to play, counting the current one, in play order rather than list order;
+ * with shuffle on the two differ. Stops counting at [limit].
+ */
+internal fun songsLeftInPlayOrder(
+    timeline: Timeline,
+    currentIndex: Int,
+    shuffle: Boolean,
+    limit: Int,
+): Int {
+    if (timeline.isEmpty || currentIndex !in 0 until timeline.windowCount) return 0
+    var left = 1
+    var index = timeline.getNextWindowIndex(currentIndex, REPEAT_MODE_OFF, shuffle)
+    while (index != C.INDEX_UNSET && left < limit) {
+        left++
+        index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, shuffle)
+    }
+    return left
+}
+
+/**
+ * Shuffle order for a queue that is about to get [addedCount] songs at its end: everything already
+ * queued keeps its place in the play order and the new songs play last. Without this the player
+ * drops added songs at random places in the shuffle order.
+ */
+@OptIn(UnstableApi::class)
+internal fun buildAppendShuffleOrder(
+    timeline: Timeline,
+    addedCount: Int,
+    randomSeed: Long = System.currentTimeMillis(),
+): DefaultShuffleOrder? {
+    if (addedCount <= 0 || timeline.isEmpty) return null
+    val playOrder = mutableListOf<Int>()
+    var index = timeline.getFirstWindowIndex(true)
+    while (index != C.INDEX_UNSET) {
+        playOrder += index
+        index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
+    }
+    val existing = timeline.windowCount
+    val shuffled = IntArray(playOrder.size + addedCount) { position ->
+        if (position < playOrder.size) playOrder[position] else existing + (position - playOrder.size)
+    }
+    return DefaultShuffleOrder(shuffled, randomSeed)
+}
+
 @OptIn(UnstableApi::class)
 internal fun buildPlayNextShuffleOrder(
     timeline: Timeline,
