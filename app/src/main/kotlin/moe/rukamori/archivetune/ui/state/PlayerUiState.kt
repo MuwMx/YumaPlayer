@@ -53,6 +53,8 @@ data class PlayerUiState(
     val placeholderResId: Int = moe.rukamori.archivetune.R.drawable.mascot_1,
 
     val isLoading: Boolean = false,
+    // The player has media ready; with isPlaying it means sound is actually coming out.
+    val isReady: Boolean = false,
     val isConnectActive: Boolean = false,
 
     // Смещение таймингов и состояние меню лирики

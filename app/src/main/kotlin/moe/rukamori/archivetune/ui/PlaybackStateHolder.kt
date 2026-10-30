@@ -142,6 +142,7 @@ class PlaybackStateHolder(
                     updateUiState { current ->
                         current.copy(
                             isLoading = playbackState == Player.STATE_BUFFERING,
+                            isReady = playbackState == Player.STATE_READY,
                             durationMs = if (realDuration != null && current.durationMs <= 0L) realDuration else current.durationMs,
                         )
                     }

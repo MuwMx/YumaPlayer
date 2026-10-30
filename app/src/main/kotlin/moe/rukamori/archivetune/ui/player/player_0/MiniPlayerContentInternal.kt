@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -73,9 +75,12 @@ internal fun MiniPlayerContentInternal(
     }
 
     val rotation = remember { Animatable(0f) }
+    // isPlaying is also true while a restored queue waits to start; the artwork spins and the wave
+    // moves only while sound is playing, so an idle screen is not redrawn every frame.
+    val isAudible = state.isPlaying && state.isReady
 
-    LaunchedEffect(state.isPlaying, isVisible) {
-        if (state.isPlaying && isVisible) {
+    LaunchedEffect(isAudible, isVisible) {
+        if (isAudible && isVisible) {
             while (true) {
                 val currentDegree = rotation.value % 360f
                 rotation.snapTo(currentDegree)
@@ -113,7 +118,8 @@ internal fun MiniPlayerContentInternal(
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                waveSpeed = if (isAudible && isVisible) WavyProgressIndicatorDefaults.CircularWavelength else 0.dp,
             )
 
             Box(
@@ -173,7 +179,10 @@ internal fun MiniPlayerContentInternal(
                     shadow = SoftTextShadow
                 ),
                 maxLines = 1,
-                isVisible = isVisible
+                // A long title scrolls only while music plays; scrolling redraws the bar every frame.
+                overflow = if (isAudible) TextOverflow.Clip else TextOverflow.Ellipsis,
+                isVisible = isVisible && isAudible,
+                iterations = Int.MAX_VALUE,
             )
 
             MarqueeText(
@@ -184,7 +193,9 @@ internal fun MiniPlayerContentInternal(
                     shadow = SoftTextShadow
                 ),
                 maxLines = 1,
-                isVisible = isVisible
+                overflow = if (isAudible) TextOverflow.Clip else TextOverflow.Ellipsis,
+                isVisible = isVisible && isAudible,
+                iterations = Int.MAX_VALUE,
             )
         }
 
