@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.ui
 
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.playback.queue.buildMovedShuffleOrder
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 
@@ -96,6 +98,7 @@ class QueueStateHolder(
         }
     }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun moveQueueItem(fromUid: Any, toUid: Any) {
         val player = audioPlayerProvider() ?: return
         val timeline = player.currentTimeline
@@ -105,7 +108,14 @@ class QueueStateHolder(
         val toIndex = resolveWindowIndex(timeline, toUid) ?: return
 
         if (fromIndex != toIndex && fromIndex in 0 until timeline.windowCount && toIndex in 0 until timeline.windowCount) {
-            player.moveMediaItem(fromIndex, toIndex)
+            if (player.shuffleModeEnabled) {
+                // The queue shows the shuffled order, so the drag changes the shuffled order only and
+                // every other song keeps its place.
+                val service = playerConnectionProvider()?.service ?: return
+                buildMovedShuffleOrder(timeline, fromIndex, toIndex)?.let(service.localPlayer::setShuffleOrder)
+            } else {
+                player.moveMediaItem(fromIndex, toIndex)
+            }
         }
     }
 

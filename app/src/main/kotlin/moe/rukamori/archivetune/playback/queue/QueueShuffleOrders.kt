@@ -45,6 +45,33 @@ internal fun applyCurrentFirstShuffleOrder(
     return DefaultShuffleOrder(shuffledIndices, randomSeed)
 }
 
+/**
+ * Shuffle order after the song at [fromIndex] is dragged to where the song at [toIndex] sits in the
+ * shuffled queue. Only the dragged song moves. Moving the media item itself would shift every song
+ * between the two playlist positions, and the shuffle order, which refers to positions, would then
+ * play (and show) other songs in their places.
+ */
+@OptIn(UnstableApi::class)
+internal fun buildMovedShuffleOrder(
+    timeline: Timeline,
+    fromIndex: Int,
+    toIndex: Int,
+    randomSeed: Long = System.currentTimeMillis(),
+): DefaultShuffleOrder? {
+    if (fromIndex == toIndex || timeline.isEmpty) return null
+    val playOrder = mutableListOf<Int>()
+    var index = timeline.getFirstWindowIndex(true)
+    while (index != C.INDEX_UNSET) {
+        playOrder += index
+        index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
+    }
+    val from = playOrder.indexOf(fromIndex)
+    val to = playOrder.indexOf(toIndex)
+    if (from < 0 || to < 0) return null
+    playOrder.add(to, playOrder.removeAt(from))
+    return DefaultShuffleOrder(playOrder.toIntArray(), randomSeed)
+}
+
 @OptIn(UnstableApi::class)
 internal fun buildPlayNextShuffleOrder(
     timeline: Timeline,
