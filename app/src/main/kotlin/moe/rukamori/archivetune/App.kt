@@ -15,6 +15,10 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -30,6 +34,10 @@ import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
 import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
+import moe.rukamori.archivetune.spotify.Spotify
+import moe.rukamori.archivetune.spotify.SpotifyGraphqlClient
+import moe.rukamori.archivetune.spotify.SpotifyHashDiscovery
+import moe.rukamori.archivetune.spotify.SpotifyHashRefresher
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyAuth
@@ -39,6 +47,7 @@ import moe.rukamori.archivetune.utils.clearPlaybackWebAuthSession
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import timber.log.Timber
+import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -117,7 +126,7 @@ class App :
         )
         if (languageTag == "zh-TW") KuGou.useTraditionalChinese = true
         LastFM.initialize(apiKey = BuildConfig.LASTFM_API_KEY, secret = BuildConfig.LASTFM_SECRET)
-        moe.rukamori.archivetune.spotify.Spotify.logger = { level, message ->
+        Spotify.logger = { level, message ->
             when (level) {
                 "D" -> Timber.tag("SpotifyPipeline").d(message)
                 "W" -> Timber.tag("SpotifyPipeline").w(message)
@@ -125,9 +134,23 @@ class App :
                 else -> Timber.tag("SpotifyPipeline").i(message)
             }
         }
+        installSpotifyHashRefresher()
         YouTube.traceLogger = { message ->
             Timber.tag("ArtistItemsTrace").d(message)
         }
+    }
+
+    /** Lets the Spotify client look up a current hash when Spotify retires one the app ships with. */
+    private fun installSpotifyHashRefresher() {
+        val refresher =
+            SpotifyHashRefresher(
+                discovery =
+                    SpotifyHashDiscovery(
+                        fetch = { url -> SpotifyGraphqlClient.gqlClient.get(url) { header(HttpHeaders.Accept, "*/*") }.bodyAsText() },
+                    ),
+                store = File(filesDir, "spotify_gql_hashes.json"),
+            )
+        Spotify.hashRefresher = refresher
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = createAppImageLoader(context)

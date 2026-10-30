@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.spotify
 
 import io.ktor.client.statement.HttpResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -47,6 +49,10 @@ object SpotifyGraphqlClient {
     @Volatile
     var onHashExpired: ((operationName: String) -> Unit)? = null
 
+    /** Looks up a hash Spotify accepts when it rejects every hash we know. */
+    @Volatile
+    var hashRefresher: SpotifyHashRefresher? = null
+
     fun isAuthenticated(): Boolean = accessToken != null
 
     const val GQL_URL = SpotifyGqlExecutor.GQL_URL
@@ -68,6 +74,8 @@ object SpotifyGraphqlClient {
             log("E", "GQL $operationName — no token")
         }
 
+        // hashes learned in an earlier session are read from disk here, off the main thread, before the first request
+        hashRefresher?.applyLearnedOnce()
         val hashCandidates = SpotifyGqlPayloadBuilder.resolveHashCandidates(operationName)
         for ((hashIdx, sha256Hash) in hashCandidates.withIndex()) {
             val body = SpotifyGqlPayloadBuilder.buildGqlBody(operationName, sha256Hash, variables)
@@ -77,13 +85,48 @@ object SpotifyGraphqlClient {
                     log("W", "GQL $operationName hash rejected, trying previous_hash")
                     continue
                 }
-                log("E", "GQL $operationName all known hashes rejected, triggering remote refresh")
+                log("E", "GQL $operationName all known hashes rejected")
                 onHashExpired?.invoke(operationName)
-                throw Spotify.SpotifyException(412, "PersistedQueryNotFound for $operationName — hash may have rotated")
+                return retryWithLiveHash(operationName, token, variables, hashCandidates)
             }
             return result.json!!
         }
         throw Spotify.SpotifyException(412, "No valid hash found for $operationName")
+    }
+
+    /**
+     * Spotify rejected every hash we know, so ask what its web player uses now and try that once.
+     * A hash that works replaces the rejected one for the rest of the session and later launches.
+     */
+    private suspend fun retryWithLiveHash(
+        operationName: String,
+        token: String,
+        variables: JsonObject,
+        rejected: List<String>,
+    ): JsonObject {
+        val refresher = hashRefresher
+        val liveHash = refresher?.liveHash(operationName, rejected.toSet())
+        if (refresher == null || liveHash == null) {
+            throw Spotify.SpotifyException(412, "PersistedQueryNotFound for $operationName — hash may have rotated")
+        }
+        log("W", "GQL $operationName trying the web player's current hash")
+        val body = SpotifyGqlPayloadBuilder.buildGqlBody(operationName, liveHash, variables)
+        val result = SpotifyGqlExecutor.executeGqlWithRetries(operationName, token, body)
+        if (result.isPersistedQueryNotFound) {
+            throw Spotify.SpotifyException(412, "PersistedQueryNotFound for $operationName — the web player's hash was rejected too")
+        }
+        // Only an answer with data proves the hash works; anything else is not applied or remembered.
+        val answer = result.json
+        if (answer == null || !SpotifyHashRefresher.isWorkingAnswer(answer)) {
+            throw Spotify.SpotifyException(412, "GQL $operationName gave no usable answer with the web player's hash")
+        }
+        log("I", "GQL $operationName recovered with the web player's current hash")
+        SpotifyHashProvider.updateHashes(
+            remoteHashes = mapOf(operationName to SpotifyHashProvider.RemoteHashEntry(hash = liveHash, previousHash = rejected.firstOrNull())),
+            source = SpotifyHashProvider.HashSource.REMOTE,
+        )
+        withContext(Dispatchers.IO) { refresher.learn(operationName, liveHash) }
+        return answer
     }
 
     suspend inline fun <reified T> authenticatedGet(

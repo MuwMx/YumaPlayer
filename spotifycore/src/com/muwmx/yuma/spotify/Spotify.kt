@@ -54,6 +54,12 @@ object Spotify {
             SpotifyGraphqlClient.onHashExpired = value
         }
 
+    var hashRefresher: SpotifyHashRefresher?
+        get() = SpotifyGraphqlClient.hashRefresher
+        set(value) {
+            SpotifyGraphqlClient.hashRefresher = value
+        }
+
     internal suspend fun graphqlPost(
         operationName: String,
         variables: JsonObject = buildJsonObject {},
