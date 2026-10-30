@@ -484,11 +484,13 @@ fun handleSelectionSongClick(
         if (song.song.id == mediaMetadataId) {
             playerConnection.player.togglePlayPause()
         } else {
+            // [index] is the row in the list on screen, which is filtered while searching.
+            val startIndex = songs.indexOfFirst { it.map.id == song.map.id }.takeIf { it >= 0 } ?: index
             playerConnection.playQueue(
                 ListQueue(
                     title = playlistTitle,
                     items = songs.map { it.song.toMediaItem() },
-                    startIndex = index,
+                    startIndex = startIndex,
                 ),
             )
         }
