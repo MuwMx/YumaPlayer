@@ -154,6 +154,15 @@ class PlayerViewModelHandleActionTest {
 
     @Test
     fun `handleAction routes queue actions correctly`() = runTest {
+        // Queue actions carry window uids, so the player needs a timeline whose window uids are 0..4.
+        val timeline = mockk<Timeline>()
+        every { timeline.isEmpty } returns false
+        every { timeline.windowCount } returns 5
+        every { timeline.getWindow(any(), any()) } answers {
+            secondArg<Timeline.Window>().also { it.uid = firstArg<Int>() }
+        }
+        every { audioPlayer.currentTimeline } returns timeline
+
         viewModel.handleAction(PlayerAction.PlayQueueItem(3))
         verify { audioPlayer.seekToDefaultPosition(3) }
 

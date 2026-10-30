@@ -26,7 +26,8 @@ class LyricsPrefsTest {
 
     @Before
     fun setup() {
-        testFile = File.createTempFile("test_datastore", ".preferences_pb")
+        // DataStore creates the file itself; an existing one cannot be replaced on Windows.
+        testFile = File.createTempFile("test_datastore", ".preferences_pb").also { it.delete() }
         dataStore = PreferenceDataStoreFactory.create(
             produceFile = { testFile }
         )

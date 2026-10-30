@@ -87,6 +87,9 @@ class SourceIsolatedPolicyTest {
         every { service.contentLengthCache } returns engineHolder.contentLengthCache
         every { service.losslessUrlCache } returns engineHolder.losslessUrlCache
         every { service.enableMemoryCache } returns true
+        // A relaxed mock would hand back an Object here and the persist coroutine would die with a ClassCastException.
+        every { service.currentMediaMetadata } returns
+            kotlinx.coroutines.flow.MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
         every { service.scope } returns kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
     }
 

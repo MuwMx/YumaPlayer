@@ -31,7 +31,8 @@ class LyricsHelperOrderTest {
     @Before
     fun setup() {
         context = mockk(relaxed = true)
-        val tempFile = Files.createTempFile("test_prefs", ".preferences_pb").toFile()
+        // DataStore creates the file itself; an existing one cannot be replaced on Windows.
+        val tempFile = Files.createTempFile("test_prefs", ".preferences_pb").toFile().also { it.delete() }
         testDataStore = PreferenceDataStoreFactory.create(
             produceFile = { tempFile }
         )
