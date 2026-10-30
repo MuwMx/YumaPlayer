@@ -20,13 +20,15 @@ internal data class AddToPlaylistExecutionResult(
     val addedPlaylistNames: List<String>,
 )
 
-private suspend fun remoteSongIds(browseId: String): Set<String>? =
+/** How many times each song is on the YouTube playlist now, or null if it can't be read. */
+private suspend fun remoteSongCounts(browseId: String): Map<String, Int>? =
     YouTube
         .playlist(browseId)
         .completed()
         .getOrNull()
         ?.songs
-        ?.mapTo(linkedSetOf()) { it.id }
+        ?.groupingBy { it.id }
+        ?.eachCount()
 
 internal suspend fun addSongsToPlaylistSafely(
     playlist: Playlist,
@@ -38,19 +40,34 @@ internal suspend fun addSongsToPlaylistSafely(
 
     val browseId = playlist.playlist.browseId
     if (isLoggedIn && browseId != null) {
-        val batch = YouTube.addSongsToPlaylist(browseId, requestedSongIds)
-        if (batch.isSuccess) {
-            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(batch.getOrThrow()))
+        // How often each song was on the playlist before this add, so a failed batch can tell the copies it added
+        // from the ones that were already there.
+        val countsBefore = database.playlistDuplicates(playlist.id, requestedSongIds).groupingBy { it }.eachCount()
+
+        val setVideoIds = YouTube.addSongsToPlaylist(browseId, requestedSongIds).getOrNull()
+        // Only a result that accounts for every song counts as done; a shorter one goes through the fallback
+        // below instead of silently dropping the songs it is missing.
+        if (setVideoIds != null && setVideoIds.size == requestedSongIds.size) {
+            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(setVideoIds))
             return requestedSongIds.size
         }
 
-        // A failed batch may already have added some songs; do not add them again.
-        val alreadyOnPlaylist = remoteSongIds(browseId) ?: return 0
+        // A failed batch may still have added some songs. A song counts as added by it only for the copies the
+        // playlist has beyond the ones it had before; the rest are added one by one.
+        val countsNow = remoteSongCounts(browseId) ?: return 0
+        val addedByBatch =
+            countsNow
+                .mapValues { (songId, count) -> count - (countsBefore[songId] ?: 0) }
+                .filterValues { it > 0 }
+                .toMutableMap()
         val acceptedSongEntries = mutableListOf<Pair<String, String?>>()
-        requestedSongIds.filter { it in alreadyOnPlaylist }.forEach { songId ->
-            acceptedSongEntries += songId to null
-        }
-        requestedSongIds.filterNot { it in alreadyOnPlaylist }.forEach { songId ->
+        requestedSongIds.forEach { songId ->
+            val alreadyAdded = addedByBatch[songId] ?: 0
+            if (alreadyAdded > 0) {
+                addedByBatch[songId] = alreadyAdded - 1
+                acceptedSongEntries += songId to null
+                return@forEach
+            }
             var remoteAdded = false
             var addedSetVideoId: String? = null
             for (attempt in 0 until 3) {
