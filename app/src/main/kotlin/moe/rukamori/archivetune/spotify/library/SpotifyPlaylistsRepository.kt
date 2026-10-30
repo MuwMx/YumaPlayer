@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.spotify.Spotify
+import moe.rukamori.archivetune.spotify.models.SpotifyPaging
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTrack
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
@@ -84,6 +85,11 @@ class SpotifyPlaylistsRepository
         /**
          * Reads the whole playlist. The first page reveals the total, then the
          * remaining pages are requested in parallel.
+         *
+         * Pages read in parallel only fit together if the playlist stays the same while they are read. Every
+         * page reports the playlist's total; if one differs from the first page's, or a page comes back short,
+         * the playlist changed in between (or the server answered oddly), and the read starts over. After
+         * [PARALLEL_READ_ATTEMPTS] such reads it falls back to reading one page after the other.
          */
         suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> =
             withContext(Dispatchers.IO) {
@@ -101,37 +107,52 @@ class SpotifyPlaylistsRepository
                         ).getOrThrow()
                 }
 
-                val first = page(offset = 0, limit = TRACK_PAGE_SIZE)
-                if (first.items.isEmpty()) return@withContext emptyList()
-
-                val permits = Semaphore(TRACK_PAGE_PARALLELISM)
-                val laterPages =
-                    coroutineScope {
-                        (TRACK_PAGE_SIZE until first.total step TRACK_PAGE_SIZE)
-                            .map { offset ->
-                                async { offset to permits.withPermit { page(offset, TRACK_PAGE_SIZE).items } }
-                            }.awaitAll()
-                    }
-
-                val items = ArrayList<SpotifyPlaylistTrack>(first.total)
-                items += first.items
-                for ((offset, pageItems) in laterPages) {
-                    // A page that came back short leaves a gap that has to be read before this one.
-                    while (items.size < offset) {
-                        val gap = page(offset = items.size, limit = offset - items.size).items
-                        if (gap.isEmpty()) break
-                        items += gap
-                    }
-                    if (items.size == offset) items += pageItems
-                }
-                while (items.size < first.total) {
-                    val tail = page(offset = items.size, limit = TRACK_PAGE_SIZE).items
-                    if (tail.isEmpty()) break
-                    items += tail
-                }
-
+                val items =
+                    (1..PARALLEL_READ_ATTEMPTS).firstNotNullOfOrNull { readInParallel(::page) }
+                        ?: readInSequence(::page)
                 items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
             }
+
+        /** The playlist read in parallel pages, or null if the pages don't fit together. */
+        private suspend fun readInParallel(
+            page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
+        ): List<SpotifyPlaylistTrack>? {
+            val first = page(0, TRACK_PAGE_SIZE)
+            val total = first.total
+            if (first.items.isEmpty() || first.items.size >= total) return first.items.takeIf { it.size == total }
+
+            // the server may hand out smaller pages than asked for; then the rest is asked for in that size
+            val pageSize = first.items.size
+            val permits = Semaphore(TRACK_PAGE_PARALLELISM)
+            val laterPages =
+                coroutineScope {
+                    (pageSize until total step pageSize)
+                        .map { offset -> async { offset to permits.withPermit { page(offset, pageSize) } } }
+                        .awaitAll()
+                }
+
+            val items = ArrayList<SpotifyPlaylistTrack>(total)
+            items += first.items
+            for ((offset, later) in laterPages) {
+                if (later.total != total || later.items.size != minOf(pageSize, total - offset)) return null
+                items += later.items
+            }
+            return items
+        }
+
+        /** The playlist one page after the other, as before parallel reads; used when those keep failing to fit. */
+        private suspend fun readInSequence(
+            page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
+        ): List<SpotifyPlaylistTrack> {
+            val items = ArrayList<SpotifyPlaylistTrack>()
+            while (true) {
+                val next = page(items.size, SEQUENTIAL_PAGE_SIZE)
+                if (next.items.isEmpty()) break
+                items += next.items
+                if (items.size >= next.total) break
+            }
+            return items
+        }
 
         internal suspend fun fetchAllPlaylists(): List<SpotifyPlaylist> {
             val playlists = ArrayList<SpotifyPlaylist>()
@@ -186,5 +207,7 @@ class SpotifyPlaylistsRepository
         private companion object {
             const val TRACK_PAGE_SIZE = 500
             const val TRACK_PAGE_PARALLELISM = 6
+            const val PARALLEL_READ_ATTEMPTS = 2
+            const val SEQUENTIAL_PAGE_SIZE = 100
         }
     }

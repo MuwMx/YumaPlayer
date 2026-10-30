@@ -83,6 +83,40 @@ class SpotifyPlaylistsRepositoryTest {
         }
 
     @Test
+    fun aPlaylistThatChangesWhileItIsReadIsReadAgain() =
+        runBlocking {
+            // the first read sees "t0" removed after its first page; the second read sees the new playlist only
+            var reads = 0
+            coEvery { Spotify.playlistTracks("p", any(), any()) } coAnswers {
+                val limit = secondArg<Int>()
+                val offset = thirdArg<Int>()
+                if (offset == 0) reads++
+                val playlist = if (reads == 1 && offset == 0) ids(1_250) else ids(1_250).drop(1)
+                val items = playlist.drop(offset).take(limit).map { SpotifyPlaylistTrack(track = SpotifyTrack(id = it)) }
+                Result.success(SpotifyPaging(items = items, total = playlist.size, offset = offset))
+            }
+
+            assertEquals(ids(1_250).drop(1), repository.playlistTracks("p").map { it.id })
+            assertEquals(2, reads)
+        }
+
+    @Test
+    fun aPlaylistThatKeepsChangingIsReadOnePageAfterTheOther() =
+        runBlocking {
+            // every later page reports a different total, so parallel pages never fit together
+            coEvery { Spotify.playlistTracks("p", any(), any()) } coAnswers {
+                val limit = secondArg<Int>()
+                val offset = thirdArg<Int>()
+                val items = ids(700).drop(offset).take(limit).map { SpotifyPlaylistTrack(track = SpotifyTrack(id = it)) }
+                val total = if (offset == 0 || limit == 100) 700 else 701
+                Result.success(SpotifyPaging(items = items, total = total, offset = offset))
+            }
+
+            assertEquals(ids(700), repository.playlistTracks("p").map { it.id })
+            coVerify { Spotify.playlistTracks("p", 100, 600) }
+        }
+
+    @Test
     fun localTracksAreLeftOut() =
         runBlocking {
             servePlaylist(total = 700, localIndices = setOf(3, 600))
