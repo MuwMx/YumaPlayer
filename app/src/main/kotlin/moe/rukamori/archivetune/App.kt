@@ -142,7 +142,6 @@ class App :
         }
     }
 
-    /** Lets the Spotify client look up a current hash when Spotify retires one the app ships with. */
     private fun installSpotifyHashRefresher() {
         val refresher =
             SpotifyHashRefresher(

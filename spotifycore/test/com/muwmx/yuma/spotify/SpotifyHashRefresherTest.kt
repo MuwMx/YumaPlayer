@@ -190,4 +190,33 @@ class SpotifyHashRefresherTest {
         assertFalse(SpotifyHashRefresher.isWorkingAnswer(json("""{"data":null}""")))
         assertFalse(SpotifyHashRefresher.isWorkingAnswer(json("""{"data":{},"errors":[{"message":"Something broke"}]}""")))
     }
+
+    @Test
+    fun aTableMissingABundleIsReadAgainAfterTheShortCooldownNotTheFullTtl() =
+        runBlocking {
+            var secondBundleOnline = false
+            val fetch: suspend (String) -> String = { url ->
+                fetches++
+                when {
+                    url == SpotifyHashDiscovery.WEB_PLAYER_URL -> {
+                        val config = Base64.getEncoder().encodeToString("""{"buildVersion":"b1"}""".toByteArray())
+                        """<script id="appServerConfig">$config</script>""" +
+                            """<script src="https://open.spotifycdn.com/cdn/build/web-player/m.js"></script>""" +
+                            """<script src="https://open.spotifycdn.com/cdn/build/web-player/n.js"></script>"""
+                    }
+                    url.endsWith("/m.js") -> """new d.Ob("fetchPlaylist","query","$liveHash",null)"""
+                    secondBundleOnline -> """new d.Ob("libraryV3","query","$otherHash",null)"""
+                    else -> throw IOException("bundle unavailable")
+                }
+            }
+            val refresher = SpotifyHashRefresher(SpotifyHashDiscovery(fetch), store) { clock }
+
+            assertNull(refresher.liveHash("libraryV3", emptySet()))
+            secondBundleOnline = true
+            clock += 60 * 1000L
+            assertNull(refresher.liveHash("libraryV3", emptySet()))
+
+            clock += 5 * 60 * 1000L
+            assertEquals(otherHash, refresher.liveHash("libraryV3", emptySet()))
+        }
 }

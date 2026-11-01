@@ -49,7 +49,6 @@ object SpotifyGraphqlClient {
     @Volatile
     var onHashExpired: ((operationName: String) -> Unit)? = null
 
-    /** Looks up a hash Spotify accepts when it rejects every hash we know. */
     @Volatile
     var hashRefresher: SpotifyHashRefresher? = null
 
@@ -74,7 +73,6 @@ object SpotifyGraphqlClient {
             log("E", "GQL $operationName — no token")
         }
 
-        // hashes learned in an earlier session are read from disk here, off the main thread, before the first request
         hashRefresher?.applyLearnedOnce()
         val hashCandidates = SpotifyGqlPayloadBuilder.resolveHashCandidates(operationName)
         for ((hashIdx, sha256Hash) in hashCandidates.withIndex()) {
@@ -94,10 +92,6 @@ object SpotifyGraphqlClient {
         throw Spotify.SpotifyException(412, "No valid hash found for $operationName")
     }
 
-    /**
-     * Spotify rejected every hash we know, so ask what its web player uses now and try that once.
-     * A hash that works replaces the rejected one for the rest of the session and later launches.
-     */
     private suspend fun retryWithLiveHash(
         operationName: String,
         token: String,
@@ -115,7 +109,6 @@ object SpotifyGraphqlClient {
         if (result.isPersistedQueryNotFound) {
             throw Spotify.SpotifyException(412, "PersistedQueryNotFound for $operationName — the web player's hash was rejected too")
         }
-        // Only an answer with data proves the hash works; anything else is not applied or remembered.
         val answer = result.json
         if (answer == null || !SpotifyHashRefresher.isWorkingAnswer(answer)) {
             throw Spotify.SpotifyException(412, "GQL $operationName gave no usable answer with the web player's hash")

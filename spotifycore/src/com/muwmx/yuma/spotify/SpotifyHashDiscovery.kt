@@ -20,28 +20,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import java.util.Base64
 
-/**
- * Reads Spotify's current persisted-query hashes from its public web player.
- *
- * `open.spotify.com` names its current build and lists its JavaScript bundles, and each bundle
- * declares its GraphQL operations as `new X("operationName","query","<sha256>")`. Nothing here
- * needs an account or a token.
- */
 class SpotifyHashDiscovery(
     private val fetch: suspend (url: String) -> String,
     private val parallelism: Int = DEFAULT_PARALLELISM,
 ) {
-    /**
-     * The operations found in one build of the web player. [complete] is false when some bundle
-     * could not be downloaded, so an operation missing from [hashes] may exist in that bundle.
-     */
     data class Table(
         val buildVersion: String?,
         val hashes: Map<String, String>,
         val complete: Boolean,
     )
 
-    /** Returns null when the page does not list any bundle (for example an error page). */
     suspend fun discover(): Table? =
         withContext(Dispatchers.IO) {
             val html = fetch(WEB_PLAYER_URL)
@@ -82,7 +70,6 @@ class SpotifyHashDiscovery(
         private val OPERATION = Regex("""new [\w$]+(?:\.[\w$]+)?\("(\w+)","(?:query|mutation|subscription)","([0-9a-f]{64})"""")
         private val json = Json { ignoreUnknownKeys = true }
 
-        /** The JavaScript bundles of the web player, from the page's links and its CDN file list. */
         internal fun parseBundleUrls(html: String): Set<String> {
             val urls = LinkedHashSet<String>()
             BUNDLE.findAll(html).forEach { urls += it.value }
@@ -96,11 +83,9 @@ class SpotifyHashDiscovery(
         internal fun parseBuildVersion(html: String): String? =
             (scriptJson(html, "appServerConfig")?.get("buildVersion") as? JsonPrimitive)?.content
 
-        /** Operation name to hash for every operation declared in [bundle]. */
         internal fun parseOperations(bundle: String): Map<String, String> =
             OPERATION.findAll(bundle).associate { it.groupValues[1] to it.groupValues[2] }
 
-        /** The content of `<script id="[id]">`, which the page writes as base64 JSON or plain JSON. */
         private fun scriptJson(
             html: String,
             id: String,

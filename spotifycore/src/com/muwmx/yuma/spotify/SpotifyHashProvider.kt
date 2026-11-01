@@ -29,7 +29,6 @@ object SpotifyHashProvider {
 
     private val hashes = ConcurrentHashMap<String, GqlHashEntry>()
 
-    // Hashes that ship with the app. They keep working until Spotify retires them.
     private val hardcodedDefaults: Map<String, String> =
         mapOf(
             "profileAttributes" to "53bcb064f6cd18c23f752bc324a791194d20df612d8e1239c735144ab0399ced",
@@ -55,7 +54,6 @@ object SpotifyHashProvider {
         }
     }
 
-    /** The hash that shipped with the app for [operationName], whatever has been learned since. */
     fun hardcodedHash(operationName: String): String? = hardcodedDefaults[operationName]
 
     /**

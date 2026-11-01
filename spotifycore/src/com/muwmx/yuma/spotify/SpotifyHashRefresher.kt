@@ -22,14 +22,6 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
 
-/**
- * Recovers from a persisted-query hash that Spotify has stopped accepting.
- *
- * The hashes shipped in [SpotifyHashProvider] keep working until Spotify retires them. When a
- * request is rejected with every hash we know, [liveHash] looks up what the web player uses today.
- * A hash that then works is remembered with [learn], kept in [store], and applied again on the
- * next start by [applyLearnedOnce], so the app heals without a new release.
- */
 class SpotifyHashRefresher(
     private val discovery: SpotifyHashDiscovery,
     private val store: File,
@@ -38,6 +30,7 @@ class SpotifyHashRefresher(
     private val mutex = Mutex()
     private var table: SpotifyHashDiscovery.Table? = null
     private var tableAt = 0L
+    private var tableTtlMs = TABLE_TTL_MS
     private var failedAt = 0L
 
     private val learnedMutex = Mutex()
@@ -45,11 +38,6 @@ class SpotifyHashRefresher(
     @Volatile
     private var learnedApplied = false
 
-    /**
-     * Applies the remembered hashes the first time it is called, reading [store] on the IO dispatcher. The
-     * client calls this before every request, so the app's start does not wait on the disk and no request
-     * goes out before the remembered hashes are in place.
-     */
     suspend fun applyLearnedOnce() {
         if (learnedApplied) return
         learnedMutex.withLock {
@@ -59,10 +47,6 @@ class SpotifyHashRefresher(
         }
     }
 
-    /**
-     * The hash the web player uses for [operationName] today, or null when it is unknown, equals
-     * one of the [rejected] hashes, or the web player cannot be read right now.
-     */
     suspend fun liveHash(
         operationName: String,
         rejected: Set<String>,
@@ -72,7 +56,6 @@ class SpotifyHashRefresher(
             current.hashes[operationName]?.takeIf { it !in rejected }
         }
 
-    /** Remembers [hash], which Spotify accepted, so the next start does not have to look it up again. */
     @Synchronized
     fun learn(
         operationName: String,
@@ -83,10 +66,6 @@ class SpotifyHashRefresher(
         writeStore(learned)
     }
 
-    /**
-     * Applies the remembered hashes to [SpotifyHashProvider]. One is skipped when the app's own hash
-     * for that operation has changed since it was learned, because a newer release supersedes it.
-     */
     fun applyLearned() {
         val usable =
             readStore().filter { (operation, learned) ->
@@ -104,7 +83,7 @@ class SpotifyHashRefresher(
 
     private suspend fun currentTable(): SpotifyHashDiscovery.Table? {
         val time = now()
-        table?.takeIf { time - tableAt < TABLE_TTL_MS }?.let { return it }
+        table?.takeIf { time - tableAt < tableTtlMs }?.let { return it }
         if (time - failedAt < RETRY_AFTER_FAILURE_MS) return null
         val fresh =
             try {
@@ -120,6 +99,7 @@ class SpotifyHashRefresher(
         }
         table = fresh
         tableAt = time
+        tableTtlMs = if (fresh.complete) TABLE_TTL_MS else RETRY_AFTER_FAILURE_MS
         return fresh
     }
 
@@ -159,15 +139,9 @@ class SpotifyHashRefresher(
     }
 
     companion object {
-        // The web player changes a few times a month, and reading it costs about 13 MB.
         private const val TABLE_TTL_MS = 30 * 60 * 1000L
         private const val RETRY_AFTER_FAILURE_MS = 5 * 60 * 1000L
 
-        /**
-         * True only for a response that proves a hash works: it carries data and no errors. Anything else
-         * (no body, an error, an empty answer) must not get a hash remembered, or every later start would
-         * begin with a broken one.
-         */
         internal fun isWorkingAnswer(response: JsonObject?): Boolean =
             response != null &&
                 response["data"] is JsonObject &&
