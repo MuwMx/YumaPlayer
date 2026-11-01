@@ -30,9 +30,9 @@ import kotlinx.coroutines.CoroutineScope
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.ArchiveTuneMediaNotificationProvider
-import moe.rukamori.archivetune.playback.MediaLibrarySessionCallback
-import moe.rukamori.archivetune.playback.MusicServiceNotification
+import moe.rukamori.archivetune.playback.session.ArchiveTuneMediaNotificationProvider
+import moe.rukamori.archivetune.playback.session.MediaLibrarySessionCallback
+import moe.rukamori.archivetune.playback.session.MusicServiceNotification
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
 import moe.rukamori.archivetune.utils.reportException
 

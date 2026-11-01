@@ -36,9 +36,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.playback.EqProfilesPayload
+import moe.rukamori.archivetune.ui.menu.equalizer.EqualizerDialogContent
+import moe.rukamori.archivetune.ui.menu.equalizer.EqualizerManageProfilesDialog
+import moe.rukamori.archivetune.ui.menu.equalizer.EqualizerSaveProfileDialog
+import moe.rukamori.archivetune.ui.menu.equalizer.applyProfileToEqualizer
+import moe.rukamori.archivetune.ui.menu.equalizer.decodeBandLevelsMb
+import moe.rukamori.archivetune.ui.menu.equalizer.decodeProfilesPayload
+import moe.rukamori.archivetune.ui.menu.equalizer.encodeBandLevelsMb
+import moe.rukamori.archivetune.ui.menu.equalizer.encodeProfilesPayload
+import moe.rukamori.archivetune.ui.menu.equalizer.rememberEqualizerExportLauncher
+import moe.rukamori.archivetune.ui.menu.equalizer.rememberEqualizerImportLauncher
+import moe.rukamori.archivetune.ui.menu.equalizer.rememberEqualizerState
+import moe.rukamori.archivetune.ui.menu.equalizer.resampleLevelsByIndex
+import moe.rukamori.archivetune.ui.menu.equalizer.resolveProfileTitleAndSubtitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

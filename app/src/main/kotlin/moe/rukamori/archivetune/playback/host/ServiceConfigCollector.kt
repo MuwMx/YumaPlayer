@@ -43,7 +43,7 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.EqSettings
-import moe.rukamori.archivetune.playback.formatForSource
+import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.together.ControlAction
 import moe.rukamori.archivetune.together.TogetherClient
 import moe.rukamori.archivetune.together.TogetherClock

@@ -8,7 +8,7 @@ package moe.rukamori.archivetune.ui.screens.search
 
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_LIST
-import moe.rukamori.archivetune.viewmodels.LocalFilter
+import moe.rukamori.archivetune.ui.screens.search.LocalFilter
 
 internal const val CONTENT_TYPE_LOCAL_SEARCH_HEADER = "header"
 internal const val CONTENT_TYPE_LOCAL_SEARCH_ITEM = CONTENT_TYPE_LIST

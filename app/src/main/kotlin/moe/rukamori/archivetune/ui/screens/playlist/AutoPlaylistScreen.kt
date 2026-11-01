@@ -40,7 +40,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortDescendingKey
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
@@ -72,7 +72,7 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.AutoPlaylistViewModel
+import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

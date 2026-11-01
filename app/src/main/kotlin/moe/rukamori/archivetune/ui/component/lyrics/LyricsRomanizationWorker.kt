@@ -19,13 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
-import moe.rukamori.archivetune.lyrics.Romanizer.providedRomanizedTextForEntry
-import moe.rukamori.archivetune.lyrics.Romanizer.providedRomanizedWordsForEntry
-import moe.rukamori.archivetune.lyrics.Romanizer.romanizeLyricsLine
-import moe.rukamori.archivetune.lyrics.Romanizer.romanizeLyricsWordWithLineContext
-import moe.rukamori.archivetune.lyrics.Romanizer.shouldRomanizeLyricsLine
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
+import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.lyrics.language.Romanizer.providedRomanizedTextForEntry
+import moe.rukamori.archivetune.lyrics.language.Romanizer.providedRomanizedWordsForEntry
+import moe.rukamori.archivetune.lyrics.language.Romanizer.romanizeLyricsLine
+import moe.rukamori.archivetune.lyrics.language.Romanizer.romanizeLyricsWordWithLineContext
+import moe.rukamori.archivetune.lyrics.language.Romanizer.shouldRomanizeLyricsLine
 import moe.rukamori.archivetune.utils.reportException
 
 @Composable

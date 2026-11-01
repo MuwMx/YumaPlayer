@@ -372,4 +372,51 @@ class HomeAccountCoordinatorTest {
             scope2.coroutineContext[Job]?.cancelAndJoin()
         }
     }
+
+    @Test
+    fun observeAccentColor_lifecycle_nullInitial_and_cleanupOnScopeCancel() = runBlocking {
+        assertNull(coordinator.accountAccentColor.value)
+
+        val scope = CoroutineScope(Dispatchers.Default + Job())
+        try {
+            coordinator.observeAccentColor(scope)
+            assertNull(coordinator.accountAccentColor.value)
+        } finally {
+            scope.coroutineContext[Job]?.cancelAndJoin()
+        }
+
+        assertNull(coordinator.accountAccentColor.value)
+    }
+
+    @Test
+    fun observeAccentColor_rebindOldScopeCancel_doesNotCancelNewObserver() = runBlocking {
+        val scope1 = CoroutineScope(Dispatchers.Default + Job())
+        val scope2 = CoroutineScope(Dispatchers.Default + Job())
+
+        try {
+            coordinator.observeAccentColor(scope1)
+            coordinator.observeAccentColor(scope2)
+
+            val scope2Child = scope2.coroutineContext[Job]?.children?.firstOrNull()
+            org.junit.Assert.assertNotNull("Scope2 must have launched observer job", scope2Child)
+            org.junit.Assert.assertTrue("Scope2 observer job must be active", scope2Child!!.isActive)
+
+            // Cancel old owner scope1
+            scope1.coroutineContext[Job]?.cancelAndJoin()
+
+            // Scope2 observer job must NOT be canceled by scope1 cleanup
+            org.junit.Assert.assertTrue("Scope2 observer job must still be active after scope1 cancellation", scope2Child.isActive)
+        } finally {
+            scope2.coroutineContext[Job]?.cancelAndJoin()
+        }
+    }
+
+    @Test
+    fun observeAccentColor_deadScope_doesNotRegisterObserver() = runBlocking {
+        val deadScope = CoroutineScope(Dispatchers.Default + Job())
+        deadScope.coroutineContext[Job]?.cancel()
+
+        coordinator.observeAccentColor(deadScope)
+        assertNull(coordinator.accountAccentColor.value)
+    }
 }

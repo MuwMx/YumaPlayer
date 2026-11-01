@@ -12,8 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.metadata
@@ -29,7 +29,7 @@ import moe.rukamori.archivetune.ui.player.player_0.sett.FullPlayerOptionsMenu
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.player.queue_0.QueueOptionsMenu
 import moe.rukamori.archivetune.ui.player.toPlaybackErrorInfo
-import moe.rukamori.archivetune.ui.screens.buildLoginRoute
+import moe.rukamori.archivetune.ui.screens.login.buildLoginRoute
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import moe.rukamori.archivetune.ui.state.UpdateState

@@ -84,7 +84,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.MaxImageCacheSizeKey
@@ -106,15 +106,15 @@ import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatFileSize
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.StorageCacheClearUiKind
-import moe.rukamori.archivetune.viewmodels.StorageCacheClearUiModel
-import moe.rukamori.archivetune.viewmodels.StorageFolderUiModel
-import moe.rukamori.archivetune.viewmodels.StorageLocationUiModel
-import moe.rukamori.archivetune.viewmodels.StorageLocationUiOptions
-import moe.rukamori.archivetune.viewmodels.StorageMigrationUiModel
-import moe.rukamori.archivetune.viewmodels.StorageMigrationUiPhase
-import moe.rukamori.archivetune.viewmodels.StorageSettingsScreenState
-import moe.rukamori.archivetune.viewmodels.StorageSettingsViewModel
+import moe.rukamori.archivetune.storage.StorageCacheClearUiKind
+import moe.rukamori.archivetune.storage.StorageCacheClearUiModel
+import moe.rukamori.archivetune.storage.StorageFolderUiModel
+import moe.rukamori.archivetune.storage.StorageLocationUiModel
+import moe.rukamori.archivetune.storage.StorageLocationUiOptions
+import moe.rukamori.archivetune.storage.StorageMigrationUiModel
+import moe.rukamori.archivetune.storage.StorageMigrationUiPhase
+import moe.rukamori.archivetune.storage.StorageSettingsScreenState
+import moe.rukamori.archivetune.storage.StorageSettingsViewModel
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
 @EntryPoint

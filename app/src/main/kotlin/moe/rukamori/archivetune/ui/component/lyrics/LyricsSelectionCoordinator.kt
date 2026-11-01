@@ -22,8 +22,8 @@ import androidx.compose.runtime.setValue
 import com.mocharealm.accompanist.lyrics.core.model.ISyncedLine
 import com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.lyrics.Romanizer.providedTranslationTextForEntry
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
+import moe.rukamori.archivetune.lyrics.language.Romanizer.providedTranslationTextForEntry
 import moe.rukamori.archivetune.models.MediaMetadata
 
 @Stable

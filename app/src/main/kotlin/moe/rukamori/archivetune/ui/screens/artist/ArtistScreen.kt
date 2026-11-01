@@ -53,9 +53,9 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideExplicitKey
@@ -68,7 +68,7 @@ import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.ArtistViewModel
+import moe.rukamori.archivetune.ui.screens.artist.ArtistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

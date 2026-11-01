@@ -10,7 +10,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.ParsedIntentAction
 import moe.rukamori.archivetune.musicrecognition.ACTION_MUSIC_RECOGNITION
 import moe.rukamori.archivetune.aod.ACTION_AOD_MODE
-import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
+import moe.rukamori.archivetune.ui.screens.login.LOGIN_URL_ARGUMENT
 import java.util.Locale
 
 object IntentParser {

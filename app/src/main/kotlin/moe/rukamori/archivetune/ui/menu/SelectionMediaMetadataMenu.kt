@@ -33,16 +33,20 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalDownloadUtil
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.LocalSyncUtils
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.ExoDownloadService
 import moe.rukamori.archivetune.playback.queues.ListQueue
+import moe.rukamori.archivetune.ui.menu.selection.SelectionMediaMetadataPrimaryMenuItems
+import moe.rukamori.archivetune.ui.menu.selection.SelectionMenuActionGrid
+import moe.rukamori.archivetune.ui.menu.selection.SelectionMenuDownloadSection
+import moe.rukamori.archivetune.ui.menu.selection.SelectionMenuRemoveDownloadDialog
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 

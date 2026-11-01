@@ -45,7 +45,7 @@ import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.toMediaItem
@@ -56,7 +56,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.StatsViewModel
+import moe.rukamori.archivetune.ui.screens.stats.StatsViewModel
 import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)

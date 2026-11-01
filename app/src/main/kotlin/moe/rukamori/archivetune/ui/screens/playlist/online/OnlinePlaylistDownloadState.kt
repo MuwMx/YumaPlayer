@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.media3.exoplayer.offline.Download
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.ui.utils.DownloadProgressFloatingToolbar
 import moe.rukamori.archivetune.ui.utils.DownloadProgressToolbarState
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState

@@ -68,7 +68,7 @@ import moe.rukamori.archivetune.localmedia.LocalSongScanConfig
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaClickable
-import moe.rukamori.archivetune.viewmodels.LocalSongsScanState
+import moe.rukamori.archivetune.localmedia.LocalSongsScanState
 
 @OptIn(
     ExperimentalMaterial3Api::class,

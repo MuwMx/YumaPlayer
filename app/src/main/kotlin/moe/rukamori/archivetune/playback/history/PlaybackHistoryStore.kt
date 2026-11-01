@@ -6,6 +6,8 @@
 
 package moe.rukamori.archivetune.playback.history
 
+import moe.rukamori.archivetune.playback.host.*
+
 import android.os.SystemClock
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -27,9 +29,9 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.currentHistoryPlayedMs
-import moe.rukamori.archivetune.playback.historyThresholdMs
-import moe.rukamori.archivetune.playback.syncHistoryThresholdJob
+import moe.rukamori.archivetune.playback.host.currentHistoryPlayedMs
+import moe.rukamori.archivetune.playback.host.historyThresholdMs
+import moe.rukamori.archivetune.playback.host.syncHistoryThresholdJob
 import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.dataStore

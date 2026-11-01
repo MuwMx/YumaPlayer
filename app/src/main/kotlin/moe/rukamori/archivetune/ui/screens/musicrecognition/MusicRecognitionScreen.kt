@@ -30,8 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
-import moe.rukamori.archivetune.viewmodels.MusicRecognitionEvent
-import moe.rukamori.archivetune.viewmodels.MusicRecognitionViewModel
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionEvent
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

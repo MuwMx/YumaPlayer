@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.RecognitionPhaseUi
+import moe.rukamori.archivetune.musicrecognition.RecognitionPhaseUi
 
 @Composable
 internal fun RecognitionTaskState(

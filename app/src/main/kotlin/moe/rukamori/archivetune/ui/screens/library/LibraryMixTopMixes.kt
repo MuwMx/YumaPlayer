@@ -48,9 +48,9 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.viewmodels.LibraryTopMixEmptyReason
-import moe.rukamori.archivetune.viewmodels.LibraryTopMixUiModel
-import moe.rukamori.archivetune.viewmodels.LibraryTopMixesUiState
+import moe.rukamori.archivetune.ui.screens.library.LibraryTopMixEmptyReason
+import moe.rukamori.archivetune.ui.screens.library.LibraryTopMixUiModel
+import moe.rukamori.archivetune.ui.screens.library.LibraryTopMixesUiState
 
 @Composable
 internal fun TopMixesForYouSection(

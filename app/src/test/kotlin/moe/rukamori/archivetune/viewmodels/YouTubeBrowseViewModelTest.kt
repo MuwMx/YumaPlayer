@@ -18,6 +18,8 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.BrowseResult
+import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseUiState
+import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

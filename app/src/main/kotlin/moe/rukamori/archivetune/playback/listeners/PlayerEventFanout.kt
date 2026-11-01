@@ -30,7 +30,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.extensions.currentMetadata
-import moe.rukamori.archivetune.playback.MusicServicePlayerListeners
+import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get

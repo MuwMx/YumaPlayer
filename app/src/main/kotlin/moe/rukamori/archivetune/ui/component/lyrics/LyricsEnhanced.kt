@@ -35,14 +35,14 @@ import com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalAnimationsDisabled
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import moe.rukamori.archivetune.lyrics.LrcParser.isLineSyncedLrc
-import moe.rukamori.archivetune.lyrics.LrcParser.isTtml
-import moe.rukamori.archivetune.lyrics.LrcParser.parseLyrics
-import moe.rukamori.archivetune.lyrics.LrcParser.parseTtml
-import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser.isLineSyncedLrc
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser.isTtml
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser.parseLyrics
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser.parseTtml
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
 import moe.rukamori.archivetune.ui.component.shareLyricsAsText
 
 @Composable

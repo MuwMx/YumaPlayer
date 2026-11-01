@@ -47,7 +47,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.viewmodels.MostPlayedAlbumUiModel
+import moe.rukamori.archivetune.ui.screens.library.MostPlayedAlbumUiModel
 
 @Composable
 internal fun MostPlayedAlbumSpotlightCard(

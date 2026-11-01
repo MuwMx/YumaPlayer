@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.viewmodels.AboutUiModel
+import moe.rukamori.archivetune.about.AboutUiModel
 
 @Composable
 internal fun AboutOverflowMenu(

@@ -15,10 +15,8 @@ import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.playback.host.ServiceConfigCollector
-import moe.rukamori.archivetune.playback.TogetherPendingGuestControl
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
-import moe.rukamori.archivetune.playback.toMediaMetadata
 import moe.rukamori.archivetune.together.AddTrackMode
 import moe.rukamori.archivetune.together.ControlAction
 import moe.rukamori.archivetune.together.TogetherPlaybackSync

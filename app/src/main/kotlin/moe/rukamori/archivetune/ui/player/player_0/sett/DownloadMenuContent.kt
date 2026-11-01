@@ -19,7 +19,7 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import moe.rukamori.archivetune.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.download.FlacDownloader
 import moe.rukamori.archivetune.playback.ExoDownloadService

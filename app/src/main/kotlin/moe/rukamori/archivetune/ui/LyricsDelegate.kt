@@ -14,12 +14,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import moe.rukamori.archivetune.lyrics.LrcParser
-import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsHelper
-import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
-import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCase
-import moe.rukamori.archivetune.lyrics.Romanizer
+import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCase
+import moe.rukamori.archivetune.lyrics.language.Romanizer
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.repository.LyricsRepository

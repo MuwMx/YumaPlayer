@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.utils.ColorExtractor
-import moe.rukamori.archivetune.viewmodels.TeamMember
+import moe.rukamori.archivetune.about.TeamMember
 import androidx.core.graphics.toColorInt
 
 @Composable

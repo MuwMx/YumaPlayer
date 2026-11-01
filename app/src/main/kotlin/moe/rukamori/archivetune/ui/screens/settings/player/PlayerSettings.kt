@@ -80,9 +80,9 @@ import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.SponsorBlockCategoryUiModel
-import moe.rukamori.archivetune.viewmodels.SponsorBlockSettingsScreenState
-import moe.rukamori.archivetune.viewmodels.SponsorBlockSettingsViewModel
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockCategoryUiModel
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettingsScreenState
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettingsViewModel
 
 @Composable
 fun PlayerSettings(navController: NavController) {

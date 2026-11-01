@@ -6,6 +6,9 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.playback.engine.*
+import moe.rukamori.archivetune.playback.service.resolvePlaybackDataSpec
+
 import android.net.Uri
 import android.os.SystemClock
 import androidx.core.net.toUri
@@ -26,6 +29,13 @@ import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.playback.crossfade.isSourceFullyCached
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder
 import moe.rukamori.archivetune.playback.resolvers.StreamUrl
+import moe.rukamori.archivetune.playback.resolvers.buildResolvedFlacDataSpec
+import moe.rukamori.archivetune.playback.resolvers.getOrResolveContentLength
+import moe.rukamori.archivetune.playback.resolvers.persistPlaybackFormat
+import moe.rukamori.archivetune.playback.resolvers.resolveFlacPlaybackDataSpec
+import moe.rukamori.archivetune.playback.resolvers.resolveFromMemoryUrlPolicy
+import moe.rukamori.archivetune.playback.resolvers.resolveTargetDataKey
+import moe.rukamori.archivetune.playback.resolvers.resolveYtPlaybackResponse
 import moe.rukamori.archivetune.utils.StreamUrlCache
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import org.junit.After
@@ -61,8 +71,8 @@ class SourceIsolatedPolicyTest {
         every { SystemClock.elapsedRealtime() } returns 1000L
         mockkObject(YouTube)
         every { YouTube.currentPlaybackAuthState() } returns mockk { every { fingerprint } returns "auth_fp" }
-        mockkStatic("moe.rukamori.archivetune.playback.YtPlaybackResolverKt")
-        mockkStatic("moe.rukamori.archivetune.playback.FlacPlaybackResolverKt")
+        mockkStatic("moe.rukamori.archivetune.playback.resolvers.YtPlaybackResolverKt")
+        mockkStatic("moe.rukamori.archivetune.playback.resolvers.FlacPlaybackResolverKt")
         every { Uri.parse(any()) } answers {
             val str = firstArg<String>()
             val uri = mockk<Uri>(relaxed = true)

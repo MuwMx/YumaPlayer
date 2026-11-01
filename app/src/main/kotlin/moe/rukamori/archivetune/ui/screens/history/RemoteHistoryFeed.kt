@@ -37,7 +37,7 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.HistoryPage
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
-import moe.rukamori.archivetune.viewmodels.RemoteHistoryUiState
+import moe.rukamori.archivetune.ui.screens.history.RemoteHistoryUiState
 
 @Composable
 internal fun RemoteHistoryFeed(

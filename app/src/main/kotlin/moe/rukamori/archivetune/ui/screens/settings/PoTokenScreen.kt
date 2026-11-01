@@ -101,8 +101,8 @@ import moe.rukamori.archivetune.ui.component.PreferenceGroupTitle
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.PoTokenState
-import moe.rukamori.archivetune.viewmodels.PoTokenViewModel
+import moe.rukamori.archivetune.ui.screens.settings.PoTokenState
+import moe.rukamori.archivetune.ui.screens.settings.PoTokenViewModel
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard

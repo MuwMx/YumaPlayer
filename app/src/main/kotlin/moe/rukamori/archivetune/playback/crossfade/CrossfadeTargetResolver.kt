@@ -22,7 +22,7 @@ import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.audiodsp.advanceCueForElapsed
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.crossfadePlanGeneration
-import moe.rukamori.archivetune.playback.isGaplessAlbumTransition
+import moe.rukamori.archivetune.playback.crossfade.isGaplessAlbumTransition
 
 internal fun MusicService.isPlanGenerationCurrent(
     generation: Long,

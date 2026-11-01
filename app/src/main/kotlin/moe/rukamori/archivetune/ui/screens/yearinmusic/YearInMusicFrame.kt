@@ -28,14 +28,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.ui.screens.RecapBlack
-import moe.rukamori.archivetune.ui.screens.RecapPurple
-import moe.rukamori.archivetune.ui.screens.RecapRed
-import moe.rukamori.archivetune.ui.screens.RecapRedDeep
-import moe.rukamori.archivetune.ui.screens.RecapSurface
-import moe.rukamori.archivetune.ui.screens.RecapSurfaceHigh
-import moe.rukamori.archivetune.ui.screens.RecapTokens
-import moe.rukamori.archivetune.ui.screens.YearInMusicRecapCard
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

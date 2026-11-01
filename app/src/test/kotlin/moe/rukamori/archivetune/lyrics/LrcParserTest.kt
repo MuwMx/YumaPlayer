@@ -1,5 +1,7 @@
 package moe.rukamori.archivetune.lyrics
 
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

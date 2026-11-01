@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Artist
-import moe.rukamori.archivetune.viewmodels.MostPlayedAlbumUiState
+import moe.rukamori.archivetune.ui.screens.library.MostPlayedAlbumUiState
 
 fun LazyListScope.spotlightSection(
     albumUiState: MostPlayedAlbumUiState,

@@ -48,9 +48,9 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.viewmodels.AboutScreenEffect
-import moe.rukamori.archivetune.viewmodels.AboutScreenState
-import moe.rukamori.archivetune.viewmodels.AboutViewModel
+import moe.rukamori.archivetune.about.AboutScreenEffect
+import moe.rukamori.archivetune.about.AboutScreenState
+import moe.rukamori.archivetune.about.AboutViewModel
 
 @Composable
 fun AboutScreen(

@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
-import moe.rukamori.archivetune.MiniPlayerDropState
+import moe.rukamori.archivetune.ui.player.host.MiniPlayerDropState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.playerSheetVerticalDragGesture

@@ -11,8 +11,8 @@
 
 package moe.rukamori.archivetune.ui.screens.musicrecognition
 
-import moe.rukamori.archivetune.viewmodels.MusicRecognitionScreenState
-import moe.rukamori.archivetune.viewmodels.RecognitionPhaseUi
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionScreenState
+import moe.rukamori.archivetune.musicrecognition.RecognitionPhaseUi
 
 internal enum class MusicRecognitionContentKey {
     Empty,

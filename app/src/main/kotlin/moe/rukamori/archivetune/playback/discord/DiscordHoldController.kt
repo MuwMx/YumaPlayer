@@ -6,16 +6,18 @@
 
 package moe.rukamori.archivetune.playback.discord
 
+import moe.rukamori.archivetune.playback.discord.*
+
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.playback.ActiveHoldState
-import moe.rukamori.archivetune.playback.DiscordHoldContext
-import moe.rukamori.archivetune.playback.DiscordPresenceDecision
-import moe.rukamori.archivetune.playback.LastAppliedVisiblePresence
+import moe.rukamori.archivetune.playback.discord.ActiveHoldState
+import moe.rukamori.archivetune.playback.discord.DiscordHoldContext
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceDecision
+import moe.rukamori.archivetune.playback.discord.LastAppliedVisiblePresence
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.PausedPresenceGate
-import moe.rukamori.archivetune.playback.requestDiscordSync
+import moe.rukamori.archivetune.playback.discord.PausedPresenceGate
+import moe.rukamori.archivetune.playback.host.requestDiscordSync
 import timber.log.Timber
 
 internal class DiscordHoldController(

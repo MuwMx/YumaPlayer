@@ -58,10 +58,10 @@ import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.PlaylistTagPlaylistUiModel
-import moe.rukamori.archivetune.viewmodels.PlaylistTagUiModel
-import moe.rukamori.archivetune.viewmodels.PlaylistTagsScreenState
-import moe.rukamori.archivetune.viewmodels.PlaylistTagsViewModel
+import moe.rukamori.archivetune.playlisttags.PlaylistTagPlaylistUiModel
+import moe.rukamori.archivetune.playlisttags.PlaylistTagUiModel
+import moe.rukamori.archivetune.playlisttags.PlaylistTagsScreenState
+import moe.rukamori.archivetune.playlisttags.PlaylistTagsViewModel
 
 @Composable
 fun AssignTagsDialog(

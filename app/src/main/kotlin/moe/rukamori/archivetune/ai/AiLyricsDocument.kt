@@ -6,7 +6,7 @@
 
 package moe.rukamori.archivetune.ai
 
-import moe.rukamori.archivetune.lyrics.LrcParser
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.xml.sax.InputSource

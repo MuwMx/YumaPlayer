@@ -31,7 +31,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.SpotifyRecentItem
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
-import moe.rukamori.archivetune.ui.screens.HomeSectionHeader
+import moe.rukamori.archivetune.ui.screens.home.HomeSectionHeader
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

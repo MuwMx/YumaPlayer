@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-import moe.rukamori.archivetune.PlayerDockGeometry
+import moe.rukamori.archivetune.ui.player.host.PlayerDockGeometry
 import moe.rukamori.archivetune.ui.state.PlayerSheetState
 
 internal data class SheetVisualState(

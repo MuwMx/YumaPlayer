@@ -32,8 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorUiCollection
-import moe.rukamori.archivetune.viewmodels.AboutTranslationContributorsUiState
+import moe.rukamori.archivetune.about.AboutTranslationContributorUiCollection
+import moe.rukamori.archivetune.about.AboutTranslationContributorsUiState
 
 @Composable
 internal fun TranslationContributorsDialogContent(

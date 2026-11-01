@@ -39,7 +39,7 @@ import coil3.request.ImageRequest
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.db.entities.Song
@@ -47,7 +47,7 @@ import moe.rukamori.archivetune.discord.DiscordAuthCoordinator
 import moe.rukamori.archivetune.discord.DiscordOAuthRepository
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
-import moe.rukamori.archivetune.playback.refreshDiscordNow
+import moe.rukamori.archivetune.playback.host.refreshDiscordNow
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry

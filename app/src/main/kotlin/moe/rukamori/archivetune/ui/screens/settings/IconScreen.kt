@@ -89,11 +89,11 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.viewmodels.AppIconUiModel
-import moe.rukamori.archivetune.viewmodels.IconScreenEffect
-import moe.rukamori.archivetune.viewmodels.IconScreenState
-import moe.rukamori.archivetune.viewmodels.IconScreenUiModel
-import moe.rukamori.archivetune.viewmodels.IconViewModel
+import moe.rukamori.archivetune.appicon.AppIconUiModel
+import moe.rukamori.archivetune.appicon.IconScreenEffect
+import moe.rukamori.archivetune.appicon.IconScreenState
+import moe.rukamori.archivetune.appicon.IconScreenUiModel
+import moe.rukamori.archivetune.appicon.IconViewModel
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard

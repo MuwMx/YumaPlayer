@@ -6,6 +6,8 @@
 
 package moe.rukamori.archivetune.playback.discord
 
+import moe.rukamori.archivetune.playback.discord.*
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -20,13 +22,13 @@ import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.constants.DiscordShowWhenPausedKey
 import moe.rukamori.archivetune.constants.DiscordTokenKey
 import moe.rukamori.archivetune.constants.EnableDiscordRPCKey
-import moe.rukamori.archivetune.playback.DiscordPresenceDecision
-import moe.rukamori.archivetune.playback.DiscordPresenceInputs
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceDecision
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceInputs
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.PausedPresenceGate
-import moe.rukamori.archivetune.playback.derivePlaybackSemanticState
-import moe.rukamori.archivetune.playback.deriveRawDiscordPresenceDecision
-import moe.rukamori.archivetune.playback.resolveDiscordPresenceDecision
+import moe.rukamori.archivetune.playback.discord.PausedPresenceGate
+import moe.rukamori.archivetune.playback.discord.derivePlaybackSemanticState
+import moe.rukamori.archivetune.playback.discord.deriveRawDiscordPresenceDecision
+import moe.rukamori.archivetune.playback.discord.resolveDiscordPresenceDecision
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import timber.log.Timber

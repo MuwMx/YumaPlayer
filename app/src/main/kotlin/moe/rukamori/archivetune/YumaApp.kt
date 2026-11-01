@@ -23,6 +23,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
+import moe.rukamori.archivetune.app.init.rememberAppSplashState
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.CustomThemeColorKey
@@ -42,13 +43,16 @@ import moe.rukamori.archivetune.constants.UpdateChannelKey
 import moe.rukamori.archivetune.constants.UseSystemFontKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.MenuState
+import moe.rukamori.archivetune.ui.rememberDynamicThemeColor
+import moe.rukamori.archivetune.ui.scaffold.ScaffoldShell
 import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
+import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore

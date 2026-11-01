@@ -2,7 +2,7 @@ package moe.rukamori.archivetune.ui.player.lyrics_0
 
 import org.junit.Test
 import org.junit.Assert.*
-import moe.rukamori.archivetune.lyrics.WordTimestamp
+import moe.rukamori.archivetune.lyrics.model.WordTimestamp
 
 class WordHighlightTest {
     @Test

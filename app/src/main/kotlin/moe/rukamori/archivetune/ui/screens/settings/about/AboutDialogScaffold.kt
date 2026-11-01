@@ -50,8 +50,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.viewmodels.AboutDialog
-import moe.rukamori.archivetune.viewmodels.AboutUiModel
+import moe.rukamori.archivetune.about.AboutDialog
+import moe.rukamori.archivetune.about.AboutUiModel
 
 @Composable
 internal fun AboutFullScreenDialogs(

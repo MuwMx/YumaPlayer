@@ -48,7 +48,7 @@ import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import kotlin.math.roundToInt
 

@@ -44,7 +44,6 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.YumaImmersiveArtworkHeader
-import moe.rukamori.archivetune.ui.screens.MetadataChip
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors

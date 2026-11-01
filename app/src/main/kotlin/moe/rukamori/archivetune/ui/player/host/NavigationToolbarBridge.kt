@@ -20,14 +20,14 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.CoroutineScope
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.MusicDatabase
-import moe.rukamori.archivetune.launchHomeShuffle
+import moe.rukamori.archivetune.home.launchHomeShuffle
 import moe.rukamori.archivetune.musicrecognition.MusicRecognitionRoute
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.FloatingNavigationToolbar
 import moe.rukamori.archivetune.ui.screens.Screens
-import moe.rukamori.archivetune.ui.screens.findTabForRoute
+import moe.rukamori.archivetune.ui.navigation.findTabForRoute
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.viewmodels.HomeViewModel
+import moe.rukamori.archivetune.home.HomeViewModel
 
 @Composable
 internal fun BoxScope.NavigationToolbarBridge(

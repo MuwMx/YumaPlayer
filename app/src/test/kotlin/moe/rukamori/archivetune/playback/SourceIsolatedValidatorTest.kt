@@ -6,6 +6,9 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.playback.engine.*
+import moe.rukamori.archivetune.playback.service.resolvePlaybackDataSpec
+
 import androidx.core.net.toUri
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
@@ -16,6 +19,7 @@ import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.playback.resolvers.matchesSource
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

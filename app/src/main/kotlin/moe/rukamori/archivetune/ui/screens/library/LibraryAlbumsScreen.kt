@@ -35,7 +35,7 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.constants.AlbumFilter
 import moe.rukamori.archivetune.constants.AlbumFilterKey
 import moe.rukamori.archivetune.constants.AlbumSortDescendingKey
@@ -47,7 +47,7 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.LibraryAlbumsViewModel
+import moe.rukamori.archivetune.ui.screens.library.LibraryAlbumsViewModel
 
 @Composable
 fun LibraryAlbumsScreen(

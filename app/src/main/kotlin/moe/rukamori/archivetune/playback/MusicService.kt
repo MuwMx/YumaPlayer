@@ -8,7 +8,23 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.playback.engine.ExoDeck
+import moe.rukamori.archivetune.playback.engine.ExoDeckController
+import moe.rukamori.archivetune.playback.engine.SafeTrackSelectionFactory
+import moe.rukamori.archivetune.playback.recovery.PlaybackRecoveryEngine
+import moe.rukamori.archivetune.playback.recovery.PlaybackStreamRecoveryTracker
+import moe.rukamori.archivetune.playback.resolvers.updateActualPlaybackSources
 import moe.rukamori.archivetune.playback.together.ServiceTogetherCoordinator
+import moe.rukamori.archivetune.playback.audio.*
+import moe.rukamori.archivetune.playback.crossfade.*
+import moe.rukamori.archivetune.playback.discord.*
+import moe.rukamori.archivetune.playback.engine.*
+import moe.rukamori.archivetune.playback.host.*
+import moe.rukamori.archivetune.playback.listeners.*
+import moe.rukamori.archivetune.playback.queue.*
+import moe.rukamori.archivetune.playback.service.*
+import moe.rukamori.archivetune.playback.session.*
+import moe.rukamori.archivetune.playback.together.*
 
 import android.app.ActivityManager
 import android.app.NotificationManager
@@ -600,10 +616,10 @@ class MusicService :
     override fun ensurePresenceManager() = ensurePresenceManagerInternal()
 
     internal fun calculateAudioNormalizationFactor(format: FormatEntity?, normalizeAudio: Boolean): Float =
-        moe.rukamori.archivetune.playback.calculateAudioNormalizationFactor(format, normalizeAudio)
+        moe.rukamori.archivetune.playback.audio.calculateAudioNormalizationFactor(format, normalizeAudio)
 
     override fun resolveAudioNormalizationFactor(mediaId: String?, format: FormatEntity?, normalizeAudio: Boolean): Float =
-        moe.rukamori.archivetune.playback.resolveAudioNormalizationFactor(mediaId, format, normalizeAudio)
+        moe.rukamori.archivetune.playback.audio.resolveAudioNormalizationFactor(mediaId, format, normalizeAudio)
 
     override fun hasBluetoothConnectPermission(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
@@ -713,7 +729,7 @@ class MusicService :
         )
 
     internal fun createTransientSongFromMedia(media: MediaMetadata): Song =
-        moe.rukamori.archivetune.playback.createTransientSongFromMedia(media)
+        moe.rukamori.archivetune.playback.discord.createTransientSongFromMedia(media)
 
     override fun onDestroy() {
         sponsorBlockPlaybackController.detach()

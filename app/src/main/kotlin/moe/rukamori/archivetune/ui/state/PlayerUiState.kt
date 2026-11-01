@@ -2,8 +2,8 @@ package moe.rukamori.archivetune.ui.state
 
 import android.graphics.Color
 import android.graphics.drawable.Drawable
-import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
+import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import androidx.compose.runtime.Immutable
 /**

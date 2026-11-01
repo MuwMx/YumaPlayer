@@ -45,17 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.screens.RecapBlack
-import moe.rukamori.archivetune.ui.screens.RecapBlue
-import moe.rukamori.archivetune.ui.screens.RecapCream
-import moe.rukamori.archivetune.ui.screens.RecapGreen
-import moe.rukamori.archivetune.ui.screens.RecapInk
-import moe.rukamori.archivetune.ui.screens.RecapLime
-import moe.rukamori.archivetune.ui.screens.RecapPink
-import moe.rukamori.archivetune.ui.screens.RecapRed
-import moe.rukamori.archivetune.ui.screens.RecapYellow
-import moe.rukamori.archivetune.ui.screens.YearInMusicRecapCard
-import moe.rukamori.archivetune.ui.screens.rememberShareSafeImageRequest
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 

@@ -40,8 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.MusicRecognitionErrorUi
-import moe.rukamori.archivetune.viewmodels.RecognizedTrackUiModel
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionErrorUi
+import moe.rukamori.archivetune.musicrecognition.RecognizedTrackUiModel
 
 @Composable
 internal fun RecognitionErrorState(

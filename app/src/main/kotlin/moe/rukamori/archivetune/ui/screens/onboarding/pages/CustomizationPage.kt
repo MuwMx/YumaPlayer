@@ -38,7 +38,7 @@ import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.onboarding.OnboardingUiState
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
-import moe.rukamori.archivetune.ui.screens.LoginScreen
+import moe.rukamori.archivetune.ui.screens.login.LoginScreen
 import moe.rukamori.archivetune.ui.screens.onboarding.components.ExpressivePageHeader
 import moe.rukamori.archivetune.ui.screens.onboarding.components.OnboardingContentMaxWidth
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
@@ -68,7 +68,7 @@ internal fun CustomizationPage(
     val spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel()
     val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
 
-    val homeViewModel: moe.rukamori.archivetune.viewmodels.HomeViewModel = hiltViewModel()
+    val homeViewModel: moe.rukamori.archivetune.home.HomeViewModel = hiltViewModel()
     val accountNameFromViewModel by homeViewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
     val accountChannelsState by homeViewModel.accountChannelsState.collectAsStateWithLifecycle()

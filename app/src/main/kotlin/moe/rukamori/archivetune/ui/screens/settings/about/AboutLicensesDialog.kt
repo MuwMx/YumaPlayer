@@ -34,8 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.viewmodels.AboutDependencyLicenseUiCollection
-import moe.rukamori.archivetune.viewmodels.AboutDependencyLicensesUiState
+import moe.rukamori.archivetune.about.AboutDependencyLicenseUiCollection
+import moe.rukamori.archivetune.about.AboutDependencyLicensesUiState
 
 @Composable
 internal fun DependencyLicensesDialogContent(

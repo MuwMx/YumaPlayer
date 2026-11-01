@@ -27,10 +27,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import kotlinx.coroutines.CoroutineScope
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalDownloadUtil
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.LocalSyncUtils
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
@@ -38,6 +38,11 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.utils.completed
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.ui.menu.youtube.playlist.YouTubePlaylistAddToPlaylistDialog
+import moe.rukamori.archivetune.ui.menu.youtube.playlist.YouTubePlaylistErrorDialog
+import moe.rukamori.archivetune.ui.menu.youtube.playlist.YouTubePlaylistMenuContent
+import moe.rukamori.archivetune.ui.menu.youtube.playlist.YouTubePlaylistMenuHeader
+import moe.rukamori.archivetune.ui.menu.youtube.playlist.YouTubePlaylistRemoveDownloadDialog
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.parseSpeedDialPins

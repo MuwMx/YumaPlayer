@@ -41,7 +41,7 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.viewmodels.LocalFilter
+import moe.rukamori.archivetune.ui.screens.search.LocalFilter
 
 internal fun LazyListScope.localSearchSectionHeader(
     filter: LocalFilter,

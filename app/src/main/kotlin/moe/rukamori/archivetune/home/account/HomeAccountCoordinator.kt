@@ -7,6 +7,7 @@
 package moe.rukamori.archivetune.home.account
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -70,11 +71,15 @@ class HomeAccountCoordinator
         private val _accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
         val accountPlaylists: StateFlow<List<PlaylistItem>?> = _accountPlaylists.asStateFlow()
 
+        private val accentColorObserver = HomeAccountAccentColorObserver(context, accountImageUrl)
+        val accountAccentColor: StateFlow<Color?> = accentColorObserver.accountAccentColor
+
         fun clearAccountData() {
             _accountName.value = ""
             _accountImageUrl.value = null
             _accountPlaylists.value = null
             _accountChannelsState.value = AccountChannelsState.Empty
+            accentColorObserver.clear()
         }
 
         private fun prepareYouTubeAccount(cookie: String): Boolean =
@@ -348,5 +353,9 @@ class HomeAccountCoordinator
                     Timber.e(e, "Error in onAuthCleared callback")
                 }
             }
+        }
+
+        fun observeAccentColor(scope: CoroutineScope) {
+            accentColorObserver.observe(scope)
         }
     }

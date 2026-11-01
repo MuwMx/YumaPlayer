@@ -13,9 +13,9 @@ import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeLine
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeSyllable
 import com.mocharealm.accompanist.lyrics.core.model.synced.SyncedLine
 import kotlin.math.roundToInt
-import moe.rukamori.archivetune.lyrics.LyricsEntry
-import moe.rukamori.archivetune.lyrics.Romanizer.providedTranslationTextForEntry
-import moe.rukamori.archivetune.lyrics.WordTimestamp
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
+import moe.rukamori.archivetune.lyrics.language.Romanizer.providedTranslationTextForEntry
+import moe.rukamori.archivetune.lyrics.model.WordTimestamp
 import moe.rukamori.archivetune.ui.component.toLyricsWrappingUnits
 
 internal const val MIN_KARAOKE_SYLLABLE_DURATION_MS = 1

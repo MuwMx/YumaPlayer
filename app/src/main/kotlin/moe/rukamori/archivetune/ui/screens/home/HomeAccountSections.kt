@@ -53,7 +53,6 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.SimilarRecommendation
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.screens.HomeSectionHeader
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

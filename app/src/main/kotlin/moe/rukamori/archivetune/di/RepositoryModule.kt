@@ -4,8 +4,8 @@ import moe.rukamori.archivetune.data.repository.AccountRepository
 import moe.rukamori.archivetune.data.repository.AccountRepositoryImpl
 import moe.rukamori.archivetune.data.repository.SettingsRepository
 import moe.rukamori.archivetune.data.repository.SettingsRepositoryImpl
-import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCase
-import moe.rukamori.archivetune.lyrics.LyricsTranslationUseCaseImpl
+import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCase
+import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCaseImpl
 import moe.rukamori.archivetune.repository.LyricsRepository
 import moe.rukamori.archivetune.repository.LyricsRepositoryImpl
 import dagger.Binds

@@ -46,7 +46,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.RecognitionHistoryItemUiModel
+import moe.rukamori.archivetune.musicrecognition.RecognitionHistoryItemUiModel
 
 @Composable
 internal fun RecognitionHistoryListItem(

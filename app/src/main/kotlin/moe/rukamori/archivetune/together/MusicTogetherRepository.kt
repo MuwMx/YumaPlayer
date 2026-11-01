@@ -6,6 +6,8 @@
 
 package moe.rukamori.archivetune.together
 
+import moe.rukamori.archivetune.playback.together.*
+
 import android.content.Context
 import android.os.Build
 import androidx.datastore.preferences.core.edit
@@ -26,16 +28,16 @@ import moe.rukamori.archivetune.constants.TogetherLastJoinLinkKey
 import moe.rukamori.archivetune.constants.TogetherRequireHostApprovalToJoinKey
 import moe.rukamori.archivetune.constants.TogetherWelcomeShownKey
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.approveTogetherParticipant
-import moe.rukamori.archivetune.playback.banTogetherParticipant
-import moe.rukamori.archivetune.playback.joinTogether
-import moe.rukamori.archivetune.playback.joinTogetherOnline
-import moe.rukamori.archivetune.playback.kickTogetherParticipant
-import moe.rukamori.archivetune.playback.leaveTogether
-import moe.rukamori.archivetune.playback.startTogetherHost
-import moe.rukamori.archivetune.playback.startTogetherOnlineHost
-import moe.rukamori.archivetune.playback.transferTogetherHostOwnership
-import moe.rukamori.archivetune.playback.updateTogetherSettings
+import moe.rukamori.archivetune.playback.together.approveTogetherParticipant
+import moe.rukamori.archivetune.playback.together.banTogetherParticipant
+import moe.rukamori.archivetune.playback.together.joinTogether
+import moe.rukamori.archivetune.playback.together.joinTogetherOnline
+import moe.rukamori.archivetune.playback.together.kickTogetherParticipant
+import moe.rukamori.archivetune.playback.together.leaveTogether
+import moe.rukamori.archivetune.playback.together.startTogetherHost
+import moe.rukamori.archivetune.playback.together.startTogetherOnlineHost
+import moe.rukamori.archivetune.playback.together.transferTogetherHostOwnership
+import moe.rukamori.archivetune.playback.together.updateTogetherSettings
 import moe.rukamori.archivetune.utils.dataStore
 import javax.inject.Inject
 import javax.inject.Singleton

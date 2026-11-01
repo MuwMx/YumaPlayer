@@ -59,7 +59,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.PlaybackException
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.screens.buildLoginRoute
+import moe.rukamori.archivetune.ui.screens.login.buildLoginRoute
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
 @Composable

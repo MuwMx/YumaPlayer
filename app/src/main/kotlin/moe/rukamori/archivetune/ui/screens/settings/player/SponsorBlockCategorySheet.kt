@@ -49,7 +49,7 @@ import moe.rukamori.archivetune.ui.component.PreferenceSelectionOption
 import moe.rukamori.archivetune.ui.screens.settings.segmentedSettingsItemShape
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
-import moe.rukamori.archivetune.viewmodels.SponsorBlockCategoryUiModel
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockCategoryUiModel
 
 @Composable
 internal fun SponsorBlockCategoryBottomSheet(

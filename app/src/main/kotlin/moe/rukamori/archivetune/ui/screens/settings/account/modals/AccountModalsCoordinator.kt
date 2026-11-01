@@ -18,7 +18,7 @@ import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAccountUiState
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
-import moe.rukamori.archivetune.ui.screens.buildLoginRoute
+import moe.rukamori.archivetune.ui.screens.login.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.AccountDialogsActions
 import moe.rukamori.archivetune.ui.screens.settings.AccountDialogsState
 import moe.rukamori.archivetune.ui.screens.settings.TokenEditorDialogActions

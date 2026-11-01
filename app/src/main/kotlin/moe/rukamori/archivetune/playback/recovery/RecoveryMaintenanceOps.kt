@@ -20,7 +20,6 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
-import moe.rukamori.archivetune.playback.PlaybackRecoveryEngine
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 
 object RecoveryMaintenanceOps {

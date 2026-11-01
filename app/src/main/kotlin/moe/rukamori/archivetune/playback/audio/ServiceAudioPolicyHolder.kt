@@ -35,7 +35,6 @@ import moe.rukamori.archivetune.playback.EqCapabilities
 import moe.rukamori.archivetune.playback.EqSettings
 import moe.rukamori.archivetune.playback.EqualizerJson
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.readAudioEffectValue
 import java.util.concurrent.ConcurrentHashMap
 
 class ServiceAudioPolicyHolder(
@@ -93,7 +92,7 @@ class ServiceAudioPolicyHolder(
 
     val normalizeFactor = MutableStateFlow(1f)
     val audioNormalizationFactorCache: ConcurrentHashMap<String, Float>
-        get() = moe.rukamori.archivetune.playback.audioNormalizationFactorCache
+        get() = moe.rukamori.archivetune.playback.audio.audioNormalizationFactorCache
     var audioNormalizationEnabled: Boolean = true
     val maxSafeGainFactor: Float = AudioPolicyConstants.MAX_AUDIO_NORMALIZATION_FACTOR
 

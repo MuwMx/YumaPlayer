@@ -6,15 +6,17 @@
 
 package moe.rukamori.archivetune.playback.discord
 
+import moe.rukamori.archivetune.playback.discord.*
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.playback.DiscordPresenceDecision
-import moe.rukamori.archivetune.playback.DiscordPresenceResolution
-import moe.rukamori.archivetune.playback.DiscordPresenceSnapshot
-import moe.rukamori.archivetune.playback.HiddenReason
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceDecision
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceResolution
+import moe.rukamori.archivetune.playback.discord.DiscordPresenceSnapshot
+import moe.rukamori.archivetune.playback.discord.HiddenReason
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.ensureDiscordSyncFresh
+import moe.rukamori.archivetune.playback.host.ensureDiscordSyncFresh
 import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
 import timber.log.Timber
 

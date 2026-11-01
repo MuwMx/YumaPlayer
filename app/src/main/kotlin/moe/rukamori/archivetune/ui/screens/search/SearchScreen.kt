@@ -34,9 +34,9 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
-import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState
-import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
-import moe.rukamori.archivetune.viewmodels.SearchDiscoveryViewModel
+import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryScreenState
+import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryTab
+import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable

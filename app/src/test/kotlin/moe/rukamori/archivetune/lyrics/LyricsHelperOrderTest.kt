@@ -12,6 +12,9 @@ import io.mockk.unmockkAll
 import kotlinx.coroutines.test.runTest
 import moe.rukamori.archivetune.constants.LyricsProviderOrderKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.dataStore
 import org.junit.After

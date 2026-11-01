@@ -30,8 +30,8 @@ import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.viewmodels.SponsorBlockCategoryUiModel
-import moe.rukamori.archivetune.viewmodels.SponsorBlockSettingsScreenState
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockCategoryUiModel
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettingsScreenState
 
 @Composable
 internal fun PlayerSponsorBlockSection(

@@ -3,7 +3,7 @@ package moe.rukamori.archivetune.ui.state
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
-import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.model.LyricsEntry
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import org.junit.After
 import org.junit.Assert.assertEquals

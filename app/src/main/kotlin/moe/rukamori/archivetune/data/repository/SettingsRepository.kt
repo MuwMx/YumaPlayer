@@ -2,7 +2,7 @@ package moe.rukamori.archivetune.data.repository
 
 import kotlinx.coroutines.flow.Flow
 import moe.rukamori.archivetune.constants.AppFontPreference
-import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
 
 data class UserSettings(
     val isDarkTheme: Boolean = true,

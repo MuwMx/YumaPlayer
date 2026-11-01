@@ -27,9 +27,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableSpotifyKey
 import moe.rukamori.archivetune.constants.LibraryFilter
@@ -45,8 +45,8 @@ import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.LibraryMixViewModel
-import moe.rukamori.archivetune.viewmodels.MostPlayedAlbumUiState
+import moe.rukamori.archivetune.ui.screens.library.LibraryMixViewModel
+import moe.rukamori.archivetune.ui.screens.library.MostPlayedAlbumUiState
 
 @Composable
 fun LibraryMixScreen(

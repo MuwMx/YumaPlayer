@@ -12,6 +12,15 @@ import android.util.Log
 import android.util.LruCache
 import androidx.datastore.preferences.core.Preferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser
+import moe.rukamori.archivetune.lyrics.providers.BetterLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.UnisonLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.YouLyPlusLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.YouTubeLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.YouTubeSubtitleLyricsProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

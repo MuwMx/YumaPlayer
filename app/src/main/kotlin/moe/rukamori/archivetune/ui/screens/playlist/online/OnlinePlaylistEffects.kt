@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 
 @Composable
 fun OnlinePlaylistContinuationEffect(

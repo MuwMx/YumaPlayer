@@ -25,10 +25,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
-import moe.rukamori.archivetune.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Song
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.headerDownloadState

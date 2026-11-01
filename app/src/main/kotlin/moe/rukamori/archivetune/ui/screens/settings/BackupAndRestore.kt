@@ -112,8 +112,8 @@ import moe.rukamori.archivetune.ui.menu.LoadingScreen
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
-import moe.rukamori.archivetune.viewmodels.BackupCategory
-import moe.rukamori.archivetune.viewmodels.BackupRestoreViewModel
+import moe.rukamori.archivetune.storage.BackupCategory
+import moe.rukamori.archivetune.storage.BackupRestoreViewModel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions

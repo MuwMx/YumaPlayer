@@ -63,7 +63,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_SONG
@@ -88,7 +88,7 @@ import moe.rukamori.archivetune.ui.screens.library.local.LocalSongSortType
 import moe.rukamori.archivetune.ui.screens.library.local.toFolderEntry
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.LocalSongsViewModel
+import moe.rukamori.archivetune.localmedia.LocalSongsViewModel
 import java.text.Collator
 import java.time.LocalDateTime
 import java.util.Locale

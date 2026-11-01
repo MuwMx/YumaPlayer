@@ -40,7 +40,7 @@ import moe.rukamori.archivetune.constants.StorageFolderTreeUriKey
 import moe.rukamori.archivetune.di.CanvasCache
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.ArtworkStorage
 import moe.rukamori.archivetune.utils.PreferenceStore

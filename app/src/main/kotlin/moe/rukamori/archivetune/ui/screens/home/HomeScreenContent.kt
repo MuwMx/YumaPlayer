@@ -39,9 +39,6 @@ import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.carousel.LocalHeroScrollProgress
 import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
-import moe.rukamori.archivetune.ui.screens.HomeSectionHeader
-import moe.rukamori.archivetune.ui.screens.QuickPicksSection
-import moe.rukamori.archivetune.ui.screens.SpeedDialSection
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 
 @OptIn(

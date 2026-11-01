@@ -14,6 +14,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
+import moe.rukamori.archivetune.ui.screens.charts.ChartsUiState
+import moe.rukamori.archivetune.ui.screens.charts.ChartsViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

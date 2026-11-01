@@ -13,7 +13,7 @@ import moe.rukamori.archivetune.ui.screens.settings.account.session.AccountSessi
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.decodeSavedAccounts
 import moe.rukamori.archivetune.utils.encodeSavedAccounts
-import moe.rukamori.archivetune.viewmodels.HomeViewModel
+import moe.rukamori.archivetune.home.HomeViewModel
 import java.util.UUID
 
 internal class AccountActionHandlers(

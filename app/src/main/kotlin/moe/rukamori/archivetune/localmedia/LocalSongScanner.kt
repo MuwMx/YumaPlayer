@@ -28,7 +28,7 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
-import moe.rukamori.archivetune.lyrics.LrcParser
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream

@@ -26,9 +26,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.flow.StateFlow
-import moe.rukamori.archivetune.MiniPlayerDropState
-import moe.rukamori.archivetune.PlayerDockGeometry
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.ui.player.host.MiniPlayerDropState
+import moe.rukamori.archivetune.ui.player.host.PlayerDockGeometry
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions

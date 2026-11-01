@@ -30,10 +30,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalDownloadUtil
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.LocalSyncUtils
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
@@ -46,13 +46,20 @@ import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
+import moe.rukamori.archivetune.ui.menu.song.SongMenuAddToPlaylistDialog
+import moe.rukamori.archivetune.ui.menu.song.SongMenuContent
+import moe.rukamori.archivetune.ui.menu.song.SongMenuEditDialog
+import moe.rukamori.archivetune.ui.menu.song.SongMenuErrorDialog
+import moe.rukamori.archivetune.ui.menu.song.SongMenuHeader
+import moe.rukamori.archivetune.ui.menu.song.SongMenuSelectArtistDialog
+import moe.rukamori.archivetune.ui.menu.song.rememberSongMenuSplitArtists
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.CachePlaylistViewModel
+import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistViewModel
 
 @Composable
 fun SongMenu(

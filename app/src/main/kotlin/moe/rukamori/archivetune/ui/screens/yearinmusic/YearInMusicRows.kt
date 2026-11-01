@@ -38,12 +38,6 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
-import moe.rukamori.archivetune.ui.screens.RecapCream
-import moe.rukamori.archivetune.ui.screens.RecapRed
-import moe.rukamori.archivetune.ui.screens.RecapSurfaceHigh
-import moe.rukamori.archivetune.ui.screens.RecapTokens
-import moe.rukamori.archivetune.ui.screens.RecapYellow
-import moe.rukamori.archivetune.ui.screens.rememberShareSafeImageRequest
 import moe.rukamori.archivetune.utils.makeTimeString
 
 @Composable

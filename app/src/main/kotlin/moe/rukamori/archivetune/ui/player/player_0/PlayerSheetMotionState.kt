@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.PlayerDockGeometry
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
+import moe.rukamori.archivetune.ui.player.host.PlayerDockGeometry
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetMotionController
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVisualState

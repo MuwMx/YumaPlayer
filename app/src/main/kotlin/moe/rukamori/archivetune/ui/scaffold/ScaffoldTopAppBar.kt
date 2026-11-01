@@ -61,7 +61,7 @@ import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.UpdateState
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.NewsViewModel
+import moe.rukamori.archivetune.ui.screens.news.NewsViewModel
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 

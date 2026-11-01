@@ -15,6 +15,8 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
+import moe.rukamori.archivetune.app.init.createAppImageLoader
+import moe.rukamori.archivetune.app.init.initializeDeferredAsync
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi

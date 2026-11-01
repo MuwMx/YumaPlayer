@@ -23,8 +23,8 @@ import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.bumpCrossfadePlanGeneration
 import moe.rukamori.archivetune.playback.crossfadePlanGeneration
-import moe.rukamori.archivetune.playback.effectiveCrossfadeDuration
-import moe.rukamori.archivetune.playback.isPlayerInitialized
+import moe.rukamori.archivetune.playback.crossfade.effectiveCrossfadeDuration
+import moe.rukamori.archivetune.playback.audio.isPlayerInitialized
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds

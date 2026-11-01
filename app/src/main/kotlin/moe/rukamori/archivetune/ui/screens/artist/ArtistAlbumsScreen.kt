@@ -39,7 +39,7 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_ALBUM
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
@@ -48,7 +48,7 @@ import moe.rukamori.archivetune.ui.component.LibraryAlbumGridItem
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
-import moe.rukamori.archivetune.viewmodels.ArtistAlbumsViewModel
+import moe.rukamori.archivetune.ui.screens.artist.ArtistAlbumsViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable

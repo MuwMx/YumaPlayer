@@ -82,7 +82,7 @@ import moe.rukamori.archivetune.ui.component.AssignTagsDialog
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EditPlaylistDialog
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu

@@ -65,13 +65,13 @@ import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.viewmodels.LastFmLoginDialogUiModel
-import moe.rukamori.archivetune.viewmodels.LastFmServiceEditorUiModel
-import moe.rukamori.archivetune.viewmodels.LastFmSettingsScreenState
-import moe.rukamori.archivetune.viewmodels.LastFmSettingsUiModel
-import moe.rukamori.archivetune.viewmodels.LastFmSettingsViewModel
-import moe.rukamori.archivetune.viewmodels.LastFmTimingEditorUiModel
-import moe.rukamori.archivetune.viewmodels.LastFmTimingSetting
+import moe.rukamori.archivetune.scrobbling.LastFmLoginDialogUiModel
+import moe.rukamori.archivetune.scrobbling.LastFmServiceEditorUiModel
+import moe.rukamori.archivetune.scrobbling.LastFmSettingsScreenState
+import moe.rukamori.archivetune.scrobbling.LastFmSettingsUiModel
+import moe.rukamori.archivetune.scrobbling.LastFmSettingsViewModel
+import moe.rukamori.archivetune.scrobbling.LastFmTimingEditorUiModel
+import moe.rukamori.archivetune.scrobbling.LastFmTimingSetting
 import kotlin.math.roundToInt
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 

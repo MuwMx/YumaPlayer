@@ -47,7 +47,7 @@ import moe.rukamori.archivetune.innertube.pages.HomePage
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
-import moe.rukamori.archivetune.viewmodels.HomeViewModel
+import moe.rukamori.archivetune.home.HomeViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

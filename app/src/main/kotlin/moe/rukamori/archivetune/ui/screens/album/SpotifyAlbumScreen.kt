@@ -56,7 +56,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
@@ -75,8 +75,8 @@ import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.SpotifyAlbumUiState
-import moe.rukamori.archivetune.viewmodels.SpotifyAlbumViewModel
+import moe.rukamori.archivetune.spotify.SpotifyAlbumUiState
+import moe.rukamori.archivetune.spotify.SpotifyAlbumViewModel
 
 @Composable
 fun SpotifyAlbumScreen(

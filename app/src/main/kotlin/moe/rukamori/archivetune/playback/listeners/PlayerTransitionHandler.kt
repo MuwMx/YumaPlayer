@@ -34,7 +34,7 @@ import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.playback.MusicServicePlayerListeners
+import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterExplicit

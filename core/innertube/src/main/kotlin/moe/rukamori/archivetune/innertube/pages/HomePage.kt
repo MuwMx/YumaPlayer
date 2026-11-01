@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.innertube.pages
 
+import kotlinx.serialization.Serializable
 import moe.rukamori.archivetune.innertube.models.Album
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
@@ -23,11 +24,13 @@ import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.oddElements
 
+@Serializable
 data class HomePage(
     val chips: List<Chip>?,
     val sections: List<Section>,
     val continuation: String? = null,
 ) {
+    @Serializable
     data class Chip(
         val title: String,
         val endpoint: BrowseEndpoint?,
@@ -48,6 +51,7 @@ data class HomePage(
         }
     }
 
+    @Serializable
     data class Section(
         val title: String,
         val label: String?,
@@ -57,6 +61,7 @@ data class HomePage(
         val playEndpoint: WatchEndpoint? = null,
         val featuredCards: List<FeaturedCard> = emptyList(),
     ) {
+        @Serializable
         data class FeaturedCard(
             val id: String,
             val title: String,

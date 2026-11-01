@@ -19,6 +19,8 @@ import moe.rukamori.archivetune.sponsorblock.SetSponsorBlockCategoriesUseCase
 import moe.rukamori.archivetune.sponsorblock.SetSponsorBlockEnabledUseCase
 import moe.rukamori.archivetune.sponsorblock.SponsorBlockCategory
 import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettings
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettingsScreenState
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSettingsViewModel
 import moe.rukamori.archivetune.sponsorblock.ValidateSponsorBlockApiUrlUseCase
 import org.junit.After
 import org.junit.Assert.assertEquals

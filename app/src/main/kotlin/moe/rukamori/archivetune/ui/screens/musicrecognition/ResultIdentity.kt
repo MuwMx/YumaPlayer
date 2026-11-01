@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.viewmodels.RecognizedTrackUiModel
+import moe.rukamori.archivetune.musicrecognition.RecognizedTrackUiModel
 
 @Composable
 internal fun ResultIdentity(

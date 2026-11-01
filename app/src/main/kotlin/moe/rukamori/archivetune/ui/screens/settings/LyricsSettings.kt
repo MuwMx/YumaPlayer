@@ -61,7 +61,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.viewmodels.ContentSettingsViewModel
+import moe.rukamori.archivetune.ui.screens.settings.ContentSettingsViewModel
 
 @Composable
 fun LyricsSettings(

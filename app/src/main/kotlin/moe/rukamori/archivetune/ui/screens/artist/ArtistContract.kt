@@ -18,7 +18,7 @@ import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
-import moe.rukamori.archivetune.viewmodels.ArtistBlockState
+import moe.rukamori.archivetune.ui.screens.artist.ArtistBlockState
 
 internal const val ARTIST_KEY_SHIMMER = "shimmer"
 internal const val ARTIST_KEY_HEADER = "header"

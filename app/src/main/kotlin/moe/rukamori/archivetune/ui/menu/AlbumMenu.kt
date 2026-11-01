@@ -36,9 +36,9 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import moe.rukamori.archivetune.LocalDatabase
-import moe.rukamori.archivetune.LocalDownloadUtil
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
@@ -46,6 +46,12 @@ import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.ExoDownloadService
+import moe.rukamori.archivetune.ui.menu.album.AlbumAddToPlaylistDialog
+import moe.rukamori.archivetune.ui.menu.album.AlbumArtistSelectDialog
+import moe.rukamori.archivetune.ui.menu.album.AlbumErrorPlaylistAddDialog
+import moe.rukamori.archivetune.ui.menu.album.AlbumMenuContent
+import moe.rukamori.archivetune.ui.menu.album.AlbumMenuHeader
+import moe.rukamori.archivetune.ui.menu.album.rememberSplitArtists
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.SpeedDialPin

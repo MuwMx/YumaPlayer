@@ -30,8 +30,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.PlaybackParameters
-import moe.rukamori.archivetune.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.menu.tempo.PitchControls
+import moe.rukamori.archivetune.ui.menu.tempo.PitchMax
+import moe.rukamori.archivetune.ui.menu.tempo.PitchMin
+import moe.rukamori.archivetune.ui.menu.tempo.PitchMode
+import moe.rukamori.archivetune.ui.menu.tempo.TempoControls
+import moe.rukamori.archivetune.ui.menu.tempo.TempoMax
+import moe.rukamori.archivetune.ui.menu.tempo.TempoMin
+import moe.rukamori.archivetune.ui.menu.tempo.isPitchSemitoneAligned
+import moe.rukamori.archivetune.ui.menu.tempo.safeCoerceIn
 
 @Composable
 fun TempoPitchDialog(onDismiss: () -> Unit) {

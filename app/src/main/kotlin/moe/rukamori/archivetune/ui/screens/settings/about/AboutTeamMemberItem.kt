@@ -49,8 +49,8 @@ import coil3.request.crossfade
 import coil3.toBitmap
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.viewmodels.AboutLinkCollection
-import moe.rukamori.archivetune.viewmodels.TeamMember
+import moe.rukamori.archivetune.about.AboutLinkCollection
+import moe.rukamori.archivetune.about.TeamMember
 
 @Composable
 internal fun AboutSectionHeader(

@@ -20,10 +20,14 @@ import androidx.navigation.NavHostController
 import dagger.hilt.android.AndroidEntryPoint
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
-import moe.rukamori.archivetune.playback.DownloadUtil
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.playback.PlayerConnectionHolder
+import moe.rukamori.archivetune.playback.host.PlayerConnectionHolder
+import moe.rukamori.archivetune.playback.service.MusicServiceBinding
 import moe.rukamori.archivetune.ui.PlayerViewModel
+import moe.rukamori.archivetune.ui.main.setupMainActivity
+import moe.rukamori.archivetune.ui.navigation.MainIntentRouter
+import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.utils.SyncUtils
 import javax.inject.Inject
 

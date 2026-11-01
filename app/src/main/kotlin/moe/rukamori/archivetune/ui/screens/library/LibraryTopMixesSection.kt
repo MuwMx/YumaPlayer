@@ -8,8 +8,8 @@ package moe.rukamori.archivetune.ui.screens.library
 
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Modifier
-import moe.rukamori.archivetune.viewmodels.LibraryTopMixUiModel
-import moe.rukamori.archivetune.viewmodels.LibraryTopMixesUiState
+import moe.rukamori.archivetune.ui.screens.library.LibraryTopMixUiModel
+import moe.rukamori.archivetune.ui.screens.library.LibraryTopMixesUiState
 
 fun LazyListScope.topMixesSection(
     uiState: LibraryTopMixesUiState,

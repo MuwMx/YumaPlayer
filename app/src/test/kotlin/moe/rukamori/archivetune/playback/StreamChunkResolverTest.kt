@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.playback.resolvers.resolveStreamChunkLength
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

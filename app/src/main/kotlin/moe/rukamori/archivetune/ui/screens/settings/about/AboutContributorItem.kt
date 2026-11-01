@@ -39,7 +39,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.viewmodels.AboutContributorUiCollection
+import moe.rukamori.archivetune.about.AboutContributorUiCollection
 
 @Composable
 internal fun ContributorList(

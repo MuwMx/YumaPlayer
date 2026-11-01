@@ -9,7 +9,6 @@ package moe.rukamori.archivetune.ui.screens.home
 import androidx.compose.foundation.lazy.LazyListScope
 import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomeUiState
-import moe.rukamori.archivetune.ui.screens.HomeCategoryChips
 
 internal fun LazyListScope.homeCategoryChipsSection(
     uiState: HomeUiState,

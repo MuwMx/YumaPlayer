@@ -21,7 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
-import moe.rukamori.archivetune.ui.screens.buildLoginRoute
+import moe.rukamori.archivetune.ui.screens.login.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.settings.account.AccountSettingsContent
 import moe.rukamori.archivetune.ui.screens.settings.account.AccountSettingsViewModel
 import moe.rukamori.archivetune.ui.screens.settings.account.actions.createAccountActionHandlers
@@ -35,7 +35,7 @@ import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.Updater
-import moe.rukamori.archivetune.viewmodels.HomeViewModel
+import moe.rukamori.archivetune.home.HomeViewModel
 
 @Composable
 fun AccountSettings(

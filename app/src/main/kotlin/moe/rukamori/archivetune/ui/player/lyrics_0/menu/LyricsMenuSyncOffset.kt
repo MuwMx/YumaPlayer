@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.lyrics.LyricsTranslator
+import moe.rukamori.archivetune.lyrics.language.LyricsTranslator
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily

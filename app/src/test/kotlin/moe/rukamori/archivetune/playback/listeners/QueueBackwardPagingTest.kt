@@ -33,7 +33,7 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.MusicServicePlayerListeners
+import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.SpotifyQueue
 import moe.rukamori.archivetune.utils.PreferenceStore

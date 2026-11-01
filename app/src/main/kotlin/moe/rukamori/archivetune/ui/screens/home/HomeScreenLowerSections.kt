@@ -41,10 +41,6 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.screens.HomeCategoryChips
-import moe.rukamori.archivetune.ui.screens.HomeSectionHeader
-import moe.rukamori.archivetune.ui.screens.QuickPicksSection
-import moe.rukamori.archivetune.ui.screens.SpeedDialSection
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 
 internal val HomeFeedMaxWidth = 1_200.dp

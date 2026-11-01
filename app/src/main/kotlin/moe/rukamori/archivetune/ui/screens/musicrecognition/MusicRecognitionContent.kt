@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
-import moe.rukamori.archivetune.viewmodels.MusicRecognitionScreenState
+import moe.rukamori.archivetune.musicrecognition.MusicRecognitionScreenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

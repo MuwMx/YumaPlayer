@@ -6,6 +6,8 @@
 
 package moe.rukamori.archivetune.playback.history
 
+import moe.rukamori.archivetune.playback.host.*
+
 import android.os.SystemClock
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
@@ -18,10 +20,10 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.playback.MusicService
-import moe.rukamori.archivetune.playback.MusicServicePlayerListeners
-import moe.rukamori.archivetune.playback.beginHistorySession
-import moe.rukamori.archivetune.playback.enqueueCurrentHistorySessionForFinalization
-import moe.rukamori.archivetune.playback.updateHistoryTrackingPlaybackState
+import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
+import moe.rukamori.archivetune.playback.host.beginHistorySession
+import moe.rukamori.archivetune.playback.host.enqueueCurrentHistorySessionForFinalization
+import moe.rukamori.archivetune.playback.host.updateHistoryTrackingPlaybackState
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 

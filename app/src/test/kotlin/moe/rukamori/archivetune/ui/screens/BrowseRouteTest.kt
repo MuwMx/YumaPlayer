@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.screens
 
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
+import moe.rukamori.archivetune.ui.navigation.buildBrowseRoute
 import moe.rukamori.archivetune.ui.screens.home.resolveHomeSectionRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

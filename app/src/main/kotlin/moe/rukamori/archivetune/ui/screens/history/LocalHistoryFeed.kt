@@ -36,7 +36,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.EventWithSong
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.SongListItem
-import moe.rukamori.archivetune.viewmodels.DateAgo
+import moe.rukamori.archivetune.ui.screens.history.DateAgo
 
 @Composable
 internal fun LocalHistoryFeed(

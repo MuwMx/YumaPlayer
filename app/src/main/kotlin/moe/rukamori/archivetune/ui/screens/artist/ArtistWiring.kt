@@ -68,10 +68,10 @@ import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.viewmodels.ArtistAction
-import moe.rukamori.archivetune.viewmodels.ArtistBlockState
-import moe.rukamori.archivetune.viewmodels.ArtistEvent
-import moe.rukamori.archivetune.viewmodels.ArtistViewModel
+import moe.rukamori.archivetune.ui.screens.artist.ArtistAction
+import moe.rukamori.archivetune.ui.screens.artist.ArtistBlockState
+import moe.rukamori.archivetune.ui.screens.artist.ArtistEvent
+import moe.rukamori.archivetune.ui.screens.artist.ArtistViewModel
 
 @Composable
 fun rememberArtistUiState(

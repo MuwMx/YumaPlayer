@@ -29,10 +29,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import moe.rukamori.archivetune.ui.screens.RecapCream
-import moe.rukamori.archivetune.ui.screens.RecapRed
-import moe.rukamori.archivetune.ui.screens.RecapSurfaceHigh
-import moe.rukamori.archivetune.ui.screens.RecapTokens
 
 @Composable
 internal fun RankNumber(

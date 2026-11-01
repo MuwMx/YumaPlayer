@@ -32,13 +32,13 @@ import androidx.compose.ui.util.fastAny
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import dev.chrisbanes.haze.HazeState
-import moe.rukamori.archivetune.OnlineSearchSortMenu
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.SearchSource
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoutePrefix
+import moe.rukamori.archivetune.ui.screens.search.OnlineSearchSortMenu
 import moe.rukamori.archivetune.ui.utils.backToMain
 
 @OptIn(ExperimentalMaterial3Api::class)

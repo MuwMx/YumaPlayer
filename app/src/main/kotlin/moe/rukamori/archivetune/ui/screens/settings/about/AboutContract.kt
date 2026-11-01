@@ -7,7 +7,7 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.runtime.Immutable
-import moe.rukamori.archivetune.viewmodels.AboutScreenState
+import moe.rukamori.archivetune.about.AboutScreenState
 
 internal object AboutContract {
     const val SOLANA_ADDRESS = "DT3ckdbNuiQMR1mrCpBXCMrhLB19GckVv3YfxsLLiF8z"

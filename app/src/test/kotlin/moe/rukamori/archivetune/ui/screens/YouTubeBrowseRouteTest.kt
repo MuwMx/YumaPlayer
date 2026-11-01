@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.screens
 
+import moe.rukamori.archivetune.ui.navigation.buildYouTubeBrowseRoute
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith

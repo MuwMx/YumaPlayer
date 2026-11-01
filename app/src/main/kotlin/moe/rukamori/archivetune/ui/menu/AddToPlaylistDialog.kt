@@ -37,11 +37,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import moe.rukamori.archivetune.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.CreatePlaylistDialog
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.AddToPlaylistButtons
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.AddToPlaylistContent
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.AddToPlaylistDuplicateDialog
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.AddToPlaylistHeader
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.AddToPlaylistSortOption
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.addSongsToPlaylistSafely
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.launchAddToPlaylists
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.playlistsForAddToPlaylist
+import moe.rukamori.archivetune.ui.menu.addtoplaylist.visiblePlaylistsForAddToPlaylist
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)

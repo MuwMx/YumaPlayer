@@ -21,10 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Artist
-import moe.rukamori.archivetune.ui.screens.RecapCream
-import moe.rukamori.archivetune.ui.screens.RecapRed
-import moe.rukamori.archivetune.ui.screens.RecapYellow
-import moe.rukamori.archivetune.ui.screens.YearInMusicRecapCard
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
