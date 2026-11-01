@@ -14,10 +14,6 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * The Spotify songs each editable copy has already been given, by Spotify playlist id. A song in
- * here that is missing from the copy was removed by the user, so syncing does not add it again.
- */
 @Singleton
 class SpotifyCopySnapshots
     @Inject
@@ -27,7 +23,6 @@ class SpotifyCopySnapshots
         private val dir: File
             get() = File(context.filesDir, DIR_NAME)
 
-        /** The songs given to the copy of [spotifyId], or null when none were recorded yet. */
         fun read(spotifyId: String): Set<String>? {
             val file = fileFor(spotifyId)
             if (!file.exists()) return null

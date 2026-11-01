@@ -308,7 +308,6 @@ interface PlaylistDao {
     @Query("SELECT MAX(position) FROM playlist_song_map WHERE playlistId = :playlistId")
     fun maxPlaylistSongPosition(playlistId: String): Int?
 
-    /** Rows for Spotify local files written by older versions, whose id was only the length in seconds. */
     @Query(
         "SELECT * FROM playlist_song_map WHERE playlistId = :playlistId " +
             "AND songId GLOB 'spotify:[0-9]*' AND songId NOT GLOB 'spotify:*[^0-9]*' ORDER BY position",

@@ -69,7 +69,6 @@ class PlaylistCopyWriter
         ): PlaylistWrite =
             withContext(Dispatchers.IO) {
                 database.withTransaction {
-                    // A playlist has one editable copy: when another request made it first, add to that one.
                     val existing = sourceSpotifyId?.let { playlistBySpotifySourceId(it) }
                     if (existing != null) {
                         return@withTransaction PlaylistWrite(existing.id, addMissingTracks(existing, tracks).size)
@@ -168,11 +167,6 @@ class PlaylistCopyWriter
                 missing.size
             }
 
-        /**
-         * Points the rows older versions wrote for Spotify local files (`spotify:<seconds>`) at the
-         * local file each stood for, keeping their place, and removes the ones with none left.
-         * Returns the playlist as it is afterwards.
-         */
         private suspend fun MusicDatabase.replaceLegacyLocalFiles(
             playlist: Playlist,
             tracks: List<CopyTrack>,
@@ -186,7 +180,6 @@ class PlaylistCopyWriter
             legacy.zip(replacements).forEach { (map, replacement) ->
                 if (replacement != null) update(map.copy(songId = replacement.songId)) else removed += map
             }
-            // From the end, so removing a row does not move the ones still to be removed.
             removed.sortedByDescending { it.position }.forEach { map ->
                 move(map.playlistId, map.position, Int.MAX_VALUE)
                 delete(map.copy(position = Int.MAX_VALUE))
@@ -194,7 +187,6 @@ class PlaylistCopyWriter
             return getPlaylistById(playlist.id) ?: playlist
         }
 
-        /** Adds the tracks [playlist] does not have yet and returns them. */
         private suspend fun MusicDatabase.addMissingTracks(
             playlist: Playlist,
             tracks: List<CopyTrack>,
@@ -251,7 +243,6 @@ class PlaylistCopyWriter
             val artistMaps = ArrayList<SongArtistMap>()
             placeholders.forEach { song ->
                 song.artists.forEachIndexed { index, artist ->
-                    // Placeholder metadata always gives its artists an id.
                     val artistId = artist.id ?: return@forEachIndexed
                     artists += ArtistEntity(id = artistId, name = artist.name)
                     artistMaps += SongArtistMap(songId = song.id, artistId = artistId, position = index)

@@ -79,7 +79,6 @@ class PlaylistCopyManager
                         synchronized(lock) {
                             if (current != generation) return@launch
                             if (outcome is PlaylistCopyState.Success) {
-                                // A retry adds what is still missing to the playlist that was just written.
                                 lastRequest = request.copy(destination = PlaylistCopyDestination.Existing(outcome.result.playlistId))
                             }
                             _state.value = outcome

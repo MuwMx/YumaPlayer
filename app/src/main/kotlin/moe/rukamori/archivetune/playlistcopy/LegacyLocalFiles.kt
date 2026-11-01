@@ -9,11 +9,6 @@ package moe.rukamori.archivetune.playlistcopy
 import moe.rukamori.archivetune.spotify.SPOTIFY_LOCAL_FILE_PLACEHOLDER_PREFIX
 import kotlin.math.abs
 
-/**
- * Older versions gave a Spotify local file the id `spotify:<length in seconds>`. For each such row,
- * in playlist order, this finds the local file it stood for: the next one of [localFiles] (in
- * Spotify's order) of that length that is not taken yet. A row with none left gets null.
- */
 internal fun assignLegacyLocalFiles(
     legacySongIds: List<String>,
     localFiles: List<CopyTrack>,

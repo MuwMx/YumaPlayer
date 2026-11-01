@@ -69,7 +69,6 @@ class SyncUtils
         }
 
         fun trySpotifyAutoSync(authoritative: Boolean = false) {
-            // The editable copies are read from Spotify directly, so they do not wait for the mirror sync.
             spotifyCopySync.syncInBackground()
             spotifySyncOps.trySpotifyAutoSync(authoritative)
         }
