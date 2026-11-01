@@ -10,7 +10,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
+import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.utils.completed
 
 internal data class AddToPlaylistExecutionResult(
@@ -19,16 +21,6 @@ internal data class AddToPlaylistExecutionResult(
     val duplicatesMap: Map<String, List<String>>,
     val addedPlaylistNames: List<String>,
 )
-
-/** How many times each song is on the YouTube playlist now, or null if it can't be read. */
-private suspend fun remoteSongCounts(browseId: String): Map<String, Int>? =
-    YouTube
-        .playlist(browseId)
-        .completed()
-        .getOrNull()
-        ?.songs
-        ?.groupingBy { it.id }
-        ?.eachCount()
 
 internal suspend fun addSongsToPlaylistSafely(
     playlist: Playlist,
@@ -40,47 +32,26 @@ internal suspend fun addSongsToPlaylistSafely(
 
     val browseId = playlist.playlist.browseId
     if (isLoggedIn && browseId != null) {
-        // How often each song was on the playlist before this add, so a failed batch can tell the copies it added
-        // from the ones that were already there.
-        val countsBefore = database.playlistDuplicates(playlist.id, requestedSongIds).groupingBy { it }.eachCount()
+        val entriesBefore = database.playlistSongMaps(playlist.id, 0)
 
-        val setVideoIds = YouTube.addSongsToPlaylist(browseId, requestedSongIds).getOrNull()
-        // Only a result that accounts for every song counts as done; a shorter one goes through the fallback
-        // below instead of silently dropping the songs it is missing.
-        if (setVideoIds != null && setVideoIds.size == requestedSongIds.size) {
-            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(setVideoIds))
+        val batchSetVideoIds =
+            YouTube
+                .addSongsToPlaylist(browseId, requestedSongIds)
+                .getOrNull()
+                ?.filterNotNull()
+                ?.takeIf { it.size == requestedSongIds.size }
+        if (batchSetVideoIds != null) {
+            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(batchSetVideoIds))
             return requestedSongIds.size
         }
 
-        // A failed batch may still have added some songs. A song counts as added by it only for the copies the
-        // playlist has beyond the ones it had before; the rest are added one by one.
-        val countsNow = remoteSongCounts(browseId) ?: return 0
-        val addedByBatch =
-            countsNow
-                .mapValues { (songId, count) -> count - (countsBefore[songId] ?: 0) }
-                .filterValues { it > 0 }
-                .toMutableMap()
-        val acceptedSongEntries = mutableListOf<Pair<String, String?>>()
+        val remoteEntries = YouTube.playlist(browseId).completed().getOrNull()?.songs ?: return 0
+        val addedByFailedBatch = setVideoIdsAddedByFailedBatch(entriesBefore, remoteEntries, requestedSongIds)
+        val acceptedSongEntries = mutableListOf<Pair<String, String>>()
         requestedSongIds.forEach { songId ->
-            val alreadyAdded = addedByBatch[songId] ?: 0
-            if (alreadyAdded > 0) {
-                addedByBatch[songId] = alreadyAdded - 1
-                acceptedSongEntries += songId to null
-                return@forEach
-            }
-            var remoteAdded = false
-            var addedSetVideoId: String? = null
-            for (attempt in 0 until 3) {
-                val result = YouTube.addToPlaylist(browseId, songId)
-                if (result.isSuccess) {
-                    remoteAdded = true
-                    addedSetVideoId = result.getOrNull()
-                    break
-                }
-                if (attempt < 2) delay(250)
-            }
-            if (remoteAdded) {
-                acceptedSongEntries += songId to addedSetVideoId
+            val setVideoId = addedByFailedBatch[songId]?.removeFirstOrNull() ?: addSongWithRetries(browseId, songId)
+            if (setVideoId != null) {
+                acceptedSongEntries += songId to setVideoId
             }
         }
         if (acceptedSongEntries.isNotEmpty()) {
@@ -91,6 +62,33 @@ internal suspend fun addSongsToPlaylistSafely(
 
     database.addSongToPlaylist(playlist, requestedSongIds)
     return requestedSongIds.size
+}
+
+private fun setVideoIdsAddedByFailedBatch(
+    entriesBefore: List<PlaylistSongMap>,
+    remoteEntries: List<SongItem>,
+    requestedSongIds: List<String>,
+): Map<String, ArrayDeque<String>> {
+    val knownSetVideoIds = entriesBefore.mapNotNullTo(HashSet()) { it.setVideoId }
+    val countsBefore = entriesBefore.groupingBy { it.songId }.eachCount()
+    return requestedSongIds.toSet().associateWith { songId ->
+        val remoteCopies = remoteEntries.filter { it.id == songId }
+        val addedCount = (remoteCopies.size - (countsBefore[songId] ?: 0)).coerceAtLeast(0)
+        val unknownSetVideoIds = remoteCopies.mapNotNull { it.setVideoId }.filter { it !in knownSetVideoIds }
+        ArrayDeque(unknownSetVideoIds.takeLast(addedCount))
+    }
+}
+
+private suspend fun addSongWithRetries(
+    browseId: String,
+    songId: String,
+): String? {
+    for (attempt in 0 until 3) {
+        val result = YouTube.addToPlaylist(browseId, songId)
+        if (result.isSuccess) return result.getOrNull()
+        if (attempt < 2) delay(250)
+    }
+    return null
 }
 
 internal suspend fun executeAddToPlaylists(

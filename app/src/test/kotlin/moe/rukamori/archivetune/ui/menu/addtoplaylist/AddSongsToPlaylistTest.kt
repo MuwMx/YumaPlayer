@@ -1,4 +1,4 @@
-package moe.rukamori.archivetune.ui.menu
+package moe.rukamori.archivetune.ui.menu.addtoplaylist
 
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
+import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.PlaylistPage
@@ -31,6 +32,7 @@ class AddSongsToPlaylistTest {
     @Before
     fun setUp() {
         mockkObject(YouTube)
+        every { database.playlistSongMaps("local", 0) } returns emptyList()
     }
 
     @After
@@ -52,47 +54,51 @@ class AddSongsToPlaylistTest {
         }
 
     @Test
-    fun failedBatchOnlyRetriesSongsThatAreNotOnThePlaylistYet() =
+    fun aSongTheFailedBatchAddedIsSavedWithItsRemoteSetVideoId() =
         runBlocking {
             coEvery { YouTube.addSongsToPlaylist("PL1", any(), any(), any()) } returns Result.failure(IllegalStateException())
-            coEvery { YouTube.playlist("PL1") } returns
-                Result.success(
-                    PlaylistPage(
-                        playlist = mockk(relaxed = true),
-                        songs = listOf(song("a")),
-                        songsContinuation = null,
-                        continuation = null,
-                    ),
-                )
+            remotePlaylistHas("a" to "r1")
             coEvery { YouTube.addToPlaylist("PL1", "b") } returns Result.success("s2")
 
             val added = addSongsToPlaylistSafely(playlist, listOf("a", "b"), isLoggedIn = true, database)
 
             assertEquals(2, added)
             coVerify(exactly = 1) { YouTube.addToPlaylist(any(), any()) }
-            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to null, "b" to "s2")) }
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to "r1", "b" to "s2")) }
         }
 
     @Test
     fun aBatchThatConfirmsFewerSongsThanSentDoesNotDropTheRest() =
         runBlocking {
             coEvery { YouTube.addSongsToPlaylist("PL1", listOf("a", "b"), any(), any()) } returns Result.success(listOf("s1"))
-            remotePlaylistHas("a")
+            remotePlaylistHas("a" to "s1")
             coEvery { YouTube.addToPlaylist("PL1", "b") } returns Result.success("s2")
 
             val added = addSongsToPlaylistSafely(playlist, listOf("a", "b"), isLoggedIn = true, database)
 
             assertEquals(2, added)
-            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to null, "b" to "s2")) }
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to "s1", "b" to "s2")) }
+        }
+
+    @Test
+    fun aBatchResultWithoutASetVideoIdGoesThroughTheFallback() =
+        runBlocking {
+            coEvery { YouTube.addSongsToPlaylist("PL1", listOf("a", "b"), any(), any()) } returns Result.success(listOf("s1", null))
+            remotePlaylistHas("a" to "s1", "b" to "r2")
+
+            val added = addSongsToPlaylistSafely(playlist, listOf("a", "b"), isLoggedIn = true, database)
+
+            assertEquals(2, added)
+            coVerify(exactly = 0) { YouTube.addToPlaylist(any(), any()) }
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to "s1", "b" to "r2")) }
         }
 
     @Test
     fun aSongThatWasOnThePlaylistBeforeIsNotTakenAsAddedByAFailedBatch() =
         runBlocking {
-            // the user chose to add "a" again; the failed batch added nothing
-            every { database.playlistDuplicates("local", listOf("a", "b")) } returns listOf("a")
+            localPlaylistHas("a" to "old")
             coEvery { YouTube.addSongsToPlaylist("PL1", any(), any(), any()) } returns Result.failure(IllegalStateException())
-            remotePlaylistHas("a")
+            remotePlaylistHas("a" to "old")
             coEvery { YouTube.addToPlaylist("PL1", "a") } returns Result.success("s1")
             coEvery { YouTube.addToPlaylist("PL1", "b") } returns Result.success("s2")
 
@@ -104,19 +110,46 @@ class AddSongsToPlaylistTest {
         }
 
     @Test
-    fun aFailedBatchCreditsOnlyTheExtraCopiesItAdded() =
+    fun aFailedBatchCreditsOnlyTheExtraCopyItAddedWithThatCopysId() =
         runBlocking {
-            // "a" was there once and the batch got a second copy in before failing on "b"
-            every { database.playlistDuplicates("local", listOf("a", "b")) } returns listOf("a")
+            localPlaylistHas("a" to "old")
             coEvery { YouTube.addSongsToPlaylist("PL1", any(), any(), any()) } returns Result.failure(IllegalStateException())
-            remotePlaylistHas("a", "a")
+            remotePlaylistHas("a" to "old", "a" to "new")
             coEvery { YouTube.addToPlaylist("PL1", "b") } returns Result.success("s2")
 
             val added = addSongsToPlaylistSafely(playlist, listOf("a", "b"), isLoggedIn = true, database)
 
             assertEquals(2, added)
             coVerify(exactly = 0) { YouTube.addToPlaylist("PL1", "a") }
-            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to null, "b" to "s2")) }
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to "new", "b" to "s2")) }
+        }
+
+    @Test
+    fun aCopyStoredWithoutASetVideoIdIsNotCreditedTwice() =
+        runBlocking {
+            localPlaylistHas("a" to null)
+            coEvery { YouTube.addSongsToPlaylist("PL1", any(), any(), any()) } returns Result.failure(IllegalStateException())
+            remotePlaylistHas("a" to "old", "a" to "new")
+
+            val added = addSongsToPlaylistSafely(playlist, listOf("a"), isLoggedIn = true, database)
+
+            assertEquals(1, added)
+            coVerify(exactly = 0) { YouTube.addToPlaylist(any(), any()) }
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("a" to "new")) }
+        }
+
+    @Test
+    fun aSongThatIsNotAddedIsNotSaved() =
+        runBlocking {
+            coEvery { YouTube.addSongsToPlaylist("PL1", any(), any(), any()) } returns Result.failure(IllegalStateException())
+            remotePlaylistHas()
+            coEvery { YouTube.addToPlaylist("PL1", "a") } returns Result.failure(IllegalStateException())
+            coEvery { YouTube.addToPlaylist("PL1", "b") } returns Result.success("s2")
+
+            val added = addSongsToPlaylistSafely(playlist, listOf("a", "b"), isLoggedIn = true, database)
+
+            assertEquals(1, added)
+            verify { database.addSongEntriesToPlaylist(playlist, listOf("b" to "s2")) }
         }
 
     @Test
@@ -131,17 +164,27 @@ class AddSongsToPlaylistTest {
             verify { database.addSongToPlaylist(local, listOf("a", "b")) }
         }
 
-    private fun remotePlaylistHas(vararg songIds: String) {
+    private fun localPlaylistHas(vararg entries: Pair<String, String?>) {
+        every { database.playlistSongMaps("local", 0) } returns
+            entries.mapIndexed { position, (songId, setVideoId) ->
+                PlaylistSongMap(playlistId = "local", songId = songId, position = position, setVideoId = setVideoId)
+            }
+    }
+
+    private fun remotePlaylistHas(vararg entries: Pair<String, String?>) {
         coEvery { YouTube.playlist("PL1") } returns
             Result.success(
                 PlaylistPage(
                     playlist = mockk(relaxed = true),
-                    songs = songIds.map(::song),
+                    songs = entries.map { (songId, setVideoId) -> song(songId, setVideoId) },
                     songsContinuation = null,
                     continuation = null,
                 ),
             )
     }
 
-    private fun song(id: String) = SongItem(id = id, title = id, artists = emptyList(), thumbnail = "")
+    private fun song(
+        id: String,
+        setVideoId: String?,
+    ) = SongItem(id = id, title = id, artists = emptyList(), thumbnail = "", setVideoId = setVideoId)
 }
