@@ -110,15 +110,12 @@ internal class StreamPrefetcher(
     }
 
     fun prefetchAround(currentIndex: Int) {
-        // Never compete with the current song while it is still buffering.
         if (!delegate.isPlaying) return
         val nextIndex = delegate.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET || nextIndex < 0 || nextIndex >= delegate.mediaItemCount || delegate.repeatMode == REPEAT_MODE_ONE || nextIndex == currentIndex) return
         val nextMediaItem = runCatching { delegate.getMediaItemAt(nextIndex) }.getOrNull() ?: return
         val mediaId = nextMediaItem.mediaId.ifBlank { nextMediaItem.metadata?.id.orEmpty() }
         if (mediaId.isBlank() || mediaId.isLocalMediaId() || mediaId.startsWith("/") || mediaId.contains(".m3u8", ignoreCase = true)) return
-        // Not matched to YouTube yet; the placeholder lookahead matches it and
-        // calls prefetchMedia with the YouTube id.
         if (SpotifyPlaceholders.isPlaceholder(mediaId)) return
         val directUri = nextMediaItem.localConfiguration?.uri
         if (directUri != null) {
@@ -129,12 +126,6 @@ internal class StreamPrefetcher(
         prefetchMedia(mediaId, nextMediaItem)
     }
 
-    /**
-     * Downloads [mediaId] (a YouTube video id) into the cache. For a Spotify
-     * placeholder in the queue this is called with its matched video id; the
-     * player reads the same cache key once it maps the placeholder.
-     * Must be called on the main thread.
-     */
     fun prefetchMedia(
         mediaId: String,
         nextMediaItem: MediaItem,

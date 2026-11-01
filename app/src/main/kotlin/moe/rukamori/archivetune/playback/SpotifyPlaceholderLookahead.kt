@@ -26,18 +26,6 @@ import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Gets the songs around the current one ready to play instantly, without
- * changing the queue: the queue keeps showing exactly what it showed, and a
- * Spotify placeholder stays a placeholder.
- *
- * - The next [AHEAD] and previous [BEHIND] songs are matched to YouTube (for
- *   placeholders) and get their stream URL resolved, so skipping or jumping
- *   back a few songs needs no network round trip.
- * - The next song is downloaded into the cache by the stream prefetcher.
- * - Placeholders further away are matched one at a time at background
- *   priority; matches are stored, so later plays of the playlist are fast.
- */
 internal class SpotifyPlaceholderLookahead(
     private val service: MusicService,
 ) {
@@ -46,7 +34,6 @@ internal class SpotifyPlaceholderLookahead(
     private val permits = Semaphore(PARALLELISM)
     private var backgroundJob: Job? = null
 
-    /** Must be called on the main thread. Never throws: it is only an optimisation. */
     fun onQueuePosition(currentIndex: Int) {
         runCatching { prepareAround(currentIndex) }
             .onFailure { Timber.tag(TAG).w(it, "Lookahead skipped") }
@@ -82,8 +69,6 @@ internal class SpotifyPlaceholderLookahead(
         val behind = walk(BEHIND, forward = false)
         val nextIndex = ahead.firstOrNull()
 
-        // Closest first: the next song, then alternating behind/ahead. The
-        // current song is left to the player, which is already loading it.
         val near = buildList {
             nextIndex?.let(::add)
             for (i in 0 until maxOf(ahead.size, behind.size)) {
@@ -97,7 +82,6 @@ internal class SpotifyPlaceholderLookahead(
                 .filter { SpotifyPlaceholders.isPlaceholder(it) && !SpotifyPlaceholders.isKnownUnmatched(it) }
                 .distinct()
 
-        // Queues without Spotify placeholders around the current song are left to the player.
         if (further.isEmpty() && near.none { SpotifyPlaceholders.isPlaceholder(player.getMediaItemAt(it).mediaId) }) {
             backgroundJob?.cancel()
             return
@@ -115,7 +99,6 @@ internal class SpotifyPlaceholderLookahead(
         val mediaId = item.mediaId
         if (mediaId.isBlank() || mediaId.isLocalMediaId() || mediaId.startsWith("/")) return
         val isPlaceholder = SpotifyPlaceholders.isPlaceholder(mediaId)
-        // Real items: the stream prefetcher already handles the next one.
         if (!isPlaceholder && isNext) return
         if (isFresh(mediaId) && !isNext) return
         if (!warming.add(mediaId)) return
@@ -154,7 +137,6 @@ internal class SpotifyPlaceholderLookahead(
         }
     }
 
-    /** Resolves and caches the stream URL; a later play is then a memory hit. */
     private fun warmStreamUrl(youtubeId: String) {
         val startedAt = System.currentTimeMillis()
         service.resolvePlaybackDataSpec(
@@ -195,7 +177,6 @@ internal class SpotifyPlaceholderLookahead(
         const val BACKGROUND_BEHIND = 5
         const val PARALLELISM = 2
 
-        // Stream URLs stay valid for hours; re-warm well before that.
         const val WARM_TTL_MS = 30 * 60 * 1000L
     }
 }
