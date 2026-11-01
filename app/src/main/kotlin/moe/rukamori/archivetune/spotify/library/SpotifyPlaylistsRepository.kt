@@ -8,12 +8,19 @@ package moe.rukamori.archivetune.spotify.library
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.spotify.Spotify
+import moe.rukamori.archivetune.spotify.models.SpotifyPaging
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTrack
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.reportException
@@ -78,29 +85,62 @@ class SpotifyPlaylistsRepository
         suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> =
             withContext(Dispatchers.IO) {
                 sessionRepository.ensureAuthenticated()
-                val tracks = ArrayList<SpotifyTrack>()
-                var offset = 0
-                val limit = 50
 
-                while (true) {
-                    val page =
-                        sessionRepository.spotifyCallWithTokenRetry {
-                            Spotify
-                                .playlistTracks(
-                                    playlistId = playlistId,
-                                    limit = limit,
-                                    offset = offset,
-                                ).getOrThrow()
-                        }
-                    if (page.items.isEmpty()) break
-                    val pageTracks = page.items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
-                    tracks += pageTracks
-                    offset += page.items.size
-                    if (offset >= page.total || page.items.size < limit) break
+                suspend fun page(
+                    offset: Int,
+                    limit: Int,
+                ) = sessionRepository.spotifyCallWithTokenRetry {
+                    Spotify
+                        .playlistTracks(
+                            playlistId = playlistId,
+                            limit = limit,
+                            offset = offset,
+                        ).getOrThrow()
                 }
 
-                tracks
+                val items =
+                    (1..PARALLEL_READ_ATTEMPTS).firstNotNullOfOrNull { readInParallel(::page) }
+                        ?: readInSequence(::page)
+                items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
             }
+
+        private suspend fun readInParallel(
+            page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
+        ): List<SpotifyPlaylistTrack>? {
+            val first = page(0, TRACK_PAGE_SIZE)
+            val total = first.total
+            if (first.items.isEmpty() || first.items.size >= total) return first.items.takeIf { it.size == total }
+
+            val pageSize = first.items.size
+            val permits = Semaphore(TRACK_PAGE_PARALLELISM)
+            val laterPages =
+                coroutineScope {
+                    (pageSize until total step pageSize)
+                        .map { offset -> async { offset to permits.withPermit { page(offset, pageSize) } } }
+                        .awaitAll()
+                }
+
+            val items = ArrayList<SpotifyPlaylistTrack>(total)
+            items += first.items
+            for ((offset, later) in laterPages) {
+                if (later.total != total || later.items.size != minOf(pageSize, total - offset)) return null
+                items += later.items
+            }
+            return items
+        }
+
+        private suspend fun readInSequence(
+            page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
+        ): List<SpotifyPlaylistTrack> {
+            val items = ArrayList<SpotifyPlaylistTrack>()
+            while (true) {
+                val next = page(items.size, SEQUENTIAL_PAGE_SIZE)
+                if (next.items.isEmpty()) break
+                items += next.items
+                if (items.size >= next.total) break
+            }
+            return items
+        }
 
         internal suspend fun fetchAllPlaylists(): List<SpotifyPlaylist> {
             val playlists = ArrayList<SpotifyPlaylist>()
@@ -150,5 +190,12 @@ class SpotifyPlaylistsRepository
         internal fun clear() {
             _playlists.value = emptyList()
             _errorMessage.value = null
+        }
+
+        private companion object {
+            const val TRACK_PAGE_SIZE = 500
+            const val TRACK_PAGE_PARALLELISM = 6
+            const val PARALLEL_READ_ATTEMPTS = 2
+            const val SEQUENTIAL_PAGE_SIZE = 100
         }
     }
