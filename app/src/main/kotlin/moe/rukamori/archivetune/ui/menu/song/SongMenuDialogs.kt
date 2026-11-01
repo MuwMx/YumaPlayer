@@ -163,7 +163,6 @@ internal fun SongMenuSelectArtistDialog(
                             splitArtist.originalArtist?.let { artist ->
                                 navController.navigate("artist/${artist.id}")
                                 onDismiss()
-                                // The song menu would otherwise stay open on top of the artist page.
                                 onDismissMenu()
                             }
                         },
