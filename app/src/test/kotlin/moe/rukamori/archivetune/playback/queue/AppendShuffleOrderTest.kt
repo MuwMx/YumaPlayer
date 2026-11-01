@@ -60,4 +60,10 @@ class AppendShuffleOrderTest {
         assertEquals(1, songsLeftInPlayOrder(shuffled, currentIndex = 9, shuffle = false, limit = 6))
         assertEquals(2, songsLeftInPlayOrder(shuffled, currentIndex = 7, shuffle = true, limit = 6))
     }
+
+    @Test
+    fun noSongsAreCountedBeforeTheTimelineIsAttached() {
+        assertEquals(0, songsLeftInPlayOrder(timeline(emptyList(), windowCount = 0), currentIndex = 0, shuffle = true, limit = 6))
+        assertEquals(0, songsLeftInPlayOrder(timeline(listOf(0, 1, 2)), currentIndex = 5, shuffle = false, limit = 6))
+    }
 }
