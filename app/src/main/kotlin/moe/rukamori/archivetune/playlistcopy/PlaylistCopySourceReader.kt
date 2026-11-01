@@ -23,7 +23,6 @@ class SpotifyPlaylistReader
     constructor(
         private val repository: SpotifyLibraryRepository,
     ) {
-        /** Every track of the playlist, in order. Local files are left out. */
         suspend fun read(playlistId: String): List<SpotifyTrack> = repository.playlistTracks(playlistId)
     }
 
@@ -43,11 +42,6 @@ class YouTubePlaylistReader
     constructor(
         private val database: MusicDatabase,
     ) {
-        /**
-         * Reads the playlist from the library when it is fully synced and from YouTube
-         * otherwise. Throws when the playlist cannot be read completely, because copying
-         * part of a playlist without saying so would be worse than failing.
-         */
         suspend fun read(browseId: String): List<CopyTrack> =
             withContext(Dispatchers.IO) {
                 val playlist = database.playlistByBrowseId(browseId).first()

@@ -21,13 +21,11 @@ import timber.log.Timber
 import java.time.LocalDateTime
 import javax.inject.Inject
 
-/** A playlist that was written, and how many tracks went into it. */
 data class PlaylistWrite(
     val playlistId: String,
     val added: Int,
 )
 
-/** The tracks that are not in [existingSongIds] yet, without repeats, in their original order. */
 fun tracksToAdd(
     existingSongIds: Set<String>,
     tracks: List<CopyTrack>,
@@ -36,7 +34,6 @@ fun tracksToAdd(
     return tracks.filter { seen.add(it.songId) }
 }
 
-/** Writes copied tracks to a local playlist or to a YouTube playlist and its local mirror. */
 class PlaylistCopyWriter
     @Inject
     constructor(
@@ -57,7 +54,6 @@ class PlaylistCopyWriter
                 }
             }
 
-        /** Returns how many tracks were added. */
         suspend fun appendPersonal(
             playlistId: String,
             tracks: List<CopyTrack>,
@@ -71,11 +67,6 @@ class PlaylistCopyWriter
                 }
             }
 
-        /**
-         * Creates the playlist on YouTube first and mirrors it locally. When adding the songs or
-         * writing the local rows fails, the YouTube playlist is deleted again so no empty
-         * playlist is left behind.
-         */
         suspend fun createYouTube(
             name: String,
             thumbnailUrl: String?,
@@ -102,7 +93,6 @@ class PlaylistCopyWriter
                 }
             }
 
-        /** Returns how many tracks were added. */
         suspend fun appendYouTube(
             playlistId: String,
             tracks: List<CopyTrack>,
@@ -134,7 +124,6 @@ class PlaylistCopyWriter
             remoteSongCount = songCount,
         )
 
-        /** Adds [tracks] to the end of [playlist]; [setVideoIds] are the YouTube ids in the same order. */
         private fun MusicDatabase.insertTracks(
             playlist: Playlist,
             tracks: List<CopyTrack>,
@@ -144,14 +133,11 @@ class PlaylistCopyWriter
             val (placeholders, matched) =
                 tracks.mapNotNull { it.metadata }.distinctBy { it.id }.partition { SpotifyPlaceholders.isPlaceholder(it.id) }
 
-            // A Spotify playlist can have thousands of placeholders, which are written in bulk.
-            // Matched songs go through the regular insert, which also links albums and reuses artists.
             insertSongsIfAbsent(placeholders.map { it.toSongEntity() })
             val artists = ArrayList<ArtistEntity>()
             val artistMaps = ArrayList<SongArtistMap>()
             placeholders.forEach { song ->
                 song.artists.forEachIndexed { index, artist ->
-                    // Placeholder metadata always gives its artists an id.
                     val artistId = artist.id ?: return@forEachIndexed
                     artists += ArtistEntity(id = artistId, name = artist.name)
                     artistMaps += SongArtistMap(songId = song.id, artistId = artistId, position = index)

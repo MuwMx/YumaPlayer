@@ -23,24 +23,16 @@ data class CopyMatchResult(
     val failed: List<CopyFailure>,
 )
 
-/** How the YouTube match for one Spotify track turned out. */
 sealed interface TrackMatch {
     data class Found(
         val metadata: MediaMetadata,
     ) : TrackMatch
 
-    /** Nothing on YouTube Music matched the track. */
     data object NotFound : TrackMatch
 
-    /** The search itself failed (rate limit, no network), so a retry may find a match. */
     data object SearchFailed : TrackMatch
 }
 
-/**
- * Matches every track with [resolve], at most [concurrency] at a time, and returns the outcomes in
- * the order of [tracks]. [resolve] returns null when nothing matched and throws an [IOException]
- * when the search failed; any other exception is a bug and is not hidden.
- */
 suspend fun resolveSpotifyTracks(
     tracks: List<SpotifyTrack>,
     resolve: suspend (SpotifyTrack) -> MediaMetadata?,
@@ -69,7 +61,6 @@ suspend fun resolveSpotifyTracks(
         }
     }
 
-/** [resolveSpotifyTracks] split into the tracks that were matched and the ones that were not. */
 suspend fun matchSpotifyTracks(
     tracks: List<SpotifyTrack>,
     resolve: suspend (SpotifyTrack) -> MediaMetadata?,

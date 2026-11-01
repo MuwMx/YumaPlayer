@@ -18,14 +18,6 @@ import moe.rukamori.archivetune.spotify.toPlaceholderSpotifyTrack
 import timber.log.Timber
 import javax.inject.Inject
 
-/**
- * Copies one playlist to a Personal or YouTube playlist.
- *
- * Copies of Spotify playlists to a Personal playlist are written as placeholder rows, so they
- * are complete immediately and each song is matched to YouTube when it is played. A YouTube
- * playlist needs a real video for every song, so Spotify tracks, and placeholders that are
- * already in a Personal playlist, are matched first.
- */
 class PlaylistCopier internal constructor(
     private val database: MusicDatabase,
     private val spotifyReader: SpotifyPlaylistReader,
@@ -57,7 +49,6 @@ class PlaylistCopier internal constructor(
         },
     )
 
-    /** Runs the copy and returns [PlaylistCopyState.Success] or [PlaylistCopyState.Failure]. */
     suspend fun copy(
         request: PlaylistCopyRequest,
         onProgress: (PlaylistCopyProgress) -> Unit = {},
@@ -141,7 +132,6 @@ class PlaylistCopier internal constructor(
             is PlaylistCopySource.YouTube -> CopyMatchResult(youTubeReader.read(source.browseId), emptyList())
         }
 
-    /** Replaces the Spotify placeholders among [tracks] with their YouTube songs and keeps the order. */
     private suspend fun matchPlaceholders(
         tracks: List<CopyTrack>,
         onProgress: (PlaylistCopyProgress) -> Unit,

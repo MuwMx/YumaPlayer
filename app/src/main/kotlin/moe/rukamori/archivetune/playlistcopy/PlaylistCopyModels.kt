@@ -29,13 +29,11 @@ sealed interface PlaylistCopySource {
 }
 
 sealed interface PlaylistCopyDestination {
-    /** A new local playlist. [sourceSpotifyId] links it to the Spotify playlist it is copied from. */
     data class NewPersonal(
         val name: String,
         val sourceSpotifyId: String? = null,
     ) : PlaylistCopyDestination
 
-    /** A new playlist on YouTube Music, mirrored locally. */
     data class NewYouTube(
         val name: String,
     ) : PlaylistCopyDestination
@@ -57,13 +55,10 @@ data class CopyTrack(
 )
 
 enum class CopyFailureReason {
-    /** No YouTube Music song matched the Spotify track. */
     NO_MATCH,
 
-    /** The YouTube search failed (rate limit, no network); a retry may match it. */
     SEARCH_FAILED,
 
-    /** Local files cannot be uploaded to a YouTube playlist. */
     LOCAL_FILE,
 }
 
@@ -102,7 +97,6 @@ sealed interface PlaylistCopyState {
         val result: PlaylistCopyResult,
     ) : PlaylistCopyState
 
-    /** The copy did not happen. [failed] lists the tracks that could not be copied, if that was the reason. */
     data class Failure(
         val failed: List<CopyFailure> = emptyList(),
     ) : PlaylistCopyState
