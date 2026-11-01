@@ -45,10 +45,6 @@ internal fun applyCurrentFirstShuffleOrder(
     return DefaultShuffleOrder(shuffledIndices, randomSeed)
 }
 
-/**
- * How many songs are left to play, counting the current one, in play order rather than list order;
- * with shuffle on the two differ. Stops counting at [limit].
- */
 internal fun songsLeftInPlayOrder(
     timeline: Timeline,
     currentIndex: Int,
@@ -65,11 +61,6 @@ internal fun songsLeftInPlayOrder(
     return left
 }
 
-/**
- * Shuffle order for a queue that is about to get [addedCount] songs at its end: everything already
- * queued keeps its place in the play order and the new songs play last. Without this the player
- * drops added songs at random places in the shuffle order.
- */
 @OptIn(UnstableApi::class)
 internal fun buildAppendShuffleOrder(
     timeline: Timeline,

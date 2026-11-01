@@ -228,7 +228,6 @@ internal class PlayerTransitionHandler(
             // No redundant seeding update check.
         }
 
-        // Counted in play order: with shuffle on, the last songs of the list can play first.
         val remainingTracks =
             songsLeftInPlayOrder(player.currentTimeline, player.currentMediaItemIndex, player.shuffleModeEnabled, limit = 6)
         val currentQ = queueDelegate.currentQueue
@@ -287,8 +286,6 @@ internal class PlayerTransitionHandler(
             }
         }
 
-        // While a queue is being built it can briefly hold only the song that was tapped; that is not
-        // the end of the queue.
         if (!queueDelegate.suppressAutoPlayback &&
             !queueDelegate.isInitializingQueue &&
             !timelineEmpty &&
