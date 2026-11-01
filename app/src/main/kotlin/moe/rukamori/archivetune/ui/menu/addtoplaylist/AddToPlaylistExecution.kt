@@ -10,7 +10,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
+import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.utils.completed
 
 internal data class AddToPlaylistExecutionResult(
     val songIds: List<String>,
@@ -29,21 +32,26 @@ internal suspend fun addSongsToPlaylistSafely(
 
     val browseId = playlist.playlist.browseId
     if (isLoggedIn && browseId != null) {
-        val acceptedSongEntries = mutableListOf<Pair<String, String?>>()
+        val entriesBefore = database.playlistSongMaps(playlist.id, 0)
+
+        val batchSetVideoIds =
+            YouTube
+                .addSongsToPlaylist(browseId, requestedSongIds)
+                .getOrNull()
+                ?.filterNotNull()
+                ?.takeIf { it.size == requestedSongIds.size }
+        if (batchSetVideoIds != null) {
+            database.addSongEntriesToPlaylist(playlist, requestedSongIds.zip(batchSetVideoIds))
+            return requestedSongIds.size
+        }
+
+        val remoteEntries = YouTube.playlist(browseId).completed().getOrNull()?.songs ?: return 0
+        val addedByFailedBatch = setVideoIdsAddedByFailedBatch(entriesBefore, remoteEntries, requestedSongIds)
+        val acceptedSongEntries = mutableListOf<Pair<String, String>>()
         requestedSongIds.forEach { songId ->
-            var remoteAdded = false
-            var addedSetVideoId: String? = null
-            for (attempt in 0 until 3) {
-                val result = YouTube.addToPlaylist(browseId, songId)
-                if (result.isSuccess) {
-                    remoteAdded = true
-                    addedSetVideoId = result.getOrNull()
-                    break
-                }
-                if (attempt < 2) delay(250)
-            }
-            if (remoteAdded) {
-                acceptedSongEntries += songId to addedSetVideoId
+            val setVideoId = addedByFailedBatch[songId]?.removeFirstOrNull() ?: addSongWithRetries(browseId, songId)
+            if (setVideoId != null) {
+                acceptedSongEntries += songId to setVideoId
             }
         }
         if (acceptedSongEntries.isNotEmpty()) {
@@ -54,6 +62,33 @@ internal suspend fun addSongsToPlaylistSafely(
 
     database.addSongToPlaylist(playlist, requestedSongIds)
     return requestedSongIds.size
+}
+
+private fun setVideoIdsAddedByFailedBatch(
+    entriesBefore: List<PlaylistSongMap>,
+    remoteEntries: List<SongItem>,
+    requestedSongIds: List<String>,
+): Map<String, ArrayDeque<String>> {
+    val knownSetVideoIds = entriesBefore.mapNotNullTo(HashSet()) { it.setVideoId }
+    val countsBefore = entriesBefore.groupingBy { it.songId }.eachCount()
+    return requestedSongIds.toSet().associateWith { songId ->
+        val remoteCopies = remoteEntries.filter { it.id == songId }
+        val addedCount = (remoteCopies.size - (countsBefore[songId] ?: 0)).coerceAtLeast(0)
+        val unknownSetVideoIds = remoteCopies.mapNotNull { it.setVideoId }.filter { it !in knownSetVideoIds }
+        ArrayDeque(unknownSetVideoIds.takeLast(addedCount))
+    }
+}
+
+private suspend fun addSongWithRetries(
+    browseId: String,
+    songId: String,
+): String? {
+    for (attempt in 0 until 3) {
+        val result = YouTube.addToPlaylist(browseId, songId)
+        if (result.isSuccess) return result.getOrNull()
+        if (attempt < 2) delay(250)
+    }
+    return null
 }
 
 internal suspend fun executeAddToPlaylists(
