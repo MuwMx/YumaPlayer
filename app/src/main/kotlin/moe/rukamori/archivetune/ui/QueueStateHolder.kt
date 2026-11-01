@@ -109,8 +109,6 @@ class QueueStateHolder(
 
         if (fromIndex != toIndex && fromIndex in 0 until timeline.windowCount && toIndex in 0 until timeline.windowCount) {
             if (player.shuffleModeEnabled) {
-                // The queue shows the shuffled order, so the drag changes the shuffled order only and
-                // every other song keeps its place.
                 val service = playerConnectionProvider()?.service ?: return
                 buildMovedShuffleOrder(timeline, fromIndex, toIndex)?.let(service.localPlayer::setShuffleOrder)
             } else {

@@ -45,12 +45,6 @@ internal fun applyCurrentFirstShuffleOrder(
     return DefaultShuffleOrder(shuffledIndices, randomSeed)
 }
 
-/**
- * Shuffle order after the song at [fromIndex] is dragged to where the song at [toIndex] sits in the
- * shuffled queue. Only the dragged song moves. Moving the media item itself would shift every song
- * between the two playlist positions, and the shuffle order, which refers to positions, would then
- * play (and show) other songs in their places.
- */
 @OptIn(UnstableApi::class)
 internal fun buildMovedShuffleOrder(
     timeline: Timeline,
