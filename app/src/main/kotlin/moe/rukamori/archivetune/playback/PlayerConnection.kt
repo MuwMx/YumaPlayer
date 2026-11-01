@@ -9,6 +9,8 @@ package moe.rukamori.archivetune.playback
 import moe.rukamori.archivetune.playback.together.requestTogetherControl
 
 import android.content.Context
+import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
@@ -20,6 +22,7 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.session.MediaController
 import androidx.media3.common.C
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +35,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
+import moe.rukamori.archivetune.constants.MediaSessionConstants
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.codecLabel
 import moe.rukamori.archivetune.db.entities.formattedQuality
@@ -44,6 +48,7 @@ import moe.rukamori.archivetune.playback.resolvers.getFormatForSource
 import moe.rukamori.archivetune.playback.together.requestTogetherControl
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.utils.reportException
+import java.util.concurrent.ExecutionException
 import jakarta.inject.Inject
 import kotlin.math.roundToInt
 
@@ -58,6 +63,9 @@ class PlayerConnection(
     val service = binder.service
     val player = service.player
     val localPlayer = service.localPlayer
+    private val mainExecutor = ContextCompat.getMainExecutor(context)
+    private val controllerFuture =
+        service.serviceSessionHolder.sessionToken?.let { token -> MediaController.Builder(context, token).buildAsync() }
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -400,7 +408,34 @@ class PlayerConnection(
         }
     }
 
+    fun moveInShuffleOrder(
+        fromIndex: Int,
+        toIndex: Int,
+    ) {
+        val future = controllerFuture ?: return
+        future.addListener(
+            {
+                val controller =
+                    try {
+                        future.get()
+                    } catch (e: ExecutionException) {
+                        reportException(e)
+                        return@addListener
+                    }
+                controller.sendCustomCommand(
+                    MediaSessionConstants.CommandMoveInShuffleOrder,
+                    bundleOf(
+                        MediaSessionConstants.EXTRA_FROM_INDEX to fromIndex,
+                        MediaSessionConstants.EXTRA_TO_INDEX to toIndex,
+                    ),
+                )
+            },
+            mainExecutor,
+        )
+    }
+
     fun dispose() {
         player.removeListener(this)
+        controllerFuture?.let(MediaController::releaseFuture)
     }
 }

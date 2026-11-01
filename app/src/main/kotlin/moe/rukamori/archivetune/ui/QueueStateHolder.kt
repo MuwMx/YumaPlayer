@@ -2,7 +2,6 @@ package moe.rukamori.archivetune.ui
 
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +13,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.playback.queue.buildMovedShuffleOrder
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 
@@ -98,7 +96,6 @@ class QueueStateHolder(
         }
     }
 
-    @androidx.annotation.OptIn(UnstableApi::class)
     fun moveQueueItem(fromUid: Any, toUid: Any) {
         val player = audioPlayerProvider() ?: return
         val timeline = player.currentTimeline
@@ -109,8 +106,7 @@ class QueueStateHolder(
 
         if (fromIndex != toIndex && fromIndex in 0 until timeline.windowCount && toIndex in 0 until timeline.windowCount) {
             if (player.shuffleModeEnabled) {
-                val service = playerConnectionProvider()?.service ?: return
-                buildMovedShuffleOrder(timeline, fromIndex, toIndex)?.let(service.localPlayer::setShuffleOrder)
+                playerConnectionProvider()?.moveInShuffleOrder(fromIndex, toIndex)
             } else {
                 player.moveMediaItem(fromIndex, toIndex)
             }

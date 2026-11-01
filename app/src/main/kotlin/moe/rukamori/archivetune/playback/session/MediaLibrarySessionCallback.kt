@@ -20,6 +20,7 @@ import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.offline.Download
@@ -95,6 +96,7 @@ class MediaLibrarySessionCallback
         var toggleLike: () -> Unit = {}
         var toggleStartRadio: () -> Unit = {}
         var toggleLibrary: () -> Unit = {}
+        var moveInShuffleOrder: (fromIndex: Int, toIndex: Int) -> Boolean = { _, _ -> false }
 
         private data class AutoPlaylistSortOption(
             val sortType: PlaylistSongSortType,
@@ -141,6 +143,7 @@ class MediaLibrarySessionCallback
                     .add(MediaSessionConstants.CommandToggleLibrary)
                     .add(MediaSessionConstants.CommandToggleShuffle)
                     .add(MediaSessionConstants.CommandToggleRepeatMode)
+                    .add(MediaSessionConstants.CommandMoveInShuffleOrder)
                     .build(),
                 connectionResult.availablePlayerCommands,
             )
@@ -225,6 +228,15 @@ class MediaLibrarySessionCallback
 
                 MediaSessionConstants.ACTION_TOGGLE_REPEAT_MODE -> {
                     session.player.toggleRepeatMode()
+                }
+
+                MediaSessionConstants.ACTION_MOVE_IN_SHUFFLE_ORDER -> {
+                    val moved =
+                        moveInShuffleOrder(
+                            args.getInt(MediaSessionConstants.EXTRA_FROM_INDEX, C.INDEX_UNSET),
+                            args.getInt(MediaSessionConstants.EXTRA_TO_INDEX, C.INDEX_UNSET),
+                        )
+                    if (!moved) return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
                 }
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
