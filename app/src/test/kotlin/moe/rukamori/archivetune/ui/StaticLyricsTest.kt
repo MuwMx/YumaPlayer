@@ -15,6 +15,7 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
+import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.host.PlayerConnectionHolder
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -41,6 +42,7 @@ class StaticLyricsTest {
     private lateinit var database: MusicDatabase
 
     private val currentLyricsFlow = MutableStateFlow<LyricsEntity?>(null)
+    private val mediaMetadataFlow = MutableStateFlow<MediaMetadata?>(null)
 
     @Before
     fun setup() {
@@ -58,7 +60,7 @@ class StaticLyricsTest {
         connectionHolder.connection.value = connection
         every { connection.currentLyrics } returns currentLyricsFlow
         every { connection.database } returns database
-        every { connection.mediaMetadata } returns MutableStateFlow(null)
+        every { connection.mediaMetadata } returns mediaMetadataFlow
         every { connection.playbackState } returns MutableStateFlow(0)
         every { connection.currentSong } returns MutableStateFlow(null)
         every { connection.isPlaying } returns MutableStateFlow(false)
@@ -78,7 +80,15 @@ class StaticLyricsTest {
         every { settingsRepository.isFirstLaunch() } returns false
         every { settingsRepository.lyricsRomanizationPrefsFlow } returns MutableStateFlow(moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences())
 
-        viewModel = PlayerViewModel(application, connectionHolder, settingsRepository, lyricsHelper)
+        viewModel =
+            PlayerViewModel(
+                application = application,
+                connectionHolder = connectionHolder,
+                settingsRepository = settingsRepository,
+                lyricsHelper = lyricsHelper,
+                ioDispatcher = testDispatcher,
+                defaultDispatcher = testDispatcher,
+            )
     }
 
     @After
@@ -87,24 +97,15 @@ class StaticLyricsTest {
         unmockkStatic(Color::class)
     }
 
-    /** Lyrics are only applied to the track they belong to, so the test moves the player to that track first. */
-    private fun setTrack(trackUrl: String) {
-        val field = PlayerViewModel::class.java.getDeclaredField("_uiState")
-        field.isAccessible = true
-        @Suppress("UNCHECKED_CAST")
-        val state = field.get(viewModel) as MutableStateFlow<PlayerUiState>
-        state.value = state.value.copy(trackUrl = trackUrl)
+    private fun playTrack(id: String) {
+        mediaMetadataFlow.value = MediaMetadata(id = id, title = id, artists = emptyList(), duration = 10)
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
-    /** The delegate parses lyrics on Dispatchers.Default, so the result arrives from another thread. */
-    private fun awaitState(condition: (PlayerUiState) -> Boolean): PlayerUiState {
-        repeat(100) {
-            testDispatcher.scheduler.advanceUntilIdle()
-            val state = viewModel.uiState.value
-            if (condition(state)) return state
-            Thread.sleep(20)
-        }
-        error("The player state never satisfied the condition: ${viewModel.uiState.value}")
+    private fun showLyrics(entity: LyricsEntity): PlayerUiState {
+        currentLyricsFlow.value = entity
+        testDispatcher.scheduler.advanceUntilIdle()
+        return viewModel.uiState.value
     }
 
     @Test
@@ -112,19 +113,20 @@ class StaticLyricsTest {
         viewModel.setLyricsVisible(true)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        setTrack("1")
+        playTrack("1")
         val syncedLyrics = "[00:01.00] Line 1\n[00:02.00] Line 2\n[00:03.00] Line 3\n[00:04.00] Line 4"
-        currentLyricsFlow.value = LyricsEntity(id = "1", lyrics = syncedLyrics, source = "REMOTE")
-        assertEquals(true, awaitState { it.lyricsList.size == 4 }.isSynced)
+        val syncedState = showLyrics(LyricsEntity(id = "1", lyrics = syncedLyrics, source = "REMOTE"))
+        assertEquals(4, syncedState.lyricsList.size)
+        assertEquals(true, syncedState.isSynced)
 
-        // Simulate progress to line 3 (index 3)
         viewModel.onPlaybackProgress(4, 10)
-        assertEquals(3, awaitState { it.currentLineIndex == 3 }.currentLineIndex)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.currentLineIndex)
 
-        // Emit static lyrics for the next track
-        setTrack("2")
-        currentLyricsFlow.value = LyricsEntity(id = "2", lyrics = "Line 1\nLine 2\nLine 3", source = "REMOTE")
-        val staticState = awaitState { it.lyricsList.size == 3 && !it.isSynced }
+        playTrack("2")
+        val staticState = showLyrics(LyricsEntity(id = "2", lyrics = "Line 1\nLine 2\nLine 3", source = "REMOTE"))
+        assertEquals(3, staticState.lyricsList.size)
+        assertEquals(false, staticState.isSynced)
         assertEquals(-1, staticState.currentLineIndex)
     }
 }
