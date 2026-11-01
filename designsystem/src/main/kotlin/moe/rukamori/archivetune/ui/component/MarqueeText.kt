@@ -50,8 +50,6 @@ fun MarqueeText(
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current,
     isVisible: Boolean = true,
-    // A scrolling text redraws every frame, so by default it scrolls through once and then rests.
-    // The player passes more while it is open.
     iterations: Int = DEFAULT_MARQUEE_ITERATIONS,
 ) {
     var hasOverflow by remember(text) { mutableStateOf(false) }

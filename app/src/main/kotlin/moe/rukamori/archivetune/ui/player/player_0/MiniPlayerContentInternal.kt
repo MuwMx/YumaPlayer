@@ -75,8 +75,6 @@ internal fun MiniPlayerContentInternal(
     }
 
     val rotation = remember { Animatable(0f) }
-    // isPlaying is also true while a restored queue waits to start; the artwork spins and the wave
-    // moves only while sound is playing, so an idle screen is not redrawn every frame.
     val isAudible = state.isPlaying && state.isReady
 
     LaunchedEffect(isAudible, isVisible) {
@@ -179,7 +177,6 @@ internal fun MiniPlayerContentInternal(
                     shadow = SoftTextShadow
                 ),
                 maxLines = 1,
-                // A long title scrolls only while music plays; scrolling redraws the bar every frame.
                 overflow = if (isAudible) TextOverflow.Clip else TextOverflow.Ellipsis,
                 isVisible = isVisible && isAudible,
                 iterations = Int.MAX_VALUE,
