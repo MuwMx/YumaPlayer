@@ -74,8 +74,6 @@ object SpotifyGqlExecutor {
                     connectTimeout(15, TimeUnit.SECONDS)
                     readTimeout(30, TimeUnit.SECONDS)
                     writeTimeout(15, TimeUnit.SECONDS)
-                    // OkHttp allows 5 parallel calls per host by default, which would
-                    // queue the parallel playlist page reads behind each other.
                     dispatcher(
                         Dispatcher().apply {
                             maxRequests = 64

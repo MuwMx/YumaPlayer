@@ -82,15 +82,6 @@ class SpotifyPlaylistsRepository
                 }
             }
 
-        /**
-         * Reads the whole playlist. The first page reveals the total, then the
-         * remaining pages are requested in parallel.
-         *
-         * Pages read in parallel only fit together if the playlist stays the same while they are read. Every
-         * page reports the playlist's total; if one differs from the first page's, or a page comes back short,
-         * the playlist changed in between (or the server answered oddly), and the read starts over. After
-         * [PARALLEL_READ_ATTEMPTS] such reads it falls back to reading one page after the other.
-         */
         suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> =
             withContext(Dispatchers.IO) {
                 sessionRepository.ensureAuthenticated()
@@ -113,7 +104,6 @@ class SpotifyPlaylistsRepository
                 items.mapNotNull { it.track?.takeUnless(SpotifyTrack::isLocal) }
             }
 
-        /** The playlist read in parallel pages, or null if the pages don't fit together. */
         private suspend fun readInParallel(
             page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
         ): List<SpotifyPlaylistTrack>? {
@@ -121,7 +111,6 @@ class SpotifyPlaylistsRepository
             val total = first.total
             if (first.items.isEmpty() || first.items.size >= total) return first.items.takeIf { it.size == total }
 
-            // the server may hand out smaller pages than asked for; then the rest is asked for in that size
             val pageSize = first.items.size
             val permits = Semaphore(TRACK_PAGE_PARALLELISM)
             val laterPages =
@@ -140,7 +129,6 @@ class SpotifyPlaylistsRepository
             return items
         }
 
-        /** The playlist one page after the other, as before parallel reads; used when those keep failing to fit. */
         private suspend fun readInSequence(
             page: suspend (offset: Int, limit: Int) -> SpotifyPaging<SpotifyPlaylistTrack>,
         ): List<SpotifyPlaylistTrack> {
