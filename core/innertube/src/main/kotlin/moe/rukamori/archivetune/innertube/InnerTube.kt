@@ -159,9 +159,6 @@ class InnerTube {
             engine {
                 config {
                     dns(this@InnerTube.dns)
-                    // OkHttp allows 5 calls per host by default, so the request for the
-                    // song being played could wait behind prefetch, matching and home-feed
-                    // requests to the same host.
                     dispatcher(
                         Dispatcher().apply {
                             maxRequests = 64
