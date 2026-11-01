@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.artist.ArtistBlockRequest
+import moe.rukamori.archivetune.artist.ArtistItemsPrefetcher
 import moe.rukamori.archivetune.artist.ObserveArtistBlockedUseCase
 import moe.rukamori.archivetune.artist.SetArtistBlockedUseCase
 import moe.rukamori.archivetune.constants.HideExplicitKey
@@ -101,6 +102,7 @@ class ArtistViewModel
         private val database: MusicDatabase,
         observeArtistBlocked: ObserveArtistBlockedUseCase,
         private val setArtistBlocked: SetArtistBlockedUseCase,
+        private val artistItemsPrefetcher: ArtistItemsPrefetcher,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         val artistId = savedStateHandle.get<String>("artistId")!!
@@ -179,6 +181,7 @@ class ArtistViewModel
                                 }
 
                         artistPage = page.copy(sections = filteredSections)
+                        artistItemsPrefetcher.prefetchAlbums(page.sections)
 
                         withContext(Dispatchers.IO) {
                             database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
