@@ -241,8 +241,6 @@ interface PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: PlaylistSongMap)
 
-    // Batch inserts for writing a whole playlist at once: one prepared statement per
-    // table instead of one call per row. Rows that already exist are kept as they are.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertSongsIfAbsent(songs: List<SongEntity>)
 

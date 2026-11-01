@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Runs one playlist copy at a time and publishes its progress and result as [state]. */
 @Singleton
 class PlaylistCopyManager
     @Inject
@@ -27,8 +26,6 @@ class PlaylistCopyManager
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val lock = Any()
 
-        // Guarded by lock. A copy that was replaced or dismissed can still be finishing when
-        // the next one starts, so every update checks that it belongs to the current copy.
         private var job: Job? = null
         private var generation = 0
         private var lastRequest: PlaylistCopyRequest? = null
@@ -36,7 +33,6 @@ class PlaylistCopyManager
         private val _state = MutableStateFlow<PlaylistCopyState>(PlaylistCopyState.Idle)
         val state: StateFlow<PlaylistCopyState> = _state.asStateFlow()
 
-        /** Starts [request], replacing a copy that is still running. */
         fun start(request: PlaylistCopyRequest) {
             synchronized(lock) {
                 job?.cancel()
@@ -49,7 +45,6 @@ class PlaylistCopyManager
                         synchronized(lock) {
                             if (current != generation) return@launch
                             if (outcome is PlaylistCopyState.Success) {
-                                // A retry adds what is still missing to the playlist that was just written.
                                 lastRequest = request.copy(destination = PlaylistCopyDestination.Existing(outcome.result.playlistId))
                             }
                             _state.value = outcome
@@ -58,13 +53,11 @@ class PlaylistCopyManager
             }
         }
 
-        /** Runs the last request again; songs that were copied are skipped. */
         fun retry() {
             val request = synchronized(lock) { lastRequest } ?: return
             start(request)
         }
 
-        /** Stops a running copy and clears the state. */
         fun dismiss() {
             synchronized(lock) {
                 job?.cancel()
