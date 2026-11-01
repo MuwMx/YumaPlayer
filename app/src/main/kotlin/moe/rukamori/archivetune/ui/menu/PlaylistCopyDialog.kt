@@ -60,7 +60,6 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 private const val MAX_LISTED_FAILURES = 5
 
-/** Lets the user pick where to copy [source] to, runs the copy and shows how it went. */
 @Composable
 fun PlaylistCopyDialog(
     source: PlaylistCopySource,
@@ -75,7 +74,6 @@ fun PlaylistCopyDialog(
     val isLoggedIn = remember(cookie) { hasYouTubeLoginCookie(cookie) }
     val targets = remember(playlists, isLoggedIn, source) { copyTargets(playlists, isLoggedIn, source) }
 
-    // The manager is shared, so a result left by an earlier dialog must not show up in this one.
     LaunchedEffect(Unit) {
         if (manager.state.value is PlaylistCopyState.Success || manager.state.value is PlaylistCopyState.Failure) {
             manager.dismiss()
@@ -164,7 +162,6 @@ fun PlaylistCopyDialog(
     }
 }
 
-/** The copy source for a library playlist, by where its songs come from. */
 internal fun PlaylistEntity.toCopySource(): PlaylistCopySource =
     when (playlistSource()) {
         PlaylistSource.SPOTIFY -> PlaylistCopySource.Spotify(spotifyId.orEmpty(), name, thumbnailUrl)
@@ -180,10 +177,6 @@ private val PlaylistCopySource.name: String
             is PlaylistCopySource.Personal -> name
         }
 
-/**
- * Playlists a copy of [source] can be added to: Personal playlists, and YouTube playlists while
- * signed in, but not the playlist that is being copied.
- */
 internal fun copyTargets(
     playlists: List<Playlist>,
     isLoggedIn: Boolean,
@@ -214,7 +207,6 @@ private fun PlaylistEntity.sourceLabel(): String =
         },
     )
 
-/** A "new playlist" choice, drawn like the create row of the Add to playlist sheet. */
 @Composable
 private fun NewPlaylistRow(
     label: String,
