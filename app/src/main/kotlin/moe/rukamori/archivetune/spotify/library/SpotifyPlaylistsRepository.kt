@@ -142,10 +142,6 @@ class SpotifyPlaylistsRepository
             return items
         }
 
-        /**
-         * The library's playlists without the extra request [refreshPlaylists] makes for each
-         * playlist whose track count Spotify leaves out. Does not update [playlists].
-         */
         suspend fun playlistsWithoutCounts(): List<SpotifyPlaylist> =
             withContext(Dispatchers.IO) {
                 sessionRepository.ensureAuthenticated()

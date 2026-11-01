@@ -71,7 +71,6 @@ class SpotifyLibraryRepository
 
         suspend fun playlist(playlistId: String): SpotifyPlaylist = playlistsRepository.playlist(playlistId)
 
-        /** The number of tracks in a playlist, read with a one-track request; null when it fails. */
         suspend fun playlistTrackCount(playlistId: String): Int? = playlistsRepository.playlistTrackCount(playlistId)
 
         suspend fun playlistTracks(playlistId: String): List<SpotifyTrack> = playlistsRepository.playlistTracks(playlistId)

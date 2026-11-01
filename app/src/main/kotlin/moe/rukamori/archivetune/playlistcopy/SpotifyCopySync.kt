@@ -38,12 +38,6 @@ data class SpotifyCopySyncReport(
     val addedTracks: Int,
 )
 
-/**
- * Keeps one editable Personal copy of every Spotify playlist. The track lists are read from
- * Spotify in parallel and written as placeholder rows in a single transaction, so nothing waits
- * for YouTube matching. A copy gains the songs added on Spotify; songs removed from the copy stay
- * removed, see [SpotifyCopySnapshots].
- */
 @Singleton
 class SpotifyCopySync
     @Inject
@@ -57,7 +51,6 @@ class SpotifyCopySync
         private val mutex = Mutex()
         private var job: Job? = null
 
-        /** Starts [sync] unless it is already running. */
         fun syncInBackground() {
             if (job?.isActive == true) return
             job =
@@ -72,17 +65,13 @@ class SpotifyCopySync
                 }
         }
 
-        /** Returns null when there is no Spotify session or no playlist. */
         suspend fun sync(): SpotifyCopySyncReport? =
             mutex.withLock {
                 val startedAt = System.currentTimeMillis()
                 if (!repository.restoreSession().isAuthenticated) return@withLock null
-                // A playlist without a track count is simply read, so the per-playlist count requests
-                // refreshPlaylists makes would only slow this down.
                 val spotifyPlaylists = repository.playlists.value.ifEmpty { repository.playlistsWithoutCounts() }
                 if (spotifyPlaylists.isEmpty()) return@withLock null
                 val listedAt = System.currentTimeMillis()
-                // Every local file of the same length shared one of these, so none can be trusted.
                 database.deleteLegacyLocalFileMatches()
 
                 val copiesBySource =
@@ -131,20 +120,14 @@ class SpotifyCopySync
             countPermits: Semaphore,
             readPermits: Semaphore,
         ): PlanResult {
-            // A copy that was moved to YouTube is only changed by explicit actions.
             if (copy != null && copy.playlist.browseId != null) return PlanResult.UpToDate
             val synced = copy?.let { snapshots.read(playlist.id) }
-            // A copy whose Spotify playlist has the same number of songs as last time is left alone.
-            // Spotify's library list usually has no counts, so the count is asked for with a
-            // one-track request rather than reading the whole playlist. A copy with rows older
-            // versions wrote for local files, or with no record of the songs it was given, is read.
             val canSkip = copy != null && synced != null && database.legacyLocalFileMaps(copy.id).isEmpty()
             val total =
                 playlist.tracks?.total
                     ?: if (canSkip) countPermits.withPermit { repository.playlistTrackCount(playlist.id) } else null
             if (canSkip && total != null && total == copy!!.playlist.remoteSongCount) return PlanResult.UpToDate
             return try {
-                // Track lists are large, so only a few are read at once to keep memory low.
                 val tracks = readPermits.withPermit { repository.playlistTracks(playlist.id) }
                 PlanResult.Write(
                     SpotifyCopyPlan(

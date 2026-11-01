@@ -165,10 +165,6 @@ object SpotifyPlaceholders {
             throw IOException("Matching $placeholderId took longer than ${RESOLVE_TIMEOUT_MS / 1000} s", e)
         }
 
-    /**
-     * A Spotify local file is often on this phone too. The device's own song with the same title
-     * (and artist, when Spotify knows one) is played instead of a YouTube upload.
-     */
     private fun findOnDevice(
         source: MediaMetadata,
         database: MusicDatabase,
