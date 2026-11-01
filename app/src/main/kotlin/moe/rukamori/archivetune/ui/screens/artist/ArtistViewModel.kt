@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -104,6 +105,9 @@ class ArtistViewModel
     ) : ViewModel() {
         val artistId = savedStateHandle.get<String>("artistId")!!
         var artistPage by mutableStateOf<ArtistPage?>(null)
+
+        var loadFailed by mutableStateOf(false)
+            private set
         private val eventChannel = Channel<ArtistEvent>(capacity = Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
         private var blockJob: Job? = null
@@ -155,9 +159,14 @@ class ArtistViewModel
             viewModelScope.launch {
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                 val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                loadFailed = false
                 YouTube
                     .artist(artistId)
-                    .onSuccess { page ->
+                    .recoverCatching { error ->
+                        if (error is CancellationException) throw error
+                        delay(RETRY_DELAY_MS)
+                        YouTube.artist(artistId).getOrThrow()
+                    }.onSuccess { page ->
                         val filteredSections =
                             page.sections
                                 .map { section ->
@@ -178,6 +187,7 @@ class ArtistViewModel
                         }
                     }.onFailure {
                         reportException(it)
+                        if (artistPage == null) loadFailed = true
                     }
             }
         }
@@ -220,4 +230,8 @@ class ArtistViewModel
         }
 
         private fun artistShareLink(): String = artistPage?.artist?.shareLink ?: "https://music.youtube.com/channel/$artistId"
+
+        private companion object {
+            const val RETRY_DELAY_MS = 1_000L
+        }
     }

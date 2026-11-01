@@ -12,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,18 +49,26 @@ class ArtistItemsViewModel
         val itemsPage = MutableStateFlow<ItemsPage?>(null)
         val itemsLayout = MutableStateFlow(ArtistItemsPageLayout.LIST)
 
+        val loadFailed = MutableStateFlow(false)
+
         init {
+            retry()
+        }
+
+        fun retry() {
             Timber.tag("ArtistItemsTrace").d(
                 "ViewModelLoadStart: browseId=$browseId, paramsPresent=${params != null}, paramsLength=${params?.length ?: 0}"
             )
+            loadFailed.value = false
             viewModelScope.launch {
+                val endpoint = BrowseEndpoint(browseId = browseId, params = params)
                 YouTube
-                    .artistItems(
-                        BrowseEndpoint(
-                            browseId = browseId,
-                            params = params,
-                        ),
-                    ).onSuccess { artistItemsPage ->
+                    .artistItems(endpoint)
+                    .recoverCatching { error ->
+                        if (error is CancellationException) throw error
+                        delay(RETRY_DELAY_MS)
+                        YouTube.artistItems(endpoint).getOrThrow()
+                    }.onSuccess { artistItemsPage ->
                         title.value = artistItemsPage.title
                         itemsLayout.value = artistItemsPage.layout
                         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
@@ -91,6 +101,7 @@ class ArtistItemsViewModel
                             "ViewModelLoadError: browseId=$browseId, message=${it.message}"
                         )
                         reportException(it)
+                        loadFailed.value = true
                     }
             }
         }
@@ -136,5 +147,9 @@ class ArtistItemsViewModel
                         reportException(it)
                     }
             }
+        }
+
+        private companion object {
+            const val RETRY_DELAY_MS = 1_000L
         }
     }
