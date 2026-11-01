@@ -49,13 +49,6 @@ object SpotifyPlaybackResolver {
         database: MusicDatabase? = null,
     ): MediaItem? = resolveToMetadata(track, database)?.toMediaItem()
 
-    /**
-     * Finds the YouTube song for [track], using a stored match when there is one.
-     *
-     * @param throwOnSearchFailure throw an [IOException] instead of returning null
-     * when nothing matched and YouTube searches failed (rate limit, no network),
-     * so callers can tell "try again" from "not on YouTube".
-     */
     suspend fun resolveToMetadata(
         track: SpotifyTrack,
         database: MusicDatabase? = null,
@@ -159,9 +152,6 @@ object SpotifyPlaybackResolver {
                     explicit = track.explicit,
                 )
 
-            // At most three requests, most precise first: official songs by
-            // artist + title, then the general search (uploads and videos, which
-            // carry the artist in the title), then songs by title alone.
             val rawTitle = track.name.trim()
             val artistAndTitle = "${artistsList.joinToString(" ")} $rawTitle".trim()
             val attempts =
@@ -187,8 +177,6 @@ object SpotifyPlaybackResolver {
                     )
                 if (strict.accepted != null) return strict
 
-                // Uploads often come back without a duration, so this fallback
-                // also considers them; it still needs the Spotify artist on the YouTube side.
                 return scorer.pickByTokenOverlap(
                     track = trackQuery,
                     candidates = candidates,
@@ -284,6 +272,5 @@ private enum class SearchMode { SONGS, SUMMARY }
 
 private val SPACED_LETTERS = Regex("(?<![\\p{L}\\p{N}])(?:[\\p{L}\\p{N}] ){2,}[\\p{L}\\p{N}](?![\\p{L}\\p{N}])")
 
-/** "G a t e w a y" -> "Gateway": letter-spaced names match nothing on YouTube. */
 internal fun collapseSpacedLetters(name: String): String =
     SPACED_LETTERS.replace(name) { match -> match.value.replace(" ", "") }.trim()

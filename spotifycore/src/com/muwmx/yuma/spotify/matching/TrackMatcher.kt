@@ -28,7 +28,6 @@ class TrackMatcher {
         /** Regex to strip "feat", "ft", "featuring" and everything after. */
         private val FEAT_REGEX = Regex("""\s*(feat\.?|ft\.?|featuring)\s+.*""", RegexOption.IGNORE_CASE)
 
-        /** A trailing " - 2011 Remaster", " - Official Video" or " Official Audio" style suffix. */
         private val TRAILING_DECORATION_REGEX =
             Regex("""\s+[-–—|]\s*(?:\d{4}\s+)?(?:remaster(?:ed)?|official|lyrics?|audio|video)\b.*$|\s+(?:official\s+)?(?:lyrics?|audio|video)\s*$""")
 
@@ -74,11 +73,6 @@ class TrackMatcher {
             .joinToString(", ")
     }
 
-    /**
-     * Share of unique words the two texts have in common, ignoring brackets,
-     * featured artists and trailing "remaster/official" suffixes. More forgiving
-     * than Jaro-Winkler for uploads whose artist suffix or formatting differs.
-     */
     fun tokenSimilarity(a: String, b: String): Double {
         val left = normalizeForTokenMatch(a).split(' ').filter(String::isNotBlank).toSet()
         val right = normalizeForTokenMatch(b).split(' ').filter(String::isNotBlank).toSet()

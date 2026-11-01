@@ -38,8 +38,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val passers = candidates.filter { cand ->
             passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
         }
-        // An upload credited to the artist beats one that only names the artist in its title
-        // (lyric videos, re-uploads, tributes), even when the other one is a second closer in length.
         val best = passers.minWithOrNull(
             compareBy<T> { !isCreditedTo(track.artist, artistsOf(it)) }
                 .thenBy { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
@@ -81,13 +79,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         return Decision(res.accepted, res.reason)
     }
 
-    /**
-     * Looser alternative to [pickGeneric] for candidates the strict gates reject,
-     * such as official uploads whose title carries the artist or whose duration is missing.
-     * Candidates are accepted on token overlap with the Spotify title and artist, but only
-     * when the Spotify artist appears on the candidate and it is not a different version
-     * (remix, sped up, live and so on) of the song.
-     */
     fun <T> pickByTokenOverlap(
         track: TrackQuery,
         candidates: List<T>,
@@ -106,7 +97,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             val candidateTitle = titleOf(candidate)
             if (!wantsVersion && VERSION_UPLOAD_WORDS.containsMatchIn(candidateTitle)) continue
             if (versionConflict(track.title, candidateTitle)) continue
-            // A title-only search returns same-named songs by other artists.
             if (!hasArtistEvidence(trackArtists, candidateTitle, artistsOf(candidate))) continue
 
             val candidateArtists = artistsOf(candidate).joinToString(" ")
@@ -115,7 +105,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                     "${track.title} ${track.artist}",
                     "$candidateTitle $candidateArtists",
                 )
-            // "Artist - Song" uploads: compare the title without the artist as well.
             val titleSim =
                 maxOf(
                     matcher.tokenSimilarity(track.title, candidateTitle),
@@ -144,11 +133,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         )
     }
 
-    /**
-     * True when at least one of the Spotify artists shows up on the candidate,
-     * either as a credited artist or in the title (`Artist - Song` uploads).
-     * Tracks without artist information cannot be checked and pass.
-     */
     fun hasArtistEvidence(
         trackArtists: List<String>,
         candidateTitle: String,
@@ -173,7 +157,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         }
     }
 
-    /** True when a credited artist of the candidate is the Spotify artist itself, not only a name in the title. */
     private fun isCreditedTo(
         trackArtist: String,
         candidateArtists: List<String>,
@@ -359,7 +342,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
 
         private val EDGE_SEPARATORS = Regex("""^[\s\-–—|:~]+|[\s\-–—|:~]+$""")
 
-        /** Uploads that are a different version of the song, even when their duration is close. */
         val VERSION_UPLOAD_WORDS =
             Regex(
                 """\b(remix|sped[ -]?up|slowed|nightcore|reverb|8d|bass[ -]?boost(ed)?|cover|flip|mashup|instrumental|karaoke|loop|bootleg)\b""",
