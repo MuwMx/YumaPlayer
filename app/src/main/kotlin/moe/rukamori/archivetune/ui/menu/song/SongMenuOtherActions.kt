@@ -130,7 +130,6 @@ internal fun SongMenuArtistAndAlbumSection(
     onShowSelectArtistDialog: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    // A Spotify song's YouTube pages are looked up while the menu is open, so a tap opens them at once.
     LaunchedEffect(songId) {
         splitArtists.mapNotNull { it.originalArtist }.take(4).forEach { artist ->
             launch { SpotifyPageTargets.artistId(songId, artist.id, artist.name, database) }
@@ -195,10 +194,6 @@ internal fun SongMenuArtistAndAlbumSection(
     }
 }
 
-/**
- * Opens the artist page of [artist]. A song from Spotify carries a Spotify artist id, so the
- * YouTube page is looked up first; the menu stays open until it is found.
- */
 internal fun openArtistPage(
     scope: CoroutineScope,
     context: Context,

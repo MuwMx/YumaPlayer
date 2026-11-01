@@ -171,12 +171,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         }
     }
 
-    /**
-     * True when a match saved earlier still looks like the same recording as the Spotify track: the
-     * artist is credited or named in the title, it is not a different version (instrumental, cover,
-     * live, sped up and so on), and the title resembles the Spotify title or the length agrees.
-     * Matches saved by older versions can point at an unrelated video.
-     */
     fun isPlausibleMatch(
         trackTitle: String,
         trackArtists: List<String>,
@@ -187,9 +181,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         trackExplicit: Boolean = false,
         candidateExplicit: Boolean? = null,
     ): Boolean {
-        // The explicit song saved with its clean release is matched again.
         if (trackExplicit && candidateExplicit == false) return false
-        // A candidate saved without any artist cannot be checked on it, so title and length decide.
         val artistKnown = candidateArtists.any { it.isNotBlank() }
         if (artistKnown && !hasArtistEvidence(trackArtists, candidateTitle, candidateArtists)) return false
         if (versionConflict(trackTitle, candidateTitle)) return false
@@ -397,10 +389,6 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
                 RegexOption.IGNORE_CASE,
             )
 
-        /**
-         * Karaoke and backing-track uploads, which often keep the original title and length.
-         * Japanese labels write "原曲歌手" (original singer), "カラオケ", "オフボーカル" or "インスト".
-         */
         val KARAOKE_MARKERS =
             Regex(
                 """no guide melody|guide melody|off[ -]?vocal|backing track|originally performed|in the style of|カラオケ|オフボーカル|オフ・ボーカル|インスト|原曲歌手|ガイドメロディ""",

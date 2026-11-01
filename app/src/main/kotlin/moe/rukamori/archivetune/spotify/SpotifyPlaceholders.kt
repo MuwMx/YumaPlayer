@@ -26,10 +26,8 @@ import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
-/** Id prefix of a Spotify track that has not been matched to YouTube yet: `spotify:<trackId>`. */
 const val SPOTIFY_PLACEHOLDER_PREFIX = "spotify:"
 
-/** The placeholder id for this track, or null for a track without a Spotify id. */
 fun SpotifyTrack.toPlaceholderId(): String? {
     val spotifyId =
         id
@@ -39,7 +37,6 @@ fun SpotifyTrack.toPlaceholderId(): String? {
     return spotifyId.takeIf { it.isNotBlank() }?.let { SPOTIFY_PLACEHOLDER_PREFIX + it }
 }
 
-/** Display metadata for this track under its placeholder id; null for local files and id-less tracks. */
 fun SpotifyTrack.toPlaceholderMetadata(): MediaMetadata? {
     if (isLocal) return null
     val placeholderId = toPlaceholderId() ?: return null
@@ -61,7 +58,6 @@ fun SpotifyTrack.toPlaceholderMetadata(): MediaMetadata? {
     )
 }
 
-/** The Spotify track a placeholder stands for, as much as its display metadata says. */
 fun MediaMetadata.toPlaceholderSpotifyTrack(): SpotifyTrack =
     SpotifyTrack(
         id = id,
@@ -72,24 +68,16 @@ fun MediaMetadata.toPlaceholderSpotifyTrack(): SpotifyTrack =
         explicit = explicit,
     )
 
-/**
- * A Spotify track that has not been matched to YouTube yet is represented by a
- * placeholder id. Placeholders can sit in playlists and in the player queue like
- * any other song; the YouTube video is looked up only when the track is about to
- * play.
- */
 object SpotifyPlaceholders {
     private const val RESOLVE_TIMEOUT_MS = 15_000L
     private const val UNMATCHED_TTL_MS = 10 * 60 * 1000L
 
     private val metadataById = ConcurrentHashMap<String, MediaMetadata>()
 
-    // A lookup never waits behind a lower-priority one for the same id.
     private val inFlight =
         MatchPriority.entries.associateWith { ConcurrentHashMap<String, CompletableDeferred<MediaMetadata?>>() }
     private val unmatchedAt = ConcurrentHashMap<String, Long>()
 
-    /** Set by the player service. A failed lookup only counts as "no match" while online. */
     @Volatile
     var isOnline: () -> Boolean = { true }
 
@@ -99,19 +87,16 @@ object SpotifyPlaceholders {
             id.length > SPOTIFY_PLACEHOLDER_PREFIX.length &&
             !id.startsWith("spotify:track:")
 
-    /** Remembers display metadata so a placeholder can be matched even if it has no song row. */
     fun register(items: Iterable<MediaMetadata>) {
         items.forEach { metadata ->
             if (isPlaceholder(metadata.id)) metadataById[metadata.id] = metadata
         }
     }
 
-    /** Records that [id] could not be matched. Ignored while offline. */
     fun markUnmatched(id: String) {
         if (isPlaceholder(id) && isOnline()) unmatchedAt[id] = System.currentTimeMillis()
     }
 
-    /** True when a recent search found no YouTube version of this track. */
     fun isKnownUnmatched(id: String?): Boolean {
         if (id == null) return false
         val at = unmatchedAt[id] ?: return false
@@ -120,11 +105,6 @@ object SpotifyPlaceholders {
         return false
     }
 
-    /**
-     * Returns the YouTube metadata for [placeholderId], using the stored match
-     * when there is one and searching otherwise. Concurrent callers for the same
-     * placeholder share one lookup. [priority] says who is waiting for it.
-     */
     suspend fun resolve(
         placeholderId: String,
         database: MusicDatabase,
@@ -133,7 +113,6 @@ object SpotifyPlaceholders {
         if (!isPlaceholder(placeholderId) || isKnownUnmatched(placeholderId)) return null
         val owners = inFlight.getValue(priority)
         while (true) {
-            // Reuse a lookup that is already running at the same or a higher priority.
             val running =
                 MatchPriority.entries
                     .filter { it.ordinal <= priority.ordinal }
@@ -142,7 +121,6 @@ object SpotifyPlaceholders {
                 try {
                     return running.await()
                 } catch (e: CancellationException) {
-                    // Cancelled because the caller that started the lookup was; only give up if this caller was too.
                     currentCoroutineContext().ensureActive()
                     continue
                 }
@@ -161,11 +139,6 @@ object SpotifyPlaceholders {
         }
     }
 
-    /**
-     * The YouTube video id to use where a real video id is required (radio,
-     * autoplay). Other ids are returned unchanged, and so is a placeholder that
-     * cannot be matched.
-     */
     suspend fun youtubeIdFor(mediaId: String): String {
         if (!isPlaceholder(mediaId)) return mediaId
         val database = SpotifyPlaybackResolver.database() ?: return mediaId
@@ -178,10 +151,6 @@ object SpotifyPlaceholders {
         }
     }
 
-    /**
-     * For the player's loader thread, which cannot suspend. Returns null when there is no match
-     * and throws an [IOException] when the lookup takes too long, which is not "no match".
-     */
     fun resolveBlocking(
         placeholderId: String,
         database: MusicDatabase,

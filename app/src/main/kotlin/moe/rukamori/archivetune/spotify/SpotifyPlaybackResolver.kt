@@ -37,21 +37,16 @@ import java.util.concurrent.atomic.AtomicInteger
 object SpotifyPlaybackResolver {
     private const val CACHE_MAX_SIZE = 512
 
-    // 2026-10-29: matches saved before this may point at the clean release of an explicit song.
     private const val EXPLICIT_PREFERENCE_SINCE_MS = 1_793_232_000_000L
     private const val SONG_LOOKUP_CHUNK = 500
     private const val YIELD_MS = 100L
     private const val BACKGROUND_YIELD_MS = 250L
 
-    // Sustained background searching is what gets an IP rate-limited.
     private const val BACKGROUND_SPACING_MS = 2_500L
 
     private val matcher = TrackMatcher()
     private val scorer = SpotifySearchScorer(matcher)
 
-    // Searches for the song being played never wait; searches for songs that are
-    // only being prepared yield to them and to each other, so preparing a queue
-    // cannot slow down the current song or get the IP rate-limited.
     private val searchSemaphore = Semaphore(4)
     private val upcomingSemaphore = Semaphore(2)
     private val backgroundSemaphore = Semaphore(1)
@@ -67,18 +62,12 @@ object SpotifyPlaybackResolver {
     @Volatile
     private var databaseRef: MusicDatabase? = null
 
-    /** Gives the resolver the database to read stored matches from before the first lookup. */
     fun attachDatabase(database: MusicDatabase) {
         databaseRef = database
     }
 
     fun database(): MusicDatabase? = databaseRef
 
-    /**
-     * Looks up the stored YouTube matches for the Spotify placeholders in [items] in one
-     * database pass, keyed by placeholder id. It never searches YouTube, so a full
-     * playlist can be queued instantly; placeholders without a usable match are left out.
-     */
     suspend fun resolveStoredPlaceholders(items: List<MediaMetadata>): Map<String, MediaMetadata> =
         withContext(Dispatchers.IO) {
             val db = databaseRef ?: return@withContext emptyMap()
@@ -114,7 +103,6 @@ object SpotifyPlaybackResolver {
                         Timber.tag("SpotifyMatching").w("Ignoring stored match '%s' -> '%s'", source.title, song?.song?.title ?: match.title)
                         return@forEach
                     }
-                    // Left as a placeholder, so it is searched once more just before it plays.
                     if (needsExplicitRecheck(match, source.explicit)) return@forEach
                     val matched = song?.toMediaMetadata()
                     put(
@@ -131,21 +119,11 @@ object SpotifyPlaybackResolver {
             }
         }
 
-    /**
-     * The matcher did not prefer explicit releases before [EXPLICIT_PREFERENCE_SINCE_MS], and the
-     * stored song cannot tell which release it was, so an explicit Spotify song with an older
-     * automatic match is searched once more.
-     */
     private fun needsExplicitRecheck(
         match: SpotifyMatchEntity,
         explicit: Boolean,
     ): Boolean = explicit && !match.isManualOverride && match.cachedAt < EXPLICIT_PREFERENCE_SINCE_MS
 
-    /**
-     * A match saved by an older version can point at an unrelated video, and a stored match is
-     * otherwise trusted for good. It has to look like the same recording: its artist, and its title
-     * or length, must fit the Spotify track. Without the song's row only the stored title is known.
-     */
     private fun isStoredMatchPlausible(
         title: String,
         artists: List<String>,
@@ -191,7 +169,6 @@ object SpotifyPlaybackResolver {
                 }
             }
 
-            // A stored match that is searched once more; it is used when the search finds nothing.
             var storedFallback: MediaMetadata? = null
             var storedMatch: SpotifyMatchEntity? = null
             if (db != null) {
@@ -345,9 +322,6 @@ object SpotifyPlaybackResolver {
                     search(searchText, mode)?.takeIf { it.accepted != null }
                 }
 
-            // For the song being played, send every search at once and take the
-            // first acceptable one in order of preference; a miss then costs one
-            // round trip instead of three.
             suspend fun searchAllAtOnce() =
                 coroutineScope {
                     val searches = attempts.map { (searchText, mode) -> async { search(searchText, mode) } }
@@ -388,7 +362,6 @@ object SpotifyPlaybackResolver {
             val (best, score) =
                 decision?.accepted?.let { it to decision.score } ?: run {
                     storedFallback?.let { fallback ->
-                        // Nothing better was found: keep the stored match and do not search for it again.
                         storedMatch?.let { db?.insert(it.copy(cachedAt = System.currentTimeMillis())) }
                         mutex.withLock {
                             cache[track.id] = fallback
@@ -450,15 +423,11 @@ object SpotifyPlaybackResolver {
         }
 }
 
-/** Who is waiting for a match; it decides how soon the search may run. */
 enum class MatchPriority {
-    /** The song is playing or about to be: its searches are sent at once and do not wait for the others. */
     PLAYING,
 
-    /** A song being prepared, or a bulk copy: at most two searches at a time, and none while a playing song is searching. */
     UPCOMING,
 
-    /** A song further away: one search at a time, spaced out, and only while nothing else is searching. */
     BACKGROUND,
 }
 

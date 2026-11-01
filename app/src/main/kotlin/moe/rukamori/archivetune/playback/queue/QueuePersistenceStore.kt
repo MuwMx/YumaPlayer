@@ -210,7 +210,6 @@ internal class QueuePersistenceStore(
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideo = dataStore.get(HideVideoKey, false)
         val initialStatus = itemQueue.getInitialStatus().filterExplicit(hideExplicit).filterVideo(hideVideo)
-        // Unmatched Spotify tracks in a restored queue are matched from their title and artists.
         SpotifyPlaceholders.register(initialStatus.items.mapNotNull { it.metadata })
 
         withContext(Dispatchers.Main) {

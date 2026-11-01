@@ -60,19 +60,14 @@ internal fun MusicService.resolvePlaybackDataSpec(
     if (dataSpec.uri.shouldBypassYouTubeResolver()) return dataSpec
     val mediaId = extractMediaIdFromCacheKey(dataSpec.key ?: return dataSpec)
     if (SpotifyPlaceholders.isPlaceholder(mediaId)) {
-        // The track was queued before its YouTube match was known. Match it now
-        // and continue as if the YouTube id had been queued.
         val youtubeId =
             try {
                 SpotifyPlaceholders.resolveBlocking(mediaId, database)?.id
             } catch (e: InterruptedException) {
-                // The player cancelled this load (skip, queue swap).
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
             } catch (e: CancellationException) {
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
             } ?: run {
-                // The error router skips a song known to have no YouTube version
-                // instead of stopping on it.
                 SpotifyPlaceholders.markUnmatched(mediaId)
                 throw PlaybackException(
                     "No YouTube match for $mediaId",

@@ -16,10 +16,6 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import timber.log.Timber
 
-/**
- * Queues the whole list in order with [startIndex] as the current song, like any
- * other playlist. Lists without Spotify placeholders stay a plain [ListQueue].
- */
 fun spotifyAwareQueue(
     title: String?,
     items: List<MediaMetadata>,
@@ -31,14 +27,6 @@ fun spotifyAwareQueue(
         ListQueue(title = title, items = items.map { it.toMediaItem() }, startIndex = startIndex)
     }
 
-/**
- * A full, ordered playlist queue that may contain Spotify placeholders.
- *
- * Placeholders that already have a stored YouTube match are swapped for the
- * matched song. The rest stay in the queue and the player matches them just
- * before they play. The queue is never paged, so nothing is inserted above the
- * current song later.
- */
 class SpotifyPlaceholderQueue(
     private val title: String?,
     private val items: List<MediaMetadata>,
@@ -66,10 +54,6 @@ class SpotifyPlaceholderQueue(
                     Timber.tag("SpotifyQueue").w(e, "Could not read stored matches")
                     emptyMap()
                 }
-            // The selected song keeps the id it was started with: the player is
-            // already loading it from [preloadItem], and a different id at the
-            // same position would make it restart. A placeholder there is
-            // matched by the player itself.
             val resolved =
                 items.mapIndexed { index, item ->
                     if (index == safeStartIndex) item else matches[item.id] ?: item

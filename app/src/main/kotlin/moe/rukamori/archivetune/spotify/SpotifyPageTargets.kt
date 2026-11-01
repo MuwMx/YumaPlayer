@@ -17,11 +17,6 @@ import moe.rukamori.archivetune.innertube.models.ArtistItem
 import timber.log.Timber
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Songs that came from Spotify carry Spotify artist and album ids, which the YouTube artist and
- * album pages cannot open (they stayed blank). These find the YouTube page instead: from the
- * YouTube song the track is matched to, then the library, and only then with one search.
- */
 object SpotifyPageTargets {
     private val artists = ConcurrentHashMap<String, String>()
     private val albums = ConcurrentHashMap<String, String>()
@@ -30,7 +25,6 @@ object SpotifyPageTargets {
 
     fun isYouTubeAlbumId(id: String?): Boolean = id != null && id.startsWith("MPREb")
 
-    /** The YouTube channel id for [artistName] on song [songId], or null when none can be found. */
     suspend fun artistId(
         songId: String,
         artistId: String,
@@ -55,7 +49,6 @@ object SpotifyPageTargets {
             ?.also { artists[artistId] = it }
     }
 
-    /** The YouTube album id for album [albumTitle] on song [songId], or null when none can be found. */
     suspend fun albumId(
         songId: String,
         albumId: String,
@@ -68,7 +61,6 @@ object SpotifyPageTargets {
         return withContext(Dispatchers.IO) {
             val matched = matchedSong(songId, database)
             matched?.song?.albumId?.takeIf(::isYouTubeAlbumId)
-                // The saved row keeps Spotify's album, so YouTube is asked for the matched song's own.
                 ?: matched?.let { song ->
                     search {
                         YouTube.queue(listOf(song.id)).getOrThrow().firstOrNull()?.album?.id?.takeIf(::isYouTubeAlbumId)
@@ -77,8 +69,6 @@ object SpotifyPageTargets {
                 ?: albumTitle?.takeIf { it.isNotBlank() }?.let { title ->
                     search {
                         val query = listOfNotNull(title, artistName).joinToString(" ")
-                        // Only an album of that name is opened, preferably one by the song's artist;
-                        // the first result is often a different album altogether.
                         val found =
                             YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM).getOrThrow().items
                                 .filterIsInstance<AlbumItem>()
@@ -104,10 +94,8 @@ object SpotifyPageTargets {
             .replace(EDITION_SUFFIX, "")
             .filter { it.isLetterOrDigit() }
 
-    // "Album - Single", "Album (Deluxe Edition)" and the like name the same album.
     private val EDITION_SUFFIX = Regex("""\s*(-\s*(single|ep)|[(\[][^)\]]*(deluxe|edition|remaster|expanded|version)[^)\]]*[)\]])\s*$""")
 
-    /** The YouTube song a Spotify placeholder is matched to, if it is stored. */
     private fun matchedSong(
         songId: String,
         database: MusicDatabase,

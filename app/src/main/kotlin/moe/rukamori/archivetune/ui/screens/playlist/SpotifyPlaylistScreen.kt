@@ -178,10 +178,7 @@ fun SpotifyPlaylistScreen(
         val currentPlaylist = playlist ?: return
         val queueTracks = if (shuffled) tracks.shuffled() else tracks
         if (queueTracks.isEmpty()) return
-        // Local files have no Spotify id and cannot be played from here.
         val startId = queueTracks[startIndex.coerceIn(queueTracks.indices)].toPlaceholderId() ?: return
-        // Queue the whole playlist in order, like Spotify does. Tracks are queued as
-        // placeholders and matched to YouTube just before they play.
         val items = queueTracks.mapNotNull { it.toPlaceholderMetadata() }
         val queueStart = items.indexOfFirst { it.id == startId }.takeIf { it >= 0 } ?: return
 

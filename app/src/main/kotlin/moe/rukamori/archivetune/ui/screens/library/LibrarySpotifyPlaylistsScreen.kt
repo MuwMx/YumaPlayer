@@ -91,8 +91,6 @@ fun LibrarySpotifyPlaylistsScreen(
     val playPlaylist: (SpotifyPlaylist) -> Unit = { playlist ->
         playerConnection?.let { conn ->
             coroutineScope.launch {
-                // Same as the playlist screen: the whole playlist is queued in order and
-                // each track is matched to YouTube just before it plays.
                 val items =
                     try {
                         viewModel.playlistTracks(playlist.id).mapNotNull { it.toPlaceholderMetadata() }

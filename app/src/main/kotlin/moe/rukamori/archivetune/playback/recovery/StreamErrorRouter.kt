@@ -40,15 +40,9 @@ class StreamErrorRouter(
 
     fun onPlayerError(error: PlaybackException): RecoveryDecision {
         val currentMediaId = playerActions.currentMediaItem?.mediaId ?: return RecoveryDecision.None
-        // A Spotify track with no YouTube version can never play, so move on to
-        // the next song. This is not a playback failure and does not count towards
-        // the consecutive-error limit; a run of unavailable songs is skipped
-        // straight through because each one fails instantly once known.
         if (SpotifyPlaceholders.isKnownUnmatched(currentMediaId)) {
             val nextIndex = playerActions.nextMediaItemIndex
             Timber.tag(TAG).i("Skipping %s: no YouTube match", currentMediaId)
-            // Stop once a run of skips comes back to a song it already skipped, so a
-            // queue that repeats and has nothing playable does not skip forever.
             val now = System.nanoTime()
             if (now - lastUnmatchedSkipAt > UNMATCHED_RUN_GAP_NS) skippedUnmatched.clear()
             lastUnmatchedSkipAt = now
@@ -300,7 +294,6 @@ class StreamErrorRouter(
     private companion object {
         const val TAG = "StreamErrorRouter"
 
-        // Skips of unavailable songs that come this close together belong to one run.
         const val UNMATCHED_RUN_GAP_NS = 10_000_000_000L
         const val MAX_CONSECUTIVE_ERR = 5
         const val LOGIN_RECOVERY_DEBOUNCE_MS = 10_000L
