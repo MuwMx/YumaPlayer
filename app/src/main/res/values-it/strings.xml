@@ -1308,4 +1308,5 @@
     <string name="canvas_cache_desc">I video salvati vengono riprodotti offline. I più vecchi vengono rimossi se la cache è piena.</string>
     <string name="canvas_settings_load_failed">Impossibile caricare impostazioni Canvas</string>
     <string name="canvas_settings_update_failed">Impossibile aggiornare impostazioni Canvas</string>
+    <string name="login_browser">Browser web</string>
 </resources>
