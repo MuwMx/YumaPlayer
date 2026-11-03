@@ -13,6 +13,8 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,6 +24,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.file.Files
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -259,5 +262,105 @@ class CanvasCacheSourceIsolationTest {
             )
         assertFalse(persistedMismatched)
         assertNull(index.getEntry(mediaId))
+    }
+
+    @Test
+    fun isYouTubeMediaHostMatchesExactAndSubdomainsWhileRejectingSpoofed() {
+        val validHosts = listOf(
+            "googlevideo.com",
+            "rr1---sn-abc.googlevideo.com",
+            "youtube.com",
+            "music.youtube.com",
+            "googleusercontent.com",
+            "lh3.googleusercontent.com",
+            "youtube-nocookie.com",
+            "www.youtube-nocookie.com",
+            "ytimg.com",
+            "i.ytimg.com",
+        )
+        for (host in validHosts) {
+            assertTrue("Expected valid host for $host", isYouTubeMediaHost(host))
+        }
+
+        val invalidHosts = listOf(
+            "notyoutube.com",
+            "evilgooglevideo.com",
+            "fakeytimg.com",
+            "notgoogleusercontent.com",
+            "notyoutube-nocookie.com",
+            "apple.com",
+            "cdn.apple-music.com",
+            "tidal.com",
+            "betterlyrics.org",
+            "example.com",
+            "",
+            "   ",
+            null,
+        )
+        for (host in invalidHosts) {
+            assertFalse("Expected invalid host for $host", isYouTubeMediaHost(host))
+        }
+    }
+
+    @Test
+    fun indexPersistedLoadingWithConfiguredLimitsBeforeInit() {
+        val testDir = Files.createTempDirectory("canvas_persisted_limit_test").toFile()
+        try {
+            val fileA = File(testDir, "test_a.mp4").apply {
+                RandomAccessFile(this, "rw").use { it.setLength(150L * 1024 * 1024) }
+            }
+            val fileB = File(testDir, "test_b.mp4").apply {
+                RandomAccessFile(this, "rw").use { it.setLength(150L * 1024 * 1024) }
+            }
+            val entryA =
+                CanvasCacheEntry(
+                    mediaId = "id_a",
+                    artwork = CanvasArtwork(source = CanvasSource.APPLE_MUSIC, name = "Song A"),
+                    regularFileName = fileA.name,
+                    verticalFileName = null,
+                    createdAtMs = 1000L,
+                    lastAccessedAtMs = 1000L,
+                )
+            val entryB =
+                CanvasCacheEntry(
+                    mediaId = "id_b",
+                    artwork = CanvasArtwork(source = CanvasSource.APPLE_MUSIC, name = "Song B"),
+                    regularFileName = fileB.name,
+                    verticalFileName = null,
+                    createdAtMs = 2000L,
+                    lastAccessedAtMs = 2000L,
+                )
+
+            val json = Json { ignoreUnknownKeys = true }
+            fun writeIndexFile(entries: List<CanvasCacheEntry>) {
+                val raw = json.encodeToString(ListSerializer(CanvasCacheEntry.serializer()), entries)
+                testDir.resolve("canvas_artwork_cache.json").writeText(raw)
+            }
+
+            writeIndexFile(listOf(entryA, entryB))
+            val largeLimitIndex = CanvasCacheIndex()
+            largeLimitIndex.setMaxSize(1024)
+            largeLimitIndex.init(testDir)
+            assertEquals(2, largeLimitIndex.allKeys().size)
+            assertNotNull(largeLimitIndex.getEntry("id_a"))
+            assertNotNull(largeLimitIndex.getEntry("id_b"))
+
+            writeIndexFile(listOf(entryA, entryB))
+            val unlimitedIndex = CanvasCacheIndex()
+            unlimitedIndex.setMaxSize(-1)
+            unlimitedIndex.init(testDir)
+            assertEquals(2, unlimitedIndex.allKeys().size)
+            assertNotNull(unlimitedIndex.getEntry("id_a"))
+            assertNotNull(unlimitedIndex.getEntry("id_b"))
+
+            writeIndexFile(listOf(entryA, entryB))
+            val disabledIndex = CanvasCacheIndex()
+            disabledIndex.setMaxSize(0)
+            disabledIndex.init(testDir)
+            assertTrue(disabledIndex.isCacheDisabled())
+            assertEquals(0, disabledIndex.allKeys().size)
+        } finally {
+            testDir.deleteRecursively()
+        }
     }
 }

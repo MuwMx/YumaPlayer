@@ -7,11 +7,20 @@
 package moe.rukamori.archivetune.ui.player
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
+import moe.rukamori.archivetune.utils.dataStore
+import timber.log.Timber
 
 object CanvasArtworkPlaybackCache {
     const val DEFAULT_MAX_SIZE_MEGABYTES = 256
@@ -19,16 +28,50 @@ object CanvasArtworkPlaybackCache {
     private val index = CanvasCacheIndex()
     private val downloader = CanvasVideoDownloader(index)
 
+    @Volatile private var initJob: Job? = null
+    @Volatile private var customSizeSet = false
+    private val initLock = Any()
+    private val initScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     fun init(context: Context) {
-        val directory = StorageLocationRepository.cacheDirectory(context, StorageFolderKind.CANVAS_CACHE)
-        index.init(directory)
+        if (initJob != null) return
+        synchronized(initLock) {
+            if (initJob != null) return
+            val appContext = context.applicationContext
+            initJob =
+                initScope.launch {
+                    try {
+                        val limitMb =
+                            appContext.dataStore.data.first()[MaxCanvasCacheSizeKey]
+                                ?: DEFAULT_MAX_SIZE_MEGABYTES
+                        synchronized(initLock) {
+                            if (!customSizeSet) {
+                                index.setMaxSize(limitMb)
+                            }
+                            val directory = StorageLocationRepository.cacheDirectory(appContext, StorageFolderKind.CANVAS_CACHE)
+                            index.init(directory)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.tag(CanvasCacheLogTag).e(
+                            e,
+                            "Failed to initialize canvas cache from DataStore; leaving uninitialized to prevent destructive trim",
+                        )
+                    }
+                }
+        }
     }
 
-    fun get(
+    suspend fun get(
         mediaId: String,
         preferCachedOnly: Boolean = false,
         source: moe.rukamori.archivetune.canvas.CanvasSource = moe.rukamori.archivetune.canvas.CanvasSource.ALL,
-    ): CanvasArtwork? = index.get(mediaId, preferCachedOnly, source)
+    ): CanvasArtwork? =
+        withContext(Dispatchers.IO) {
+            initJob?.join()
+            index.get(mediaId, preferCachedOnly, source)
+        }
 
     fun cacheArtworkInBackground(
         mediaId: String,
@@ -49,6 +92,7 @@ object CanvasArtworkPlaybackCache {
         artwork: CanvasArtwork,
     ): CanvasArtwork =
         withContext(Dispatchers.IO) {
+            initJob?.join()
             if (index.isCacheDisabled() || mediaId.isBlank()) return@withContext artwork
             downloader.cancelIfDifferentSource(mediaId, artwork.source)
             val current = index.getCurrentPlayable(mediaId, requiredSource = artwork.source)
@@ -83,9 +127,12 @@ object CanvasArtworkPlaybackCache {
     }
 
     fun setMaxSize(value: Int) {
-        if (value <= 0) {
-            downloader.cancelAll()
+        synchronized(initLock) {
+            customSizeSet = true
+            if (value <= 0) {
+                downloader.cancelAll()
+            }
+            index.setMaxSize(value)
         }
-        index.setMaxSize(value)
     }
 }

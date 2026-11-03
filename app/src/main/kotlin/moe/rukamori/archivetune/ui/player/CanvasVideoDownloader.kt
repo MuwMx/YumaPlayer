@@ -18,8 +18,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
+import okhttp3.Authenticator
 import okhttp3.Credentials
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
@@ -32,6 +32,18 @@ import java.net.Proxy
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+
+internal fun isYouTubeMediaHost(host: String?): Boolean {
+    if (host.isNullOrBlank()) return false
+    val normalizedHost = host.lowercase(Locale.ROOT)
+    return normalizedHost == "googlevideo.com" || normalizedHost.endsWith(".googlevideo.com") ||
+        normalizedHost == "googleusercontent.com" || normalizedHost.endsWith(".googleusercontent.com") ||
+        normalizedHost == "youtube.com" || normalizedHost.endsWith(".youtube.com") ||
+        normalizedHost == "youtube-nocookie.com" || normalizedHost.endsWith(".youtube-nocookie.com") ||
+        normalizedHost == "ytimg.com" || normalizedHost.endsWith(".ytimg.com")
+}
+
+internal fun HttpUrl.isYouTubeMediaHost(): Boolean = isYouTubeMediaHost(host)
 
 internal class CanvasVideoDownloader(
     private val index: CanvasCacheIndex,
@@ -49,26 +61,54 @@ internal class CanvasVideoDownloader(
     private val jobSources = LinkedHashMap<String, moe.rukamori.archivetune.canvas.CanvasSource?>()
     private val downloadScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
-    private val client: OkHttpClient by lazy {
-        canvasClient()
+    private val directClient: OkHttpClient by lazy {
+        OkHttpClient
+            .Builder()
+            .dns(YouTube.dns)
+            .proxy(Proxy.NO_PROXY)
+            .proxyAuthenticator(Authenticator.NONE)
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .callTimeout(3, TimeUnit.MINUTES)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                chain.proceed(
+                    request
+                        .newBuilder()
+                        .header("User-Agent", CanvasDownloadUserAgent)
+                        .build(),
+                )
+            }.build()
     }
 
-    private val directClient: OkHttpClient
-        get() = client
+    @Volatile
+    private var streamClientPair: Pair<Proxy, OkHttpClient>? = null
 
     private val streamClient: OkHttpClient
-        get() = client
+        get() {
+            val currentProxy = YouTube.streamOkHttpProxy ?: Proxy.NO_PROXY
+            streamClientPair?.let { (proxy, client) ->
+                if (proxy == currentProxy) return client
+            }
+            val client = createStreamClient(currentProxy)
+            streamClientPair = currentProxy to client
+            return client
+        }
 
-    private fun canvasClient(proxy: Proxy = YouTube.streamOkHttpProxy): OkHttpClient =
-        SharedLyricsEngine.okHttpClient
-            .newBuilder()
+    private fun createStreamClient(proxy: Proxy): OkHttpClient =
+        OkHttpClient
+            .Builder()
             .dns(YouTube.dns)
             .proxy(proxy)
             .apply {
                 val username = YouTube.proxyUsername
                 val password = YouTube.proxyPassword
-                if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-                    proxyAuthenticator { _, response ->
+                if (proxy != Proxy.NO_PROXY && !username.isNullOrBlank() && !password.isNullOrBlank()) {
+                    proxyAuthenticator { route, response ->
+                        val host = route?.address?.url?.host ?: response.request.url.host
+                        if (!isYouTubeMediaHost(host)) {
+                            return@proxyAuthenticator null
+                        }
                         val credential = Credentials.basic(username, password)
                         response.request
                             .newBuilder()
@@ -81,14 +121,6 @@ internal class CanvasVideoDownloader(
             .callTimeout(3, TimeUnit.MINUTES)
             .addInterceptor { chain ->
                 val request = chain.request()
-                if (!request.url.isYouTubeMediaHost()) {
-                    return@addInterceptor chain.proceed(
-                        request
-                            .newBuilder()
-                            .header("User-Agent", CanvasDownloadUserAgent)
-                            .build(),
-                    )
-                }
                 val requestProfile = StreamClientUtils.resolveRequestProfile(request.url)
                 chain.proceed(
                     StreamClientUtils
@@ -418,14 +450,5 @@ internal class CanvasVideoDownloader(
                 }
             }
         }
-    }
-
-    private fun HttpUrl.isYouTubeMediaHost(): Boolean {
-        val normalizedHost = host.lowercase(Locale.ROOT)
-        return normalizedHost.endsWith("googlevideo.com") ||
-            normalizedHost.endsWith("googleusercontent.com") ||
-            normalizedHost.endsWith("youtube.com") ||
-            normalizedHost.endsWith("youtube-nocookie.com") ||
-            normalizedHost.endsWith("ytimg.com")
     }
 }

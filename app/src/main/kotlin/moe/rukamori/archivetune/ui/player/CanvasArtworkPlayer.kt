@@ -48,10 +48,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.di.CanvasCache
 import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.Credentials
+import okhttp3.OkHttpClient
 import timber.log.Timber
+import java.io.IOException
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.SocketAddress
+import java.net.URI
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -124,35 +129,44 @@ internal fun CanvasArtworkPlayer(
 
     val okHttpClient =
         remember {
-            SharedLyricsEngine.okHttpClient
-                .newBuilder()
+            OkHttpClient
+                .Builder()
                 .dns(YouTube.dns)
-                .proxy(YouTube.streamOkHttpProxy)
-                .apply {
+                .proxy(null)
+                .proxySelector(
+                    object : ProxySelector() {
+                        override fun select(uri: URI?): List<Proxy> {
+                            val isYouTube = isYouTubeMediaHost(uri?.host)
+                            val targetProxy = if (isYouTube) YouTube.streamOkHttpProxy ?: Proxy.NO_PROXY else Proxy.NO_PROXY
+                            return listOf(targetProxy)
+                        }
+
+                        override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
+                        }
+                    },
+                )
+                .proxyAuthenticator { route, response ->
+                    val host = route?.address?.url?.host ?: response.request.url.host
+                    if (!isYouTubeMediaHost(host)) {
+                        return@proxyAuthenticator null
+                    }
                     val username = YouTube.proxyUsername
                     val password = YouTube.proxyPassword
                     if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-                        proxyAuthenticator { _, response ->
-                            val credential = Credentials.basic(username, password)
-                            response.request
-                                .newBuilder()
-                                .header("Proxy-Authorization", credential)
-                                .build()
-                        }
+                        val credential = Credentials.basic(username, password)
+                        response.request
+                            .newBuilder()
+                            .header("Proxy-Authorization", credential)
+                            .build()
+                    } else {
+                        null
                     }
-                }.connectTimeout(15, TimeUnit.SECONDS)
+                }
+                .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(20, TimeUnit.SECONDS)
                 .addInterceptor { chain ->
                     val request = chain.request()
-                    val host = request.url.host
-                    val isYouTubeMediaHost =
-                        host.endsWith("googlevideo.com") ||
-                            host.endsWith("googleusercontent.com") ||
-                            host.endsWith("youtube.com") ||
-                            host.endsWith("youtube-nocookie.com") ||
-                            host.endsWith("ytimg.com")
-
-                    if (!isYouTubeMediaHost) {
+                    if (!isYouTubeMediaHost(request.url.host)) {
                         return@addInterceptor chain.proceed(
                             request
                                 .newBuilder()

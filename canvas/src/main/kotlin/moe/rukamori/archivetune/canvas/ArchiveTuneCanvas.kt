@@ -24,6 +24,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -123,6 +124,23 @@ object ArchiveTuneCanvas {
             !preferredAnimationUrl.isNullOrBlank()
         }
 
+    internal fun acceptSongCandidate(
+        candidate: CanvasArtwork?,
+        provider: CanvasSource,
+        song: String,
+        artist: String,
+        requireVertical: Boolean,
+    ): CanvasArtwork? {
+        if (candidate == null) return null
+        if (!candidate.hasUsableCanvasAnimation(requireVertical)) return null
+        if ((provider == CanvasSource.BETTER_LYRICS || provider == CanvasSource.APPLE_MUSIC) &&
+            !candidate.matchesSongIdentity(song, artist)
+        ) {
+            return null
+        }
+        return candidate.copy(source = provider)
+    }
+
     suspend fun getBySongArtist(
         song: String,
         artist: String,
@@ -156,8 +174,8 @@ object ArchiveTuneCanvas {
                     }
                 }
 
-            if (result != null && result.hasUsableCanvasAnimation(requireVertical)) {
-                val attributed = result.copy(source = result.source ?: provider)
+            val attributed = acceptSongCandidate(result, provider, song, artist, requireVertical)
+            if (attributed != null) {
                 if (cache.size >= 128) cache.clear()
                 cache[key] = CacheEntry(attributed, System.currentTimeMillis() + CACHE_TTL_MS)
                 return attributed
@@ -198,7 +216,7 @@ object ArchiveTuneCanvas {
                 }
 
             if (result != null && result.hasUsableCanvasAnimation(requireVertical)) {
-                val attributed = result.copy(source = result.source ?: provider)
+                val attributed = result.copy(source = provider)
                 if (cache.size >= 128) cache.clear()
                 cache[key] = CacheEntry(attributed, System.currentTimeMillis() + CACHE_TTL_MS)
                 return attributed
@@ -241,7 +259,7 @@ object ArchiveTuneCanvas {
                 }
 
             if (result != null && result.hasUsableCanvasAnimation(requireVertical)) {
-                val attributed = result.copy(source = result.source ?: provider)
+                val attributed = result.copy(source = provider)
                 if (cache.size >= 128) cache.clear()
                 cache[key] = CacheEntry(attributed, System.currentTimeMillis() + CACHE_TTL_MS)
                 return attributed
