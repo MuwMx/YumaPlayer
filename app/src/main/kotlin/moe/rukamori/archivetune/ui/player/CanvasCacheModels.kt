@@ -249,29 +249,34 @@ private fun MediaCodecInfo.VideoCapabilities.supportsCanvasSize(
     frameRate: Double?,
 ): Boolean =
     runCatching {
-        val sizeSupported = runCatching { isSizeSupported(width, height) }
-            .onFailure { error ->
-                Timber.tag(CanvasCacheLogTag).w(error, "Size-only diagnostic failed: file=%s decoder=%s orientation=%s", fileName, decoderName, orientation)
-            }.getOrNull()
+        val sizeSupported = runCatching { isSizeSupported(width, height) }.getOrDefault(false)
         val rateSupported = if (frameRate != null && frameRate > 0.0) {
-            areSizeAndRateSupported(width, height, frameRate)
+            runCatching { areSizeAndRateSupported(width, height, frameRate) }.getOrDefault(false)
         } else {
-            null
+            false
         }
-        val supported = rateSupported ?: sizeSupported ?: false
+
+        if (rateSupported || sizeSupported) {
+            return@runCatching true
+        }
+
+        val maxDim = maxOf(supportedWidths.upper, supportedHeights.upper)
+        val totalPixels = width.toLong() * height.toLong()
+        val max4kPixels = 3840L * 2160L 
+
+        val fitsInHardwareLimits = width <= maxDim && height <= maxDim && totalPixels <= max4kPixels
+
         Timber.tag(CanvasCacheLogTag).d(
-            "Decoder capability: file=%s decoder=%s orientation=%s width=%d height=%d fps=%s sizeSupported=%b rateSupported=%s accepted=%b",
+            "Decoder capability fallback: file=%s decoder=%s width=%d height=%d maxDim=%d fits=%b",
             fileName,
             decoderName,
-            orientation,
             width,
             height,
-            frameRate,
-            sizeSupported,
-            rateSupported,
-            supported,
+            maxDim,
+            fitsInHardwareLimits,
         )
-        supported
+
+        fitsInHardwareLimits
     }.onFailure { error ->
         Timber.tag(CanvasCacheLogTag).w(
             error,
