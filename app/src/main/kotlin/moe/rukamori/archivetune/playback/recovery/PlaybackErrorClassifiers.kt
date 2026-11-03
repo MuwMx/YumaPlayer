@@ -9,7 +9,11 @@ import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.cache.Cache
+import moe.rukamori.archivetune.playback.engine.flacCacheKey
+import moe.rukamori.archivetune.playback.engine.flacStreamCacheKey
+import moe.rukamori.archivetune.playback.engine.ytStreamCacheKey
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import java.io.EOFException
 
 object PlaybackErrorClassifiers {
     val RETRYABLE_STREAM_RESPONSE_CODES = setOf(403, 404, 410, 416)
@@ -64,13 +68,19 @@ object PlaybackErrorClassifiers {
         var throwable: Throwable? = error.cause
         while (throwable != null) {
             when {
-                throwable is IllegalStateException || throwable is IllegalArgumentException -> {
+                throwable is IllegalStateException ||
+                    throwable is IllegalArgumentException ||
+                    throwable is IndexOutOfBoundsException -> {
                     if (throwable.stackTrace.any { it.className.startsWith("androidx.media3.extractor") }) {
                         return true
                     }
                 }
 
                 isContainerParseError && isContentCached && throwable is ParserException -> {
+                    return true
+                }
+
+                isIoError && isContentCached && throwable is EOFException -> {
                     return true
                 }
 
@@ -93,9 +103,9 @@ object PlaybackErrorClassifiers {
         isFullyCached: Boolean,
         vararg caches: Cache?,
     ): Boolean {
-        return isFullyCached || runCatching {
-            caches.any { it?.getCachedSpans(mediaId)?.isNotEmpty() == true }
-        }.getOrDefault(false)
+        if (isFullyCached) return true
+        val keys = listOf(ytStreamCacheKey(mediaId), flacStreamCacheKey(mediaId), mediaId, flacCacheKey(mediaId))
+        return caches.filterNotNull().any { cache -> keys.any { key -> cache.getCachedSpans(key).isNotEmpty() } }
     }
 
     fun findLoginRecoveryTarget(error: PlaybackException): String? {
