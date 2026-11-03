@@ -137,6 +137,7 @@ internal fun FullPlayerCoverSlot(
                     songTitle = state.title,
                     artistName = state.artist,
                     isPlaying = motionState.canPlayCanvas,
+                    canvasHostEnabled = !state.isImmersiveEnabled,
                     canvasState = canvasState,
                     onCoverLoaded = {
                         coroutineScope.launch {

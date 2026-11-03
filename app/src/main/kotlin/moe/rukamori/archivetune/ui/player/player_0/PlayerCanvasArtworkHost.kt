@@ -35,7 +35,7 @@ internal fun PlayerCanvasArtworkHost(
         }
     }
 
-    if (canvasState.isCanvasEnabled && canvasState.artwork != null) {
+    if (state.isImmersiveEnabled && canvasState.isCanvasEnabled && canvasState.artwork != null) {
         key(state.trackUrl) {
             CanvasArtworkPlayer(
                 primaryUrl = canvasState.primaryUrl,

@@ -24,8 +24,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -84,6 +84,7 @@ internal fun CanvasArtworkPlayer(
     val currentOnReadyChange by rememberUpdatedState(onReadyChange)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val canvasCache =
         remember(context) {
             runCatching {
@@ -105,7 +106,6 @@ internal fun CanvasArtworkPlayer(
     var currentUrl by remember(initial) { mutableStateOf(initial) }
     var isVideoReady by remember(initial) { mutableStateOf(false) }
     var hasPlaybackFailed by remember(initial) { mutableStateOf(false) }
-    val shouldPlay by rememberUpdatedState(isPlaying)
 
     LaunchedEffect(isVideoReady) {
         currentOnReadyChange(isVideoReady)
@@ -209,7 +209,7 @@ internal fun CanvasArtworkPlayer(
             )
         }
     val exoPlayer =
-        remember(initial, mediaSourceFactory) {
+        remember(mediaSourceFactory) {
             val renderersFactory =
                 DefaultRenderersFactory(context)
                     .setEnableDecoderFallback(true)
@@ -227,18 +227,18 @@ internal fun CanvasArtworkPlayer(
                             .build()
                     volume = 0f
                     repeatMode = Player.REPEAT_MODE_ONE
-                    playWhenReady = isPlaying
+                    playWhenReady = false
                 }
         }
 
-    LaunchedEffect(isPlaying) {
-        Timber.tag(CanvasPlaybackLogTag).d("Canvas isPlaying state changed: isPlaying=$isPlaying, hasPlaybackFailed=$hasPlaybackFailed")
-        if (!hasPlaybackFailed) {
-            exoPlayer.setCanvasPlayback(
-                isPlaying = isPlaying,
-                isStarted = true,
-            )
-        }
+    val playerId = remember(exoPlayer) { Integer.toHexString(System.identityHashCode(exoPlayer)) }
+
+    LaunchedEffect(isPlaying, lifecycleState, exoPlayer, hasPlaybackFailed) {
+        Timber.tag(CanvasPlaybackLogTag).d("Canvas playback sync: player=$playerId isPlaying=$isPlaying lifecycle=$lifecycleState failed=$hasPlaybackFailed")
+        exoPlayer.setCanvasPlayback(
+            isPlaying = isPlaying && !hasPlaybackFailed,
+            isStarted = lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+        )
     }
 
     LaunchedEffect(currentUrl, isPlaying, primary, fallback, exoPlayer) {
@@ -249,6 +249,12 @@ internal fun CanvasArtworkPlayer(
 
         while (isActive && isPlaying && currentUrl == primary && !hasPlaybackFailed) {
             delay(CanvasPlaybackStallCheckIntervalMs)
+
+            if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                stalledForMs = 0L
+                lastPosition = exoPlayer.currentPosition
+                continue
+            }
 
             val currentPosition = exoPlayer.currentPosition
             val playbackState = exoPlayer.playbackState
@@ -274,33 +280,6 @@ internal fun CanvasArtworkPlayer(
             }
 
             lastPosition = currentPosition
-        }
-    }
-
-    DisposableEffect(exoPlayer, lifecycleOwner) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME -> {
-                        if (!hasPlaybackFailed) {
-                            exoPlayer.setCanvasPlayback(
-                                isPlaying = shouldPlay,
-                                isStarted = true,
-                            )
-                        }
-                    }
-                    Lifecycle.Event.ON_PAUSE -> {
-                        exoPlayer.setCanvasPlayback(false)
-                    }
-                    Lifecycle.Event.ON_STOP -> {
-                        exoPlayer.stop()
-                    }
-                    else -> Unit
-                }
-            }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -330,14 +309,8 @@ internal fun CanvasArtworkPlayer(
                 }
 
                 override fun onRenderedFirstFrame() {
-                    Timber.tag(CanvasPlaybackLogTag).i("First video frame rendered on Canvas! isVideoReady = true")
+                    Timber.tag(CanvasPlaybackLogTag).i("First video frame rendered on Canvas! player=$playerId isVideoReady = true")
                     isVideoReady = true
-                    if (shouldPlay && !hasPlaybackFailed) {
-                        exoPlayer.setCanvasPlayback(
-                            isPlaying = true,
-                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
-                        )
-                    }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -348,35 +321,18 @@ internal fun CanvasArtworkPlayer(
                         Player.STATE_ENDED -> "ENDED"
                         else -> "$playbackState"
                     }
-                    Timber.tag(CanvasPlaybackLogTag).d("Canvas player playbackState: $stateName, playWhenReady=${exoPlayer.playWhenReady}, isPlaying=${exoPlayer.isPlaying}")
-                    if (!shouldPlay || hasPlaybackFailed) return
-                    exoPlayer.setCanvasPlayback(
-                        isPlaying = true,
-                        isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
-                    )
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas player playbackState: $stateName, player=$playerId playWhenReady=${exoPlayer.playWhenReady}, isPlaying=${exoPlayer.isPlaying}")
                 }
 
                 override fun onPlayWhenReadyChanged(
                     playWhenReady: Boolean,
                     reason: Int,
                 ) {
-                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onPlayWhenReadyChanged: playWhenReady=$playWhenReady, reason=$reason")
-                    if (shouldPlay && !playWhenReady && !hasPlaybackFailed) {
-                        exoPlayer.setCanvasPlayback(
-                            isPlaying = true,
-                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
-                        )
-                    }
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onPlayWhenReadyChanged: player=$playerId playWhenReady=$playWhenReady, reason=$reason")
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onIsPlayingChanged: isPlaying=$isPlaying")
-                    if (shouldPlay && !isPlaying && !hasPlaybackFailed) {
-                        exoPlayer.setCanvasPlayback(
-                            isPlaying = true,
-                            isStarted = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
-                        )
-                    }
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas onIsPlayingChanged: player=$playerId isPlaying=$isPlaying")
                 }
             }
         exoPlayer.addListener(listener)
@@ -384,8 +340,9 @@ internal fun CanvasArtworkPlayer(
     }
 
     LaunchedEffect(currentUrl, exoPlayer) {
-        hasPlaybackFailed = false
         val normalized = currentUrl.trim()
+        if (exoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() == normalized) return@LaunchedEffect
+        hasPlaybackFailed = false
         isVideoReady = false
         currentOnReadyChange(false)
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
@@ -398,7 +355,7 @@ internal fun CanvasArtworkPlayer(
                 else -> MimeTypes.APPLICATION_M3U8
             }
 
-        Timber.tag(CanvasPlaybackLogTag).d("Preparing mediaItem: url=$normalized, mimeType=$mimeType, isPlaying=$isPlaying")
+        Timber.tag(CanvasPlaybackLogTag).d("Preparing mediaItem: player=$playerId url=$normalized, mimeType=$mimeType, isPlaying=$isPlaying")
         val mediaItem =
             MediaItem
                 .Builder()
@@ -406,10 +363,8 @@ internal fun CanvasArtworkPlayer(
                 .setMimeType(mimeType)
                 .build()
 
-        exoPlayer.stop()
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
-        exoPlayer.setCanvasPlayback(isPlaying, isStarted = true)
     }
 
     DisposableEffect(exoPlayer) {
@@ -448,13 +403,11 @@ private fun Int.toContentScale(): ContentScale =
         else -> ContentScale.Fit
     }
 
-private fun ExoPlayer.setCanvasPlayback(
+internal fun Player.setCanvasPlayback(
     isPlaying: Boolean,
     isStarted: Boolean = true,
 ) {
     if (isPlaying && isStarted) {
-        if (playbackState == Player.STATE_ENDED) seekTo(0)
-        if (playbackState == Player.STATE_IDLE && mediaItemCount > 0) prepare()
         play()
     } else {
         pause()

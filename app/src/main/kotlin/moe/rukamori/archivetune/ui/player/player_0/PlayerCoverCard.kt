@@ -58,6 +58,7 @@ fun PlayerCoverCard(
     songTitle: String? = null,
     artistName: String? = null,
     isPlaying: Boolean = false,
+    canvasHostEnabled: Boolean = true,
     canvasState: PlayerCanvasState = rememberPlayerCanvasState(mediaId, songTitle, artistName),
     onCoverLoaded: () -> Unit = {}, // <-- Новый колбэк
     onNext: () -> Unit = {},
@@ -210,7 +211,7 @@ fun PlayerCoverCard(
             .background(surfaceColor),
         contentAlignment = Alignment.Center
     ) {
-        val isCanvasActive = canvasState.isCanvasEnabled && canvasState.artwork != null
+        val isCanvasActive = canvasHostEnabled && canvasState.isCanvasEnabled && canvasState.artwork != null
         val placeholder = painterResource(id = placeholderResId)
 
         val bgPainter = previousPainter ?: currentPainter ?: placeholder
