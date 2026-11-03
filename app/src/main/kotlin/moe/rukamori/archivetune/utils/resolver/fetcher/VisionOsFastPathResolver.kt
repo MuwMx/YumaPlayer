@@ -19,6 +19,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils.PlaybackData
 import moe.rukamori.archivetune.utils.getPlaybackPlayerResponseOrNull
 import moe.rukamori.archivetune.utils.resolver.PlaybackClientSelector
 import moe.rukamori.archivetune.utils.resolver.PlaybackFormatSelector
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 import moe.rukamori.archivetune.utils.resolver.PlaybackStreamUrlDecipher
 import timber.log.Timber
 
@@ -31,6 +32,7 @@ internal object VisionOsFastPathResolver {
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
         networkMetered: Boolean?,
+        pinnedFormat: PinnedStreamFormat?,
         signatureTimestamp: Int?,
         authState: PlaybackAuthState,
         canUseLoggedInPlayback: Boolean,
@@ -78,6 +80,7 @@ internal object VisionOsFastPathResolver {
                         response,
                         audioQuality,
                         isMetered,
+                        pinnedFormat,
                     )
 
                 if (candidates.isEmpty()) {

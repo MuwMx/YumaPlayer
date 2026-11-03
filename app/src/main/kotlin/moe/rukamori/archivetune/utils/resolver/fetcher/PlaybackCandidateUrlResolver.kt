@@ -15,6 +15,7 @@ import moe.rukamori.archivetune.utils.StreamUrlCache
 import moe.rukamori.archivetune.utils.YTPlayerUtils.PlaybackData
 import moe.rukamori.archivetune.utils.resolver.PlaybackClientSelector
 import moe.rukamori.archivetune.utils.resolver.PlaybackFormatSelector
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 import moe.rukamori.archivetune.utils.resolver.PlaybackStreamUrlDecipher
 import timber.log.Timber
 
@@ -34,6 +35,7 @@ internal object PlaybackCandidateUrlResolver {
         streamPlayerResponse: PlayerResponse,
         audioQuality: AudioQuality,
         isMetered: Boolean,
+        pinnedFormat: PinnedStreamFormat?,
         canUseLoggedInPlayback: Boolean,
         expectedDurationMs: Long?,
         authState: PlaybackAuthState,
@@ -46,6 +48,7 @@ internal object PlaybackCandidateUrlResolver {
                 streamPlayerResponse,
                 audioQuality,
                 isMetered,
+                pinnedFormat,
             )
 
         if (candidates.isEmpty()) {

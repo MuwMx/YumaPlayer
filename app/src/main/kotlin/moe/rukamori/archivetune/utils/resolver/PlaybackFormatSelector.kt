@@ -14,6 +14,11 @@ import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import timber.log.Timber
 
+data class PinnedStreamFormat(
+    val itag: Int,
+    val contentLength: Long,
+)
+
 object PlaybackFormatSelector {
     private const val logTag = "PlaybackFormatSelector"
 
@@ -36,6 +41,7 @@ object PlaybackFormatSelector {
         playerResponse: PlayerResponse,
         audioQuality: AudioQuality,
         networkMetered: Boolean,
+        pinnedFormat: PinnedStreamFormat? = null,
     ): List<PlayerResponse.StreamingData.Format> {
         Timber.tag(logTag).i("Finding format with audioQuality: $audioQuality, network metered: $networkMetered")
 
@@ -76,7 +82,7 @@ object PlaybackFormatSelector {
                 .thenByDescending { codecRank(extractCodec(it.mimeType)) }
                 .thenByDescending { it.audioSampleRate ?: 0 }
 
-        val candidates =
+        val ranked =
             when {
                 targetBitrateBps == null || effectiveQuality == AudioQuality.HIGHEST -> {
                     audioFormats.sortedWith(preferHigher)
@@ -95,6 +101,7 @@ object PlaybackFormatSelector {
                     preferred + fallback
                 }
             }
+        val candidates = preferPinnedFormat(ranked, pinnedFormat)
 
         Timber
             .tag(logTag)
@@ -109,6 +116,20 @@ object PlaybackFormatSelector {
             )
 
         return candidates
+    }
+
+    internal fun preferPinnedFormat(
+        candidates: List<PlayerResponse.StreamingData.Format>,
+        pinnedFormat: PinnedStreamFormat?,
+    ): List<PlayerResponse.StreamingData.Format> {
+        if (pinnedFormat == null) return candidates
+        val match =
+            candidates.firstOrNull { candidate ->
+                candidate.itag == pinnedFormat.itag &&
+                    (pinnedFormat.contentLength <= 0L || candidate.contentLength == null || candidate.contentLength == pinnedFormat.contentLength)
+            } ?: return candidates
+        Timber.tag(logTag).i("Keeping cached stream format itag=${match.itag}")
+        return listOf(match) + candidates.filterNot { it === match }
     }
 
     internal fun extractCodec(mimeType: String): String? {
