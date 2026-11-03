@@ -18,7 +18,7 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.Locale
 
-internal const val CanvasMaxCachedVideoDimensionPx = 1_920
+internal const val CanvasMaxCachedVideoDimensionPx = 4_096
 internal const val CanvasCacheLogTag = "CanvasCache"
 
 internal enum class CanvasVideoVariant(
@@ -133,33 +133,66 @@ internal fun Int.toCanvasCacheLimitBytes(): Long =
 internal fun File.isUsableFile(): Boolean = isFile && length() > 0L
 
 internal fun File.isPlayableCanvasVideo(): Boolean {
+    val fileName = name
     val extractor = MediaExtractor()
     return try {
         extractor.setDataSource(absolutePath)
         (0 until extractor.trackCount).any { index ->
             val format = extractor.getTrackFormat(index)
             val mime = format.getString(MediaFormat.KEY_MIME).orEmpty()
-            mime.startsWith("video/") && format.isSupportedCanvasVideoFormat()
+            mime.startsWith("video/") && format.isSupportedCanvasVideoFormat(fileName)
         }
     } catch (error: Throwable) {
-        Timber.tag(CanvasCacheLogTag).w(error, "Failed to inspect cached canvas video")
+        Timber.tag(CanvasCacheLogTag).w(error, "Failed to inspect cached canvas video: file=%s", fileName)
         false
     } finally {
         extractor.release()
     }
 }
 
-private fun MediaFormat.isSupportedCanvasVideoFormat(): Boolean {
-    val mime = getString(MediaFormat.KEY_MIME)?.takeIf { value -> value.startsWith("video/") } ?: return false
-    val width = optionalInteger(MediaFormat.KEY_WIDTH) ?: return false
-    val height = optionalInteger(MediaFormat.KEY_HEIGHT) ?: return false
-    if (width > CanvasMaxCachedVideoDimensionPx ||
-        height > CanvasMaxCachedVideoDimensionPx
-    ) {
+private fun MediaFormat.isSupportedCanvasVideoFormat(fileName: String): Boolean {
+    val mime = getString(MediaFormat.KEY_MIME)?.takeIf { value -> value.startsWith("video/") }
+    if (mime == null) {
+        Timber.tag(CanvasCacheLogTag).d("Validation rejected: file=%s reason=missing_or_non_video_mime", fileName)
+        return false
+    }
+    val width = optionalInteger(MediaFormat.KEY_WIDTH)
+    val height = optionalInteger(MediaFormat.KEY_HEIGHT)
+    if (width == null || height == null) {
+        Timber.tag(CanvasCacheLogTag).d(
+            "Validation rejected: file=%s reason=missing_dimensions mime=%s width=%s height=%s",
+            fileName,
+            mime,
+            width,
+            height,
+        )
         return false
     }
     val frameRate = optionalFrameRate()
     val profile = optionalInteger(MediaFormat.KEY_PROFILE)?.takeIf { value -> value > 0 }
+
+    Timber.tag(CanvasCacheLogTag).d(
+        "Extracted video metadata: file=%s mime=%s width=%d height=%d fps=%s profile=%s",
+        fileName,
+        mime,
+        width,
+        height,
+        frameRate,
+        profile,
+    )
+
+    if (width > CanvasMaxCachedVideoDimensionPx ||
+        height > CanvasMaxCachedVideoDimensionPx
+    ) {
+        Timber.tag(CanvasCacheLogTag).d(
+            "Validation rejected: file=%s reason=dimension_limit_exceeded width=%d height=%d maxDim=%d",
+            fileName,
+            width,
+            height,
+            CanvasMaxCachedVideoDimensionPx,
+        )
+        return false
+    }
 
     return runCatching {
         MediaCodecList(MediaCodecList.ALL_CODECS)
@@ -174,39 +207,88 @@ private fun MediaFormat.isSupportedCanvasVideoFormat(): Boolean {
                     profile == null ||
                         capabilities.profileLevels.isEmpty() ||
                         capabilities.profileLevels.any { profileLevel -> profileLevel.profile == profile }
+                Timber.tag(CanvasCacheLogTag).d(
+                    "Candidate decoder: file=%s decoder=%s mime=%s profile=%s profileMatch=%b",
+                    fileName,
+                    codecInfo.name,
+                    supportedType,
+                    profile,
+                    profileSupported,
+                )
                 if (!profileSupported) return@any false
 
                 val videoCapabilities = capabilities.videoCapabilities ?: return@any true
                 videoCapabilities.supportsCanvasSize(
+                    fileName = fileName,
+                    decoderName = codecInfo.name,
+                    orientation = "direct",
                     width = width,
                     height = height,
                     frameRate = frameRate,
                 ) ||
                     videoCapabilities.supportsCanvasSize(
+                        fileName = fileName,
+                        decoderName = codecInfo.name,
+                        orientation = "flipped",
                         width = height,
                         height = width,
                         frameRate = frameRate,
                     )
             }
+    }.onFailure { error ->
+        Timber.tag(CanvasCacheLogTag).w(error, "Codec validation failed: file=%s", fileName)
     }.getOrDefault(false)
 }
 
 private fun MediaCodecInfo.VideoCapabilities.supportsCanvasSize(
+    fileName: String,
+    decoderName: String,
+    orientation: String,
     width: Int,
     height: Int,
     frameRate: Double?,
 ): Boolean =
     runCatching {
-        if (frameRate != null && frameRate > 0.0) {
+        val sizeSupported = runCatching { isSizeSupported(width, height) }
+            .onFailure { error ->
+                Timber.tag(CanvasCacheLogTag).w(error, "Size-only diagnostic failed: file=%s decoder=%s orientation=%s", fileName, decoderName, orientation)
+            }.getOrNull()
+        val rateSupported = if (frameRate != null && frameRate > 0.0) {
             areSizeAndRateSupported(width, height, frameRate)
         } else {
-            isSizeSupported(width, height)
+            null
         }
+        val supported = rateSupported ?: sizeSupported ?: false
+        Timber.tag(CanvasCacheLogTag).d(
+            "Decoder capability: file=%s decoder=%s orientation=%s width=%d height=%d fps=%s sizeSupported=%b rateSupported=%s accepted=%b",
+            fileName,
+            decoderName,
+            orientation,
+            width,
+            height,
+            frameRate,
+            sizeSupported,
+            rateSupported,
+            supported,
+        )
+        supported
+    }.onFailure { error ->
+        Timber.tag(CanvasCacheLogTag).w(
+            error,
+            "Decoder size check failed: file=%s decoder=%s orientation=%s width=%d height=%d",
+            fileName,
+            decoderName,
+            orientation,
+            width,
+            height,
+        )
     }.getOrDefault(false)
 
 private fun MediaFormat.optionalInteger(key: String): Int? =
     if (containsKey(key)) {
-        runCatching { getInteger(key) }.getOrNull()
+        runCatching { getInteger(key) }
+            .onFailure { error -> Timber.tag(CanvasCacheLogTag).w(error, "Failed to read integer key: %s", key) }
+            .getOrNull()
     } else {
         null
     }
@@ -214,7 +296,11 @@ private fun MediaFormat.optionalInteger(key: String): Int? =
 private fun MediaFormat.optionalFrameRate(): Double? =
     if (containsKey(MediaFormat.KEY_FRAME_RATE)) {
         runCatching { getInteger(MediaFormat.KEY_FRAME_RATE).toDouble() }
-            .getOrElse { runCatching { getFloat(MediaFormat.KEY_FRAME_RATE).toDouble() }.getOrNull() }
+            .getOrElse {
+                runCatching { getFloat(MediaFormat.KEY_FRAME_RATE).toDouble() }
+                    .onFailure { error -> Timber.tag(CanvasCacheLogTag).w(error, "Failed to read frame rate") }
+                    .getOrNull()
+            }
     } else {
         null
     }
