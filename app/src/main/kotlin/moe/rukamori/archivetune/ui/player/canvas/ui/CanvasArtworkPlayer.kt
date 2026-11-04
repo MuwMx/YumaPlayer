@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import moe.rukamori.archivetune.ui.player.canvas.playback.rememberCanvasPlaybackController
 
 @Composable
@@ -46,7 +47,7 @@ internal fun CanvasArtworkPlayer(
 
     ContentFrame(
         player = player,
-        surfaceType = androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW,
+        surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
         contentScale = resizeMode.toContentScale(),
         keepContentOnReset = false,
         shutter = {},
