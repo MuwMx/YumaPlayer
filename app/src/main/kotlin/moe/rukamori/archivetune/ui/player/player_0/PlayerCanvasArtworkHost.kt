@@ -13,7 +13,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.media3.ui.AspectRatioFrameLayout
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.ui.player.canvas.ui.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
 @Composable

@@ -44,7 +44,7 @@ import coil3.request.crossfade
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.ui.player.canvas.ui.CanvasArtworkPlayer
 import kotlin.math.abs
 
 @Composable
