@@ -244,7 +244,6 @@
     <string name="copied">Skopiowano do schowka</string>
     <string name="search_lyrics">Wyszukaj tekst</string>
     <string name="lyrics_synced_badge">Zsynchronizowano</string>
-    <string name="lyrics_searching_providers"></string>
     <string name="lyrics_search_still_searching">Ciągle szukamy</string>
     <string name="lyrics_search_results_count">%1$d wyników</string>
     <string name="lyrics_search_result_stats">%1$d wersów, %2$d znaków</string>
@@ -419,7 +418,6 @@
     <string name="customized_background">Własne tło</string>
     <string name="customize_background_title">Spersonalizuj tło</string>
     <string name="add_image">Dodaj obrazek</string>
-    <string name="blur"></string>
     <string name="contrast">Kontrast</string>
     <string name="brightness">Jasność</string>
     <string name="custom_value">Własna wartość</string>
