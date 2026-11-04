@@ -243,7 +243,7 @@ internal fun CanvasArtworkPlayer(
     }
 
     LaunchedEffect(currentUrl, isPlaying, primary, fallback, exoPlayer) {
-        if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary || hasPlaybackFailed) return@LaunchedEffect
+        if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary || currentUrl.startsWith("file://") || hasPlaybackFailed) return@LaunchedEffect
 
         var lastPosition = exoPlayer.currentPosition
         var stalledFor = kotlin.time.Duration.ZERO
@@ -392,7 +392,7 @@ internal fun CanvasArtworkPlayer(
 
     ContentFrame(
         player = exoPlayer,
-        surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
+        surfaceType = androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW,
         contentScale = resizeMode.toContentScale(),
         keepContentOnReset = false,
         shutter = {},

@@ -237,15 +237,13 @@ fun PlayerCoverCard(
 
         // Canvas
         if (isCanvasActive) {
-            key(mediaId) {
-                CanvasArtworkPlayer(
-                    primaryUrl = canvasState.primaryUrl,
-                    fallbackUrl = canvasState.fallbackUrl,
-                    isPlaying = isPlaying,
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            CanvasArtworkPlayer(
+                primaryUrl = canvasState.primaryUrl,
+                fallbackUrl = canvasState.fallbackUrl,
+                isPlaying = isPlaying,
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
