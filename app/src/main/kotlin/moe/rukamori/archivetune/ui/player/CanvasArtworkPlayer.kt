@@ -4,7 +4,7 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+@file:Suppress("UnstableApi")
 
 package moe.rukamori.archivetune.ui.player
 
@@ -59,9 +59,10 @@ import java.net.SocketAddress
 import java.net.URI
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
-private const val CanvasPlaybackStallCheckIntervalMs = 1_000L
-private const val CanvasPlaybackStallTimeoutMs = 5_000L
+private val CanvasPlaybackStallCheckInterval = 1.seconds
+private val CanvasPlaybackStallTimeout = 5.seconds
 private const val CanvasMaxVideoWidth = 4_096
 private const val CanvasMaxVideoHeight = 4_096
 
@@ -137,7 +138,7 @@ internal fun CanvasArtworkPlayer(
                     object : ProxySelector() {
                         override fun select(uri: URI?): List<Proxy> {
                             val isYouTube = isYouTubeMediaHost(uri?.host)
-                            val targetProxy = if (isYouTube) YouTube.streamOkHttpProxy ?: Proxy.NO_PROXY else Proxy.NO_PROXY
+                            val targetProxy = if (isYouTube) YouTube.streamOkHttpProxy else Proxy.NO_PROXY
                             return listOf(targetProxy)
                         }
 
@@ -227,7 +228,7 @@ internal fun CanvasArtworkPlayer(
                             .build()
                     volume = 0f
                     repeatMode = Player.REPEAT_MODE_ONE
-                    playWhenReady = false
+                    playWhenReady = isPlaying
                 }
         }
 
@@ -245,13 +246,13 @@ internal fun CanvasArtworkPlayer(
         if (!isPlaying || fallback.isNullOrBlank() || currentUrl != primary || hasPlaybackFailed) return@LaunchedEffect
 
         var lastPosition = exoPlayer.currentPosition
-        var stalledForMs = 0L
+        var stalledFor = kotlin.time.Duration.ZERO
 
-        while (isActive && isPlaying && currentUrl == primary && !hasPlaybackFailed) {
-            delay(CanvasPlaybackStallCheckIntervalMs)
+        while (isActive && currentUrl == primary && !hasPlaybackFailed) {
+            delay(CanvasPlaybackStallCheckInterval)
 
             if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                stalledForMs = 0L
+                stalledFor = kotlin.time.Duration.ZERO
                 lastPosition = exoPlayer.currentPosition
                 continue
             }
@@ -261,17 +262,17 @@ internal fun CanvasArtworkPlayer(
             val positionAdvanced = currentPosition != lastPosition
             val isActivelyRendering =
                 playbackState == Player.STATE_READY &&
-                    exoPlayer.isPlaying &&
-                    positionAdvanced
+                        exoPlayer.isPlaying &&
+                        positionAdvanced
 
-            stalledForMs =
+            stalledFor =
                 if (isActivelyRendering) {
-                    0L
+                    kotlin.time.Duration.ZERO
                 } else {
-                    stalledForMs + CanvasPlaybackStallCheckIntervalMs
+                    stalledFor + CanvasPlaybackStallCheckInterval
                 }
 
-            if (stalledForMs >= CanvasPlaybackStallTimeoutMs) {
+            if (stalledFor >= CanvasPlaybackStallTimeout) {
                 currentUrl = fallback
                 isVideoReady = false
                 hasPlaybackFailed = false
@@ -311,6 +312,12 @@ internal fun CanvasArtworkPlayer(
                 override fun onRenderedFirstFrame() {
                     Timber.tag(CanvasPlaybackLogTag).i("First video frame rendered on Canvas! player=$playerId isVideoReady = true")
                     isVideoReady = true
+                    if (isPlaying && !hasPlaybackFailed) {
+                        exoPlayer.setCanvasPlayback(
+                            isPlaying = true,
+                            isStarted = lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+                        )
+                    }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -365,6 +372,10 @@ internal fun CanvasArtworkPlayer(
 
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
+        exoPlayer.setCanvasPlayback(
+            isPlaying = isPlaying,
+            isStarted = lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+        )
     }
 
     DisposableEffect(exoPlayer) {

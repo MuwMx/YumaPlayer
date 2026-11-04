@@ -262,7 +262,7 @@ private fun MediaCodecInfo.VideoCapabilities.supportsCanvasSize(
 
         val maxDim = maxOf(supportedWidths.upper, supportedHeights.upper)
         val totalPixels = width.toLong() * height.toLong()
-        val max4kPixels = 3840L * 2160L 
+        val max4kPixels = 3840L * 2160L
 
         val fitsInHardwareLimits = width <= maxDim && height <= maxDim && totalPixels <= max4kPixels
 

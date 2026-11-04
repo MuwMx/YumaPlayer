@@ -136,7 +136,7 @@ internal fun FullPlayerCoverSlot(
                     mediaId = state.trackUrl,
                     songTitle = state.title,
                     artistName = state.artist,
-                    isPlaying = motionState.canPlayCanvas,
+                    isPlaying = state.isPlaying,
                     canvasHostEnabled = !state.isImmersiveEnabled,
                     canvasState = canvasState,
                     onCoverLoaded = {
