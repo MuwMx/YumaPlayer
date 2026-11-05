@@ -147,6 +147,12 @@ interface PlaylistDao {
     )
     fun playlistByBrowseId(browseId: String): Flow<Playlist?>
 
+    @Transaction
+    @Query(
+        "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifySourceId = :spotifySourceId LIMIT 1",
+    )
+    suspend fun playlistBySpotifySourceId(spotifySourceId: String): Playlist?
+
     @Query("SELECT * FROM playlist WHERE browseId = :browseId LIMIT 1")
     fun playlistEntityByBrowseId(browseId: String): PlaylistEntity?
 

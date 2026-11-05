@@ -51,7 +51,7 @@ To keep the codebase maintainable as it grows, all modules and layers must stric
 
 ### Data Layer (`:core:innertube`, `:database`, `:app` data sources)
 - **Responsibilities:** Fetching, caching, persisting, and transforming data from local databases and remote network APIs.
-- **Components:** Repository Implementations, Room Entities in `:database` (`db/entities/`, `MusicDatabase.kt` v36), InnerTube client in `:core:innertube`, Ktor Data Sources, Network DTOs, Mappers.
+- **Components:** Repository Implementations, Room Entities in `:database` (`db/entities/`, `MusicDatabase.kt` v38), InnerTube client in `:core:innertube`, Ktor Data Sources, Network DTOs, Mappers.
 
 ### Playback Subsystem (`:app` `playback/` + `:core:audio-dsp`)
 - **Responsibilities:** Android Media3 session lifecycle, audio focus and hardware effects, stream resolving (FLAC/YT/Extractor), queue orchestration, dual-engine crossfade, and background integrations.

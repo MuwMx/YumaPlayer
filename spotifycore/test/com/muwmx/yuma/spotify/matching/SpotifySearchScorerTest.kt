@@ -33,6 +33,66 @@ class SpotifySearchScorerTest {
     }
 
     @Test
+    fun `pick prefers the upload credited to the artist over a closer one by a similarly named act`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 180_000L)
+        val tribute = SpotifyTrack(
+            id = "tribute",
+            name = "Song",
+            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
+            durationMs = 180_000,
+        )
+        val original = SpotifyTrack(
+            id = "original",
+            name = "Song",
+            artists = listOf(SpotifySimpleArtist(name = "Artist - Topic")),
+            durationMs = 177_000,
+        )
+
+        assertEquals("original", scorer.pick(query, listOf(tribute, original)).accepted?.id)
+        assertEquals("original", scorer.pick(query, listOf(original, tribute)).accepted?.id)
+    }
+
+    @Test
+    fun `token overlap prefers the upload credited to the artist`() {
+        val query = TrackQuery(artist = "The Neighbourhood", title = "Sweater Weather", durationMs = 240_000L)
+        val lyricVideo = SpotifyTrack(
+            id = "lyrics",
+            name = "The Neighbourhood - Sweater Weather (Lyrics)",
+            artists = listOf(SpotifySimpleArtist(name = "main character music")),
+            durationMs = 240_000,
+        )
+        val official = SpotifyTrack(
+            id = "official",
+            name = "Sweater Weather",
+            artists = listOf(SpotifySimpleArtist(name = "The Neighbourhood - Topic")),
+            durationMs = 240_000,
+        )
+
+        val picked =
+            scorer.pickByTokenOverlap(
+                query,
+                listOf(lyricVideo, official),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertEquals("official", picked?.accepted?.id)
+    }
+
+    @Test
+    fun `pick rejects a piano version of the song`() {
+        val query = TrackQuery(artist = "The Neighbourhood", title = "Sweater Weather", durationMs = 240_000L)
+        val piano = SpotifyTrack(
+            id = "piano",
+            name = "Sweater Weather (Piano Version)",
+            artists = listOf(SpotifySimpleArtist(name = "The Neighbourhood")),
+            durationMs = 240_000,
+        )
+
+        assertNull(scorer.pick(query, listOf(piano)).accepted)
+    }
+
+    @Test
     fun `pick rejects candidate exceeding 5s duration tolerance`() {
         val query = TrackQuery(
             artist = "Artist",
@@ -82,14 +142,14 @@ class SpotifySearchScorerTest {
         val candidate1 = SpotifyTrack(
             id = "1",
             name = "Song",
-            artists = listOf(SpotifySimpleArtist(name = "Artist")),
+            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
             durationMs = 177_000
         )
 
         val candidate2 = SpotifyTrack(
             id = "2",
             name = "Song",
-            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
+            artists = listOf(SpotifySimpleArtist(name = "Artist Orchestra")),
             durationMs = 177_000
         )
 
