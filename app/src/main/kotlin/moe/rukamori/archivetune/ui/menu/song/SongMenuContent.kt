@@ -186,8 +186,12 @@ internal fun SongMenuContent(
 
         item {
             SongMenuArtistAndAlbumSection(
+                songId = song.id,
                 splitArtists = splitArtists,
                 albumId = song.song.albumId,
+                albumTitle = song.album?.title ?: song.song.albumName,
+                database = database,
+                context = context,
                 navController = navController,
                 onDismiss = onDismiss,
                 onShowSelectArtistDialog = onShowSelectArtistDialog,

@@ -33,6 +33,66 @@ class SpotifySearchScorerTest {
     }
 
     @Test
+    fun `pick prefers the upload credited to the artist over a closer one by a similarly named act`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 180_000L)
+        val tribute = SpotifyTrack(
+            id = "tribute",
+            name = "Song",
+            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
+            durationMs = 180_000,
+        )
+        val original = SpotifyTrack(
+            id = "original",
+            name = "Song",
+            artists = listOf(SpotifySimpleArtist(name = "Artist - Topic")),
+            durationMs = 177_000,
+        )
+
+        assertEquals("original", scorer.pick(query, listOf(tribute, original)).accepted?.id)
+        assertEquals("original", scorer.pick(query, listOf(original, tribute)).accepted?.id)
+    }
+
+    @Test
+    fun `token overlap prefers the upload credited to the artist`() {
+        val query = TrackQuery(artist = "The Neighbourhood", title = "Sweater Weather", durationMs = 240_000L)
+        val lyricVideo = SpotifyTrack(
+            id = "lyrics",
+            name = "The Neighbourhood - Sweater Weather (Lyrics)",
+            artists = listOf(SpotifySimpleArtist(name = "main character music")),
+            durationMs = 240_000,
+        )
+        val official = SpotifyTrack(
+            id = "official",
+            name = "Sweater Weather",
+            artists = listOf(SpotifySimpleArtist(name = "The Neighbourhood - Topic")),
+            durationMs = 240_000,
+        )
+
+        val picked =
+            scorer.pickByTokenOverlap(
+                query,
+                listOf(lyricVideo, official),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertEquals("official", picked?.accepted?.id)
+    }
+
+    @Test
+    fun `pick rejects a piano version of the song`() {
+        val query = TrackQuery(artist = "The Neighbourhood", title = "Sweater Weather", durationMs = 240_000L)
+        val piano = SpotifyTrack(
+            id = "piano",
+            name = "Sweater Weather (Piano Version)",
+            artists = listOf(SpotifySimpleArtist(name = "The Neighbourhood")),
+            durationMs = 240_000,
+        )
+
+        assertNull(scorer.pick(query, listOf(piano)).accepted)
+    }
+
+    @Test
     fun `pick rejects candidate exceeding 5s duration tolerance`() {
         val query = TrackQuery(
             artist = "Artist",
@@ -82,14 +142,14 @@ class SpotifySearchScorerTest {
         val candidate1 = SpotifyTrack(
             id = "1",
             name = "Song",
-            artists = listOf(SpotifySimpleArtist(name = "Artist")),
+            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
             durationMs = 177_000
         )
 
         val candidate2 = SpotifyTrack(
             id = "2",
             name = "Song",
-            artists = listOf(SpotifySimpleArtist(name = "Artist Tribute")),
+            artists = listOf(SpotifySimpleArtist(name = "Artist Orchestra")),
             durationMs = 177_000
         )
 
@@ -122,5 +182,116 @@ class SpotifySearchScorerTest {
         )
 
         assertNull(scorer.pick(query, listOf(candidate)).accepted)
+    }
+
+    @Test
+    fun `a stored match with the same title and artist is plausible`() {
+        assertEquals(
+            true,
+            scorer.isPlausibleMatch("Sweater Weather", listOf("The Neighbourhood"), 240, "Sweater Weather", listOf("The Neighbourhood - Topic"), 238),
+        )
+    }
+
+    @Test
+    fun `a stored match with a differently written title but the same length is plausible`() {
+        assertEquals(true, scorer.isPlausibleMatch("SpeedStar", listOf("TOKYOPILL"), 150, "Speed Star", listOf("TOKYOPILL"), 150))
+        assertEquals(true, scorer.isPlausibleMatch("Yoru no Himawari", listOf("Artist"), 200, "夜のひまわり", listOf("Artist"), 201))
+    }
+
+    @Test
+    fun `a stored match for an unrelated video is not plausible`() {
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch(
+                "ナイトクルージング", emptyList(), 241,
+                "YEAT - VVV FT. PLAYBOI CARTI (MUSIC VIDEO OFFICIAL)", emptyList(), 165,
+            ),
+        )
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Another Song Entirely", listOf("Artist"), 90),
+        )
+    }
+
+    @Test
+    fun `a stored match without an artist is judged by its title`() {
+        assertEquals(true, scorer.isPlausibleMatch("Divine Failure", listOf("Artist"), 120, "Divine Failure", emptyList(), null))
+        assertEquals(
+            true,
+            scorer.isPlausibleMatch("They Tryna Be Cray", listOf("Playboi Carti"), 170, "Playboi Carti - They Tryna Be Cray [Featuring X] (@someone)", emptyList(), null),
+        )
+        assertEquals(false, scorer.isPlausibleMatch("Glock", listOf("Playboi Carti"), 130, "JoJo's Bizarre Adventure Opening 6 Full", emptyList(), null))
+    }
+
+    @Test
+    fun `a stored match for another version of the song is not plausible`() {
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song (Instrumental)", listOf("Artist"), 200))
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Artist - Song (sped up)", emptyList(), 160))
+        assertEquals(true, scorer.isPlausibleMatch("Song - Instrumental", listOf("Artist"), 200, "Song (Instrumental)", listOf("Artist"), 200))
+    }
+
+    @Test
+    fun `a karaoke upload is not taken for the original even with the same title and length`() {
+        val karaokeTitle = "LOST IN PARADISE (原曲歌手:ALI) - LOST IN PARADISE No Guide melody Original by ALI (feat. AKLO)"
+        assertEquals(false, scorer.isPlausibleMatch("LOST IN PARADISE", listOf("ALI", "AKLO"), 327, karaokeTitle, listOf("歌っちゃ王"), 327))
+
+        val query = TrackQuery(artist = "ALI, AKLO", title = "LOST IN PARADISE", durationMs = 327_000L)
+        val karaoke = SpotifyTrack(id = "karaoke", name = karaokeTitle, artists = listOf(SpotifySimpleArtist(name = "歌っちゃ王")), durationMs = 327_000)
+        val official = SpotifyTrack(
+            id = "official",
+            name = "LOST IN PARADISE (Jujutsu Kaisen Ending Theme Song) (feat. AKLO)",
+            artists = listOf(SpotifySimpleArtist(name = "ALI")),
+            durationMs = 328_000,
+        )
+        val picked =
+            scorer.pickByTokenOverlap(
+                query,
+                listOf(karaoke, official),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertEquals("official", picked?.accepted?.id)
+    }
+
+    @Test
+    fun `the explicit release wins over the clean one`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 200_000L, explicit = true)
+        val clean = SpotifyTrack(id = "clean", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 200_000)
+        val explicit = SpotifyTrack(id = "explicit", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 201_000, explicit = true)
+
+        for (candidates in listOf(listOf(clean, explicit), listOf(explicit, clean))) {
+            val picked =
+                scorer.pickGeneric(
+                    query,
+                    candidates,
+                    titleOf = { it.name },
+                    artistsOf = { it.artists.map { artist -> artist.name } },
+                    durationMsOf = { it.durationMs.toLong() },
+                    explicitOf = { it.explicit },
+                )
+            assertEquals("explicit", picked.accepted?.id)
+        }
+    }
+
+    @Test
+    fun `an upload labelled clean is another version`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 200_000L)
+        val clean = SpotifyTrack(id = "clean", name = "Song (Clean)", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 200_000)
+
+        assertNull(scorer.pick(query, listOf(clean)).accepted)
+    }
+
+    @Test
+    fun `a stored clean match for an explicit song is not plausible`() {
+        assertEquals(
+            false,
+            scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Artist"), 200, trackExplicit = true, candidateExplicit = false),
+        )
+    }
+
+    @Test
+    fun `a stored match by a different artist is not plausible even with the same title`() {
+        assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
     }
 }

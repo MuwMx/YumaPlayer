@@ -49,12 +49,15 @@ internal object SpotifyTrackParser {
                 ?: trackData.str("uri")
                 ?: trackData.str("_uri")
                 ?: ""
-        val trackId = uri.substringAfterLast(":")
+        val localFile = SpotifyLocalFile.parse(uri)
+        val trackId = localFile?.id ?: uri.substringAfterLast(":")
 
         val artists =
-            trackData.obj("artists")?.arr("items")?.mapNotNull { elem ->
-                parseGqlSimpleArtist(elem.jsonObject)
-            } ?: emptyList()
+            (
+                trackData.obj("artists")?.arr("items")?.mapNotNull { elem ->
+                    parseGqlSimpleArtist(elem.jsonObject)
+                } ?: emptyList()
+            ).ifEmpty { listOfNotNull(localFile?.artist?.let { SpotifySimpleArtist(name = it) }) }
 
         val album =
             albumOverride ?: run {
@@ -95,11 +98,12 @@ internal object SpotifyTrackParser {
 
         return SpotifyTrack(
             id = trackId,
-            name = trackData.str("name") ?: "",
+            name = trackData.str("name")?.takeIf { it.isNotBlank() } ?: localFile?.title ?: "",
             artists = artists,
             album = album,
-            durationMs = parseGqlTrackDurationMs(trackData),
+            durationMs = parseGqlTrackDurationMs(trackData).takeIf { it > 0 } ?: ((localFile?.durationSec ?: 0) * 1000),
             explicit = explicit,
+            isLocal = localFile != null,
             uri = uri.ifEmpty { null },
             externalIds = externalIds,
         )

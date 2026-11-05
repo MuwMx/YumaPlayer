@@ -32,6 +32,9 @@ interface SpotifyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(spotifyMatch: SpotifyMatchEntity)
 
+    @Query("DELETE FROM spotify_match WHERE spotifyId NOT GLOB '*[^0-9]*'")
+    fun deleteLegacyLocalFileMatches(): Int
+
     @Transaction
     @Query("SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE spotifyId = :spotifyId")
     fun playlistBySpotifyId(spotifyId: String): Flow<Playlist?>

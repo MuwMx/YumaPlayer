@@ -142,7 +142,13 @@ class SpotifyPlaylistsRepository
             return items
         }
 
-        internal suspend fun fetchAllPlaylists(): List<SpotifyPlaylist> {
+        suspend fun playlistsWithoutCounts(): List<SpotifyPlaylist> =
+            withContext(Dispatchers.IO) {
+                sessionRepository.ensureAuthenticated()
+                fetchAllPlaylists(fillMissingCounts = false)
+            }
+
+        internal suspend fun fetchAllPlaylists(fillMissingCounts: Boolean = true): List<SpotifyPlaylist> {
             val playlists = ArrayList<SpotifyPlaylist>()
             var offset = 0
             val limit = 50
@@ -155,7 +161,7 @@ class SpotifyPlaylistsRepository
                 if (page.items.isEmpty()) break
                 playlists +=
                     page.items.map { playlist ->
-                        if (playlist.tracks?.total != null) {
+                        if (!fillMissingCounts || playlist.tracks?.total != null) {
                             playlist
                         } else {
                             playlistTrackCount(playlist.id)

@@ -852,6 +852,10 @@ interface SongDao {
     @Query("SELECT id FROM song WHERE isLocal = 1")
     suspend fun localSongIds(): List<String>
 
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1 AND title = :title COLLATE NOCASE")
+    fun localSongsByTitle(title: String): List<Song>
+
     @Query("SELECT * FROM set_video_id WHERE videoId = :videoId")
     suspend fun getSetVideoId(videoId: String): SetVideoIdEntity?
 
