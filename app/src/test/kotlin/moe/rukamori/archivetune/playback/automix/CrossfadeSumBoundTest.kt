@@ -83,7 +83,7 @@ class CrossfadeSumBoundTest {
     }
 
     @Test
-    fun theCapIsRedundantWhenBothDecksShareTheSameBase() {
+    fun theCapEngagesWhereTheOverlappingCurvesWouldOverflow() {
         val base = 1f
         var capEngaged = 0
         for (i in 0..steps) {
@@ -92,7 +92,7 @@ class CrossfadeSumBoundTest {
             val capped = outgoingGain(progress, base, base)
             if (raw > capped + 1e-4f) capEngaged++
         }
-        assertEquals("the curves are complementary, so the cap must never need to engage", 0, capEngaged)
+        assertTrue("the staged curves overlap, so the cap must engage even for equal bases", capEngaged > 0)
     }
 
     @Test

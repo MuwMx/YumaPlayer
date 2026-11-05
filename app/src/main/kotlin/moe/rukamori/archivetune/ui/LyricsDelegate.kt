@@ -3,6 +3,7 @@ package moe.rukamori.archivetune.ui
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,6 +38,8 @@ class LyricsDelegate(
     private val uiState: StateFlow<PlayerUiState>,
     private val updateUiState: ((PlayerUiState) -> PlayerUiState) -> Unit,
     private val playbackProgressProvider: () -> Long,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private var lyricsJob: Job? = null
     private var romanizationJob: Job? = null
@@ -121,7 +124,7 @@ class LyricsDelegate(
 
         val durationMs = audioPlayer?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
         val parsedLines =
-            withContext(Dispatchers.Default) {
+            withContext(defaultDispatcher) {
                 parseLyrics(cached.lyrics, durationMs)
             }
         if (generation != lyricsFetchGeneration.get() || uiState.value.trackUrl != expectedMediaId) return
@@ -148,7 +151,7 @@ class LyricsDelegate(
     fun prepareLyricsEditText() {
         val trackId = uiState.value.trackUrl
         if (trackId.isEmpty()) return
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             val cached = lyricsRepository.getLyricsById(trackId)
             var rawText = cached?.lyrics ?: ""
             if (rawText.isBlank()) {
@@ -171,7 +174,7 @@ class LyricsDelegate(
         val trackId = metadata.id
         if (trackId.isEmpty()) return
         val durationMs = audioPlayerProvider()?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             lyricsRepository.replaceLyrics(
                 id = trackId,
                 lyrics = text,
@@ -192,7 +195,7 @@ class LyricsDelegate(
         if (trackId.isEmpty()) return
         val durationMs = audioPlayerProvider()?.duration?.takeIf { it > 0L && it != C.TIME_UNSET } ?: 0L
 
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch(ioDispatcher) {
             if (useAi) {
                 withContext(Dispatchers.Main) {
                     updateUiState { it.copy(isAiTranslating = true, aiTranslationError = null) }
@@ -292,7 +295,7 @@ class LyricsDelegate(
 
         updateUiState { it.copy(isLoadingLyrics = true, lyricsError = null) }
 
-        lyricsJob = coroutineScope.launch(Dispatchers.IO) {
+        lyricsJob = coroutineScope.launch(ioDispatcher) {
             var success = false
             try {
                 val cached = if (force) null else lyricsRepository.getLyricsById(trackUrl)
@@ -441,7 +444,7 @@ class LyricsDelegate(
             return
         }
 
-        romanizationJob = coroutineScope.launch(Dispatchers.Default) {
+        romanizationJob = coroutineScope.launch(defaultDispatcher) {
             for (entry in entries) {
                 ensureActive()
                 if (lyricsFetchGeneration.get() != generation) return@launch

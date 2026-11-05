@@ -23,12 +23,10 @@ import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.host.PlayerConnectionHolder
 import moe.rukamori.archivetune.data.repository.SettingsRepository
-import moe.rukamori.archivetune.ui.state.PlayerUiState
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.lang.reflect.Field
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerViewModelLyricsTest {
@@ -74,7 +72,9 @@ class PlayerViewModelLyricsTest {
             application = application,
             connectionHolder = connectionHolder,
             settingsRepository = settingsRepository,
-            lyricsHelper = lyricsHelper
+            lyricsHelper = lyricsHelper,
+            ioDispatcher = testDispatcher,
+            defaultDispatcher = testDispatcher,
         )
     }
 
@@ -82,13 +82,6 @@ class PlayerViewModelLyricsTest {
     fun tearDown() {
         Dispatchers.resetMain()
         unmockkStatic(Color::class)
-    }
-
-    private fun setUiState(state: PlayerUiState) {
-        val field: Field = PlayerViewModel::class.java.getDeclaredField("_uiState")
-        field.isAccessible = true
-        val stateFlow = field.get(viewModel) as MutableStateFlow<PlayerUiState>
-        stateFlow.value = state
     }
 
     @Test
@@ -104,13 +97,13 @@ class PlayerViewModelLyricsTest {
             source = LyricsEntity.Source.REMOTE.value
         )
         
-        setUiState(PlayerUiState(trackUrl = trackUrl, title = title, artist = artist, durationMs = 0L))
         mediaMetadataFlow.value = moe.rukamori.archivetune.models.MediaMetadata(
             id = trackUrl,
             title = title,
             artists = listOf(moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = artist)),
             duration = 0,
         )
+        testDispatcher.scheduler.advanceUntilIdle()
         
         coEvery { database.getLyricsById(trackUrl) } returns entity
         currentLyricsFlow.value = entity
@@ -144,13 +137,13 @@ class PlayerViewModelLyricsTest {
             source = LyricsEntity.Source.REMOTE.value
         )
         
-        setUiState(PlayerUiState(trackUrl = trackUrl, title = title, artist = artist, durationMs = 0L))
         mediaMetadataFlow.value = moe.rukamori.archivetune.models.MediaMetadata(
             id = trackUrl,
             title = title,
             artists = listOf(moe.rukamori.archivetune.models.MediaMetadata.Artist(id = null, name = artist)),
             duration = 0,
         )
+        testDispatcher.scheduler.advanceUntilIdle()
         
         coEvery { database.getLyricsById(trackUrl) } returns null
         coEvery { lyricsHelper.getLyrics(any()) } returns remoteLyrics
