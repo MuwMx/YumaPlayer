@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.playback.resolvers.resolveFlacKeyMetadataLength
 import moe.rukamori.archivetune.playback.resolvers.resolvePreservedFlacContentLength
 import moe.rukamori.archivetune.playback.resolvers.shouldBypassFlac
 import moe.rukamori.archivetune.playback.resolvers.toYouTubeWatchUrl
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.StreamUrlCache as YouTubeStreamUrlCache
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -107,19 +108,27 @@ internal class StreamPrefetcher(
     }
 
     fun prefetchAround(currentIndex: Int) {
-        if (!delegate.isPlaying && !delegate.playWhenReady) return
+        if (!delegate.isPlaying) return
         val nextIndex = delegate.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET || nextIndex < 0 || nextIndex >= delegate.mediaItemCount || delegate.repeatMode == REPEAT_MODE_ONE || nextIndex == currentIndex) return
         val nextMediaItem = runCatching { delegate.getMediaItemAt(nextIndex) }.getOrNull() ?: return
         val mediaId = nextMediaItem.mediaId.ifBlank { nextMediaItem.metadata?.id.orEmpty() }
         if (mediaId.isBlank() || mediaId.isLocalMediaId() || mediaId.startsWith("/") || mediaId.contains(".m3u8", ignoreCase = true)) return
+        if (SpotifyPlaceholders.isPlaceholder(mediaId)) return
         val directUri = nextMediaItem.localConfiguration?.uri
         if (directUri != null) {
             val scheme = directUri.scheme?.lowercase(Locale.US)
             if (scheme in setOf("content", "file", "android.resource")) return
             if ((scheme == "http" || scheme == "https") && directUri.toString().let { it.contains(".m3u8", true) || it.contains("manifest", true) }) return
         }
+        prefetchMedia(mediaId, nextMediaItem)
+    }
 
+    fun prefetchMedia(
+        mediaId: String,
+        nextMediaItem: MediaItem,
+    ) {
+        if (!delegate.isPlaying) return
         val cm = delegate.connectivityManager ?: return
         val activeNetwork = cm.activeNetwork ?: return
         val caps = cm.getNetworkCapabilities(activeNetwork) ?: return

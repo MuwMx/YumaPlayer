@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.playback.engine.validateLegacyCacheKey
 import moe.rukamori.archivetune.playback.engine.validateLegacyCacheKeyAcrossCaches
 import moe.rukamori.archivetune.playback.audio.isPlayerInitialized
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import timber.log.Timber
 
@@ -128,6 +129,7 @@ internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
 
 internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
     if (mediaId.isBlank() || !automixEnabled) return
+    if (SpotifyPlaceholders.isPlaceholder(mediaId)) return
     if (TrackAnalyzer.shouldThrottleKickOff(mediaId)) return
 
     val currentId = runCatching { player.currentMediaItem?.mediaId }.getOrNull()
