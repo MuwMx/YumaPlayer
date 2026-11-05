@@ -49,7 +49,8 @@ fun MarqueeText(
     minLines: Int = 1,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current,
-    isVisible: Boolean = true
+    isVisible: Boolean = true,
+    iterations: Int = DEFAULT_MARQUEE_ITERATIONS,
 ) {
     var hasOverflow by remember(text) { mutableStateOf(false) }
     val marqueeEnabled = LocalMarqueeEnabled.current
@@ -83,7 +84,7 @@ fun MarqueeText(
                 }
             }
             .basicMarquee(
-                iterations = Int.MAX_VALUE,
+                iterations = iterations,
                 initialDelayMillis = 2000,
                 spacing = MarqueeSpacing(32.dp),
                 velocity = 30.dp
@@ -117,3 +118,5 @@ fun MarqueeText(
         style = style
     )
 }
+
+private const val DEFAULT_MARQUEE_ITERATIONS = 1

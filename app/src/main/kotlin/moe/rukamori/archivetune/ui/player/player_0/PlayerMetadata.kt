@@ -111,7 +111,8 @@ fun PlayerMetadata(
                     ),
                     maxLines = 1,
                     modifier = Modifier,
-                    isVisible = isVisible
+                    isVisible = isVisible,
+                    iterations = Int.MAX_VALUE,
                 )
             }
 
@@ -159,7 +160,8 @@ fun PlayerMetadata(
                     ),
                     maxLines = 1,
                     modifier = Modifier,
-                    isVisible = isVisible
+                    isVisible = isVisible,
+                    iterations = Int.MAX_VALUE,
                 )
             }
 
