@@ -34,14 +34,18 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         titleOf: (T) -> String,
         artistsOf: (T) -> List<String>,
         durationMsOf: (T) -> Long,
+        explicitOf: (T) -> Boolean = { false },
     ): CandidateDecision<T> {
         val passers = candidates.filter { cand ->
             passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
         }
         val best = passers.minWithOrNull(
-            compareBy<T> { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
+            compareBy<T> { !isCreditedTo(track.artist, artistsOf(it)) }
+                .thenBy { !explicitOf(it) }
+                .thenBy { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
                 .thenByDescending { effectiveTitleSim(track.title, titleOf(it)) },
         ) ?: return CandidateDecision(null, 0.0, "no candidate passed gates")
+        val bestCredited = isCreditedTo(track.artist, artistsOf(best))
 
         val bestDur = abs(track.durationMs!! - durationMsOf(best)) / 1000
         val bestSim = effectiveTitleSim(track.title, titleOf(best))
@@ -50,6 +54,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             val otherDur = abs(track.durationMs - durationMsOf(other)) / 1000
             val otherSim = effectiveTitleSim(track.title, titleOf(other))
             other !== best &&
+                isCreditedTo(track.artist, artistsOf(other)) == bestCredited &&
                 abs(otherSim - bestSim) <= AMBIGUOUS_TITLE_SIM &&
                 abs(otherDur - bestDur) <= AMBIGUOUS_DUR_SEC &&
                 !sameRecordingGeneric(
@@ -75,6 +80,147 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         )
         return Decision(res.accepted, res.reason)
     }
+
+    fun <T> pickByTokenOverlap(
+        track: TrackQuery,
+        candidates: List<T>,
+        titleOf: (T) -> String,
+        artistsOf: (T) -> List<String>,
+        durationMsOf: (T) -> Long,
+        explicitOf: (T) -> Boolean = { false },
+    ): CandidateDecision<T>? {
+        val wantsVersion = VERSION_UPLOAD_WORDS.containsMatchIn(track.title)
+        val trackDurationSec = (track.durationMs ?: 0L) / 1000.0
+        val trackArtists = listOf(track.artist)
+        var best: T? = null
+        var bestScore = 0.0
+        var bestTitleSim = 0.0
+
+        for (candidate in candidates) {
+            val candidateTitle = titleOf(candidate)
+            if (!wantsVersion && VERSION_UPLOAD_WORDS.containsMatchIn(candidateTitle)) continue
+            if (versionConflict(track.title, candidateTitle)) continue
+            if (!hasArtistEvidence(trackArtists, candidateTitle, artistsOf(candidate))) continue
+
+            val candidateArtists = artistsOf(candidate).joinToString(" ")
+            val textSim =
+                matcher.tokenSimilarity(
+                    "${track.title} ${track.artist}",
+                    "$candidateTitle $candidateArtists",
+                )
+            val titleSim =
+                maxOf(
+                    matcher.tokenSimilarity(track.title, candidateTitle),
+                    matcher.tokenSimilarity(track.title, stripArtists(candidateTitle, track.artist)),
+                )
+            val candidateDurationSec = durationMsOf(candidate) / 1000.0
+            val durationOk =
+                trackDurationSec > 0.0 &&
+                    candidateDurationSec > 0.0 &&
+                    abs(trackDurationSec - candidateDurationSec) <= TOKEN_OVERLAP_DURATION_TOLERANCE_SEC
+            val credited = isCreditedTo(track.artist, artistsOf(candidate))
+            val explicitBonus = if (explicitOf(candidate)) 0.2 else 0.0
+            val score = textSim + (if (durationOk) 0.6 else 0.0) + (if (credited) 0.5 else 0.0) + explicitBonus + titleSim * 0.3
+            val accepted = titleSim >= 0.5 && (durationOk || titleSim >= 0.6 || textSim >= 0.55)
+            if (accepted && score > bestScore) {
+                best = candidate
+                bestScore = score
+                bestTitleSim = titleSim
+            }
+        }
+
+        val accepted = best ?: return null
+        return CandidateDecision(
+            accepted = accepted,
+            score = bestScore,
+            reason = "token overlap titleSimilarity=$bestTitleSim",
+        )
+    }
+
+    fun hasArtistEvidence(
+        trackArtists: List<String>,
+        candidateTitle: String,
+        candidateArtists: List<String>,
+    ): Boolean {
+        val parts = trackArtists.flatMap { ArtistMatching.artistParts(it) }.distinct()
+        if (parts.isEmpty()) return true
+        val compactArtists =
+            candidateArtists
+                .flatMap { ArtistMatching.artistParts(it) + compact(it) }
+                .filter { it.length >= 2 }
+        val compactTitle = compact(candidateTitle)
+        return parts.any { part ->
+            compactTitle.contains(part) ||
+                compactArtists.any { artist ->
+                    artist == part ||
+                        artist.contains(part) ||
+                        (artist.length >= 3 && part.contains(artist)) ||
+                        matcher.jaroWinklerSimilarity(part, artist) >= ARTIST_SIM_THRESHOLD
+                } ||
+                candidateArtists.any { isCrossScript(part, it) }
+        }
+    }
+
+    private fun isCreditedTo(
+        trackArtist: String,
+        candidateArtists: List<String>,
+    ): Boolean {
+        val wanted = ArtistMatching.artistParts(trackArtist).map(matcher::canonicalArtist).filter { it.isNotEmpty() }
+        return candidateArtists.map(::cleanArtist).any { credited ->
+            wanted.any { credited == it || matcher.jaroWinklerSimilarity(credited, it) >= CREDITED_ARTIST_SIM }
+        }
+    }
+
+    fun isPlausibleMatch(
+        trackTitle: String,
+        trackArtists: List<String>,
+        trackDurationSec: Long?,
+        candidateTitle: String,
+        candidateArtists: List<String>,
+        candidateDurationSec: Long?,
+        trackExplicit: Boolean = false,
+        candidateExplicit: Boolean? = null,
+    ): Boolean {
+        if (trackExplicit && candidateExplicit == false) return false
+        val artistKnown = candidateArtists.any { it.isNotBlank() }
+        if (artistKnown && !hasArtistEvidence(trackArtists, candidateTitle, candidateArtists)) return false
+        if (versionConflict(trackTitle, candidateTitle)) return false
+        if (!VERSION_UPLOAD_WORDS.containsMatchIn(trackTitle) && VERSION_UPLOAD_WORDS.containsMatchIn(candidateTitle)) return false
+        val sameLength =
+            trackDurationSec != null &&
+                candidateDurationSec != null &&
+                trackDurationSec > 0 &&
+                candidateDurationSec > 0 &&
+                abs(trackDurationSec - candidateDurationSec) <= DUR_TOLERANCE_SEC
+        return sameLength || titlesResemble(trackTitle, candidateTitle)
+    }
+
+    private fun titlesResemble(
+        trackTitle: String,
+        candidateTitle: String,
+    ): Boolean {
+        val left = compact(matcher.canonicalTitle(trackTitle))
+        val right = compact(matcher.canonicalTitle(candidateTitle))
+        if (left.isEmpty() || right.isEmpty()) return false
+        if (left == right) return true
+        return matcher.tokenSimilarity(trackTitle, candidateTitle) >= STORED_TITLE_TOKEN_SIM ||
+            effectiveTitleSim(trackTitle, candidateTitle) >= TITLE_SIM_THRESHOLD
+    }
+
+    private fun compact(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
+
+    private fun stripArtists(
+        candidateTitle: String,
+        trackArtist: String,
+    ): String =
+        trackArtist
+            .split(ArtistMatching.ARTIST_PART_SEPARATOR)
+            .map(String::trim)
+            .filter { it.length >= 2 }
+            .fold(candidateTitle) { title, artist ->
+                title.replace(Regex(Regex.escape(artist), RegexOption.IGNORE_CASE), " ")
+            }.replace(EDGE_SEPARATORS, "")
+            .trim()
 
     fun passesGeneric(
         track: TrackQuery,
@@ -196,7 +342,7 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val b = candName.lowercase()
         return VERSION_TOKENS.any { token ->
             containsWord(a, token) != containsWord(b, token)
-        }
+        } || KARAOKE_MARKERS.containsMatchIn(a) != KARAOKE_MARKERS.containsMatchIn(b)
     }
 
     private fun containsWord(haystack: String, token: String): Boolean {
@@ -228,9 +374,26 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         const val DUR_TOLERANCE_SEC = 5L
         const val TITLE_SIM_THRESHOLD = 0.92
         const val ARTIST_SIM_THRESHOLD = 0.85
+        const val CREDITED_ARTIST_SIM = 0.92
+        const val STORED_TITLE_TOKEN_SIM = 0.5
         const val AMBIGUOUS_TITLE_SIM = 0.02
         const val AMBIGUOUS_DUR_SEC = 2L
         const val SAME_RECORDING_DUR_SEC = 2L
+        const val TOKEN_OVERLAP_DURATION_TOLERANCE_SEC = 3.0
+
+        private val EDGE_SEPARATORS = Regex("""^[\s\-–—|:~]+|[\s\-–—|:~]+$""")
+
+        val VERSION_UPLOAD_WORDS =
+            Regex(
+                """\b(remix|sped[ -]?up|slowed|nightcore|reverb|8d|bass[ -]?boost(ed)?|cover|flip|mashup|instrumental|karaoke|loop|bootleg)\b""",
+                RegexOption.IGNORE_CASE,
+            )
+
+        val KARAOKE_MARKERS =
+            Regex(
+                """no guide melody|guide melody|off[ -]?vocal|backing track|originally performed|in the style of|カラオケ|オフボーカル|オフ・ボーカル|インスト|原曲歌手|ガイドメロディ""",
+                RegexOption.IGNORE_CASE,
+            )
 
         val VERSION_TOKENS = listOf(
             "live", "concert", "unplugged", "session", "acoustic", "instrumental",
@@ -238,6 +401,8 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
             "nightcore", "cover", "remix", "rework", "edit", "radio edit",
             "extended", "demo", "mono", "re-recorded", "rerecorded",
             "taylor's version", "commentary", "mtv",
+            "piano", "lofi", "lo-fi", "tribute", "orchestral", "violin", "tutorial",
+            "clean", "clean version", "edited",
         )
     }
 }

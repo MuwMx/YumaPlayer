@@ -74,8 +74,8 @@ Example:
 - **Do not touch:** `onCreate` ordering (player -> session -> `ensureStartedAsForeground` -> DataStore collect) remains fragile; reordering throws `ForegroundServiceStartNotAllowedException` or drops the queue. Audio effects transfer on crossfade handoff must remain atomic.
 - **Remaining task:** Compact the remaining ~800 lines of `MusicService.kt` down to a pure 150-200 line lifecycle coordinator by inlining remaining proxy getters directly to the holders.
 
-### B2. `MusicDatabase.kt` Room facade (v36)
-- **Path:** `database/src/main/kotlin/moe/rukamori/archivetune/db/MusicDatabase.kt` (1183 lines, `CURRENT_VERSION=36`), `database/src/main/kotlin/moe/rukamori/archivetune/db/entities/` (33 files)
+### B2. `MusicDatabase.kt` Room facade (v38)
+- **Path:** `database/src/main/kotlin/moe/rukamori/archivetune/db/MusicDatabase.kt` (1183 lines, `CURRENT_VERSION=38`), `database/src/main/kotlin/moe/rukamori/archivetune/db/entities/` (33 files)
 - **Debt:** Wrapper over `InternalDatabase` with `query{}` / `transaction{}` on fixed 4+4 pools, `UniversalMigration` via in-memory `expectedDb + SchemaTools.reconcileDatabase`, `fallbackToDestructiveMigration`, `PRAGMA` tuning, `cleanupDuplicatePlaylistsOnOpen` with raw SQL in `onOpen`, and `MIGRATION_1_2` with a manual SimpMusic schema port. Every schema deviation is healed by drop and recreate.
 - **Do not touch:** Editing `reconcileDatabase` / `ensureTableSchema` destroys the user library; `fallbackToDestructiveMigration` hides migration errors.
 - **Refactor criterion:** Pin a schema snapshot (`schemas/`) with tests, remove the destructive fallback, and cover migrations 33→36 with autotests on real `.db` files.
