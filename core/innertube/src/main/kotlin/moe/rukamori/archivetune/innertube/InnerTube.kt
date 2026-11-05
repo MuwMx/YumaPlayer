@@ -30,6 +30,7 @@ import moe.rukamori.archivetune.innertube.models.response.NextResponse
 import moe.rukamori.archivetune.innertube.proxy.RotatingProxySelector
 import moe.rukamori.archivetune.innertube.utils.sha1
 import moe.rukamori.archivetune.innertube.utils.youtubeLoginCookieValue
+import okhttp3.Dispatcher
 import okhttp3.Dns
 import java.io.IOException
 import java.net.Proxy
@@ -158,6 +159,12 @@ class InnerTube {
             engine {
                 config {
                     dns(this@InnerTube.dns)
+                    dispatcher(
+                        Dispatcher().apply {
+                            maxRequests = 64
+                            maxRequestsPerHost = 16
+                        },
+                    )
                     val sel = this@InnerTube.proxySelector
                     if (sel != null) {
                         // Priority: rotating proxy selector takes precedence over fixed proxy settings.
