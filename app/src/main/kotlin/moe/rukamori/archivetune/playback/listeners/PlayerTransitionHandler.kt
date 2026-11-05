@@ -42,6 +42,8 @@ import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.playback.queue.buildAppendShuffleOrder
+import moe.rukamori.archivetune.playback.queue.songsLeftInPlayOrder
 import timber.log.Timber
 
 @OptIn(UnstableApi::class)
@@ -127,7 +129,10 @@ internal class PlayerTransitionHandler(
                     if (loadedItems.isNotEmpty()) {
                         if (player.playbackState != STATE_IDLE) {
                             val wasEndedImmediatelyBeforeMutation = player.playbackState == STATE_ENDED && player.playWhenReady
+                            val shuffleOrder =
+                                if (player.shuffleModeEnabled) buildAppendShuffleOrder(player.currentTimeline, loadedItems.size) else null
                             player.addMediaItems(loadedItems)
+                            shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
                             if (wasEndedImmediatelyBeforeMutation) {
                                 player.seekToNext()
                                 player.prepare()
@@ -226,7 +231,8 @@ internal class PlayerTransitionHandler(
             // No redundant seeding update check.
         }
 
-        val remainingTracks = player.mediaItemCount - player.currentMediaItemIndex
+        val remainingTracks =
+            songsLeftInPlayOrder(player.currentTimeline, player.currentMediaItemIndex, player.shuffleModeEnabled, limit = 6)
         val currentQ = queueDelegate.currentQueue
 
         val shouldPage = if (currentQ.isContextQueue) true else dataStore.get(AutoLoadMoreKey, true)
@@ -238,7 +244,7 @@ internal class PlayerTransitionHandler(
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF
         ) {
-            if (remainingTracks <= 5 && (currentQ.hasNextPage() || currentQ.hasPendingContextItems)) {
+            if (remainingTracks in 1..5 && (currentQ.hasNextPage() || currentQ.hasPendingContextItems)) {
                 triggerPagination(isPlaybackEnded = false)
             }
         }
@@ -249,12 +255,12 @@ internal class PlayerTransitionHandler(
             dataStore.get(AutoLoadMoreKey, true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF &&
-            player.mediaItemCount - player.currentMediaItemIndex <= 3 &&
+            remainingTracks in 1..3 &&
             !currentQ.hasNextPage() &&
             !currentQ.isContextQueue
         ) {
             scope.launch(SilentHandler) {
-                if (queueDelegate.suppressAutoPlayback || player.mediaItemCount == 0) return@launch
+                if (queueDelegate.suppressAutoPlayback || queueDelegate.isInitializingQueue || player.mediaItemCount == 0) return@launch
                 if (queueDelegate.currentQueue !== currentQ) return@launch
 
                 val currentMediaMetadata = player.currentMetadata ?: return@launch
@@ -264,14 +270,16 @@ internal class PlayerTransitionHandler(
                 try {
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMediaId), followAutomixPreview = true)
                     val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
-                    if (!isActive) return@launch
+                    if (!isActive || queueDelegate.isInitializingQueue) return@launch
                     if (queueDelegate.currentQueue !== currentQ) return@launch
 
                     val queueIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
                     val newItems = status.items.filter { it.mediaId !in queueIds }
 
                     if (newItems.isNotEmpty()) {
+                        val shuffleOrder = if (player.shuffleModeEnabled) buildAppendShuffleOrder(player.currentTimeline, newItems.size) else null
                         player.addMediaItems(newItems)
+                        shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
                         newItems.forEach { queueDelegate.autoAddedMediaIds.add(it.mediaId) }
                     }
                     queueDelegate.currentQueue = radioQueue
@@ -282,11 +290,12 @@ internal class PlayerTransitionHandler(
         }
 
         if (!queueDelegate.suppressAutoPlayback &&
+            !queueDelegate.isInitializingQueue &&
             !timelineEmpty &&
             dataStore.get(AutoLoadMoreKey, true) &&
             reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
             player.repeatMode == REPEAT_MODE_OFF &&
-            remainingTracks <= 3 &&
+            remainingTracks in 1..3 &&
             !currentQ.hasNextPage() &&
             !currentQ.isContextQueue
         ) {
