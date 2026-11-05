@@ -39,6 +39,7 @@ import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
@@ -262,7 +263,8 @@ internal class PlayerTransitionHandler(
                 if (metadataDelegate.isCurrentPlaybackItemLocal(currentMediaMetadata)) return@launch
 
                 try {
-                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMediaId), followAutomixPreview = true)
+                    val seedId = SpotifyPlaceholders.youtubeIdFor(currentMediaId)
+                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedId), followAutomixPreview = true)
                     val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
                     if (!isActive) return@launch
                     if (queueDelegate.currentQueue !== currentQ) return@launch

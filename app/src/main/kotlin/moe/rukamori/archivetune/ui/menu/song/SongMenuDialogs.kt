@@ -39,6 +39,9 @@ import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
 import moe.rukamori.archivetune.ui.utils.resize
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import moe.rukamori.archivetune.db.MusicDatabase
 
 internal data class SongMenuSplitArtist(
     val name: String,
@@ -126,12 +129,16 @@ internal fun SongMenuErrorDialog(
 @Composable
 internal fun SongMenuSelectArtistDialog(
     isVisible: Boolean,
+    songId: String,
     splitArtists: List<SongMenuSplitArtist>,
+    database: MusicDatabase,
     navController: NavController,
     onDismiss: () -> Unit,
     onDismissMenu: () -> Unit,
 ) {
     if (!isVisible) return
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     ListDialog(onDismiss = onDismiss) {
         items(
             items = splitArtists.distinctBy { it.name },
@@ -161,9 +168,10 @@ internal fun SongMenuSelectArtistDialog(
                         .fillMaxWidth()
                         .clickable {
                             splitArtist.originalArtist?.let { artist ->
-                                navController.navigate("artist/${artist.id}")
-                                onDismiss()
-                                onDismissMenu()
+                                openArtistPage(scope, context, database, navController, songId, artist) {
+                                    onDismiss()
+                                    onDismissMenu()
+                                }
                             }
                         },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),

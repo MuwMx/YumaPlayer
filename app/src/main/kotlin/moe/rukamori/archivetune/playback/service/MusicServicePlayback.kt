@@ -15,8 +15,10 @@ import android.content.Intent
 import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -42,12 +44,14 @@ import moe.rukamori.archivetune.playback.resolvers.resolveFlacPlaybackDataSpec
 import moe.rukamori.archivetune.playback.resolvers.resolveFromMemoryUrlPolicy
 import moe.rukamori.archivetune.playback.resolvers.resolveYtPlaybackResponse
 import moe.rukamori.archivetune.playback.resolvers.shouldBypassFlac
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamUrlCache
 import moe.rukamori.archivetune.utils.get
 import timber.log.Timber
+import java.io.InterruptedIOException
 
 internal fun MusicService.resolvePlaybackDataSpec(
     dataSpec: DataSpec,
@@ -55,6 +59,27 @@ internal fun MusicService.resolvePlaybackDataSpec(
 ): DataSpec {
     if (dataSpec.uri.shouldBypassYouTubeResolver()) return dataSpec
     val mediaId = extractMediaIdFromCacheKey(dataSpec.key ?: return dataSpec)
+    if (SpotifyPlaceholders.isPlaceholder(mediaId)) {
+        val youtubeId =
+            try {
+                SpotifyPlaceholders.resolveBlocking(mediaId, database)?.id
+            } catch (e: InterruptedException) {
+                throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
+            } catch (e: CancellationException) {
+                throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
+            } ?: run {
+                SpotifyPlaceholders.markUnmatched(mediaId)
+                throw PlaybackException(
+                    "No YouTube match for $mediaId",
+                    null,
+                    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+                )
+            }
+        return resolvePlaybackDataSpec(
+            dataSpec = dataSpec.buildUpon().setUri(youtubeId).setKey(youtubeId).build(),
+            allowCacheShortCircuit = allowCacheShortCircuit,
+        )
+    }
     val startTime = android.os.SystemClock.elapsedRealtime()
 
     Timber.tag("PlaybackTiming").i("[$mediaId] START resolvePlaybackDataSpec (allowCache=$allowCacheShortCircuit)")

@@ -36,6 +36,8 @@ desugaring = "2.1.5"
 mockk = "1.13.8"
 leakCanary = "2.14"
 junit = "4.13.2"
+androidxTestRunner = "1.6.2"
+androidxTestExtJunit = "1.2.1"
 turbine = "1.2.1"
 timber = "5.0.1"
 kuromojiIpadic = "0.9.0"
@@ -119,6 +121,7 @@ mediarouter = { module = "androidx.mediarouter:mediarouter", version = "1.8.1" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 
 apache-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "apacheLang3" }
 
@@ -153,6 +156,8 @@ quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjsKt"
 desugaring = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugaring" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }

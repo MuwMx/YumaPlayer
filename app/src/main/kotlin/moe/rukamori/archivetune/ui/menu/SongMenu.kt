@@ -148,7 +148,9 @@ fun SongMenu(
 
     SongMenuSelectArtistDialog(
         isVisible = showSelectArtistDialog,
+        songId = song.id,
         splitArtists = splitArtists,
+        database = database,
         navController = navController,
         onDismiss = { showSelectArtistDialog = false },
         onDismissMenu = onDismiss,

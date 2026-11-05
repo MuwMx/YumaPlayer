@@ -297,9 +297,7 @@ internal class PlayerStateHandler(
     ) {
         if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
             metadataDelegate.cancelPrefetch()
-            if (player.isPlaying) {
-                metadataDelegate.prefetchAround(player.currentMediaItemIndex)
-            }
+            metadataDelegate.prefetchAround(player.currentMediaItemIndex)
         }
     }
 
