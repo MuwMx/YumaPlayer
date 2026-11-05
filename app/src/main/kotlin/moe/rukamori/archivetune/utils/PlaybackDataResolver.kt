@@ -56,7 +56,8 @@ object PlaybackDataResolver {
     suspend fun playerResponseForPlayback(
         videoId: String, playlistId: String? = null, audioQuality: AudioQuality, connectivityManager: ConnectivityManager,
         preferredStreamClient: PlayerStreamClient = PlayerStreamClient.ANDROID_VR, networkMetered: Boolean? = null,
-    ): Result<PlaybackData> = PlaybackStreamFetcher.playerResponseForPlayback(videoId, playlistId, audioQuality, connectivityManager, preferredStreamClient, networkMetered)
+        pinnedFormat: PinnedStreamFormat? = null,
+    ): Result<PlaybackData> = PlaybackStreamFetcher.playerResponseForPlayback(videoId, playlistId, audioQuality, connectivityManager, preferredStreamClient, networkMetered, pinnedFormat)
 
     suspend fun playerResponseForDownload(
         videoId: String, playlistId: String? = null, audioQuality: AudioQuality, connectivityManager: ConnectivityManager, networkMetered: Boolean? = null,

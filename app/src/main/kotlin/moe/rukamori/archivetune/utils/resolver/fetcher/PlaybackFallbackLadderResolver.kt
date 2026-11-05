@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils.LoginRequiredForPlaybackExce
 import moe.rukamori.archivetune.utils.YTPlayerUtils.PlaybackData
 import moe.rukamori.archivetune.utils.getPlaybackPlayerResponseOrNull
 import moe.rukamori.archivetune.utils.resolver.PlaybackAuthCoordinator
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 import moe.rukamori.archivetune.utils.resolver.PlaybackClientSelector
 import moe.rukamori.archivetune.utils.resolver.PlaybackStreamUrlDecipher
 import timber.log.Timber
@@ -39,6 +40,7 @@ internal object PlaybackFallbackLadderResolver {
         connectivityManager: ConnectivityManager,
         preferredStreamClient: PlayerStreamClient,
         networkMetered: Boolean?,
+        pinnedFormat: PinnedStreamFormat?,
     ): PlaybackData {
         Timber.tag(TAG).i("Fetching player response for videoId: $videoId, playlistId: $playlistId")
         val fetchAttemptId = if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
@@ -82,6 +84,7 @@ internal object PlaybackFallbackLadderResolver {
                     audioQuality = audioQuality,
                     connectivityManager = connectivityManager,
                     networkMetered = networkMetered,
+                    pinnedFormat = pinnedFormat,
                     signatureTimestamp = null,
                     authState = authState,
                     canUseLoggedInPlayback = canUseLoggedInPlayback,
@@ -350,6 +353,7 @@ internal object PlaybackFallbackLadderResolver {
                     streamPlayerResponse = streamPlayerResponse,
                     audioQuality = audioQuality,
                     isMetered = isMetered,
+                    pinnedFormat = pinnedFormat,
                     canUseLoggedInPlayback = canUseLoggedInPlayback,
                     expectedDurationMs = expectedDurationMs,
                     authState = authState,

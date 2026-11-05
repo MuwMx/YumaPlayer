@@ -39,8 +39,9 @@ object PlaybackStreamFetcher {
         preferredStreamClient: PlayerStreamClient = PlayerStreamClient.ANDROID_VR,
         // if provided, this preference overrides ConnectivityManager.isActiveNetworkMetered
         networkMetered: Boolean? = null,
+        pinnedFormat: PinnedStreamFormat? = null,
     ): Result<PlaybackData> {
-        val coalesceKey = "$videoId:$audioQuality"
+        val coalesceKey = "$videoId:$audioQuality:${pinnedFormat?.itag}"
         val deferred = CompletableDeferred<Result<PlaybackData>>()
         val existing = inFlightRequests.putIfAbsent(coalesceKey, deferred)
         if (existing != null) {
@@ -56,6 +57,7 @@ object PlaybackStreamFetcher {
                     connectivityManager = connectivityManager,
                     preferredStreamClient = preferredStreamClient,
                     networkMetered = networkMetered,
+                    pinnedFormat = pinnedFormat,
                 )
             deferred.complete(result)
             result
@@ -77,6 +79,7 @@ object PlaybackStreamFetcher {
         connectivityManager: ConnectivityManager,
         preferredStreamClient: PlayerStreamClient,
         networkMetered: Boolean?,
+        pinnedFormat: PinnedStreamFormat?,
     ): Result<PlaybackData> {
         return try {
             val attempts =
@@ -100,6 +103,7 @@ object PlaybackStreamFetcher {
                                 connectivityManager = connectivityManager,
                                 preferredStreamClient = preferredStreamClient,
                                 networkMetered = networkMetered,
+                                pinnedFormat = pinnedFormat,
                             )
                         )
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -128,6 +132,7 @@ object PlaybackStreamFetcher {
                                     connectivityManager = connectivityManager,
                                     preferredStreamClient = preferredStreamClient,
                                     networkMetered = networkMetered,
+                                    pinnedFormat = pinnedFormat,
                                 )
                             )
                         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -234,6 +239,7 @@ object PlaybackStreamFetcher {
         connectivityManager: ConnectivityManager,
         preferredStreamClient: PlayerStreamClient,
         networkMetered: Boolean?,
+        pinnedFormat: PinnedStreamFormat? = null,
     ): PlaybackData {
         return PlaybackFallbackLadderResolver.resolve(
             videoId = videoId,
@@ -242,6 +248,7 @@ object PlaybackStreamFetcher {
             connectivityManager = connectivityManager,
             preferredStreamClient = preferredStreamClient,
             networkMetered = networkMetered,
+            pinnedFormat = pinnedFormat,
         )
     }
 

@@ -32,6 +32,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 import timber.log.Timber
 
 internal fun formatIdForSource(mediaId: String, source: PlaybackSource): String =
@@ -78,6 +79,17 @@ internal suspend fun MusicDatabase.getFormatForSource(
     if (scoped != null) return scoped
     val legacy = format(mediaId).firstOrNull()
     return legacy?.takeIf { it.matchesSource(source) }
+}
+
+internal fun MusicService.pinnedStreamFormat(videoId: String): PinnedStreamFormat? {
+    val hasCachedBytes =
+        listOf(ytStreamCacheKey(videoId), legacyDataKey(videoId, PlaybackSource.YT_MUSIC)).any { key ->
+            downloadCache.getCachedSpans(key).isNotEmpty() || playerCache.getCachedSpans(key).isNotEmpty()
+        }
+    if (!hasCachedBytes) return null
+    val format = database.getFormatById(formatIdForSource(videoId, PlaybackSource.YT_MUSIC)) ?: return null
+    if (!format.matchesSource(PlaybackSource.YT_MUSIC)) return null
+    return PinnedStreamFormat(itag = format.itag, contentLength = format.contentLength)
 }
 
 internal fun MusicService.persistPlaybackFormat(

@@ -14,6 +14,7 @@ import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 
 /**
  * Playback facade coordinating URL caching, stream resolution, and error mapping:
@@ -147,6 +148,7 @@ object YTPlayerUtils {
         preferredStreamClient: PlayerStreamClient = PlayerStreamClient.ANDROID_VR,
         // if provided, this preference overrides ConnectivityManager.isActiveNetworkMetered
         networkMetered: Boolean? = null,
+        pinnedFormat: PinnedStreamFormat? = null,
     ): Result<PlaybackData> =
         PlaybackDataResolver.playerResponseForPlayback(
             videoId = videoId,
@@ -155,6 +157,7 @@ object YTPlayerUtils {
             connectivityManager = connectivityManager,
             preferredStreamClient = preferredStreamClient,
             networkMetered = networkMetered,
+            pinnedFormat = pinnedFormat,
         )
 
     suspend fun playerResponseForDownload(

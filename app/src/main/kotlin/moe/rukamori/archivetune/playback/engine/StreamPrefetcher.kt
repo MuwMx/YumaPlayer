@@ -46,6 +46,7 @@ import moe.rukamori.archivetune.playback.resolvers.toYouTubeWatchUrl
 import moe.rukamori.archivetune.utils.StreamUrlCache as YouTubeStreamUrlCache
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.resolver.PinnedStreamFormat
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
@@ -80,6 +81,7 @@ internal class StreamPrefetcher(
         fun getMediaItemAt(index: Int): MediaItem?
         val connectivityManager: ConnectivityManager?; fun isLowDataModeActive(): Boolean; fun isTrackFullyCached(mediaId: String): Boolean
         fun isSourceFullyCached(mediaId: String, source: PlaybackSource): Boolean
+        fun pinnedStreamFormat(mediaId: String): PinnedStreamFormat?
         val isLowDataEnabled: Boolean; val currentPlaybackSource: PlaybackSource; val preferredStreamClient: PlayerStreamClient
         val audioQuality: AudioQuality; val enableMemoryCache: Boolean
         val database: MusicDatabase; val streamingExtractionManager: StreamingExtractionManager
@@ -222,7 +224,7 @@ internal class StreamPrefetcher(
                             targetCacheKey = ytStreamCacheKey(mediaId)
                         } else {
                             val res = delegate.context.retryWithoutPlaybackLoginContext {
-                                YTPlayerUtils.playerResponseForPlayback(mediaId, null, if (bypassFlac) AudioQuality.LOW else quality, cm, streamClient, isMetered)
+                                YTPlayerUtils.playerResponseForPlayback(mediaId, null, if (bypassFlac) AudioQuality.LOW else quality, cm, streamClient, isMetered, delegate.pinnedStreamFormat(mediaId))
                             }.getOrNull()
                             if (res != null) {
                                 if (targetGeneration != prefetchTimelineGeneration.get() || !isActive) return@launch

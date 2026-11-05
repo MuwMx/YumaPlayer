@@ -31,6 +31,7 @@ internal fun MusicService.resolveYtPlaybackResponse(
                     connectivityManager = connectivityManager,
                     preferredStreamClient = preferredStreamClient,
                     networkMetered = isMeteredConnection,
+                    pinnedFormat = pinnedStreamFormat(mediaId),
                 )
             }.recoverCatching { youtubeFailure ->
                 if (youtubeFailure !is YTPlayerUtils.BotDetectionPlaybackException) throw youtubeFailure
