@@ -229,7 +229,7 @@
     <string name="palette_magenta_pop">Magenta</string>
     <string name="palette_hot_pink">Hot Pink</string>
     <string name="palette_blush">Merona</string>
-    <string name="palette_coral">Karang</string>
+    <string name="palette_coral">Koral</string>
     <string name="palette_bubblegum">Permen Karet</string>
     <string name="palette_crimson_red">Crimson</string>
     <string name="palette_youtube_red">YouTube</string>
@@ -1261,4 +1261,24 @@
     <string name="release_notes_section_build_ci">Versi / CI</string>
     <string name="home_background_none">Tidak ada</string>
     <string name="home_background_lava">Lampu Lava</string>
+    <string name="canvas_better_lyrics">BetterLyrics</string>
+    <string name="canvas_apple_music">Apple Music</string>
+    <string name="canvas_tidal">TIDAL</string>
+    <string name="canvas_health_offline">Offline</string>
+    <string name="canvas_enable">Gunakan Kanvas</string>
+    <string name="canvas_source_all">Semua</string>
+    <string name="canvas_source_all_desc">Coba BetterLyrics, Apple Music, lalu TIDAL</string>
+    <string name="canvas_health_available">Tersedia</string>
+    <string name="canvas_health_unavailable">Tidak tersedia</string>
+    <string name="canvas_health_checking">Memeriksa…</string>
+    <string name="canvas_settings_subtitle">Sumber dan cache pemutaran</string>
+    <string name="canvas_source">Sumber Kanvas</string>
+    <string name="canvas_provider_health">Status penyedia</string>
+    <string name="canvas_health_not_selected">Tidak dipilih</string>
+    <string name="canvas_health_not_checked">Belum diperiksa</string>
+    <string name="canvas_health_disabled">Kanvas nonaktif</string>
+    <string name="canvas_cache_desc">Video yang disimpan dapat diputar secara offline. Entri terlama akan dihapus saat cache penuh.</string>
+    <string name="canvas_settings_load_failed">Tidak dapat memuat pengaturan Kanvas</string>
+    <string name="canvas_settings_update_failed">Tidak dapat memperbarui pengaturan Kanvas</string>
+    <string name="login_browser">Browser web</string>
 </resources>
