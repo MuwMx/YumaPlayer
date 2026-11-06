@@ -36,8 +36,11 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.constants.BlurNavBarKey
+import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -73,8 +76,11 @@ internal fun HeroCarousel(
 
     val context = LocalContext.current
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
-    val edgeBlur = !disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val (blurNavBar) = rememberPreference(BlurNavBarKey, true)
+    val (blurRadius) = rememberPreference(BlurRadiusKey, SettingsDimensions.BlurRadiusDefault)
     val animationsDisabled = LocalAnimationsDisabled.current
+    val edgeBlur = blurNavBar && !disableBlur && !animationsDisabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val blurFactor = (blurRadius / SettingsDimensions.BlurRadiusDefault).coerceIn(0.1f, 3.0f)
 
     val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
     var userSwipe by remember { mutableStateOf(false) }
@@ -138,6 +144,7 @@ internal fun HeroCarousel(
                         wipeCurve = wipeCurveProvider,
                         isResultPlaying = isPlaying && rollState.result != null && mediaMetadata?.id == rollState.result?.id,
                         edgeBlur = edgeBlur,
+                        blurFactor = blurFactor,
                         isCarouselActive = isCarouselActive,
                         animationsDisabled = animationsDisabled,
                         onRoll = onRoll,
@@ -153,6 +160,7 @@ internal fun HeroCarousel(
                         wipeCurve = wipeCurveProvider,
                         isThisPlaying = isPlaying && mediaMetadata?.id == displayItem.item.id,
                         edgeBlur = edgeBlur,
+                        blurFactor = blurFactor,
                         onPrimaryClick = { onTrackClick(displayItem.item.id) },
                         onLongClick = { onTrackLongClick(displayItem.item.id) },
                         modifier = Modifier.fillMaxSize(),

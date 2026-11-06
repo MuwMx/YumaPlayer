@@ -64,6 +64,7 @@ internal fun HeroMediaCard(
     wipeCurve: () -> Float,
     isThisPlaying: Boolean,
     edgeBlur: Boolean,
+    blurFactor: Float = 1f,
     onPrimaryClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,6 +84,7 @@ internal fun HeroMediaCard(
         pageOffset = pageOffset,
         curve = wipeCurve,
         blur = edgeBlur,
+        blurFactor = blurFactor,
         modifier = modifier.combinedClickable(
             onClick = onPrimaryClick,
             onLongClick = onLongClick,
@@ -96,6 +98,7 @@ internal fun HeroMediaCard(
                     scrollProgress = scrollProgress,
                     animationsDisabled = animationsDisabled,
                     edgeBlur = edgeBlur,
+                    blurFactor = blurFactor,
                 ),
         ) {
             Box(
@@ -125,13 +128,13 @@ internal fun HeroMediaCard(
                     mediaLayer = mediaLayer,
                     atTop = true,
                     heightFraction = HeroCarouselTokens.TopBlurHeightFraction,
-                    radius = HeroCarouselTokens.TopBlurRadius,
+                    radius = HeroCarouselTokens.TopBlurRadius * blurFactor,
                 )
                 HeroBlurBand(
                     mediaLayer = mediaLayer,
                     atTop = false,
                     heightFraction = HeroCarouselTokens.BottomBlurHeightFraction,
-                    radius = HeroCarouselTokens.BottomBlurRadius,
+                    radius = HeroCarouselTokens.BottomBlurRadius * blurFactor,
                 )
             }
 

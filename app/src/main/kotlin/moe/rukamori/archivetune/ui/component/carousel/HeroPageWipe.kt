@@ -39,10 +39,11 @@ internal fun HeroPageWipe(
     pageOffset: () -> Float,
     curve: () -> Float,
     blur: Boolean,
+    blurFactor: Float = 1f,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val blurPx = if (blur) with(LocalDensity.current) { HeroCarouselTokens.PageSwitchBlur.toPx() } else 0f
+    val blurPx = if (blur) with(LocalDensity.current) { (HeroCarouselTokens.PageSwitchBlur * blurFactor).toPx() } else 0f
     val pageLayer = rememberGraphicsLayer()
     val sourceEdge = remember { PageWipeEdge() }
 

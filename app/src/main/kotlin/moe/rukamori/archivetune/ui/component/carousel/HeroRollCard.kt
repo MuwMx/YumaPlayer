@@ -58,6 +58,7 @@ internal fun HeroRollCard(
     wipeCurve: () -> Float,
     isResultPlaying: Boolean,
     edgeBlur: Boolean,
+    blurFactor: Float = 1f,
     isCarouselActive: Boolean,
     animationsDisabled: Boolean,
     onRoll: () -> Unit,
@@ -73,6 +74,7 @@ internal fun HeroRollCard(
         pageOffset = pageOffset,
         curve = wipeCurve,
         blur = edgeBlur,
+        blurFactor = blurFactor,
         modifier = modifier,
     ) {
         BoxWithConstraints(

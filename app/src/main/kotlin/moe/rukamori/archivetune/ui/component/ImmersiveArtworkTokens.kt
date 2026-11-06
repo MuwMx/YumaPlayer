@@ -52,6 +52,7 @@ internal fun Modifier.heroScrollCoverMotion(
     scrollProgress: () -> Float,
     animationsDisabled: Boolean,
     edgeBlur: Boolean,
+    blurFactor: Float = 1f,
 ): Modifier = this
     .graphicsLayer {
         val rawProgress = scrollProgress()
@@ -73,7 +74,7 @@ internal fun Modifier.heroScrollCoverMotion(
 
             if (edgeBlur) {
                 val soft = smoothstep(0f, ImmersiveArtworkTokens.ScrollCoverSoftBy, p)
-                val r = soft * ImmersiveArtworkTokens.ScrollCoverSoftRadius
+                val r = soft * ImmersiveArtworkTokens.ScrollCoverSoftRadius * blurFactor
                 renderEffect = if (r > 0.5f) {
                     BlurEffectCache.get(r, Shader.TileMode.CLAMP)
                 } else {
