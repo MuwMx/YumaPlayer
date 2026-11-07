@@ -61,6 +61,7 @@ object SettingsDimensions {
     // -- Segmented groups (settings list) ----------------------------------
     val SegmentedGroupHorizontalPadding = 16.dp
     val SegmentedItemGap = 1.5.dp
+    val SegmentGap = SegmentedItemGap
     val SegmentedCornerLarge = 22.dp
     val SegmentedCornerSmall = 5.dp
     val SegmentedItemMinHeight = 72.dp

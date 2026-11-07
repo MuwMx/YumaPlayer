@@ -2,19 +2,21 @@ package moe.rukamori.archivetune.ui.player.player_0.sheets
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -50,6 +52,11 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -109,7 +116,7 @@ internal fun PlayerArtistChoiceSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
             ) {
                 Box(
                     modifier = Modifier
@@ -124,12 +131,17 @@ internal fun PlayerArtistChoiceSheet(
                     text = stringResource(R.string.artists),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                 )
 
-                splitArtists.forEach { artist ->
+                splitArtists.forEachIndexed { index, artist ->
+                    if (index > 0) {
+                        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentGap))
+                    }
                     ArtistChoiceItem(
                         artist = artist,
+                        index = index,
+                        count = splitArtists.size,
                         onClick = {
                             artist.id?.let { id ->
                                 onArtistSelect(id)
@@ -146,6 +158,8 @@ internal fun PlayerArtistChoiceSheet(
 @Composable
 private fun ArtistChoiceItem(
     artist: MediaMetadata.Artist,
+    index: Int,
+    count: Int,
     onClick: () -> Unit,
 ) {
     val database = LocalDatabase.current
@@ -197,20 +211,41 @@ private fun ArtistChoiceItem(
 
     val displayThumbnail = avatarUrl ?: dbArtist?.artist?.thumbnailUrl ?: artist.thumbnailUrl
 
-    ListItem(
-        headlineContent = {
-            Text(
-                text = artist.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = FontWeight.Medium,
+    val shape = remember(index, count) {
+        val large = SettingsDimensions.SegmentedCornerLarge
+        val small = SettingsDimensions.SegmentedCornerSmall
+        when {
+            count <= 1 -> RoundedCornerShape(large)
+            index == 0 -> RoundedCornerShape(topStart = large, topEnd = large, bottomEnd = small, bottomStart = small)
+            index == count - 1 -> RoundedCornerShape(topStart = small, topEnd = small, bottomEnd = large, bottomStart = large)
+            else -> RoundedCornerShape(small)
+        }
+    }
+    val position = remember(index, count) { yumaSegmentPosition(index, count) }
+    val colors = LocalYumaColors.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .yumaClickable(onClick = onClick)
+            .yumaGlassCard(
+                shape = shape,
+                backgroundColor = colors.glassBackground,
+                borderColor = colors.glassBorder,
+                strokeWidth = SettingsDimensions.GlassBorderThickness,
+                position = position,
             )
-        },
-        leadingContent = {
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (displayThumbnail.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center,
@@ -228,15 +263,31 @@ private fun ArtistChoiceItem(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 )
             }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-    )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                text = artist.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                fontFamily = LocalArchiveTuneFontFamily.current,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_right),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
 }
