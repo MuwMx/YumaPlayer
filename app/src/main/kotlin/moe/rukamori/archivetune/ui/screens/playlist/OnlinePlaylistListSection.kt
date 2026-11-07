@@ -154,7 +154,7 @@ fun LazyListScope.onlinePlaylistHeaderItem(
     systemBarsTopPadding: Dp,
     actions: OnlinePlaylistActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
 ) {
     item(key = ONLINE_PLAYLIST_KEY_HEADER, contentType = CONTENT_TYPE_ONLINE_PLAYLIST_HEADER) {
         OnlinePlaylistHeroSection(

@@ -33,7 +33,7 @@ internal fun AlbumHeroHeader(
     systemBarsTopPadding: Dp,
     actions: AlbumActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {

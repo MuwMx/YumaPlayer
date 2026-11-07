@@ -19,7 +19,7 @@ fun LazyListScope.albumHeaderSection(
     systemBarsTopPadding: Dp,
     actions: AlbumActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     onArtistClick: (String) -> Unit,
 ) {
     item(key = ALBUM_KEY_HEADER, contentType = CONTENT_TYPE_ALBUM_HEADER) {

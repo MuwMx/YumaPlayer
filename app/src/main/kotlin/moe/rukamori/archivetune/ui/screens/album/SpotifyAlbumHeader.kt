@@ -57,7 +57,7 @@ internal fun SpotifyAlbumHeader(
     tracksCount: Int,
     systemBarsTopPadding: Dp,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     onPlayAll: () -> Unit,
     onShuffle: () -> Unit,
     modifier: Modifier = Modifier,

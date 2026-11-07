@@ -50,7 +50,7 @@ internal fun SpotifyPlaylistHeader(
     systemBarsTopPadding: Dp,
     hasTracks: Boolean,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     onReload: () -> Unit,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,

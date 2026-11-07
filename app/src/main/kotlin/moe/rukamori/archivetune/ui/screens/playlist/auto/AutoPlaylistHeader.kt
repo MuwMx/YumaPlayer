@@ -78,7 +78,7 @@ internal fun AutoPlaylistHeader(
     onProgressNavigate: () -> Unit,
     playerConnection: PlayerConnection,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     modifier: Modifier = Modifier,
     systemBarsTopPadding: Dp = WindowInsets.systemBars.asPaddingValues().calculateTopPadding(),
     likeLength: Int = songs.fastSumBy { it.song.duration },

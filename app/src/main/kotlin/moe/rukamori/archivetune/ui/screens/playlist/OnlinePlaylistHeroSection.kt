@@ -65,7 +65,7 @@ fun OnlinePlaylistHeroSection(
     systemBarsTopPadding: Dp,
     actions: OnlinePlaylistActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val hasArtwork = !playlist.thumbnail.isNullOrBlank()

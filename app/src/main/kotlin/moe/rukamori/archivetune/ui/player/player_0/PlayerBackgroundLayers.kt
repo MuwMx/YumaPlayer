@@ -80,7 +80,7 @@ fun PlayerBackgroundLayers(
     val isLayerOnScreen by remember {
         derivedStateOf { currentExpansionProvider() > 0.005f }
     }
-    
+
     val needsBlur by remember {
         derivedStateOf {
             val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)

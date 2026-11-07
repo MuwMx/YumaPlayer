@@ -106,7 +106,7 @@ fun LocalPlaylistHeroSection(
     downloadState: HeaderDownloadState,
     actions: LocalPlaylistActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val editable = playlist.playlist.isEditable
@@ -490,7 +490,7 @@ fun LazyListScope.localPlaylistHeroItem(
     downloadState: HeaderDownloadState,
     actions: LocalPlaylistActions,
     headerProgress: () -> Float,
-    disableBlur: Boolean,
+    disableBlur: Boolean = false,
 ) {
     item(key = LOCAL_PLAYLIST_KEY_HEADER, contentType = CONTENT_TYPE_LOCAL_PLAYLIST_HEADER) {
         LocalPlaylistHeroSection(
