@@ -577,6 +577,7 @@ class MusicService :
             toggleLike = ::toggleLike
             toggleStartRadio = ::toggleStartRadio
             toggleLibrary = ::toggleLibrary
+            moveInShuffleOrder = ::moveInShuffleOrderInternal
         }
         serviceSessionHolder.buildMediaLibrarySession(
             service = this,

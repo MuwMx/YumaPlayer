@@ -238,6 +238,17 @@ internal fun MusicService.clearAutomixInternal() =
 internal fun MusicService.clearQueueInternal() =
     queueManager.clearQueue()
 
+@OptIn(UnstableApi::class)
+internal fun MusicService.moveInShuffleOrderInternal(
+    fromIndex: Int,
+    toIndex: Int,
+): Boolean {
+    if (!player.shuffleModeEnabled) return false
+    val shuffleOrder = buildMovedShuffleOrder(player.currentTimeline, fromIndex, toIndex) ?: return false
+    localPlayer.setShuffleOrder(shuffleOrder)
+    return true
+}
+
 internal fun MusicService.onInfiniteQueueDisabledInternal() =
     queueManager.onInfiniteQueueDisabled()
 
