@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.ui.navigation.NavigationHost
 import moe.rukamori.archivetune.ui.player.host.PlayerOverlayHost
+import moe.rukamori.archivetune.ui.component.sheet.yumaSheetBackdropRecession
 import moe.rukamori.archivetune.ui.scaffold.ScaffoldNavigationRail
 import moe.rukamori.archivetune.ui.scaffold.ScaffoldSearchBarHost
 import moe.rukamori.archivetune.ui.scaffold.ScaffoldTopAppBar
@@ -191,13 +192,16 @@ fun ScaffoldShell(
                                 .then(
                                     if (scaffoldHazeState.effectiveSearchHazeState != null) Modifier.hazeSource(scaffoldHazeState.effectiveSearchHazeState) else Modifier,
                                 )
+                                .yumaSheetBackdropRecession(
+                                    progressProvider = {
+                                        val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
+                                        val menuProgress = if (disableAnimations) 0f else menuState.progressProvider().coerceIn(0f, 1f)
+                                        maxOf(playerProgress, menuProgress)
+                                    },
+                                    enabled = !disableAnimations,
+                                )
                                 .graphicsLayer {
                                     val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
-                                    val menuProgress = if (disableAnimations) 0f else menuState.progressProvider().coerceIn(0f, 1f)
-                                    val scaleProgress = maxOf(playerProgress, menuProgress)
-                                    val scale = 1f - 0.06f * scaleProgress
-                                    scaleX = scale
-                                    scaleY = scale
                                     alpha = if (playerProgress > 0.9f) ((1f - playerProgress) / 0.1f).coerceIn(0f, 1f) else 1f
                                 },
                             homeScrollConnection = appState.scrollController.homeScrollBehavior.nestedScrollConnection,
