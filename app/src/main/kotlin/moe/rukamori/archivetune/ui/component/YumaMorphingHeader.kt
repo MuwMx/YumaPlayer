@@ -54,6 +54,7 @@ fun YumaMorphingHeader(
     collapseFraction: Float,
     type: HeaderType,
     modifier: Modifier = Modifier,
+    disableBlur: Boolean = false,
     overlayContent: @Composable (BoxScope.() -> Unit)? = null
 ) {
     val density = LocalDensity.current
@@ -93,7 +94,7 @@ fun YumaMorphingHeader(
                     clip = true
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        if (fraction > 0.70f) {
+                        if (!disableBlur && fraction > 0.70f) {
                             val blurProgress = (fraction - 0.70f) / 0.30f
                             val blurRadius = lerp(0.1f, 40f, blurProgress)
                             renderEffect = android.graphics.RenderEffect.createBlurEffect(

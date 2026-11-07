@@ -112,6 +112,7 @@ fun FullPlayer(
                         toolbarTopInRoot = toolbarTopInRoot,
                         slideOffset = slideOffset,
                         queueFractionProvider = queueFractionProvider,
+                        lyricsFractionProvider = lyricsFractionProvider,
                         onAction = onAction,
                     )
                 },

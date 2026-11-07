@@ -80,6 +80,7 @@ fun ArtistMorphingHeader(
     imageUrl: String?,
     collapseFraction: Float,
     modifier: Modifier = Modifier,
+    disableBlur: Boolean = false,
 ) {
     if (imageUrl != null) {
         YumaMorphingHeader(
@@ -87,6 +88,7 @@ fun ArtistMorphingHeader(
             collapseFraction = collapseFraction,
             type = HeaderType.ARTIST,
             modifier = modifier,
+            disableBlur = disableBlur,
         )
     }
 }

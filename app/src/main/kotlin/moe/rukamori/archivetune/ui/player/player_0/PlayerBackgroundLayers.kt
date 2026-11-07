@@ -82,11 +82,27 @@ fun PlayerBackgroundLayers(
     }
     val needsBlur by remember {
         derivedStateOf {
-            (currentState.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
+            val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
+            val isLyricsFullyOpen = lyricsFraction >= 0.99f
+            (currentState.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen && !isLyricsFullyOpen
+        }
+    }
+    val needsGlow by remember {
+        derivedStateOf {
+            val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
+            val isLyricsFullyOpen = lyricsFraction >= 0.99f
+            currentState.isAlbumCoverGlowEnabled && !isLyricsFullyOpen
+        }
+    }
+    val needsImmersive by remember {
+        derivedStateOf {
+            val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
+            val isLyricsFullyOpen = lyricsFraction >= 0.99f
+            currentState.isImmersiveEnabled && !isOverlayVisible && !isLyricsFullyOpen
         }
     }
     val immersiveTransitionAlpha by animateFloatAsState(
-        targetValue = if (state.isImmersiveEnabled && !isOverlayVisible) 1f else 0f,
+        targetValue = if (needsImmersive) 1f else 0f,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "ImmersiveThemeTransition"
     )
@@ -111,7 +127,7 @@ fun PlayerBackgroundLayers(
     )
 
     val glowTransition by animateFloatAsState(
-        targetValue = if (state.isAlbumCoverGlowEnabled) 1f else 0f,
+        targetValue = if (needsGlow) 1f else 0f,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "GlowInvertedBackgroundTransition"
     )
@@ -164,7 +180,10 @@ fun PlayerBackgroundLayers(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = blurOverlayAlpha }
+                    .graphicsLayer {
+                        val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
+                        alpha = blurOverlayAlpha * (1f - lyricsFraction)
+                    }
             ) {
                 Box(
                     modifier = Modifier

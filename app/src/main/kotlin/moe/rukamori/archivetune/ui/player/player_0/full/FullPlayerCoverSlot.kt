@@ -49,6 +49,7 @@ internal fun FullPlayerCoverSlot(
     toolbarTopInRoot: Float,
     slideOffset: () -> Float,
     queueFractionProvider: () -> Float,
+    lyricsFractionProvider: () -> Float = { 0f },
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +64,7 @@ internal fun FullPlayerCoverSlot(
         motionState.isOverlayVisible,
         slideOffset,
         queueFractionProvider,
+        lyricsFractionProvider,
     ) {
         derivedStateOf {
             val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
@@ -70,7 +72,8 @@ internal fun FullPlayerCoverSlot(
                     state.isAlbumCoverGlowEnabled &&
                     state.isPlaying &&
                     slideOffset() > 0.95f &&
-                    queueFractionProvider().coerceIn(0f, 1f) < 0.05f
+                    queueFractionProvider().coerceIn(0f, 1f) < 0.05f &&
+                    lyricsFractionProvider().coerceIn(0f, 1f) < 0.05f
         }
     }
 
