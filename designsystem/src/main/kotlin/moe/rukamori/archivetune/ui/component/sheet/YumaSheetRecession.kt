@@ -15,11 +15,18 @@ import moe.rukamori.archivetune.ui.theme.SheetMotionTokens
 
 fun Modifier.yumaSheetBackdropRecession(
     progressProvider: () -> Float,
+    alphaProvider: (() -> Float)? = null,
     enabled: Boolean = true,
 ): Modifier = composed {
     val animationsDisabled = LocalAnimationsDisabled.current
     if (!enabled || animationsDisabled) {
-        Modifier
+        if (alphaProvider != null) {
+            Modifier.graphicsLayer {
+                alpha = alphaProvider().coerceIn(0f, 1f)
+            }
+        } else {
+            Modifier
+        }
     } else {
         Modifier.graphicsLayer {
             val p = progressProvider().coerceIn(0f, 1f)
@@ -28,6 +35,9 @@ fun Modifier.yumaSheetBackdropRecession(
             scaleY = scale
             shape = RoundedCornerShape(SheetMotionTokens.BackdropMaxCornerRadius * p)
             clip = p > 0f
+            if (alphaProvider != null) {
+                alpha = alphaProvider().coerceIn(0f, 1f)
+            }
             compositingStrategy = if (p > 0f && p < 1f) {
                 CompositingStrategy.Offscreen
             } else {

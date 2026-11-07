@@ -58,11 +58,6 @@ import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.ui.navigation.NavigationHost
 import moe.rukamori.archivetune.ui.player.host.PlayerOverlayHost
 import moe.rukamori.archivetune.ui.component.sheet.yumaSheetBackdropRecession
-import moe.rukamori.archivetune.ui.scaffold.ScaffoldNavigationRail
-import moe.rukamori.archivetune.ui.scaffold.ScaffoldSearchBarHost
-import moe.rukamori.archivetune.ui.scaffold.ScaffoldTopAppBar
-import moe.rukamori.archivetune.ui.scaffold.rememberScaffoldAppState
-import moe.rukamori.archivetune.ui.navigation.isArtworkDetailRoute
 import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.ui.system.rememberBarScrollVisibility
 import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
@@ -197,6 +192,10 @@ fun ScaffoldShell(
                                         val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
                                         val menuProgress = if (disableAnimations) 0f else menuState.progressProvider().coerceIn(0f, 1f)
                                         maxOf(playerProgress, menuProgress)
+                                    },
+                                    alphaProvider = {
+                                        val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
+                                        if (playerProgress > 0.9f) ((1f - playerProgress) / 0.1f).coerceIn(0f, 1f) else 1f
                                     },
                                     enabled = !disableAnimations,
                                 )
