@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -26,14 +27,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +58,15 @@ fun NetworkStatusBanner(
     modifier: Modifier = Modifier,
 ) {
     var lastVisibleState by remember { mutableStateOf<NetworkBannerUiState>(NetworkBannerUiState.Offline) }
+
+    var dismissed by remember { mutableStateOf(false) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    val dismissThreshold = with(LocalDensity.current) { 48.dp.toPx() }
+
+    LaunchedEffect(state) {
+        dismissed = false
+        dragOffset = Offset.Zero
+    }
 
     if (state != NetworkBannerUiState.Hidden) {
         lastVisibleState = state
@@ -81,7 +96,7 @@ fun NetworkStatusBanner(
         }
 
     AnimatedVisibility(
-        visible = state != NetworkBannerUiState.Hidden,
+        visible = state != NetworkBannerUiState.Hidden && !dismissed,
         modifier = modifier,
         enter =
             slideInVertically(animationSpec = tween(durationMillis = 250)) { -it } +
@@ -92,6 +107,30 @@ fun NetworkStatusBanner(
         label = "networkStatusBanner",
     ) {
         Surface(
+            modifier =
+                Modifier
+                    .graphicsLayer {
+                        translationX = dragOffset.x
+                        translationY = dragOffset.y
+                    }
+                    .pointerInput(state, dismissThreshold) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                if (!dismissed) dragOffset = Offset.Zero
+                            },
+                            onDragCancel = {
+                                if (!dismissed) dragOffset = Offset.Zero
+                            },
+                        ) { change, dragAmount ->
+                            change.consume()
+                            if (!dismissed) {
+                                dragOffset += dragAmount
+                                if (dragOffset.getDistance() >= dismissThreshold) {
+                                    dismissed = true
+                                }
+                            }
+                        }
+                    },
             shape = RoundedCornerShape(14.dp),
             color = visuals.containerColor,
             contentColor = visuals.contentColor,

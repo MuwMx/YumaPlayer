@@ -49,9 +49,11 @@ internal fun Flow<Boolean>.asNetworkBannerUiState(
         }
 
         if (hasShownOfflineBanner) {
-            hasShownOfflineBanner = false
             emit(NetworkBannerUiState.BackOnline)
             delay(backOnlineBannerDurationMillis)
+            emit(NetworkBannerUiState.Hidden)
+            hasShownOfflineBanner = false
+        } else {
             emit(NetworkBannerUiState.Hidden)
         }
     }
