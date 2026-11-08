@@ -251,8 +251,8 @@ fun BoxScope.GlobalDialogsHost(
         if (
             splashDone &&
             BuildConfig.UPDATER_AVAILABLE &&
-            latestUpdateChannel == expectedChannel 
-            //Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
+            latestUpdateChannel == expectedChannel &&
+            Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
         ) {
             val releaseNotesResult =
                 if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
