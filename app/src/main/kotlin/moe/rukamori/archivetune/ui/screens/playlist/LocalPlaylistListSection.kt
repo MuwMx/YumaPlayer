@@ -41,11 +41,12 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.db.entities.PlaylistSong
-import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import sh.calvin.reorderable.ReorderableItem
@@ -121,9 +122,9 @@ fun LazyListScope.localPlaylistSortHeaderItem(
 
 fun LazyListScope.localPlaylistEmptyItem() {
     item(key = LOCAL_PLAYLIST_KEY_EMPTY, contentType = CONTENT_TYPE_LOCAL_PLAYLIST_EMPTY) {
-        EmptyPlaceholder(
-            icon = R.drawable.music_note,
-            text = stringResource(R.string.playlist_is_empty),
+        YumaEmptyState(
+            title = stringResource(R.string.playlist_is_empty),
+            mood = YumaMood.Alert,
         )
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -47,7 +46,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -61,28 +59,27 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.CoroutineScope
-import moe.rukamori.archivetune.BuildConfig
-import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.defaultUpdateChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.BuildConfig
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HasPressedStarKey
 import moe.rukamori.archivetune.constants.LaunchCountKey
 import moe.rukamori.archivetune.constants.RemindAfterKey
 import moe.rukamori.archivetune.constants.UpdateChannel
+import moe.rukamori.archivetune.defaultUpdateChannel
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.network.NetworkBannerUiState
-import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.storage.BackupCategory
+import moe.rukamori.archivetune.storage.BackupRestoreViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
-import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
-import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.SineWaveLine
 import moe.rukamori.archivetune.ui.component.StarDialog
@@ -95,8 +92,6 @@ import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException
-import moe.rukamori.archivetune.storage.BackupCategory
-import moe.rukamori.archivetune.storage.BackupRestoreViewModel
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -121,7 +116,7 @@ fun BoxScope.GlobalDialogsHost(
     var latestVersionName by remember { mutableStateOf(BuildConfig.VERSION_NAME) }
     var latestUpdateChannel by remember { mutableStateOf(defaultUpdateChannel) }
     var latestImageUrl by remember { mutableStateOf<String?>(null) }
-    val releaseNotesState = remember { mutableStateOf<String?>(null) }
+    var releaseNotes by remember { mutableStateOf<String?>(null) }
 
     val updateSheetContent: @Composable ColumnScope.() -> Unit = {
         Column(
@@ -160,8 +155,8 @@ fun BoxScope.GlobalDialogsHost(
         Box(
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(rememberScrollState()),
         ) {
-            val notes = releaseNotesState.value
-            if (notes != null && notes.isNotBlank()) {
+            val notes = releaseNotes
+            if (!notes.isNullOrBlank()) {
                 MarkdownText(
                     markdown = notes,
                     modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
@@ -178,7 +173,7 @@ fun BoxScope.GlobalDialogsHost(
         androidx.compose.material3.Button(
             onClick = {
                 bottomSheetPageState.dismiss()
-                if (BuildConfig.DISTRIBUTION == "gms") {
+                if (BuildConfig.DISTRIBUTION.equals("gms", ignoreCase = true)) {
                     navController.navigate("settings/update?autostart=1") {
                         launchSingleTop = true
                     }
@@ -250,7 +245,6 @@ fun BoxScope.GlobalDialogsHost(
         val expectedChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
         if (
             splashDone &&
-            BuildConfig.UPDATER_AVAILABLE &&
             latestUpdateChannel == expectedChannel &&
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
         ) {
@@ -261,9 +255,9 @@ fun BoxScope.GlobalDialogsHost(
                     Updater.getLatestReleaseNotes()
                 }
             releaseNotesResult.onSuccess {
-                releaseNotesState.value = it
+                releaseNotes = it
             }.onFailure {
-                releaseNotesState.value = null
+                releaseNotes = null
             }
             latestImageUrl =
                 if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {

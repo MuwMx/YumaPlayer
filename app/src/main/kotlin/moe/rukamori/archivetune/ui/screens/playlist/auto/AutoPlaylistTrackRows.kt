@@ -40,9 +40,10 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
-import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.screens.playlist.CONTENT_TYPE_EMPTY
@@ -88,9 +89,9 @@ internal fun LazyListScope.autoPlaylistEmptyState() {
         key = "empty",
         contentType = CONTENT_TYPE_EMPTY,
     ) {
-        EmptyPlaceholder(
-            icon = R.drawable.music_note,
-            text = stringResource(R.string.playlist_is_empty),
+        YumaEmptyState(
+            title = stringResource(R.string.playlist_is_empty),
+            mood = YumaMood.Alert,
         )
     }
 }

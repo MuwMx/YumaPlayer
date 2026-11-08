@@ -103,14 +103,15 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
-import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
 import moe.rukamori.archivetune.ui.component.YumaImmersiveArtworkHeader
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
@@ -267,19 +268,19 @@ fun CachePlaylistScreen(
             modifier = Modifier.fillMaxSize().hazeSource(hazeState),
         ) {
             if (filteredSongs.isEmpty() && !isSearching) {
-                item {
-                    EmptyPlaceholder(
-                        icon = R.drawable.music_note,
-                        text = stringResource(R.string.playlist_is_empty),
+                item(key = "empty") {
+                    YumaEmptyState(
+                        title = stringResource(R.string.playlist_is_empty),
+                        mood = YumaMood.Alert,
                     )
                 }
             }
 
             if (filteredSongs.isEmpty() && isSearching) {
-                item {
-                    EmptyPlaceholder(
-                        icon = R.drawable.ic_search,
-                        text = stringResource(R.string.no_results_found),
+                item(key = "empty_search") {
+                    YumaEmptyState(
+                        title = stringResource(R.string.no_results_found),
+                        mood = YumaMood.Alert,
                     )
                 }
             } else {

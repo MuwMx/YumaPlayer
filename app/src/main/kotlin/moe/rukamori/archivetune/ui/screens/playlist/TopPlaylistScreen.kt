@@ -104,14 +104,15 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
-import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SortHeader
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
 import moe.rukamori.archivetune.ui.component.YumaImmersiveArtworkHeader
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
@@ -312,10 +313,10 @@ fun TopPlaylistScreen(
         ) {
             if (songs != null) {
                 if (songs!!.isEmpty()) {
-                    item {
-                        EmptyPlaceholder(
-                            icon = R.drawable.music_note,
-                            text = stringResource(R.string.playlist_is_empty),
+                    item(key = "empty") {
+                        YumaEmptyState(
+                            title = stringResource(R.string.playlist_is_empty),
+                            mood = YumaMood.Alert,
                         )
                     }
                 } else {

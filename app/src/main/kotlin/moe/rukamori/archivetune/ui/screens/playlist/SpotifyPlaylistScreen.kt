@@ -78,11 +78,12 @@ import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistViewModel
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
-import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
@@ -277,9 +278,8 @@ fun SpotifyPlaylistScreen(
 
             if (!state.isLoading && state.errorMessage == null && filteredTracks.isEmpty()) {
                 item(key = "empty") {
-                    EmptyPlaceholder(
-                        icon = R.drawable.music_note,
-                        text =
+                    YumaEmptyState(
+                        title =
                             stringResource(
                                 if (query.text.isBlank()) {
                                     R.string.spotify_no_tracks
@@ -287,6 +287,7 @@ fun SpotifyPlaylistScreen(
                                     R.string.ai_model_no_results
                                 },
                             ),
+                        mood = YumaMood.Alert,
                     )
                 }
             }

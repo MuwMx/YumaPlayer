@@ -53,6 +53,8 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
+import moe.rukamori.archivetune.ui.component.YumaEmptyState
+import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -172,21 +174,11 @@ fun LazyListScope.onlinePlaylistHeaderItem(
 
 fun LazyListScope.onlinePlaylistEmptyItem() {
     item(key = ONLINE_PLAYLIST_KEY_EMPTY, contentType = CONTENT_TYPE_ONLINE_PLAYLIST_EMPTY) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = stringResource(R.string.empty_playlist),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.empty_playlist_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        YumaEmptyState(
+            title = stringResource(R.string.empty_playlist),
+            subtitle = stringResource(R.string.empty_playlist_desc),
+            mood = YumaMood.Alert,
+        )
     }
 }
 
