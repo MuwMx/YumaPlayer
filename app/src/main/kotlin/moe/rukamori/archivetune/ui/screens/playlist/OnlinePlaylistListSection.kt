@@ -177,7 +177,7 @@ fun LazyListScope.onlinePlaylistEmptyItem() {
         YumaEmptyState(
             title = stringResource(R.string.empty_playlist),
             subtitle = stringResource(R.string.empty_playlist_desc),
-            mood = YumaMood.Alert,
+            mood = YumaMood.Shrug,
         )
     }
 }

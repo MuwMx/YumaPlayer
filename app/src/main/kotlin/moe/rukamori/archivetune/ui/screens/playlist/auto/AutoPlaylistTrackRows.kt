@@ -91,7 +91,7 @@ internal fun LazyListScope.autoPlaylistEmptyState() {
     ) {
         YumaEmptyState(
             title = stringResource(R.string.playlist_is_empty),
-            mood = YumaMood.Alert,
+            mood = YumaMood.Shrug,
         )
     }
 }

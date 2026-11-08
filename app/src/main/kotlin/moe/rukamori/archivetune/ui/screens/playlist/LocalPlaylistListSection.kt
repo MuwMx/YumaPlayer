@@ -124,7 +124,7 @@ fun LazyListScope.localPlaylistEmptyItem() {
     item(key = LOCAL_PLAYLIST_KEY_EMPTY, contentType = CONTENT_TYPE_LOCAL_PLAYLIST_EMPTY) {
         YumaEmptyState(
             title = stringResource(R.string.playlist_is_empty),
-            mood = YumaMood.Alert,
+            mood = YumaMood.Shrug,
         )
     }
 }

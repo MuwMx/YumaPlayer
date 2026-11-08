@@ -1,3 +1,8 @@
+/*
+ * YumaPlayer (2026) | Original work by MuwMix
+ * GPL-3.0 License | Contributors: see git history
+ */
+
 package moe.rukamori.archivetune.ui.scaffold
 
 import android.net.Uri
@@ -126,8 +131,8 @@ fun BoxScope.GlobalDialogsHost(
             YumaMascot(
                 mood = YumaMood.Chill,
                 modifier = Modifier
-                    .fillMaxWidth(0.46f)
-                    .widthIn(min = 96.dp, max = 132.dp)
+                    .fillMaxWidth(0.44f)
+                    .widthIn(min = 130.dp, max = 180.dp)
                     .aspectRatio(1f),
             )
             Spacer(Modifier.height(8.dp))

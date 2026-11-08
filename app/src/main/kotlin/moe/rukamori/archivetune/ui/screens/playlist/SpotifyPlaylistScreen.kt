@@ -287,7 +287,7 @@ fun SpotifyPlaylistScreen(
                                     R.string.ai_model_no_results
                                 },
                             ),
-                        mood = YumaMood.Alert,
+                        mood = YumaMood.Shrug,
                     )
                 }
             }

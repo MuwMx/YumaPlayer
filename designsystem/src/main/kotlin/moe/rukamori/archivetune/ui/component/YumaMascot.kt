@@ -13,6 +13,7 @@ enum class YumaMood(@DrawableRes val drawableRes: Int) {
     Alert(R.drawable.yuma_alert),
     Stress(R.drawable.yuma_stress),
     Panic(R.drawable.yuma_panic),
+    Shrug(R.drawable.yuma_shrug)
 }
 
 @Composable

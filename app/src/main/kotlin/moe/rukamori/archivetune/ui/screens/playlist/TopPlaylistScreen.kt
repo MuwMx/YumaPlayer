@@ -316,7 +316,7 @@ fun TopPlaylistScreen(
                     item(key = "empty") {
                         YumaEmptyState(
                             title = stringResource(R.string.playlist_is_empty),
-                            mood = YumaMood.Alert,
+                            mood = YumaMood.Shrug,
                         )
                     }
                 } else {

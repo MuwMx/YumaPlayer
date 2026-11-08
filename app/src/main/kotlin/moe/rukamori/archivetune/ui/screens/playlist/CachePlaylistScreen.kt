@@ -271,7 +271,7 @@ fun CachePlaylistScreen(
                 item(key = "empty") {
                     YumaEmptyState(
                         title = stringResource(R.string.playlist_is_empty),
-                        mood = YumaMood.Alert,
+                        mood = YumaMood.Shrug,
                     )
                 }
             }
@@ -280,7 +280,7 @@ fun CachePlaylistScreen(
                 item(key = "empty_search") {
                     YumaEmptyState(
                         title = stringResource(R.string.no_results_found),
-                        mood = YumaMood.Alert,
+                        mood = YumaMood.Shrug,
                     )
                 }
             } else {

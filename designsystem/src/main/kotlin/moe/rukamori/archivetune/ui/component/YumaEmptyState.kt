@@ -1,3 +1,9 @@
+/*
+ * YumaPlayer (2026) | Original work by MuwMix
+ * GPL-3.0 License | Contributors: see git history
+ */
+
+
 package moe.rukamori.archivetune.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +28,7 @@ import androidx.compose.ui.unit.dp
 fun YumaEmptyState(
     title: String,
     modifier: Modifier = Modifier,
-    mood: YumaMood = YumaMood.Alert,
+    mood: YumaMood = YumaMood.Shrug,
     subtitle: String? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -39,11 +45,10 @@ fun YumaEmptyState(
         ) {
             YumaMascot(
                 mood = mood,
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.28f)
-                        .widthIn(min = 88.dp, max = 120.dp)
-                        .aspectRatio(1f),
+                modifier = Modifier
+                    .fillMaxWidth(0.42f)
+                    .widthIn(min = 130.dp, max = 180.dp)
+                    .aspectRatio(1f),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
