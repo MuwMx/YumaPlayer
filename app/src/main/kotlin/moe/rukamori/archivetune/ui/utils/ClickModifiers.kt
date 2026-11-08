@@ -45,7 +45,7 @@ fun Modifier.bounceClick(
         }
         .combinedClickable(
             interactionSource = interactionSource,
-            indication = null, // Disable default sharp ripple
+            indication = null,
             onClick = onClick,
             onLongClick = onLongClick
         )

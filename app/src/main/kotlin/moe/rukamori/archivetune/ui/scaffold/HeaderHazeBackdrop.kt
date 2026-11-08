@@ -1,3 +1,8 @@
+/*
+ * YumaPlayer (2026) | Original work by MuwMix
+ * GPL-3.0 License | Contributors: see git history
+ */
+
 package moe.rukamori.archivetune.ui.scaffold
 
 import android.os.Build
@@ -25,8 +30,8 @@ import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.AppBarHeight
-import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.BlurNavBarKey
+import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -41,7 +46,6 @@ fun HeaderHazeBackdrop(
     pureBlack: Boolean? = null,
     blurRadius: Float? = null,
     height: Dp? = null,
-    feather: Dp = SettingsDimensions.HeaderFadeFeather,
     alwaysShowFallback: Boolean = false,
     surfaceColor: Color = MaterialTheme.colorScheme.surface,
 ) {
@@ -60,12 +64,10 @@ fun HeaderHazeBackdrop(
         hazeState != null
 
     val statusBarTop = with(LocalDensity.current) { WindowInsets.systemBars.getTop(this).toDp() }
-    val baseHeight = height ?: (AppBarHeight + statusBarTop)
-    val totalHeight = baseHeight + feather
-    val fadeStart = if (totalHeight > 0.dp) (baseHeight / totalHeight).coerceIn(0f, 1f) else 1f
+    val effectiveHeight = (height ?: (AppBarHeight + statusBarTop)) + SettingsDimensions.HeaderFadeFeather
 
     val hazeStyle = if (isBlurActive) {
-        remember(surfaceColor, effectiveBlurRadius, effectivePureBlack, fadeStart) {
+        remember(surfaceColor, effectiveBlurRadius, effectivePureBlack) {
             val fixedTintAlpha = if (effectivePureBlack) {
                 SettingsDimensions.HazePureBlackTintAlpha
             } else {
@@ -82,7 +84,7 @@ fun HeaderHazeBackdrop(
                 mask(
                     Brush.verticalGradient(
                         0.0f to Color.Black,
-                        fadeStart to Color.Black,
+                        0.65f to Color.Black.copy(alpha = 0.8f),
                         1.0f to Color.Transparent,
                     ),
                 )
@@ -95,7 +97,7 @@ fun HeaderHazeBackdrop(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(totalHeight)
+            .height(effectiveHeight)
             .then(
                 if (isBlurActive && hazeStyle != null) {
                     Modifier
@@ -114,9 +116,12 @@ fun HeaderHazeBackdrop(
                         )
                         .background(
                             Brush.verticalGradient(
-                                0.0f to surfaceColor.copy(alpha = 0.75f),
-                                fadeStart to surfaceColor.copy(alpha = 0.75f),
-                                1.0f to Color.Transparent,
+                                listOf(
+                                    surfaceColor.copy(alpha = 0.75f),
+                                    surfaceColor.copy(alpha = 0.50f),
+                                    surfaceColor.copy(alpha = 0.20f),
+                                    Color.Transparent,
+                                ),
                             ),
                         )
                 } else if (alwaysShowFallback || !blurNavBar) {
@@ -131,9 +136,12 @@ fun HeaderHazeBackdrop(
                         }
                         .background(
                             Brush.verticalGradient(
-                                0.0f to surfaceColor.copy(alpha = 0.95f),
-                                fadeStart to surfaceColor.copy(alpha = 0.95f),
-                                1.0f to Color.Transparent,
+                                listOf(
+                                    surfaceColor.copy(alpha = 0.95f),
+                                    surfaceColor.copy(alpha = 0.85f),
+                                    surfaceColor.copy(alpha = 0.6f),
+                                    Color.Transparent,
+                                ),
                             ),
                         )
                 } else {

@@ -10,6 +10,8 @@ package moe.rukamori.archivetune.ui.screens.settings.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -146,35 +148,26 @@ fun YumaSettingsScaffold(
                     TopAppBar(
                         title = title,
                         navigationIcon = {
-                            val backIcon = @Composable {
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onBackClick,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_arrow_right),
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .size(20.dp)
+                                        .size(18.dp)
                                         .graphicsLayer(scaleX = -1f),
                                     tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-
-                            val buttonModifier = Modifier
-                                .padding(start = 12.dp)
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f))
-
-                            if (onBackLongClick != null) {
-                                IconButton(
-                                    onClick = onBackClick,
-                                    onLongClick = onBackLongClick,
-                                    modifier = buttonModifier,
-                                    content = backIcon,
-                                )
-                            } else {
-                                androidx.compose.material3.IconButton(
-                                    onClick = onBackClick,
-                                    modifier = buttonModifier,
-                                    content = backIcon,
                                 )
                             }
                         },
