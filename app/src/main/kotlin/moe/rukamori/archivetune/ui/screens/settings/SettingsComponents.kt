@@ -737,11 +737,11 @@ fun YumaSettingsScaffold(
                 .windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                 )
-                .padding(top = innerPadding.calculateTopPadding())
 
             if (scrollable) {
                 Column(
                     modifier = baseModifier
+                        .padding(top = innerPadding.calculateTopPadding())
                         .hazeSource(effectiveHazeState)
                         .verticalScroll(internalScrollState)
                         .playerAwareBottomPadding()

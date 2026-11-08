@@ -3,7 +3,10 @@ package moe.rukamori.archivetune.ui.scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import dev.chrisbanes.haze.HazeState
+
+val LocalScaffoldHazeState = staticCompositionLocalOf<HazeState?> { null }
 
 @Immutable
 internal data class ScaffoldHazeState(

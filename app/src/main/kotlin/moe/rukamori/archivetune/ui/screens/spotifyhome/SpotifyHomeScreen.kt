@@ -45,7 +45,7 @@ import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyPlaylistSectionRow
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyRecentPanel
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyTrackSectionRow
 import moe.rukamori.archivetune.ui.screens.spotifyhome.resolveSpotifySectionTitle
-import moe.rukamori.archivetune.ui.scaffold.ScaffoldHazeState
+import moe.rukamori.archivetune.ui.scaffold.LocalScaffoldHazeState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -58,7 +58,7 @@ fun SpotifyHomeScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val hazeState = ScaffoldHazeState.current
+    val hazeState = LocalScaffoldHazeState.current
     val lazyListState = rememberLazyListState()
     BindHeaderScroll(
         connection = headerScrollConnection,
@@ -129,7 +129,7 @@ fun SpotifyHomeScreen(
                         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
                         modifier = Modifier
                             .fillMaxSize()
-                            .hazeSource(hazeState),
+                            .then(if (hazeState != null) Modifier.hazeSource(hazeState) else Modifier),
                     ) {
                         item(key = "spotify_recent_panel", contentType = "recent_panel") {
                             SpotifyRecentPanel(

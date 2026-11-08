@@ -81,6 +81,7 @@ internal fun ReleaseTimeline(
     listState: LazyListState,
     bottomPadding: Dp,
     modifier: Modifier = Modifier,
+    topPadding: Dp = SettingsDimensions.SectionSpacing,
 ) {
     val expansion = remember { TimelineExpansion() }
     val releaseKeys = state.entries.map { it.releaseKey }
@@ -95,7 +96,7 @@ internal fun ReleaseTimeline(
         verticalArrangement = Arrangement.Top,
         contentPadding =
             PaddingValues(
-                top = SettingsDimensions.SectionSpacing,
+                top = topPadding,
                 bottom = bottomPadding,
             ),
     ) {

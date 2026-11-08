@@ -167,13 +167,15 @@ fun ScaffoldShell(
                         splashDone = splashDone,
                         disableAnimations = disableAnimations,
                     ) {
-                        ScaffoldBody(
-                            navController = navController,
-                            appState = appState,
-                            scaffoldHazeState = scaffoldHazeState,
-                            updateChannel = updateChannel,
-                            playerExpansionFraction = playerExpansionFraction,
-                        )
+                        CompositionLocalProvider(LocalScaffoldHazeState provides scaffoldHazeState.effectiveHazeState) {
+                            ScaffoldBody(
+                                navController = navController,
+                                appState = appState,
+                                scaffoldHazeState = scaffoldHazeState,
+                                updateChannel = updateChannel,
+                                playerExpansionFraction = playerExpansionFraction,
+                            )
+                        }
                     }
 
                     PlayerOverlayHost(

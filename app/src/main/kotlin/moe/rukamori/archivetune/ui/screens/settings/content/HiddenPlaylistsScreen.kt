@@ -89,6 +89,7 @@ fun HiddenPlaylistsScreen(navController: NavController) {
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .padding(top = headerTopPadding)
                         .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,

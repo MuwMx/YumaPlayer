@@ -204,12 +204,12 @@ fun ChangelogScreen(
                             state = timelineState,
                             actions = actions,
                             listState = listState,
+                            topPadding = headerTopPadding,
                             bottomPadding = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                             modifier =
                                 Modifier
                                     .fillMaxSize()
                                     .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                                    .padding(top = headerTopPadding)
                                     .hazeSource(hazeState),
                         )
                     }
