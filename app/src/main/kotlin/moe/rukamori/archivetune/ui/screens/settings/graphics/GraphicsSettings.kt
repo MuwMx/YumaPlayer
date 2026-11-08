@@ -5,8 +5,11 @@
 
 package moe.rukamori.archivetune.ui.screens.settings.graphics
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -135,6 +137,7 @@ internal fun GraphicsSettingsScreen(
         state.homeBackgroundStyle,
         state.homeBackgroundParallaxEnabled,
         state.forceHighRefreshRate,
+        state.disableAnimations,
     ) {
         calculateGpuLoad(state)
     }
@@ -277,6 +280,10 @@ internal fun calculateGpuLoad(state: GraphicsSettingsUiState): Float {
         score += GraphicsContract.HIGH_REFRESH_RATE_SCORE
     }
 
+    if (state.disableAnimations) {
+        score = (score - GraphicsContract.DISABLE_ANIMATIONS_SCORE_REDUCTION).coerceAtLeast(0f)
+    }
+
     return (score / GraphicsContract.MAX_GPU_SCORE).coerceIn(0f, 1f)
 }
 
@@ -354,18 +361,10 @@ internal fun DeviceLoadHudCard(
                     .clip(RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                androidx.compose.animation.Crossfade(
+                Crossfade(
                     targetState = tier,
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = 200,
-                        easing = androidx.compose.animation.core.FastOutSlowInEasing,
-                    ),
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
                     label = "YumaMascotCrossfade",
-                    modifier = Modifier.graphicsLayer {
-                        // Если на устройстве доступен RenderEffect (Android 12+),
-                        // во время рекомпозиции не выделяется лишний буфер
-                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Auto
-                    },
                 ) { currentTier ->
                     Image(
                         painter = painterResource(currentTier.drawableRes),

@@ -28,6 +28,7 @@ object GraphicsContract {
     const val PROCEDURAL_BG_BASE_SCORE = 25f
     const val PROCEDURAL_BG_PARALLAX_SCORE = 10f
     const val HIGH_REFRESH_RATE_SCORE = 15f
+    const val DISABLE_ANIMATIONS_SCORE_REDUCTION = 10f
     const val MAX_GPU_SCORE = 100f
 
     val LOAD_COLOR_OPTIMAL = Color(0xFF34C759)
@@ -58,7 +59,7 @@ enum class GpuLoadTier(
 
     companion object {
         fun fromFraction(fraction: Float): GpuLoadTier {
-            val percentage = (fraction * 100f).roundToInt()
+            val percentage = (fraction.coerceIn(0f, 1f) * 100f).roundToInt()
             return when {
                 percentage <= 35 -> OPTIMAL
                 percentage <= 60 -> ALERT
