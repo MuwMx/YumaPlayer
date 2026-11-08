@@ -96,6 +96,7 @@ import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.storage.BackupCategory
 import moe.rukamori.archivetune.storage.BackupRestoreViewModel
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun BoxScope.GlobalDialogsHost(
@@ -217,11 +218,10 @@ fun BoxScope.GlobalDialogsHost(
 
     LaunchedEffect(Unit) {
         while (playerConnection == null) {
-            delay(100)
+            delay(100.milliseconds)
         }
-        delay(500)
+        delay(500.milliseconds)
         if (
-            BuildConfig.UPDATER_AVAILABLE &&
             System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
         ) {
             val isCanary =
@@ -258,8 +258,8 @@ fun BoxScope.GlobalDialogsHost(
         if (
             splashDone &&
             BuildConfig.UPDATER_AVAILABLE &&
-            latestUpdateChannel == expectedChannel &&
-            Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
+            latestUpdateChannel == expectedChannel 
+            //Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
         ) {
             val releaseNotesResult =
                 if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
@@ -285,7 +285,7 @@ fun BoxScope.GlobalDialogsHost(
     var showStarDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(3000)
+        delay(3000.milliseconds)
 
         val (newCount, hasPressed, remindAfter) =
             withContext(Dispatchers.IO) {
@@ -304,7 +304,7 @@ fun BoxScope.GlobalDialogsHost(
             val waitStep = 500L
             val maxWait = 30_000L
             while (bottomSheetPageState.isVisible && waited < maxWait) {
-                delay(waitStep)
+                delay(waitStep.milliseconds)
                 waited += waitStep
             }
             showStarDialog = true
