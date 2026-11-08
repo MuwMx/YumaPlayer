@@ -8,10 +8,12 @@ package moe.rukamori.archivetune.ui.screens.settings.graphics
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
@@ -19,7 +21,6 @@ import moe.rukamori.archivetune.constants.GraphicsPresetAppliedKey
 import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
-import moe.rukamori.archivetune.utils.dataStore
 
 enum class GraphicsPreset(
     val blurNavBar: Boolean,
@@ -51,8 +52,12 @@ enum class GraphicsPreset(
     ),
 }
 
-object DeviceGraphicsClassifier {
-    fun resolveDeviceTier(context: Context): GraphicsPreset {
+@Singleton
+class DeviceGraphicsClassifier @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val dataStore: DataStore<Preferences>,
+) {
+    fun resolveDeviceTier(): GraphicsPreset {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return GraphicsPreset.LOW
         }
@@ -77,29 +82,17 @@ object DeviceGraphicsClassifier {
         }
     }
 
-    suspend fun applyDefaultGraphicsPresetIfFirstRun(context: Context) {
-        withContext(Dispatchers.IO) {
-            val prefs = context.dataStore.data.first()
-            if (prefs[GraphicsPresetAppliedKey] == true) {
-                return@withContext
-            }
+    suspend fun applyDefaultPresetIfFirstRun() {
+        dataStore.edit { preferences ->
+            if (preferences[GraphicsPresetAppliedKey] == true) return@edit
 
-            val preset = resolveDeviceTier(context)
-            context.dataStore.edit { preferences ->
-                preferences[GraphicsPresetAppliedKey] = true
-                preferences[BlurNavBarKey] = preset.blurNavBar
-                preferences[BlurRadiusKey] = preset.blurRadius
-                preferences[HomeBackgroundStyleKey] = preset.homeBackgroundStyle.name
-                preferences[HomeBackgroundParallaxEnabledKey] = preset.parallaxEnabled
-                preferences[ForceHighRefreshRateKey] = preset.forceHighRefreshRate
-            }
+            val preset = resolveDeviceTier()
+            preferences[GraphicsPresetAppliedKey] = true
+            preferences[BlurNavBarKey] = preset.blurNavBar
+            preferences[BlurRadiusKey] = preset.blurRadius
+            preferences[HomeBackgroundStyleKey] = preset.homeBackgroundStyle.name
+            preferences[HomeBackgroundParallaxEnabledKey] = preset.parallaxEnabled
+            preferences[ForceHighRefreshRateKey] = preset.forceHighRefreshRate
         }
     }
-}
-
-fun resolveDeviceTier(context: Context): GraphicsPreset =
-    DeviceGraphicsClassifier.resolveDeviceTier(context)
-
-suspend fun applyDefaultGraphicsPresetIfFirstRun(context: Context) {
-    DeviceGraphicsClassifier.applyDefaultGraphicsPresetIfFirstRun(context)
 }

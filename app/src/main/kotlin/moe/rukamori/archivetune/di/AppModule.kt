@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.Cache
@@ -147,6 +149,12 @@ private class LazyCache(
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+    @Singleton
+    @Provides
+    fun providePreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.dataStore
+
     @Singleton
     @Provides
     fun provideDatabase(

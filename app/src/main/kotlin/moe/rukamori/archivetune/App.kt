@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.spotify.SpotifyGraphqlClient
 import moe.rukamori.archivetune.spotify.SpotifyHashDiscovery
 import moe.rukamori.archivetune.spotify.SpotifyHashRefresher
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
+import moe.rukamori.archivetune.ui.screens.settings.graphics.DeviceGraphicsClassifier
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -58,6 +59,7 @@ class App :
     Application(),
     SingletonImageLoader.Factory {
     @Inject internal lateinit var syncUtils: SyncUtils
+    @Inject lateinit var deviceGraphicsClassifier: DeviceGraphicsClassifier
 
     internal val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
