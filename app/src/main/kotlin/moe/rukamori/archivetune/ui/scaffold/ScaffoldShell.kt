@@ -235,10 +235,15 @@ fun ScaffoldShell(
                     )
 
                     GlobalDialogsHost(
-                        navController = navController, playerConnection = playerConnection, bottomSheetPageState = bottomSheetPageState,
-                        menuState = menuState, networkBannerState = appState.networkBannerState, pendingBackupRestoreUri = pendingBackupRestoreUri,
-                        onDismissBackupRestore = onClearPendingBackupRestoreUri, splashDone = splashDone, shouldShowTopBar = appState.shouldShowTopBar,
-                        topInset = appState.topInset, updateChannel = updateChannel, coroutineScope = appState.coroutineScope,
+                        navController = navController,
+                        networkBannerState = appState.networkBannerState,
+                        pendingBackupRestoreUri = pendingBackupRestoreUri,
+                        onDismissBackupRestore = onClearPendingBackupRestoreUri,
+                        splashDone = splashDone,
+                        shouldShowTopBar = appState.shouldShowTopBar,
+                        topInset = appState.topInset,
+                        updateChannel = updateChannel,
+                        coroutineScope = appState.coroutineScope,
                     )
                 }
             }

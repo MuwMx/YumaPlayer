@@ -76,11 +76,14 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.BottomSheetMenu
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.BottomSheetPageState
+import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
+import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.SineWaveLine
 import moe.rukamori.archivetune.ui.component.StarDialog
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.utils.UpdateNotificationManager
 import moe.rukamori.archivetune.utils.Updater
@@ -94,9 +97,6 @@ import kotlin.time.Duration.Companion.days
 @Composable
 fun BoxScope.GlobalDialogsHost(
     navController: NavController,
-    playerConnection: PlayerConnection?,
-    bottomSheetPageState: BottomSheetPageState,
-    menuState: MenuState,
     networkBannerState: NetworkBannerUiState,
     pendingBackupRestoreUri: Uri?,
     onDismissBackupRestore: () -> Unit,
@@ -106,6 +106,9 @@ fun BoxScope.GlobalDialogsHost(
     updateChannel: UpdateChannel = defaultUpdateChannel,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ) {
+    val playerConnection = LocalPlayerConnection.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
+    val menuState = LocalMenuState.current
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 

@@ -37,6 +37,8 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.home.HomeViewModel
+import moe.rukamori.archivetune.home.launchHomeShuffle
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetState
@@ -49,7 +51,6 @@ import moe.rukamori.archivetune.ui.system.PlayerSystemBars
 import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.ui.system.rememberPlayerBottomSheetState
 import moe.rukamori.archivetune.ui.theme.YdsInsets
-import moe.rukamori.archivetune.home.HomeViewModel
 
 @Composable
 fun PlayerOverlayHost(
@@ -103,6 +104,21 @@ fun PlayerOverlayHost(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    val onShuffleClick: (() -> Unit)? = remember(shouldShowHomeShuffleButton, coroutineScope, homeViewModel, playerConnection, database) {
+        if (shouldShowHomeShuffleButton) {
+            {
+                launchHomeShuffle(
+                    coroutineScope = coroutineScope,
+                    homeViewModel = homeViewModel,
+                    playerConnection = playerConnection,
+                    database = database,
+                )
+            }
+        } else {
+            null
+        }
+    }
 
     val targetWindow = window ?: remember(context) {
         var ctx = context
@@ -229,10 +245,7 @@ fun PlayerOverlayHost(
                         scrollVisibilityFactor = scrollVisibilityFactor,
                         floatingToolbarBottomPadding = floatingToolbarBottomPadding,
                         shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
-                        coroutineScope = coroutineScope,
-                        homeViewModel = homeViewModel,
-                        playerConnection = playerConnection,
-                        database = database,
+                        onShuffleClick = onShuffleClick,
                         navController = navController,
                         navBackStackEntry = navBackStackEntry,
                         handlePrimaryNavigationClick = handlePrimaryNavigationClick,
