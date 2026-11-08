@@ -53,6 +53,8 @@ import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.utils.backToMain
 

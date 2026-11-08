@@ -31,7 +31,8 @@ import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.ui.component.BottomSheetPage
 import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.SwitchPreference
-import moe.rukamori.archivetune.ui.screens.settings.playerAwareBottomInset
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource

@@ -40,7 +40,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
-import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

@@ -61,8 +61,8 @@ import moe.rukamori.archivetune.ui.screens.settings.ApplyRefreshRate
 import moe.rukamori.archivetune.ui.screens.settings.BlurRadiusSliderItem
 import moe.rukamori.archivetune.ui.screens.settings.HomeBackgroundSelector
 import moe.rukamori.archivetune.ui.screens.settings.HomeBackgroundSliderItem
-import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
-import moe.rukamori.archivetune.ui.screens.settings.playerAwareBottomPadding
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomPadding
 import moe.rukamori.archivetune.ui.screens.settings.rememberSupportedHighestFps
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions

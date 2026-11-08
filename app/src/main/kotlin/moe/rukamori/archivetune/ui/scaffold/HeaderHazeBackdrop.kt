@@ -41,6 +41,7 @@ fun HeaderHazeBackdrop(
     pureBlack: Boolean? = null,
     blurRadius: Float? = null,
     height: Dp? = null,
+    feather: Dp = SettingsDimensions.HeaderFadeFeather,
     alwaysShowFallback: Boolean = false,
     surfaceColor: Color = MaterialTheme.colorScheme.surface,
 ) {
@@ -59,10 +60,12 @@ fun HeaderHazeBackdrop(
         hazeState != null
 
     val statusBarTop = with(LocalDensity.current) { WindowInsets.systemBars.getTop(this).toDp() }
-    val effectiveHeight = height ?: (AppBarHeight + statusBarTop)
+    val baseHeight = height ?: (AppBarHeight + statusBarTop)
+    val totalHeight = baseHeight + feather
+    val fadeStart = if (totalHeight > 0.dp) (baseHeight / totalHeight).coerceIn(0f, 1f) else 1f
 
     val hazeStyle = if (isBlurActive) {
-        remember(surfaceColor, effectiveBlurRadius, effectivePureBlack) {
+        remember(surfaceColor, effectiveBlurRadius, effectivePureBlack, fadeStart) {
             val fixedTintAlpha = if (effectivePureBlack) {
                 SettingsDimensions.HazePureBlackTintAlpha
             } else {
@@ -79,7 +82,7 @@ fun HeaderHazeBackdrop(
                 mask(
                     Brush.verticalGradient(
                         0.0f to Color.Black,
-                        0.65f to Color.Black.copy(alpha = 0.8f),
+                        fadeStart to Color.Black,
                         1.0f to Color.Transparent,
                     ),
                 )
@@ -92,7 +95,7 @@ fun HeaderHazeBackdrop(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(effectiveHeight)
+            .height(totalHeight)
             .then(
                 if (isBlurActive && hazeStyle != null) {
                     Modifier
@@ -111,12 +114,9 @@ fun HeaderHazeBackdrop(
                         )
                         .background(
                             Brush.verticalGradient(
-                                listOf(
-                                    surfaceColor.copy(alpha = 0.75f),
-                                    surfaceColor.copy(alpha = 0.50f),
-                                    surfaceColor.copy(alpha = 0.20f),
-                                    Color.Transparent,
-                                ),
+                                0.0f to surfaceColor.copy(alpha = 0.75f),
+                                fadeStart to surfaceColor.copy(alpha = 0.75f),
+                                1.0f to Color.Transparent,
                             ),
                         )
                 } else if (alwaysShowFallback || !blurNavBar) {
@@ -131,12 +131,9 @@ fun HeaderHazeBackdrop(
                         }
                         .background(
                             Brush.verticalGradient(
-                                listOf(
-                                    surfaceColor.copy(alpha = 0.95f),
-                                    surfaceColor.copy(alpha = 0.85f),
-                                    surfaceColor.copy(alpha = 0.6f),
-                                    Color.Transparent,
-                                ),
+                                0.0f to surfaceColor.copy(alpha = 0.95f),
+                                fadeStart to surfaceColor.copy(alpha = 0.95f),
+                                1.0f to Color.Transparent,
                             ),
                         )
                 } else {

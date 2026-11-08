@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.home.state.AccountChannelUiModel
 import moe.rukamori.archivetune.home.state.AccountChannelsState
-import moe.rukamori.archivetune.ui.screens.settings.segmentedSettingsItemShape
+import moe.rukamori.archivetune.ui.screens.settings.components.segmentedSettingsItemShape
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaClickable

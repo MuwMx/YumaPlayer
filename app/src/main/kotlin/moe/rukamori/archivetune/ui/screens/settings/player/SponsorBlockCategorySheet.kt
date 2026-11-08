@@ -46,7 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.ui.component.PreferenceSelectionOption
-import moe.rukamori.archivetune.ui.screens.settings.segmentedSettingsItemShape
+import moe.rukamori.archivetune.ui.screens.settings.components.segmentedSettingsItemShape
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.sponsorblock.SponsorBlockCategoryUiModel

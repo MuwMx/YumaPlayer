@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn

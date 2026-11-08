@@ -72,7 +72,7 @@ import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.sponsorblock.normalizeSponsorBlockApiUrl
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
-import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.backToMain

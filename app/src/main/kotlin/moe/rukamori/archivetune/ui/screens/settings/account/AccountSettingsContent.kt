@@ -53,14 +53,14 @@ import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettingsUiActions
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettingsUiState
-import moe.rukamori.archivetune.ui.screens.settings.SettingsScreenBackground
+import moe.rukamori.archivetune.ui.screens.settings.components.SettingsScreenBackground
 import moe.rukamori.archivetune.ui.screens.settings.account.header.ProfileHeroHeader
 import moe.rukamori.archivetune.ui.screens.settings.account.sections.AccountGeneralSection
 import moe.rukamori.archivetune.ui.screens.settings.account.sections.AccountIntegrationSection
 import moe.rukamori.archivetune.ui.screens.settings.account.sections.AccountMiscSection
 import moe.rukamori.archivetune.ui.screens.settings.account.sections.UpdateBannerStrip
 import moe.rukamori.archivetune.ui.screens.settings.account.sections.VersionStamp
-import moe.rukamori.archivetune.ui.screens.settings.playerAwareBottomInset
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
 @Composable

@@ -49,6 +49,8 @@ import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.UpdateChannel
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews

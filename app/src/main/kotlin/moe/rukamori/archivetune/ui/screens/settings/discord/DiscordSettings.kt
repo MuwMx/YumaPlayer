@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.screens.settings.components.SettingsScreenBackground
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage

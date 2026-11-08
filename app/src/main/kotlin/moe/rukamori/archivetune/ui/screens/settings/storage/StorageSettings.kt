@@ -51,7 +51,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable

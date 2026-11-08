@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.screens.settings.components.SettingsScreenBackground
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon

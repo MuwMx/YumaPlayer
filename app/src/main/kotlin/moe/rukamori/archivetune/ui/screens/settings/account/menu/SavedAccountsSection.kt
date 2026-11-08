@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.screens.settings.segmentedSettingsItemShape
+import moe.rukamori.archivetune.ui.screens.settings.components.segmentedSettingsItemShape
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaClickable

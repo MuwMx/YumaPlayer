@@ -101,6 +101,8 @@ import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomInset
+import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomPadding
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.together.MusicTogetherActivityLogItemUiModel

@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.SplashShapePreference
 import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
+import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
