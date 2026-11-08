@@ -91,6 +91,7 @@ val RandomHomeBackgroundOnStartupKey = booleanPreferencesKey("randomHomeBackgrou
 val HomeBackgroundParallaxEnabledKey = booleanPreferencesKey("homeBackgroundParallaxEnabled")
 val HomeBackgroundParallaxStrengthKey = floatPreferencesKey("homeBackgroundParallaxStrength")
 val HomeBackgroundBrightnessKey = floatPreferencesKey("homeBackgroundBrightness")
+val GraphicsPresetAppliedKey = booleanPreferencesKey("graphicsPresetApplied")
 
 enum class AodThumbnailShape {
     ROUNDED,

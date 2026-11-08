@@ -21,6 +21,7 @@ import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
+import moe.rukamori.archivetune.ui.screens.settings.graphics.DeviceGraphicsClassifier
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
 import moe.rukamori.archivetune.utils.ProxyUtils
@@ -48,6 +49,7 @@ internal fun App.initializeDeferredAsync() {
 
     applicationScope.launch(Dispatchers.IO) {
         try {
+            DeviceGraphicsClassifier.applyDefaultGraphicsPresetIfFirstRun(this@initializeDeferredAsync)
             val prefs = dataStore.data.first()
 
             prefs[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { country ->
