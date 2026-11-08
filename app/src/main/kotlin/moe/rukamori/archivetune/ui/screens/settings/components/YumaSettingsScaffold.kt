@@ -1,6 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
+ * YumaPlayer (2026) | Original work by MuwMix
  * GPL-3.0 License | Contributors: see git history
  */
 
@@ -55,7 +54,6 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.ui.component.GlassDefaults
 import moe.rukamori.archivetune.ui.component.GlassScaffold
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 
@@ -165,7 +163,7 @@ fun YumaSettingsScaffold(
                                     painter = painterResource(R.drawable.ic_arrow_right),
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .size(18.dp)
+                                        .size(22.dp)
                                         .graphicsLayer(scaleX = -1f),
                                     tint = MaterialTheme.colorScheme.onSurface,
                                 )
