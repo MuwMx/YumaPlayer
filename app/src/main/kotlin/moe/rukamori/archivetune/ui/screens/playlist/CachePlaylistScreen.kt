@@ -433,6 +433,7 @@ fun CachePlaylistScreen(
             progress = headerProgress,
             hasCollapsibleHeader = hasArtworkBackdrop,
             hazeState = hazeState,
+            alwaysShowFallback = true,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

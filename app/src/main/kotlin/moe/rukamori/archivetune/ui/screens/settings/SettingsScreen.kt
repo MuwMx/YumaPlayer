@@ -24,9 +24,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -83,6 +84,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val isAndroid12OrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val scrollState = rememberScrollState()
+    val hazeState = remember { HazeState() }
 
     val storagePermission =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -136,22 +138,13 @@ fun SettingsScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Box {
-                    val surfaceColor = MaterialTheme.colorScheme.surface
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .drawBehind {
-                                val offset = scrollState.value
-                                val alpha = (offset / 100f).coerceIn(0f, 0.85f)
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            surfaceColor.copy(alpha = alpha),
-                                            Color.Transparent,
-                                        ),
-                                    ),
-                                )
-                            },
+                    HeaderHazeBackdrop(
+                        progress = {
+                            val fraction = scrollBehavior.state.collapsedFraction
+                            if (fraction > 0f) fraction else (scrollState.value / 100f).coerceIn(0f, 1f)
+                        },
+                        hazeState = hazeState,
+                        alwaysShowFallback = true,
                     )
                     LargeFlexibleTopAppBar(
                         title = {
@@ -189,6 +182,7 @@ fun SettingsScreen(
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     )
+                    .hazeSource(hazeState)
                     .verticalScroll(scrollState)
                     .playerAwareBottomPadding()
                     .padding(bottom = SettingsDimensions.ScreenBottomPadding),

@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -55,10 +56,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.contentColorFor
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.ui.component.GlassDefaults
 import moe.rukamori.archivetune.ui.component.GlassScaffold
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import androidx.compose.runtime.Composable
@@ -72,6 +76,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
@@ -648,39 +656,80 @@ fun YumaSettingsScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
     scrollable: Boolean = true,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollProgress: (() -> Float)? = null,
+    hazeState: HazeState? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val internalScrollState = rememberScrollState()
+    val effectiveHazeState = hazeState ?: remember { HazeState() }
+    val density = LocalDensity.current
+    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
+
+    val effectiveProgress: () -> Float = scrollProgress ?: {
+        if (scrollBehavior != null) {
+            val limit = scrollBehavior.state.heightOffsetLimit
+            if (limit != 0f) {
+                (-scrollBehavior.state.heightOffset / -limit).coerceIn(0f, 1f)
+            } else {
+                scrollBehavior.state.collapsedFraction
+            }
+        } else if (scrollable) {
+            (internalScrollState.value / thresholdPx).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+    }
+
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = AppBarHeight + statusBarTop
+
     SettingsScreenBackground(modifier = modifier) {
         GlassScaffold(
+            modifier = if (scrollBehavior != null) {
+                Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+            } else {
+                Modifier
+            },
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = snackbarHost,
             topBar = {
-                TopAppBar(
-                    title = title,
-                    navigationIcon = {
-                        val backIcon = @Composable {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
+                Box {
+                    HeaderHazeBackdrop(
+                        progress = effectiveProgress,
+                        hazeState = effectiveHazeState,
+                        height = headerHeight,
+                        alwaysShowFallback = true,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                    TopAppBar(
+                        title = title,
+                        navigationIcon = {
+                            val backIcon = @Composable {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_back),
+                                    contentDescription = null,
+                                )
+                            }
 
-                        if (onBackLongClick != null) {
-                            IconButton(
-                                onClick = onBackClick,
-                                onLongClick = onBackLongClick,
-                                content = backIcon,
-                            )
-                        } else {
-                            androidx.compose.material3.IconButton(
-                                onClick = onBackClick,
-                                content = backIcon,
-                            )
-                        }
-                    },
-                    actions = actions,
-                    colors = GlassDefaults.topAppBarColors(),
-                )
+                            if (onBackLongClick != null) {
+                                IconButton(
+                                    onClick = onBackClick,
+                                    onLongClick = onBackLongClick,
+                                    content = backIcon,
+                                )
+                            } else {
+                                androidx.compose.material3.IconButton(
+                                    onClick = onBackClick,
+                                    content = backIcon,
+                                )
+                            }
+                        },
+                        actions = actions,
+                        colors = GlassDefaults.topAppBarColors(),
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
             },
         ) { innerPadding ->
             val baseModifier = Modifier
@@ -693,7 +742,8 @@ fun YumaSettingsScaffold(
             if (scrollable) {
                 Column(
                     modifier = baseModifier
-                        .verticalScroll(rememberScrollState())
+                        .hazeSource(effectiveHazeState)
+                        .verticalScroll(internalScrollState)
                         .playerAwareBottomPadding()
                         .padding(bottom = SettingsDimensions.ScreenBottomPadding),
                     content = content,
@@ -701,7 +751,7 @@ fun YumaSettingsScaffold(
             } else {
                 // Non-scrollable content (e.g. a LazyColumn) applies the bottom inset itself.
                 Column(
-                    modifier = baseModifier,
+                    modifier = baseModifier.hazeSource(effectiveHazeState),
                     content = content,
                 )
             }
