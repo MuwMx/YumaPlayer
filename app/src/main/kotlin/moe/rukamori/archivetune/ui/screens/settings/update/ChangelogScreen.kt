@@ -71,9 +71,6 @@ fun ChangelogScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
-    val headerTopPadding = AppBarHeight + statusBarTop + 8.dp
-
     suspend fun loadReleases(forceRefresh: Boolean) {
         val result =
             if (channel == UpdateChannel.DAILY_NIGHTLY) {
@@ -148,7 +145,8 @@ fun ChangelogScreen(
             if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-    ) {
+    ) { headerPadding ->
+        val headerTopPadding = headerPadding.calculateTopPadding() + 8.dp
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {

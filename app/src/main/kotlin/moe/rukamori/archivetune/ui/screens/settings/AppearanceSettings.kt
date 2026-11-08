@@ -225,7 +225,7 @@ internal fun AppearanceSettingsScreen(
         onBackClick = actions.onNavigateUp,
         onBackLongClick = actions.onNavigateHome,
         modifier = modifier,
-        scrollable = false,
+        scrollable = true,
     ) {
         AppearanceSettingsContent(
             state = state,

@@ -71,9 +71,6 @@ fun HiddenPlaylistsScreen(navController: NavController) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
-    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
-    val headerTopPadding = AppBarHeight + statusBarTop + 8.dp
-
     YumaSettingsScaffold(
         title = { Text(stringResource(R.string.hidden_playlists)) },
         onBackClick = navController::navigateUp,
@@ -83,7 +80,8 @@ fun HiddenPlaylistsScreen(navController: NavController) {
         scrollProgress = {
             if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
         },
-    ) {
+    ) { headerPadding ->
+        val headerTopPadding = headerPadding.calculateTopPadding() + 8.dp
         if (hiddenPlaylists.isEmpty()) {
             Column(
                 modifier =

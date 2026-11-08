@@ -154,12 +154,14 @@ internal fun GraphicsSettingsScreen(
         scrollable = false,
         scrollProgress = { (scrollState.value / thresholdPx).coerceIn(0f, 1f) },
         modifier = modifier,
-    ) {
+    ) { headerPadding ->
         DeviceLoadHudCard(
             fraction = loadFraction,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(top = headerPadding.calculateTopPadding() + 8.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 8.dp)
                 .height(110.dp),
         )
 

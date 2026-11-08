@@ -21,10 +21,7 @@ internal fun AppearanceSettingsContent(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .playerAwareBottomPadding()
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+        modifier = modifier,
     ) {
         AppearanceThemeSection(
             state = state,

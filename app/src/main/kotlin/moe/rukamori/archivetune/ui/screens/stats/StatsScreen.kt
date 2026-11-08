@@ -14,15 +14,21 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -99,6 +105,13 @@ fun StatsScreen(
     val tonalStart = MaterialTheme.colorScheme.primaryContainer
     val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
 
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = AppBarHeight + statusBarTop
+    val headerProgress = rememberHeaderScrollProgress(
+        lazyListState = lazyListState,
+        hasCollapsibleHeader = false,
+    )
+
     Box(modifier = Modifier.fillMaxSize()) {
         if (!disableBlur) {
             Box(
@@ -122,13 +135,17 @@ fun StatsScreen(
         LazyColumn(
             state = lazyListState,
             contentPadding =
-                LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                    .asPaddingValues(),
+                PaddingValues(
+                    top = headerHeight + 8.dp,
+                    bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding(),
+                ),
             modifier =
-                Modifier.windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
-                ).hazeSource(fabHazeState),
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(
+                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
+                    )
+                    .hazeSource(fabHazeState),
         ) {
             item(contentType = "chips") {
                 StatsPeriodSelector(
@@ -228,10 +245,18 @@ fun StatsScreen(
             )
         }
 
-        StatsTopAppBar(
-            navController = navController,
-            onOpenYearPicker = { isYearPickerOpen = true },
-        )
+        Box(modifier = Modifier.align(Alignment.TopCenter)) {
+            HeaderHazeBackdrop(
+                progress = headerProgress,
+                hazeState = fabHazeState,
+                alwaysShowFallback = true,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+            StatsTopAppBar(
+                navController = navController,
+                onOpenYearPicker = { isYearPickerOpen = true },
+            )
+        }
 
         if (isYearPickerOpen) {
             StatsYearPickerDialog(

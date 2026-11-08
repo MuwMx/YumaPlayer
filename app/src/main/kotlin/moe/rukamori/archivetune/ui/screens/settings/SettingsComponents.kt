@@ -648,6 +648,12 @@ fun playerAwareBottomInset(): Dp =
     LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
 
 @Composable
+fun settingsHeaderHeight(): Dp {
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    return AppBarHeight + statusBarTop
+}
+
+@Composable
 fun YumaSettingsScaffold(
     title: @Composable () -> Unit,
     onBackClick: () -> Unit,
@@ -659,7 +665,7 @@ fun YumaSettingsScaffold(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     scrollProgress: (() -> Float)? = null,
     hazeState: HazeState? = null,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.(PaddingValues) -> Unit,
 ) {
     val internalScrollState = rememberScrollState()
     val effectiveHazeState = hazeState ?: remember { HazeState() }
@@ -683,6 +689,7 @@ fun YumaSettingsScaffold(
 
     val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val headerHeight = AppBarHeight + statusBarTop
+    val headerPadding = remember(headerHeight) { PaddingValues(top = headerHeight) }
 
     SettingsScreenBackground(modifier = modifier) {
         GlassScaffold(
@@ -741,19 +748,21 @@ fun YumaSettingsScaffold(
             if (scrollable) {
                 Column(
                     modifier = baseModifier
-                        .padding(top = innerPadding.calculateTopPadding())
+                        .padding(top = headerHeight)
                         .hazeSource(effectiveHazeState)
                         .verticalScroll(internalScrollState)
                         .playerAwareBottomPadding()
                         .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-                    content = content,
-                )
+                ) {
+                    content(PaddingValues(0.dp))
+                }
             } else {
-                // Non-scrollable content (e.g. a LazyColumn) applies the bottom inset itself.
+                // Non-scrollable content (e.g. a LazyColumn) applies the header and bottom insets itself via contentPadding.
                 Column(
                     modifier = baseModifier.hazeSource(effectiveHazeState),
-                    content = content,
-                )
+                ) {
+                    content(headerPadding)
+                }
             }
         }
     }
