@@ -143,37 +143,23 @@ internal fun GraphicsSettingsScreen(
         calculateGpuLoad(state)
     }
 
-    val scrollState = rememberScrollState()
-    val density = LocalDensity.current
-    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
-
     YumaSettingsScaffold(
         title = { Text(stringResource(R.string.settings_graphics_title)) },
         onBackClick = actions.onNavigateUp,
         onBackLongClick = actions.onNavigateHome,
-        scrollable = false,
-        scrollProgress = { (scrollState.value / thresholdPx).coerceIn(0f, 1f) },
         modifier = modifier,
-    ) { headerPadding ->
+    ) {
         DeviceLoadHudCard(
             fraction = loadFraction,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = headerPadding.calculateTopPadding() + 8.dp)
+                .padding(top = 8.dp)
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 8.dp)
                 .height(110.dp),
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(scrollState)
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            PreferenceGroup(title = stringResource(R.string.settings_graphics_blur_group)) {
+        PreferenceGroup(title = stringResource(R.string.settings_graphics_blur_group)) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.blur_nav_bar)) },
@@ -261,7 +247,6 @@ internal fun GraphicsSettingsScreen(
                     )
                 }
             }
-        }
     }
 }
 

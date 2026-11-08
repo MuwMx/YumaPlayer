@@ -88,6 +88,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -207,18 +208,18 @@ fun MusicTogetherScreen(
             )
             }
         },
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent,
         modifier =
             Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
+        val headerTopPadding = innerPadding.calculateTopPadding()
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
                     )
@@ -242,6 +243,7 @@ fun MusicTogetherScreen(
                         model = state.model,
                         useSupportingPane = useSupportingPane,
                         viewModel = viewModel,
+                        topPadding = headerTopPadding,
                     )
                 }
             }
@@ -254,6 +256,7 @@ private fun MusicTogetherContent(
     model: MusicTogetherUiModel,
     useSupportingPane: Boolean,
     viewModel: MusicTogetherViewModel,
+    topPadding: Dp = 0.dp,
 ) {
     if (useSupportingPane) {
         Row(
@@ -270,7 +273,7 @@ private fun MusicTogetherContent(
                         .weight(1.25f)
                         .fillMaxHeight()
                         .widthIn(max = 720.dp),
-                contentPadding = PaddingValues(bottom = MusicTogetherSpacing.lg),
+                contentPadding = PaddingValues(top = topPadding + MusicTogetherSpacing.sm, bottom = MusicTogetherSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(MusicTogetherSpacing.sm),
             ) {
                 item(contentType = "status") {
@@ -334,7 +337,7 @@ private fun MusicTogetherContent(
             contentPadding =
                 PaddingValues(
                     start = MusicTogetherSpacing.sm,
-                    top = MusicTogetherSpacing.xs,
+                    top = topPadding + MusicTogetherSpacing.xs,
                     end = MusicTogetherSpacing.sm,
                     bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                 ),

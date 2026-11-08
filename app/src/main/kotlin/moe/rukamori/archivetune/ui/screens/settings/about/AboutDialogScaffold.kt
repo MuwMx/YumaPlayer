@@ -16,12 +16,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,9 +37,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -46,7 +50,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
@@ -97,6 +105,10 @@ internal fun AboutFullScreenDialog(
     onDismiss: () -> Unit,
     content: @Composable (Modifier) -> Unit,
 ) {
+    val hazeState = remember { HazeState() }
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = AppBarHeight + statusBarTop
+
     Dialog(
         onDismissRequest = onDismiss,
         properties =
@@ -110,29 +122,38 @@ internal fun AboutFullScreenDialog(
             containerColor = MaterialTheme.colorScheme.surface,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = title,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    navigationIcon = {
-                        androidx.compose.material3.IconButton(onClick = onDismiss) {
-                            Icon(
-                                painter = painterResource(R.drawable.close),
-                                contentDescription = stringResource(R.string.close_dialog),
+                Box {
+                    HeaderHazeBackdrop(
+                        progress = { 1f },
+                        hazeState = hazeState,
+                        height = headerHeight,
+                        alwaysShowFallback = true,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                    },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                )
+                        },
+                        navigationIcon = {
+                            androidx.compose.material3.IconButton(onClick = onDismiss) {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = stringResource(R.string.close_dialog),
+                                )
+                            }
+                        },
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                                scrolledContainerColor = Color.Transparent,
+                            ),
+                    )
+                }
             },
         ) { innerPadding ->
             content(
@@ -143,7 +164,8 @@ internal fun AboutFullScreenDialog(
                         WindowInsets.safeDrawing.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                         ),
-                    ),
+                    )
+                    .hazeSource(hazeState),
             )
         }
     }

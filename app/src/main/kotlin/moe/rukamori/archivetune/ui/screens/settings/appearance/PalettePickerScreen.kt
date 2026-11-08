@@ -74,38 +74,44 @@ fun PalettePickerScreen(navController: NavController) {
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
             ) {
-                items(TargetAccentColors) { color ->
-                    val hexString = String.format("#%06X", 0xFFFFFF and color.toArgb())
-                    val isSelected = customThemeColor == hexString || (customThemeColor == "default" && hexString == "#ED5564")
-
-                    Box(
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(
-                                width = if (isSelected) 3.dp else 1.dp,
-                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable {
-                                onCustomThemeColorChange(hexString)
-                            },
-                        contentAlignment = Alignment.Center
+                TargetAccentColors.chunked(4).forEach { rowColors ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        if (isSelected) {
-                            Icon(
-                                painter = painterResource(R.drawable.check),
-                                contentDescription = null,
-                                tint = if (color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722 > 0.5) Color.Black else Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        rowColors.forEach { color ->
+                            val hexString = String.format("#%06X", 0xFFFFFF and color.toArgb())
+                            val isSelected = customThemeColor == hexString || (customThemeColor == "default" && hexString == "#ED5564")
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(CircleShape)
+                                    .background(color)
+                                    .border(
+                                        width = if (isSelected) 3.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                        shape = CircleShape,
+                                    )
+                                    .clickable {
+                                        onCustomThemeColorChange(hexString)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.check),
+                                        contentDescription = null,
+                                        tint = if (color.red * 0.2126 + color.green * 0.7152 + color.blue * 0.0722 > 0.5) Color.Black else Color.White,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }

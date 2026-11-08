@@ -33,6 +33,8 @@ import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.screens.settings.playerAwareBottomInset
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.GitCommit
 import moe.rukamori.archivetune.utils.Updater
@@ -57,6 +59,7 @@ internal fun UpdateScreenContent(
     }
 
     val listState = rememberLazyListState()
+    val hazeState = remember { HazeState() }
     val density = LocalDensity.current
     val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
 
@@ -71,6 +74,7 @@ internal fun UpdateScreenContent(
             onBackClick = navController::navigateUp,
             onBackLongClick = navController::backToMain,
             scrollable = false,
+            hazeState = hazeState,
             scrollProgress = {
                 if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
             },
@@ -81,7 +85,10 @@ internal fun UpdateScreenContent(
                     top = headerPadding.calculateTopPadding() + 8.dp,
                     bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                 ),
-                modifier = Modifier.fillMaxSize().padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                    .hazeSource(hazeState),
                 verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

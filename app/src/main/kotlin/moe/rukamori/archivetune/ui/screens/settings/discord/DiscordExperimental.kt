@@ -10,20 +10,26 @@ package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.TranslatorLanguages
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -90,27 +96,36 @@ fun DiscordExperimental(navController: NavController) {
             defaultValue = "https://github.com/MuwMx/YumaPlayer",
         )
 
-    Scaffold { inner ->
-        Column(Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = { Text(stringResource(R.string.experiment_settings)) },
-                navigationIcon = {
-                    IconButton(onClick = navController::navigateUp) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-            )
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding =
-                    PaddingValues(
-                        bottom = inner.calculateBottomPadding() + 80.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item {
-                    PreferenceGroup(title = stringResource(R.string.translator_options)) {
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.experiment_settings)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+        scrollable = false,
+        hazeState = hazeState,
+        scrollProgress = {
+            if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
+        },
+    ) { headerPadding ->
+        LazyColumn(
+            state = listState,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .hazeSource(hazeState),
+            contentPadding =
+                PaddingValues(
+                    top = headerPadding.calculateTopPadding() + 8.dp,
+                    bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
+                ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                PreferenceGroup(title = stringResource(R.string.translator_options)) {
                         item {
                             SwitchPreference(
                                 title = { Text(stringResource(R.string.enable_translator)) },
@@ -230,7 +245,6 @@ fun DiscordExperimental(navController: NavController) {
                     }
                 }
             }
-        }
     }
 }
 

@@ -748,13 +748,13 @@ fun YumaSettingsScaffold(
             if (scrollable) {
                 Column(
                     modifier = baseModifier
-                        .padding(top = headerHeight)
-                        .hazeSource(effectiveHazeState)
                         .verticalScroll(internalScrollState)
+                        .hazeSource(effectiveHazeState)
                         .playerAwareBottomPadding()
                         .padding(bottom = SettingsDimensions.ScreenBottomPadding),
                 ) {
-                    content(PaddingValues(0.dp))
+                    Spacer(Modifier.height(headerHeight))
+                    content(headerPadding)
                 }
             } else {
                 // Non-scrollable content (e.g. a LazyColumn) applies the header and bottom insets itself via contentPadding.
