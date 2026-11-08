@@ -8,16 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -26,18 +21,19 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.valentinilk.shimmer.LocalShimmerTheme
-import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.LocalMarqueeEnabled
+import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.SearchSource
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.home.effects.HomeBackgroundSettings
 import moe.rukamori.archivetune.home.effects.LocalHomeBackgroundStyle
 import moe.rukamori.archivetune.home.effects.ScreenBackground
-import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetPageState
@@ -47,17 +43,12 @@ import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.component.splash.SplashConfig
 import moe.rukamori.archivetune.ui.component.splash.SplashOverlay
-import moe.rukamori.archivetune.LocalAnimationsDisabled
-import moe.rukamori.archivetune.LocalMarqueeEnabled
-import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
 import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.main.LocalSyncUtils
-import moe.rukamori.archivetune.ui.navigation.NavigationHost
 import moe.rukamori.archivetune.ui.player.host.PlayerOverlayHost
-import moe.rukamori.archivetune.ui.component.sheet.yumaSheetBackdropRecession
 import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.ui.system.rememberBarScrollVisibility
 import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
@@ -66,25 +57,54 @@ import moe.rukamori.archivetune.utils.SyncUtils
 
 @Composable
 fun ScaffoldShell(
-    activity: ComponentActivity, navController: NavHostController, database: MusicDatabase, downloadUtil: DownloadUtil,
-    syncUtils: SyncUtils, playerConnection: PlayerConnection?, systemBarController: SystemBarController, playerViewModel: PlayerViewModel,
-    bottomSheetPageState: BottomSheetPageState, menuState: MenuState, updateChannel: UpdateChannel, isHomeScreenVisible: Boolean,
+    activity: ComponentActivity,
+    navController: NavHostController,
+    database: MusicDatabase,
+    downloadUtil: DownloadUtil,
+    syncUtils: SyncUtils,
+    playerConnection: PlayerConnection?,
+    systemBarController: SystemBarController,
+    playerViewModel: PlayerViewModel,
+    bottomSheetPageState: BottomSheetPageState,
+    menuState: MenuState,
+    updateChannel: UpdateChannel,
+    isHomeScreenVisible: Boolean,
     playerExpansionFraction: () -> Float = { 0f },
-    onExpansionFraction: (() -> Float) -> Unit, disableAnimations: Boolean, marqueeEnabled: Boolean = true, splashEnabled: Boolean, useDarkTheme: Boolean,
-    pureBlack: Boolean, homeBackgroundStyle: HomeBackgroundStyle, homeBackgroundParallaxEnabled: Boolean, homeBackgroundParallaxStrength: Float,
-    homeBackgroundBrightness: Float, contentAlpha: Float, contentVisible: Boolean, onBurstStart: () -> Unit,
-    splashDone: Boolean, onSplashDismiss: () -> Unit, pendingIntent: Intent?, onClearPendingIntent: () -> Unit,
-    pendingBackupRestoreUri: Uri?, onClearPendingBackupRestoreUri: () -> Unit, aodModeLaunchRequestCount: Int,
-    onResetAodLaunchRequestCount: () -> Unit, onHandleIntent: (Intent?, NavHostController) -> Unit,
+    onExpansionFraction: (() -> Float) -> Unit,
+    disableAnimations: Boolean,
+    marqueeEnabled: Boolean = true,
+    splashEnabled: Boolean,
+    useDarkTheme: Boolean,
+    pureBlack: Boolean,
+    homeBackgroundStyle: HomeBackgroundStyle,
+    homeBackgroundParallaxEnabled: Boolean,
+    homeBackgroundParallaxStrength: Float,
+    homeBackgroundBrightness: Float,
+    contentAlpha: Float,
+    contentVisible: Boolean,
+    onBurstStart: () -> Unit,
+    splashDone: Boolean,
+    onSplashDismiss: () -> Unit,
+    pendingIntent: Intent?,
+    onClearPendingIntent: () -> Unit,
+    pendingBackupRestoreUri: Uri?,
+    onClearPendingBackupRestoreUri: () -> Unit,
+    aodModeLaunchRequestCount: Int,
+    onResetAodLaunchRequestCount: () -> Unit,
+    onHandleIntent: (Intent?, NavHostController) -> Unit,
 ) {
-
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize().background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
     ) {
         val appState = rememberScaffoldAppState(
-            activity = activity, navController = navController, playerViewModel = playerViewModel,
-            updateChannel = updateChannel, maxHeight = maxHeight, pendingIntent = pendingIntent,
-            onClearPendingIntent = onClearPendingIntent, onHandleIntent = onHandleIntent,
+            activity = activity,
+            navController = navController,
+            playerViewModel = playerViewModel,
+            updateChannel = updateChannel,
+            maxHeight = maxHeight,
+            pendingIntent = pendingIntent,
+            onClearPendingIntent = onClearPendingIntent,
+            onHandleIntent = onHandleIntent,
         )
 
         CompositionLocalProvider(
@@ -127,16 +147,10 @@ fun ScaffoldShell(
                         }
                     },
             ) {
-                ScaffoldNavigationRail(
-                    visible = appState.useRail && appState.shouldShowNavigationBar, isTvDevice = appState.isTvDevice,
-                    useRail = appState.useRail, active = appState.searchState.active, currentRoute = appState.currentRoute,
-                    navigationItems = appState.navigationItems, topLevelScreens = appState.topLevelScreens,
-                    navBackStackEntry = appState.navBackStackEntry, disableAnimations = disableAnimations,
-                    pureBlack = pureBlack, playerBottomSheetState = appState.playerBottomSheetState,
-                    tvRailFocusRequester = appState.searchState.tvRailFocusRequester,
-                    searchBarFocusRequester = appState.searchState.searchBarFocusRequester,
-                    contentAreaFocusRequester = appState.searchState.contentAreaFocusRequester,
-                    onPrimaryNavigationClick = appState.handlePrimaryNavigationClick,
+                ScaffoldNavigationRailChrome(
+                    appState = appState,
+                    disableAnimations = disableAnimations,
+                    pureBlack = pureBlack,
                 )
 
                 val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = appState.blurNavBar)
@@ -145,92 +159,53 @@ fun ScaffoldShell(
                 Box(
                     modifier = Modifier.fillMaxSize().nestedScroll(barScrollVisibility.nestedScrollConnection),
                 ) {
-                    val accountName by appState.homeViewModel.accountName.collectAsStateWithLifecycle()
-                    val accountImageUrl by appState.homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
-                    val accountAccentColor by appState.homeViewModel.accountAccentColor.collectAsStateWithLifecycle()
-                    @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
-                    Scaffold(
-                        topBar = {
-                            ScaffoldTopAppBar(
-                                visible = appState.shouldShowTopBar,
-                                navController = navController,
-                                navBackStackEntry = appState.navBackStackEntry,
-                                scrollController = appState.scrollController,
-                                useRail = appState.useRail,
-                                pureBlack = pureBlack,
-                                splashDone = splashDone,
-                                updateState = appState.updateState,
-                                avatarUrl = accountImageUrl,
-                                accountName = accountName,
-                                accentColor = accountAccentColor,
-                                hazeState = scaffoldHazeState.effectiveHazeState,
-                                blurRadius = appState.blurRadius,
-                                blurNavBar = appState.blurNavBar,
-                            )
-                            ScaffoldSearchBarHost(
-                                searchState = appState.searchState, navController = navController,
-                                navBackStackEntry = appState.navBackStackEntry, navigationItems = appState.navigationItems,
-                                searchHazeState = scaffoldHazeState.effectiveSearchHazeState,
-                                isMiniPlayerVisible = appState.isMiniPlayerVisible, disableAnimations = disableAnimations,
-                                pureBlack = pureBlack, blurRadius = appState.blurRadius, modifier = Modifier.align(Alignment.TopCenter),
-                            )
-                        },
-                        bottomBar = {},
-                        containerColor = Color.Transparent,
-                        modifier = Modifier.fillMaxSize(),
-                    ) { _ ->
-                        NavigationHost(
-                            navController = navController, topAppBarScrollBehavior = appState.scrollController.topAppBarScrollBehavior,
-                            hazeState = scaffoldHazeState.effectiveHazeState, updateState = appState.updateState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(
-                                    if (scaffoldHazeState.effectiveSearchHazeState != null) Modifier.hazeSource(scaffoldHazeState.effectiveSearchHazeState) else Modifier,
-                                )
-                                .yumaSheetBackdropRecession(
-                                    progressProvider = {
-                                        val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
-                                        val menuProgress = if (disableAnimations) 0f else menuState.progressProvider().coerceIn(0f, 1f)
-                                        maxOf(playerProgress, menuProgress)
-                                    },
-                                    alphaProvider = {
-                                        val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
-                                        if (playerProgress > 0.9f) ((1f - playerProgress) / 0.1f).coerceIn(0f, 1f) else 1f
-                                    },
-                                    enabled = !disableAnimations,
-                                )
-                                .graphicsLayer {
-                                    val playerProgress = if (disableAnimations) 0f else playerExpansionFraction().coerceIn(0f, 1f)
-                                    alpha = if (playerProgress > 0.9f) ((1f - playerProgress) / 0.1f).coerceIn(0f, 1f) else 1f
-                                },
-                            homeScrollConnection = appState.scrollController.homeScrollBehavior.nestedScrollConnection,
-                            searchScrollConnection = appState.scrollController.searchScrollBehavior.nestedScrollConnection,
-                            onClearUpdateBadge = { appState.updateViewModel.dismissUpdate() }, disableAnimations = disableAnimations,
-                            isTvDevice = appState.isTvDevice, contentAreaFocusRequester = appState.searchState.contentAreaFocusRequester,
-                            launchMusicRecognitionFromShortcut = appState.launchMusicRecognitionFromShortcut,
-                            tabOpenedFromShortcut = appState.tabOpenedFromShortcut, defaultOpenTab = appState.defaultOpenTab,
-                            navigationItems = appState.navigationItems, updateChannel = updateChannel,
+                    ScaffoldChrome(
+                        appState = appState,
+                        navController = navController,
+                        scaffoldHazeState = scaffoldHazeState,
+                        pureBlack = pureBlack,
+                        splashDone = splashDone,
+                        disableAnimations = disableAnimations,
+                    ) {
+                        ScaffoldBody(
+                            navController = navController,
+                            appState = appState,
+                            scaffoldHazeState = scaffoldHazeState,
+                            updateChannel = updateChannel,
+                            playerExpansionFraction = playerExpansionFraction,
                         )
                     }
 
                     PlayerOverlayHost(
-                        modifier = Modifier.fillMaxSize(), navController = navController,
-                        maxHeight = this@BoxWithConstraints.maxHeight, bottomInset = appState.bottomInset,
-                        shouldShowNav = appState.shouldShowNavigationBar, isYearInMusic = appState.isYearInMusicScreen,
-                        useRail = appState.useRail, hazeState = scaffoldHazeState.effectiveHazeState,
-                        blurRadius = appState.blurRadius, pureBlack = pureBlack, playerViewModel = playerViewModel, blurNavBar = appState.blurNavBar,
-                        homeViewModel = appState.homeViewModel, playerConnection = playerConnection, database = database,
-                        systemBarController = systemBarController, window = activity.window, sheetState = appState.playerBottomSheetState,
-                        aodModeLaunchRequestCount = aodModeLaunchRequestCount, onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
-                        useDarkTheme = useDarkTheme, shouldShowHomeShuffleButton = appState.shouldShowHomeShuffleButton,
-                        navigationItems = appState.navigationItems, navBackStackEntry = appState.navBackStackEntry,
+                        modifier = Modifier.fillMaxSize(),
+                        navController = navController,
+                        sheetState = appState.playerBottomSheetState,
+                        shouldShowNav = appState.shouldShowNavigationBar,
+                        isYearInMusic = appState.isYearInMusicScreen,
+                        useRail = appState.useRail,
+                        hazeState = scaffoldHazeState.effectiveHazeState,
+                        blurRadius = appState.blurRadius,
+                        pureBlack = pureBlack,
+                        playerViewModel = playerViewModel,
+                        blurNavBar = appState.blurNavBar,
+                        homeViewModel = appState.homeViewModel,
+                        systemBarController = systemBarController,
+                        window = activity.window,
+                        aodModeLaunchRequestCount = aodModeLaunchRequestCount,
+                        onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
+                        useDarkTheme = useDarkTheme,
+                        shouldShowHomeShuffleButton = appState.shouldShowHomeShuffleButton,
+                        navigationItems = appState.navigationItems,
+                        navBackStackEntry = appState.navBackStackEntry,
                         handlePrimaryNavigationClick = appState.handlePrimaryNavigationClick,
                         onSearchItemDoubleClick = {
                             appState.searchState.onSearchSourceChange(SearchSource.ONLINE)
                             appState.searchState.openSearch()
                         },
-                        disableAnimations = disableAnimations, navVisibleHeight = appState.navVisibleHeight,
-                        floatingToolbarBottomPadding = appState.floatingToolbarBottomPadding, onExpansionFraction = onExpansionFraction,
+                        disableAnimations = disableAnimations,
+                        navVisibleHeight = appState.navVisibleHeight,
+                        floatingToolbarBottomPadding = appState.floatingToolbarBottomPadding,
+                        onExpansionFraction = onExpansionFraction,
                         scrollVisibilityFactor = barScrollVisibility.scrollVisibilityFactor,
                     )
 

@@ -1,7 +1,5 @@
 package moe.rukamori.archivetune.ui.player.host
 
-import android.app.Activity
-import android.content.ContextWrapper
 import android.view.Window
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -9,30 +7,20 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.ui.zIndex
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import dev.chrisbanes.haze.HazeState
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.FloatingToolbarHeight
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
@@ -42,12 +30,10 @@ import moe.rukamori.archivetune.home.launchHomeShuffle
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.ui.component.BottomSheetState
-import moe.rukamori.archivetune.ui.player.host.NavigationToolbarBridge
-import moe.rukamori.archivetune.ui.player.host.PlayerBackHandler
-import moe.rukamori.archivetune.ui.player.host.rememberNavigationSlideOffset
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.system.PlayerSystemBars
 import moe.rukamori.archivetune.ui.system.SystemBarController
 import moe.rukamori.archivetune.ui.system.rememberPlayerBottomSheetState
 import moe.rukamori.archivetune.ui.theme.YdsInsets
@@ -55,11 +41,11 @@ import moe.rukamori.archivetune.ui.theme.YdsInsets
 @Composable
 fun PlayerOverlayHost(
     navController: NavHostController,
-    maxHeight: Dp,
-    bottomInset: Dp,
     shouldShowNav: Boolean,
     isYearInMusic: Boolean,
     modifier: Modifier = Modifier,
+    maxHeight: Dp = 0.dp,
+    bottomInset: Dp = 0.dp,
     useRail: Boolean = false,
     hazeState: HazeState? = null,
     blurNavBar: Boolean = true,
@@ -67,8 +53,8 @@ fun PlayerOverlayHost(
     pureBlack: Boolean = false,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
-    playerConnection: PlayerConnection? = null,
-    database: MusicDatabase? = null,
+    playerConnection: PlayerConnection? = LocalPlayerConnection.current,
+    database: MusicDatabase? = LocalDatabase.current,
     systemBarController: SystemBarController? = null,
     window: Window? = null,
     sheetState: BottomSheetState = rememberPlayerBottomSheetState(
@@ -89,20 +75,16 @@ fun PlayerOverlayHost(
     navVisibleHeight: Dp = FloatingToolbarHeight,
     floatingToolbarBottomPadding: Dp = YdsInsets.floatingToolbarBottomPadding(),
     onExpansionFraction: (() -> Float) -> Unit = {},
-    onExpansionState: (State<Float>) -> Unit = {},
     scrollVisibilityFactor: Float = 1f,
 ) {
     val playerExpansionAnimatable = remember { Animatable(0f) }
     val expansionFraction: () -> Float = remember { { playerExpansionAnimatable.value } }
-    val expansionState: State<Float> = remember { derivedStateOf { playerExpansionAnimatable.value } }
     val isPlayerExpandedForZIndex by remember { derivedStateOf { playerExpansionAnimatable.value > 0.001f } }
 
     SideEffect {
         onExpansionFraction(expansionFraction)
-        onExpansionState(expansionState)
     }
 
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     val onShuffleClick: (() -> Unit)? = remember(shouldShowHomeShuffleButton, coroutineScope, homeViewModel, playerConnection, database) {
@@ -120,42 +102,17 @@ fun PlayerOverlayHost(
         }
     }
 
-    val targetWindow = window ?: remember(context) {
-        var ctx = context
-        while (ctx is ContextWrapper) {
-            if (ctx is Activity) return@remember ctx.window
-            ctx = ctx.baseContext
-        }
-        null
-    }
-
-    PlayerBackHandler(
-        playerViewModel = playerViewModel,
-        playerExpansionAnimatable = playerExpansionAnimatable,
-    )
-
-    val aodModeEnabled by remember(playerConnection) {
-        playerConnection?.aodModeEnabled ?: MutableStateFlow(false)
-    }.collectAsStateWithLifecycle()
-
-    PlayerOverlayEffects(
+    PlayerEffectsCoordinator(
         playerViewModel = playerViewModel,
         playerConnection = playerConnection,
         navController = navController,
         sheetState = sheetState,
-        targetWindow = targetWindow,
-        aodModeEnabled = aodModeEnabled,
-        aodModeLaunchRequestCount = aodModeLaunchRequestCount,
-        onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
-        isYearInMusic = isYearInMusic,
-    )
-
-    PlayerSystemBars(
-        targetWindow = targetWindow,
-        aodModeEnabled = aodModeEnabled,
+        playerExpansionAnimatable = playerExpansionAnimatable,
+        window = window,
         systemBarController = systemBarController,
         useDarkTheme = useDarkTheme,
-        sheetState = sheetState,
+        aodModeLaunchRequestCount = aodModeLaunchRequestCount,
+        onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
         isYearInMusic = isYearInMusic,
     )
 
@@ -165,12 +122,6 @@ fun PlayerOverlayHost(
         label = "",
     )
 
-    val isMiniPlayerActive by remember(playerViewModel) {
-        playerViewModel.uiState
-            .map { it.trackUrl.isNotEmpty() }
-            .distinctUntilChanged()
-    }.collectAsStateWithLifecycle(initialValue = false)
-
     val navSlideDistance = PlayerDockGeometry.navigationBarBottomOffset(
         floatingToolbarBottomPadding = floatingToolbarBottomPadding,
         navigationBarHeight = navVisibleHeight,
@@ -179,13 +130,6 @@ fun PlayerOverlayHost(
         navSlideDistance = navSlideDistance,
         scrollVisibilityFactor = scrollVisibilityFactor,
         bottomNavigationBarHeight = bottomNavigationBarHeight,
-    )
-
-    val navigationSlideOffset = rememberNavigationSlideOffset(
-        navSlideDistance = navSlideDistance,
-        bottomNavigationBarHeight = bottomNavigationBarHeight,
-        navVisibleHeight = navVisibleHeight,
-        playerExpansionAnimatable = playerExpansionAnimatable,
     )
 
     Box(modifier = modifier) {
@@ -212,47 +156,27 @@ fun PlayerOverlayHost(
             )
         }
 
-        if (useRail) return@Box
-
-        PlayerDockContainer(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(if (isPlayerExpandedForZIndex) 0f else 1f),
-            isPillVisible = isMiniPlayerActive,
-            isBarVisible = dropState.isDocked,
-            barHeight = navSlideDistance,
+        PlayerDockHost(
+            playerViewModel = playerViewModel,
+            playerExpansionAnimatable = playerExpansionAnimatable,
+            isPlayerExpandedForZIndex = isPlayerExpandedForZIndex,
+            bottomNavigationBarHeight = bottomNavigationBarHeight,
+            useRail = useRail,
+            pureBlack = pureBlack,
+            hazeState = hazeState,
+            blurNavBar = blurNavBar,
+            blurRadius = blurRadius,
+            navVisibleHeight = navVisibleHeight,
+            floatingToolbarBottomPadding = floatingToolbarBottomPadding,
             scrollVisibilityFactor = scrollVisibilityFactor,
-            miniPlayerSlot = {},
-            barSlot = { barShape ->
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(navSlideDistance)
-                            .offset { navigationSlideOffset.value },
-                ) {
-                    NavigationToolbarBridge(
-                        barShape = barShape,
-                        navigationItems = navigationItems,
-                        pureBlack = pureBlack,
-                        hazeState = hazeState,
-                        blurNavBar = blurNavBar,
-                        blurRadius = blurRadius,
-                        isMiniPlayerActive = isMiniPlayerActive,
-                        playerExpansionAnimatable = playerExpansionAnimatable,
-                        bottomNavigationBarHeight = bottomNavigationBarHeight,
-                        navVisibleHeight = navVisibleHeight,
-                        scrollVisibilityFactor = scrollVisibilityFactor,
-                        floatingToolbarBottomPadding = floatingToolbarBottomPadding,
-                        shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
-                        onShuffleClick = onShuffleClick,
-                        navController = navController,
-                        navBackStackEntry = navBackStackEntry,
-                        handlePrimaryNavigationClick = handlePrimaryNavigationClick,
-                        onSearchItemDoubleClick = onSearchItemDoubleClick,
-                    )
-                }
-            },
+            dropState = dropState,
+            navigationItems = navigationItems,
+            shouldShowHomeShuffleButton = shouldShowHomeShuffleButton,
+            onShuffleClick = onShuffleClick,
+            navController = navController,
+            navBackStackEntry = navBackStackEntry,
+            handlePrimaryNavigationClick = handlePrimaryNavigationClick,
+            onSearchItemDoubleClick = onSearchItemDoubleClick,
         )
     }
 }
