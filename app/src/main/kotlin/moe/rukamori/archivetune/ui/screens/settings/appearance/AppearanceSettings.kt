@@ -38,29 +38,18 @@ import androidx.navigation.compose.rememberNavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
-import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
-import moe.rukamori.archivetune.constants.BlurNavBarKey
-import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
 import moe.rukamori.archivetune.constants.CustomFontUriKey
 import moe.rukamori.archivetune.constants.DarkModeKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
-import moe.rukamori.archivetune.constants.DisableAnimationsKey
 import moe.rukamori.archivetune.constants.DynamicThemeKey
 import moe.rukamori.archivetune.constants.FontPreferenceKey
-import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
-import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
-import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
-import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
-import moe.rukamori.archivetune.constants.HomeBackgroundStyle
-import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.MarqueeEnabledKey
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
-import moe.rukamori.archivetune.constants.RandomHomeBackgroundOnStartupKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
@@ -69,19 +58,16 @@ import moe.rukamori.archivetune.constants.SplashShapePreference
 import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 fun AppearanceSettings(navController: NavController) {
     val context = LocalContext.current
-    val defaultDisableAnimations = remember(context) { context.isLowRamDevice() }
     val (dynamicTheme, onDynamicThemeChange) =
         rememberPreference(
             DynamicThemeKey,
@@ -98,17 +84,6 @@ fun AppearanceSettings(navController: NavController) {
             defaultValue = DarkMode.AUTO,
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
-    val (blurNavBar, onBlurNavBarChange) = rememberPreference(BlurNavBarKey, defaultValue = true)
-    val (blurRadius, onBlurRadiusChange) =
-        rememberPreference(
-            BlurRadiusKey,
-            defaultValue = SettingsDimensions.BlurRadiusDefault,
-        )
-    val (disableAnimations, onDisableAnimationsChange) =
-        rememberPreference(
-            DisableAnimationsKey,
-            defaultValue = defaultDisableAnimations,
-        )
     val (splashOverlayEnabled, onSplashOverlayEnabledChange) =
         rememberPreference(
             SplashOverlayEnabledKey,
@@ -118,27 +93,6 @@ fun AppearanceSettings(navController: NavController) {
         rememberEnumPreference(
             SplashShapePreferenceKey,
             defaultValue = SplashShapePreference.LOGO,
-        )
-    val (homeBackgroundStyle, onHomeBackgroundStyleChange) =
-        rememberEnumPreference(
-            HomeBackgroundStyleKey,
-            defaultValue = HomeBackgroundStyle.TONAL,
-        )
-    val (randomHomeBackgroundOnStartup, onRandomHomeBackgroundOnStartupChange) =
-        rememberPreference(
-            RandomHomeBackgroundOnStartupKey,
-            defaultValue = false,
-        )
-    val (homeBackgroundParallaxEnabled, onHomeBackgroundParallaxEnabledChange) =
-        rememberPreference(HomeBackgroundParallaxEnabledKey, defaultValue = true)
-    val (homeBackgroundParallaxStrength, onHomeBackgroundParallaxStrengthChange) =
-        rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
-    val (homeBackgroundBrightness, onHomeBackgroundBrightnessChange) =
-        rememberPreference(HomeBackgroundBrightnessKey, defaultValue = 1f)
-    val (forceHighRefreshRate, onForceHighRefreshRateChange) =
-        rememberPreference(
-            ForceHighRefreshRateKey,
-            defaultValue = false,
         )
     val (fontPreference, onFontPreferenceChange) =
         rememberEnumPreference(
@@ -225,14 +179,6 @@ fun AppearanceSettings(navController: NavController) {
             if (darkMode == DarkMode.AUTO) isSystemInDarkTheme else darkMode == DarkMode.ON
         }
 
-    val supportedHighestFps = rememberSupportedHighestFps()
-    val isHighRefreshRateSupported = supportedHighestFps > AppearanceContract.HIGH_REFRESH_RATE_THRESHOLD_FPS
-
-    ApplyRefreshRate(
-        isEnabled = forceHighRefreshRate && isHighRefreshRateSupported,
-        targetFps = supportedHighestFps,
-    )
-
     val state =
         AppearanceUiState(
             dynamicTheme = dynamicTheme,
@@ -240,19 +186,8 @@ fun AppearanceSettings(navController: NavController) {
             darkMode = darkMode,
             useDarkTheme = useDarkTheme,
             pureBlack = pureBlack,
-            blurNavBar = blurNavBar,
-            blurRadius = blurRadius,
-            disableAnimations = disableAnimations,
             splashOverlayEnabled = splashOverlayEnabled,
             splashShapePreference = splashShapePreference,
-            homeBackgroundStyle = homeBackgroundStyle,
-            randomHomeBackgroundOnStartup = randomHomeBackgroundOnStartup,
-            homeBackgroundParallaxEnabled = homeBackgroundParallaxEnabled,
-            homeBackgroundParallaxStrength = homeBackgroundParallaxStrength,
-            homeBackgroundBrightness = homeBackgroundBrightness,
-            forceHighRefreshRate = forceHighRefreshRate,
-            isHighRefreshRateSupported = isHighRefreshRateSupported,
-            supportedHighestFps = supportedHighestFps,
             fontPreference = fontPreference,
             customFontUri = customFontUri,
             customFontName = customFontName,
@@ -271,22 +206,14 @@ fun AppearanceSettings(navController: NavController) {
                 onNavigateUp = navController::navigateUp,
                 onNavigateHome = navController::backToMain,
                 onNavigatePalettePicker = { navController.navigate(AppearanceContract.PALETTE_PICKER_ROUTE) },
+                onNavigateGraphics = { navController.navigate(AppearanceContract.GRAPHICS_ROUTE) },
                 onDynamicThemeChange = onDynamicThemeChange,
                 onRandomThemeOnStartupChange = onRandomThemeOnStartupChange,
                 onDarkModeChange = onDarkModeChange,
                 onPureBlackChange = onPureBlackChange,
-                onBlurNavBarChange = onBlurNavBarChange,
-                onBlurRadiusChange = onBlurRadiusChange,
-                onDisableAnimationsChange = onDisableAnimationsChange,
                 onSplashOverlayEnabledChange = onSplashOverlayEnabledChange,
                 onSplashShapePreferenceChange = onSplashShapePreferenceChange,
                 onNavigateCanvas = { navController.navigate(AppearanceContract.CANVAS_ROUTE) },
-                onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
-                onRandomHomeBackgroundOnStartupChange = onRandomHomeBackgroundOnStartupChange,
-                onHomeBackgroundParallaxEnabledChange = onHomeBackgroundParallaxEnabledChange,
-                onHomeBackgroundParallaxStrengthChange = onHomeBackgroundParallaxStrengthChange,
-                onHomeBackgroundBrightnessChange = onHomeBackgroundBrightnessChange,
-                onForceHighRefreshRateChange = onForceHighRefreshRateChange,
                 onFontPreferenceChange = onFontPreferenceChange,
                 onPickCustomFont = pickCustomFont,
                 onQuickPicksDisplayModeChange = onQuickPicksDisplayModeChange,

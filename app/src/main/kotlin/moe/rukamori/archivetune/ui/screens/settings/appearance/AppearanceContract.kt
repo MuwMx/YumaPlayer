@@ -8,36 +8,9 @@ package moe.rukamori.archivetune.ui.screens.settings
 
 import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.constants.AppFontPreference
-import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
-import moe.rukamori.archivetune.constants.BlurNavBarKey
-import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.constants.ChipSortTypeKey
-import moe.rukamori.archivetune.constants.CustomFontNameKey
-import moe.rukamori.archivetune.constants.CustomFontUriKey
-import moe.rukamori.archivetune.constants.DarkModeKey
-import moe.rukamori.archivetune.constants.DefaultOpenTabKey
-import moe.rukamori.archivetune.constants.DisableAnimationsKey
-import moe.rukamori.archivetune.constants.DynamicThemeKey
-import moe.rukamori.archivetune.constants.FontPreferenceKey
-import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
-import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
-import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
-import moe.rukamori.archivetune.constants.HomeBackgroundParallaxStrengthKey
-import moe.rukamori.archivetune.constants.HomeBackgroundStyle
-import moe.rukamori.archivetune.constants.HomeBackgroundStyleKey
 import moe.rukamori.archivetune.constants.LibraryFilter
-import moe.rukamori.archivetune.constants.MarqueeEnabledKey
-import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
-import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
-import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
-import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
-import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
-import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.constants.SplashShapePreference
-import moe.rukamori.archivetune.constants.SplashShapePreferenceKey
-import moe.rukamori.archivetune.constants.SwipeToSongKey
 
 internal object AppearanceContract {
     const val HIGH_REFRESH_RATE_THRESHOLD_FPS = 60.5f
@@ -49,6 +22,7 @@ internal object AppearanceContract {
 
     const val PALETTE_PICKER_ROUTE = "settings/appearance/palette_picker"
     const val CANVAS_ROUTE = "settings/appearance/canvas"
+    const val GRAPHICS_ROUTE = "settings/graphics"
 }
 
 enum class DarkMode {
@@ -71,19 +45,8 @@ data class AppearanceSettingsUiState(
     val darkMode: DarkMode = DarkMode.AUTO,
     val useDarkTheme: Boolean = false,
     val pureBlack: Boolean = false,
-    val blurNavBar: Boolean = true,
-    val blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
-    val disableAnimations: Boolean = false,
     val splashOverlayEnabled: Boolean = true,
     val splashShapePreference: SplashShapePreference = SplashShapePreference.LOGO,
-    val homeBackgroundStyle: HomeBackgroundStyle = HomeBackgroundStyle.TONAL,
-    val randomHomeBackgroundOnStartup: Boolean = false,
-    val homeBackgroundParallaxEnabled: Boolean = true,
-    val homeBackgroundParallaxStrength: Float = 0.6f,
-    val homeBackgroundBrightness: Float = 1f,
-    val forceHighRefreshRate: Boolean = false,
-    val isHighRefreshRateSupported: Boolean = false,
-    val supportedHighestFps: Float = 60f,
     val fontPreference: AppFontPreference = AppFontPreference.DEFAULT,
     val customFontUri: String = "",
     val customFontName: String = "",
@@ -103,22 +66,14 @@ data class AppearanceSettingsUiActions(
     val onNavigateUp: () -> Unit = {},
     val onNavigateHome: () -> Unit = {},
     val onNavigatePalettePicker: () -> Unit = {},
+    val onNavigateGraphics: () -> Unit = {},
+    val onNavigateCanvas: () -> Unit = {},
     val onDynamicThemeChange: (Boolean) -> Unit = {},
     val onRandomThemeOnStartupChange: (Boolean) -> Unit = {},
     val onDarkModeChange: (DarkMode) -> Unit = {},
     val onPureBlackChange: (Boolean) -> Unit = {},
-    val onBlurNavBarChange: (Boolean) -> Unit = {},
-    val onBlurRadiusChange: (Float) -> Unit = {},
-    val onDisableAnimationsChange: (Boolean) -> Unit = {},
     val onSplashOverlayEnabledChange: (Boolean) -> Unit = {},
     val onSplashShapePreferenceChange: (SplashShapePreference) -> Unit = {},
-    val onNavigateCanvas: () -> Unit = {},
-    val onHomeBackgroundStyleChange: (HomeBackgroundStyle) -> Unit = {},
-    val onRandomHomeBackgroundOnStartupChange: (Boolean) -> Unit = {},
-    val onHomeBackgroundParallaxEnabledChange: (Boolean) -> Unit = {},
-    val onHomeBackgroundParallaxStrengthChange: (Float) -> Unit = {},
-    val onHomeBackgroundBrightnessChange: (Float) -> Unit = {},
-    val onForceHighRefreshRateChange: (Boolean) -> Unit = {},
     val onFontPreferenceChange: (AppFontPreference) -> Unit = {},
     val onPickCustomFont: () -> Unit = {},
     val onQuickPicksDisplayModeChange: (QuickPicksDisplayMode) -> Unit = {},

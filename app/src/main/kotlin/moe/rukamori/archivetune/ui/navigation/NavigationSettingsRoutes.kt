@@ -27,6 +27,8 @@ import moe.rukamori.archivetune.ui.screens.settings.ChangelogScreen
 import moe.rukamori.archivetune.ui.screens.settings.ContentSettings
 import moe.rukamori.archivetune.ui.screens.settings.DebugSettings
 import moe.rukamori.archivetune.ui.screens.settings.DiscordSettings
+import moe.rukamori.archivetune.ui.screens.settings.graphics.GraphicsContract
+import moe.rukamori.archivetune.ui.screens.settings.graphics.GraphicsSettings
 import moe.rukamori.archivetune.ui.screens.settings.HiddenPlaylistsScreen
 import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
@@ -54,6 +56,9 @@ internal fun NavGraphBuilder.settingsNavigationRoutes(
     }
     composable("settings/appearance") {
         AppearanceSettings(navController)
+    }
+    composable(GraphicsContract.GRAPHICS_SETTINGS_ROUTE) {
+        GraphicsSettings(navController)
     }
     composable(AppearanceContract.CANVAS_ROUTE) {
         moe.rukamori.archivetune.ui.screens.settings.canvas.CanvasSettings(navController)

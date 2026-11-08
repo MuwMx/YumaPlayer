@@ -7,11 +7,6 @@
 package moe.rukamori.archivetune.ui.screens.settings
 
 import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -20,11 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import java.util.Locale
-import kotlin.math.roundToInt
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
-import moe.rukamori.archivetune.constants.HomeBackgroundStyle
 import moe.rukamori.archivetune.constants.SplashShapePreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
@@ -43,36 +35,17 @@ fun AppearanceThemeSection(
         randomThemeOnStartup = state.randomThemeOnStartup,
         onRandomThemeOnStartupChange = actions.onRandomThemeOnStartupChange,
         onNavigatePalettePicker = actions.onNavigatePalettePicker,
+        onNavigateGraphics = actions.onNavigateGraphics,
         darkMode = state.darkMode,
         onDarkModeChange = actions.onDarkModeChange,
         useDarkTheme = state.useDarkTheme,
         pureBlack = state.pureBlack,
         onPureBlackChange = actions.onPureBlackChange,
-        blurNavBar = state.blurNavBar,
-        onBlurNavBarChange = actions.onBlurNavBarChange,
-        blurRadius = state.blurRadius,
-        onBlurRadiusChange = actions.onBlurRadiusChange,
-        disableAnimations = state.disableAnimations,
-        onDisableAnimationsChange = actions.onDisableAnimationsChange,
         splashOverlayEnabled = state.splashOverlayEnabled,
         onSplashOverlayEnabledChange = actions.onSplashOverlayEnabledChange,
         splashShapePreference = state.splashShapePreference,
         onSplashShapePreferenceChange = actions.onSplashShapePreferenceChange,
         onNavigateCanvas = actions.onNavigateCanvas,
-        homeBackgroundStyle = state.homeBackgroundStyle,
-        onHomeBackgroundStyleChange = actions.onHomeBackgroundStyleChange,
-        randomHomeBackgroundOnStartup = state.randomHomeBackgroundOnStartup,
-        onRandomHomeBackgroundOnStartupChange = actions.onRandomHomeBackgroundOnStartupChange,
-        homeBackgroundParallaxEnabled = state.homeBackgroundParallaxEnabled,
-        onHomeBackgroundParallaxEnabledChange = actions.onHomeBackgroundParallaxEnabledChange,
-        homeBackgroundParallaxStrength = state.homeBackgroundParallaxStrength,
-        onHomeBackgroundParallaxStrengthChange = actions.onHomeBackgroundParallaxStrengthChange,
-        homeBackgroundBrightness = state.homeBackgroundBrightness,
-        onHomeBackgroundBrightnessChange = actions.onHomeBackgroundBrightnessChange,
-        forceHighRefreshRate = state.forceHighRefreshRate,
-        onForceHighRefreshRateChange = actions.onForceHighRefreshRateChange,
-        isHighRefreshRateSupported = state.isHighRefreshRateSupported,
-        supportedHighestFps = state.supportedHighestFps,
         fontPreference = state.fontPreference,
         onFontPreferenceChange = actions.onFontPreferenceChange,
         customFontUri = state.customFontUri,
@@ -89,36 +62,17 @@ fun AppearanceThemeSection(
     randomThemeOnStartup: Boolean,
     onRandomThemeOnStartupChange: (Boolean) -> Unit,
     onNavigatePalettePicker: () -> Unit,
+    onNavigateGraphics: () -> Unit,
     darkMode: DarkMode,
     onDarkModeChange: (DarkMode) -> Unit,
     useDarkTheme: Boolean,
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
-    blurNavBar: Boolean,
-    onBlurNavBarChange: (Boolean) -> Unit,
-    blurRadius: Float,
-    onBlurRadiusChange: (Float) -> Unit,
-    disableAnimations: Boolean,
-    onDisableAnimationsChange: (Boolean) -> Unit,
     splashOverlayEnabled: Boolean,
     onSplashOverlayEnabledChange: (Boolean) -> Unit,
     splashShapePreference: SplashShapePreference,
     onSplashShapePreferenceChange: (SplashShapePreference) -> Unit,
     onNavigateCanvas: () -> Unit,
-    homeBackgroundStyle: HomeBackgroundStyle,
-    onHomeBackgroundStyleChange: (HomeBackgroundStyle) -> Unit,
-    randomHomeBackgroundOnStartup: Boolean,
-    onRandomHomeBackgroundOnStartupChange: (Boolean) -> Unit,
-    homeBackgroundParallaxEnabled: Boolean,
-    onHomeBackgroundParallaxEnabledChange: (Boolean) -> Unit,
-    homeBackgroundParallaxStrength: Float,
-    onHomeBackgroundParallaxStrengthChange: (Float) -> Unit,
-    homeBackgroundBrightness: Float,
-    onHomeBackgroundBrightnessChange: (Float) -> Unit,
-    forceHighRefreshRate: Boolean,
-    onForceHighRefreshRateChange: (Boolean) -> Unit,
-    isHighRefreshRateSupported: Boolean,
-    supportedHighestFps: Float,
     fontPreference: AppFontPreference,
     onFontPreferenceChange: (AppFontPreference) -> Unit,
     customFontUri: String,
@@ -176,35 +130,12 @@ fun AppearanceThemeSection(
         }
 
         item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.blur_nav_bar)) },
-                description = stringResource(R.string.blur_nav_bar_desc),
-                icon = { Icon(painterResource(R.drawable.blur_on), null, modifier = Modifier.size(24.dp)) },
-                checked = blurNavBar,
-                onCheckedChange = onBlurNavBarChange,
-            )
-        }
-
-        item {
-            AnimatedVisibility(
-                visible = blurNavBar,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                BlurRadiusSliderItem(
-                    value = blurRadius,
-                    onValueChangeFinished = onBlurRadiusChange,
-                )
-            }
-        }
-
-        item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.disable_animations)) },
-                description = stringResource(R.string.disable_animations_desc),
-                icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
-                checked = disableAnimations,
-                onCheckedChange = onDisableAnimationsChange,
+            PreferenceEntry(
+                title = { Text(stringResource(R.string.settings_graphics_title)) },
+                description = stringResource(R.string.settings_graphics_summary),
+                icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
+                onClick = onNavigateGraphics,
+                showChevron = true,
             )
         }
 
@@ -242,73 +173,6 @@ fun AppearanceThemeSection(
                 icon = { Icon(painterResource(R.drawable.motion_photos_on), null, modifier = Modifier.size(24.dp)) },
                 onClick = onNavigateCanvas,
                 showChevron = true,
-            )
-        }
-
-        item {
-            HomeBackgroundSelector(
-                homeBackgroundStyle = homeBackgroundStyle,
-                onHomeBackgroundStyleChange = onHomeBackgroundStyleChange,
-            )
-        }
-
-        item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.random_home_background_on_startup)) },
-                description = stringResource(R.string.random_home_background_on_startup_desc),
-                icon = { Icon(painterResource(R.drawable.shuffle), null, modifier = Modifier.size(24.dp)) },
-                checked = randomHomeBackgroundOnStartup,
-                onCheckedChange = onRandomHomeBackgroundOnStartupChange,
-            )
-        }
-        val hasConfigurableEffects = homeBackgroundStyle != HomeBackgroundStyle.TONAL && homeBackgroundStyle != HomeBackgroundStyle.OFF
-        item(visible = hasConfigurableEffects) {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.home_background_parallax)) },
-                icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
-                checked = homeBackgroundParallaxEnabled,
-                onCheckedChange = onHomeBackgroundParallaxEnabledChange,
-            )
-        }
-
-        item(
-            visible = hasConfigurableEffects && homeBackgroundParallaxEnabled,
-        ) {
-            HomeBackgroundSliderItem(
-                title = stringResource(R.string.home_background_parallax_strength),
-                value = homeBackgroundParallaxStrength,
-                onValueChangeFinished = onHomeBackgroundParallaxStrengthChange,
-                valueRange = AppearanceContract.HOME_BACKGROUND_PARALLAX_RANGE,
-                valueText = { strength ->
-                    String.format(Locale.US, "%.1f", strength)
-                },
-            )
-        }
-
-        item(visible = homeBackgroundStyle != HomeBackgroundStyle.TONAL) {
-            HomeBackgroundSliderItem(
-                title = stringResource(R.string.home_background_brightness),
-                value = homeBackgroundBrightness,
-                onValueChangeFinished = onHomeBackgroundBrightnessChange,
-                valueRange = AppearanceContract.HOME_BACKGROUND_BRIGHTNESS_RANGE,
-                valueText = { brightness ->
-                    "${(brightness * 100).roundToInt()}%"
-                },
-            )
-        }
-
-        item {
-            SwitchPreference(
-                title = { Text(stringResource(R.string.force_high_refresh_rate)) },
-                description =
-                    stringResource(
-                        R.string.max_supported_refresh_rate,
-                        supportedHighestFps.roundToInt(),
-                    ),
-                icon = { Icon(painterResource(R.drawable.speed), null, modifier = Modifier.size(24.dp)) },
-                checked = forceHighRefreshRate,
-                onCheckedChange = onForceHighRefreshRateChange,
-                isEnabled = isHighRefreshRateSupported,
             )
         }
 

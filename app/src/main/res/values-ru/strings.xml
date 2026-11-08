@@ -1316,4 +1316,17 @@
     <string name="together_activity_queue_updated">%1$s изменил очередь</string>
     <string name="duration_sort">Длительность</string>
     <string name="lastfm_login_invalid_api_key">Неверный ключ API.</string>
+    <string name="settings_graphics_title">Графика и производительность</string>
+    <string name="settings_graphics_summary">Размытие, процедурные фоны, частота обновления</string>
+    <string name="settings_graphics_hud_placeholder">Мониторинг нагрузки устройства (GPU / FPS)</string>
+    <string name="settings_graphics_blur_group">Эффекты размытия</string>
+    <string name="settings_graphics_performance_group">Производительность и анимации</string>
+    <string name="lyrics_line_blur">Размывать строки текста</string>
+    <string name="lyrics_animation_style">Стиль анимации текста</string>
+    <string name="lyrics_animation_style_none">Выключено</string>
+    <string name="lyrics_animation_style_fade">Затухание</string>
+    <string name="lyrics_animation_style_glow">Свечение</string>
+    <string name="lyrics_animation_style_slide">Скольжение</string>
+    <string name="lyrics_animation_style_karaoke">Караоке</string>
+    <string name="lyrics_animation_style_apple">Apple Music</string>
 </resources>
