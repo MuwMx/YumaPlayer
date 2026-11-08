@@ -11,6 +11,7 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -19,6 +20,9 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -132,6 +136,7 @@ internal fun AboutScreenContent(
     onRetryContributors: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
+    val hazeState = remember { HazeState() }
 
     SettingsScreenBackground {
         Scaffold(
@@ -142,42 +147,49 @@ internal fun AboutScreenContent(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
-                LargeFlexibleTopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(R.string.about),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onNavigateUp,
-                            onLongClick = onNavigateHome,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back),
-                                contentDescription = stringResource(R.string.back_button_desc),
+                Box {
+                    HeaderHazeBackdrop(
+                        progress = { scrollBehavior.state.collapsedFraction },
+                        hazeState = hazeState,
+                        alwaysShowFallback = true,
+                    )
+                    LargeFlexibleTopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.about),
+                                fontWeight = FontWeight.Bold,
                             )
-                        }
-                    },
-                    colors =
-                        TopAppBarDefaults.largeTopAppBarColors(
-                            containerColor = Color.Transparent,
-                            scrolledContainerColor = Color.Transparent,
-                        ),
-                    actions = {
-                        if (state is AboutScreenState.Success) {
-                            AboutOverflowMenu(
-                                expanded = state.model.isOverflowMenuExpanded,
-                                onShowMenu = onShowOverflowMenu,
-                                onDismissMenu = onDismissOverflowMenu,
-                                onOpenTranslationContributors = onOpenTranslationContributors,
-                                onOpenDependencyLicenses = onOpenDependencyLicenses,
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
+                        },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = onNavigateUp,
+                                onLongClick = onNavigateHome,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_back),
+                                    contentDescription = stringResource(R.string.back_button_desc),
+                                )
+                            }
+                        },
+                        colors =
+                            TopAppBarDefaults.largeTopAppBarColors(
+                                containerColor = Color.Transparent,
+                                scrolledContainerColor = Color.Transparent,
+                            ),
+                        actions = {
+                            if (state is AboutScreenState.Success) {
+                                AboutOverflowMenu(
+                                    expanded = state.model.isOverflowMenuExpanded,
+                                    onShowMenu = onShowOverflowMenu,
+                                    onDismissMenu = onDismissOverflowMenu,
+                                    onOpenTranslationContributors = onOpenTranslationContributors,
+                                    onOpenDependencyLicenses = onOpenDependencyLicenses,
+                                )
+                            }
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
             },
         ) { innerPadding ->
             val stateModifier =
@@ -189,6 +201,7 @@ internal fun AboutScreenContent(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                         ),
                     )
+                    .hazeSource(hazeState)
 
             when (state) {
                 AboutScreenState.Loading -> {
@@ -219,7 +232,8 @@ internal fun AboutScreenContent(
                                 .fillMaxSize()
                                 .windowInsetsPadding(
                                     LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                                ),
+                                )
+                                .hazeSource(hazeState),
                         contentPadding =
                             PaddingValues(
                                 top = innerPadding.calculateTopPadding() + 8.dp,

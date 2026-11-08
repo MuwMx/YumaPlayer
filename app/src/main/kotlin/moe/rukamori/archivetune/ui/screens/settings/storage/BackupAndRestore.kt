@@ -52,15 +52,13 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -222,30 +220,10 @@ fun BackupAndRestore(
         }
     }
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.backup_restore)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                )
-            },
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.backup_restore)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -255,18 +233,8 @@ fun BackupAndRestore(
                         .padding(16.dp),
             )
         },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            PreferenceGroup(title = stringResource(R.string.internal_service)) {
+    ) {
+        PreferenceGroup(title = stringResource(R.string.internal_service)) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.action_backup)) },
@@ -304,7 +272,6 @@ fun BackupAndRestore(
                 }
             }
         }
-    }
 
     if (showBackupOptionsDialog) {
         BackupOptionsDialog(
@@ -340,7 +307,6 @@ fun BackupAndRestore(
                 },
             )
         }
-    }
     }
 
     if (showRestoreValidationError) {

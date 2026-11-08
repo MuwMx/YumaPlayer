@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -142,11 +143,16 @@ internal fun GraphicsSettingsScreen(
         calculateGpuLoad(state)
     }
 
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
+
     YumaSettingsScaffold(
         title = { Text(stringResource(R.string.settings_graphics_title)) },
         onBackClick = actions.onNavigateUp,
         onBackLongClick = actions.onNavigateHome,
         scrollable = false,
+        scrollProgress = { (scrollState.value / thresholdPx).coerceIn(0f, 1f) },
         modifier = modifier,
     ) {
         DeviceLoadHudCard(
@@ -161,7 +167,7 @@ internal fun GraphicsSettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .playerAwareBottomPadding()
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {

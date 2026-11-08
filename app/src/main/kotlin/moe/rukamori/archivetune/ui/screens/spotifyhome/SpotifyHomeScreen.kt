@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -22,8 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
+import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SectionType
 import moe.rukamori.archivetune.spotify.SpotifyHomeAction
@@ -40,6 +45,7 @@ import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyPlaylistSectionRow
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyRecentPanel
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyTrackSectionRow
 import moe.rukamori.archivetune.ui.screens.spotifyhome.resolveSpotifySectionTitle
+import moe.rukamori.archivetune.ui.scaffold.ScaffoldHazeState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -52,6 +58,13 @@ fun SpotifyHomeScreen(
     val playerConnection = LocalPlayerConnection.current ?: return
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val hazeState = ScaffoldHazeState.current
+    val lazyListState = rememberLazyListState()
+    BindHeaderScroll(
+        connection = headerScrollConnection,
+        lazyListState = lazyListState,
+        hasCollapsibleHeader = false,
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.navigationEvents.collect { event ->
@@ -112,8 +125,11 @@ fun SpotifyHomeScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     LazyColumn(
+                        state = lazyListState,
                         contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .hazeSource(hazeState),
                     ) {
                         item(key = "spotify_recent_panel", contentType = "recent_panel") {
                             SpotifyRecentPanel(

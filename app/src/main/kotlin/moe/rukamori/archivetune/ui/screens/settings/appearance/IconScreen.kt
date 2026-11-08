@@ -58,6 +58,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import moe.rukamori.archivetune.ui.component.GlassDefaults
 import moe.rukamori.archivetune.ui.component.GlassScaffold
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -168,6 +171,7 @@ private fun IconScreenContent(
     onOpenAuthorProfile: (String) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val hazeState = remember { HazeState() }
 
     GlassScaffold(
         modifier =
@@ -176,29 +180,36 @@ private fun IconScreenContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            MediumFlexibleTopAppBar(
-                title = {
-                    Text(text = stringResource(R.string.app_icon))
-                },
-                subtitle = {
-                    Text(text = stringResource(R.string.app_icon_subtitle))
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        onLongClick = onNavigateHome,
-                        modifier = Modifier.padding(start = 5.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-                scrollBehavior = scrollBehavior,
-            )
+            Box {
+                HeaderHazeBackdrop(
+                    progress = { scrollBehavior.state.collapsedFraction },
+                    hazeState = hazeState,
+                    alwaysShowFallback = true,
+                )
+                MediumFlexibleTopAppBar(
+                    title = {
+                        Text(text = stringResource(R.string.app_icon))
+                    },
+                    subtitle = {
+                        Text(text = stringResource(R.string.app_icon_subtitle))
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateUp,
+                            onLongClick = onNavigateHome,
+                            modifier = Modifier.padding(start = 5.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = stringResource(R.string.back_button_desc),
+                            )
+                        }
+                    },
+                    colors = GlassDefaults.topAppBarColors(),
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
     ) { innerPadding ->
         when (state) {
@@ -250,7 +261,8 @@ private fun IconScreenContent(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)),
+                            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
+                            .hazeSource(hazeState),
                 )
             }
         }

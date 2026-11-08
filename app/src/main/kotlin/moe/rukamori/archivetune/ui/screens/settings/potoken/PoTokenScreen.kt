@@ -62,11 +62,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -354,41 +352,12 @@ fun PoTokenScreen(
         )
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.po_token_generation)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                ).verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding)
-                .animateContentSize(
-                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                ),
-        ) {
-            PreferenceGroup {
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.po_token_generation)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
+        PreferenceGroup {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.web_client_po_token)) },
@@ -526,7 +495,6 @@ fun PoTokenScreen(
                 }
             }
         }
-    }
 }
 
 @Composable

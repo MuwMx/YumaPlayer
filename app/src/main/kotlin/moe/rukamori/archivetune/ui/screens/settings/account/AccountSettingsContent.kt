@@ -44,9 +44,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettingsUiActions
 import moe.rukamori.archivetune.ui.screens.settings.AccountSettingsUiState
 import moe.rukamori.archivetune.ui.screens.settings.SettingsScreenBackground
@@ -68,7 +72,12 @@ internal fun AccountSettingsContent(
 ) {
     SettingsScreenBackground(modifier = modifier) {
         Box(modifier = Modifier.fillMaxSize()) {
+            val hazeState = remember { HazeState() }
             val lazyListState = rememberLazyListState()
+            val headerProgress = rememberHeaderScrollProgress(
+                lazyListState = lazyListState,
+                hasCollapsibleHeader = true,
+            )
             val isHeaderInViewport by remember {
                 derivedStateOf {
                     val visible = lazyListState.layoutInfo.visibleItemsInfo
@@ -80,6 +89,7 @@ internal fun AccountSettingsContent(
                 state = lazyListState,
                 modifier = Modifier
                     .fillMaxSize()
+                    .hazeSource(hazeState)
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
@@ -166,49 +176,58 @@ internal fun AccountSettingsContent(
                 }
             }
 
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(
-                        onClick = actions.onNavigateUp,
-                        onLongClick = actions.onNavigateHome,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                actions = {
-                    if (state.hasUpdate) {
-                        BadgedBox(
-                            badge = { Badge(containerColor = MaterialTheme.colorScheme.error) },
+            Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                HeaderHazeBackdrop(
+                    progress = headerProgress,
+                    hasCollapsibleHeader = true,
+                    hazeState = hazeState,
+                    alwaysShowFallback = true,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        IconButton(
+                            onClick = actions.onNavigateUp,
+                            onLongClick = actions.onNavigateHome,
                         ) {
-                            OutlinedIconButton(
-                                onClick = actions.onOpenUpdateDownload,
-                                colors = IconButtonDefaults.outlinedIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                ),
-                                border = null,
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                            )
+                        }
+                    },
+                    actions = {
+                        if (state.hasUpdate) {
+                            BadgedBox(
+                                badge = { Badge(containerColor = MaterialTheme.colorScheme.error) },
                             ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.update),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                )
+                                OutlinedIconButton(
+                                    onClick = actions.onOpenUpdateDownload,
+                                    colors = IconButtonDefaults.outlinedIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    ),
+                                    border = null,
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.update),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                             }
                         }
-                    }
-                },
-                windowInsets = TopAppBarDefaults.windowInsets,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                ),
-                scrollBehavior = scrollBehavior,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+                    },
+                    windowInsets = TopAppBarDefaults.windowInsets,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
+                    ),
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         }
     }
 }

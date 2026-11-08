@@ -71,10 +71,8 @@ import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.sponsorblock.normalizeSponsorBlockApiUrl
-import moe.rukamori.archivetune.ui.component.GlassDefaults
-import moe.rukamori.archivetune.ui.component.GlassScaffold
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -370,27 +368,11 @@ internal fun PlayerSettingsScreen(
     onApiUrlEditorOpen: () -> Unit = {},
     onRetry: () -> Unit = {},
 ) {
-    GlassScaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.player_and_audio)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = actions.onNavigateUp,
-                        onLongClick = actions.onNavigateHome,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-            )
-        },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.player_and_audio)) },
+        onBackClick = actions.onNavigateUp,
+        onBackLongClick = actions.onNavigateHome,
+    ) {
         PlayerSettingsContent(
             state = state,
             actions = actions,
@@ -402,11 +384,6 @@ internal fun PlayerSettingsScreen(
             onCategorySelectionConfirm = onCategorySelectionConfirm,
             onApiUrlEditorOpen = onApiUrlEditorOpen,
             onRetry = onRetry,
-            modifier = Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal)
-                ),
         )
     }
 }

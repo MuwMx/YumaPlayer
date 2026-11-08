@@ -45,16 +45,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -324,30 +322,10 @@ fun StorageSettings(
         }
     }
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.storage)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                )
-            },
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.storage)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -357,18 +335,8 @@ fun StorageSettings(
                         .padding(SettingsDimensions.ScreenHorizontalPadding),
             )
         },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            StorageFolderSection(
+    ) {
+        StorageFolderSection(
                 state = screenState,
                 smartTrimmer = smartTrimmer,
                 isSmartTrimmerAvailable = isSmartTrimmerAvailable,
@@ -597,7 +565,6 @@ fun StorageSettings(
                 )
             }
         }
-    }
 
     val successState = screenState as? StorageSettingsScreenState.Success
     if (successState?.model?.picker?.visible == true) {
@@ -615,7 +582,6 @@ fun StorageSettings(
     }
     successState?.model?.cacheClear?.let { cacheClear ->
         StorageCacheClearProgressDialog(cacheClear = cacheClear)
-    }
     }
 }
 

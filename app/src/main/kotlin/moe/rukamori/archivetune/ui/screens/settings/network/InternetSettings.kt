@@ -36,13 +36,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -179,44 +177,14 @@ fun InternetSettings(navController: NavController) {
             else -> stringResource(R.string.ip_rotation_desc)
         }
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.internet)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                )
-            },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.internet)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
+        InternetWarningBox()
 
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            InternetWarningBox()
-
-            PreferenceGroup(title = stringResource(R.string.dns_over_https)) {
+        PreferenceGroup(title = stringResource(R.string.dns_over_https)) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.dns_over_https)) },
@@ -452,7 +420,6 @@ fun InternetSettings(navController: NavController) {
                 }
             }
         }
-    }
 
     if (testingProxy) {
         DefaultDialog(
@@ -478,7 +445,6 @@ fun InternetSettings(navController: NavController) {
             },
         )
     }
-}
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

@@ -31,9 +31,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -164,43 +162,11 @@ fun AiIntegrationSettings(
         )
     }
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.ai_integration)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = stringResource(R.string.back_button_desc),
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                    )
-                    .padding(top = innerPadding.calculateTopPadding())
-                    .verticalScroll(rememberScrollState())
-                    .playerAwareBottomPadding()
-                    .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-            ) {
-
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.ai_integration)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
         PreferenceGroup(title = stringResource(R.string.ai_provider_settings)) {
             item {
                 ListPreference(
@@ -371,8 +337,6 @@ fun AiIntegrationSettings(
                     onClick = viewModel::testApi,
                     isEnabled = canTestApi,
                 )
-            }
-        }
             }
         }
     }

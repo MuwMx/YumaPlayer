@@ -19,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import moe.rukamori.archivetune.ui.component.GlassDefaults
-import moe.rukamori.archivetune.ui.component.GlassScaffold
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,36 +53,12 @@ fun IntegrationScreen(navController: NavController) {
 
     var showListenBrainzTokenEditor = remember { mutableStateOf(false) }
 
-    GlassScaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.integration)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-            )
-        },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            PreferenceGroup(title = stringResource(R.string.general)) {
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.integration)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
+        PreferenceGroup(title = stringResource(R.string.general)) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.discord_integration)) },
@@ -136,7 +112,6 @@ fun IntegrationScreen(navController: NavController) {
                 }
             }
         }
-    }
 
     if (showListenBrainzTokenEditor.value) {
         TextFieldDialog(

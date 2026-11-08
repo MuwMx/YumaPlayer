@@ -32,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -369,6 +372,8 @@ fun DiscordSettings(navController: NavController) {
         ArtworkStorage.removeBySongId(context, song?.song?.id ?: return@LaunchedEffect)
     }
 
+    val hazeState = remember { HazeState() }
+
     SettingsScreenBackground {
         Scaffold(
             modifier =
@@ -379,60 +384,67 @@ fun DiscordSettings(navController: NavController) {
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.discord_integration),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
+            Box {
+                HeaderHazeBackdrop(
+                    progress = { scrollBehavior.state.collapsedFraction },
+                    hazeState = hazeState,
+                    alwaysShowFallback = true,
+                )
+                LargeFlexibleTopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.discord_integration),
+                            fontWeight = FontWeight.Bold,
                         )
-                    }
-                },
-                actions = {
-                    var threeDotMenuExpanded by remember { mutableStateOf(false) }
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = navController::navigateUp,
+                            onLongClick = navController::backToMain,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_back),
+                                contentDescription = null,
+                            )
+                        }
+                    },
+                    actions = {
+                        var threeDotMenuExpanded by remember { mutableStateOf(false) }
 
-                    IconButton(onClick = { threeDotMenuExpanded = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = null,
-                        )
-                    }
+                        IconButton(onClick = { threeDotMenuExpanded = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null,
+                            )
+                        }
 
-                    DropdownMenu(
-                        expanded = threeDotMenuExpanded,
-                        onDismissRequest = { threeDotMenuExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.experiment_settings)) },
-                            onClick = {
-                                threeDotMenuExpanded = false
-                                navController.navigate("settings/discord/experimental")
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.experiment),
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
+                        DropdownMenu(
+                            expanded = threeDotMenuExpanded,
+                            onDismissRequest = { threeDotMenuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.experiment_settings)) },
+                                onClick = {
+                                    threeDotMenuExpanded = false
+                                    navController.navigate("settings/discord/experimental")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.experiment),
+                                        contentDescription = null,
+                                    )
+                                },
+                            )
+                        }
+                    },
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Transparent,
+                        ),
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(
@@ -441,7 +453,8 @@ fun DiscordSettings(navController: NavController) {
                     .fillMaxSize()
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                    ),
+                    )
+                    .hazeSource(hazeState),
             contentPadding =
                 PaddingValues(
                     top = innerPadding.calculateTopPadding() + 16.dp,

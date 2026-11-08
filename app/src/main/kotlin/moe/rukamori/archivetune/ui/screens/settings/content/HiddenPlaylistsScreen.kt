@@ -12,35 +12,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import moe.rukamori.archivetune.ui.component.GlassDefaults
-import moe.rukamori.archivetune.ui.component.GlassScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,14 +46,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import moe.rukamori.archivetune.ui.main.LocalDatabase
-import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.db.entities.Playlist
-import moe.rukamori.archivetune.ui.component.IconButton
-import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.utils.backToMain
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,32 +67,28 @@ fun HiddenPlaylistsScreen(navController: NavController) {
         ).collectAsState(initial = emptyList())
 
     val hiddenPlaylists = allPlaylists.filter { it.playlist.isHidden }
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val headerTopPadding = AppBarHeight + statusBarTop + 8.dp
 
-    GlassScaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.hidden_playlists)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-            )
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.hidden_playlists)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+        scrollable = false,
+        hazeState = hazeState,
+        scrollProgress = {
+            if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
         },
-    ) { innerPadding ->
+    ) {
         if (hiddenPlaylists.isEmpty()) {
             Column(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
                         .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -113,16 +108,15 @@ fun HiddenPlaylistsScreen(navController: NavController) {
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                        ),
+                        .hazeSource(hazeState),
                 contentPadding =
                     PaddingValues(
                         start = 16.dp,
-                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        top = headerTopPadding,
                         end = 16.dp,
                         bottom = SettingsDimensions.ScreenBottomPadding + playerAwareBottomInset(),
                     ),

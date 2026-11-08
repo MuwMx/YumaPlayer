@@ -33,13 +33,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -83,36 +81,13 @@ fun LastFMSettings(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.lastfm_integration)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = Color.Transparent,
-                    ),
-                )
-            },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.lastfm_integration)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
         LastFmSettingsContent(
             state = state,
-            topPadding = topPadding,
             onOpenServiceEditor = viewModel::openServiceEditor,
             onDismissServiceEditor = viewModel::dismissServiceEditor,
             onServiceProviderChange = viewModel::updateServiceProvider,
@@ -137,12 +112,10 @@ fun LastFMSettings(
         )
     }
 }
-}
 
 @Composable
 private fun LastFmSettingsContent(
     state: LastFmSettingsScreenState,
-    topPadding: Dp,
     onOpenServiceEditor: () -> Unit,
     onDismissServiceEditor: () -> Unit,
     onServiceProviderChange: (LastFmProvider) -> Unit,
@@ -165,14 +138,7 @@ private fun LastFmSettingsContent(
     onTimingDelaySecondsChange: (Int) -> Unit,
     onSaveTimingEditor: () -> Unit,
 ) {
-    Column(
-        Modifier
-            .padding(top = topPadding)
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-            .verticalScroll(rememberScrollState())
-            .playerAwareBottomPadding()
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-    ) {
+    Column {
         when (state) {
             LastFmSettingsScreenState.Loading -> {
                 LastFmSettingsLoading()

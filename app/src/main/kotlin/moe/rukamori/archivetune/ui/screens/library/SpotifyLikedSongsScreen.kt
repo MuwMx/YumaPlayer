@@ -49,6 +49,8 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -65,6 +67,8 @@ import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
+import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginFallback
 import moe.rukamori.archivetune.ui.screens.settings.SpotifyLoginSheet
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -93,7 +97,12 @@ fun SpotifyLikedSongsScreen(
         ?: remember { mutableStateOf(false) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<MediaMetadata?>(null) }
+    val hazeState = remember { HazeState() }
     val lazyListState = rememberLazyListState()
+    val headerProgress = rememberHeaderScrollProgress(
+        lazyListState = lazyListState,
+        hasCollapsibleHeader = true,
+    )
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
 
     val showTopBarTitle by remember {
@@ -272,7 +281,9 @@ fun SpotifyLikedSongsScreen(
             LazyColumn(
                 state = lazyListState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.union(WindowInsets.ime).asPaddingValues(),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(hazeState),
             ) {
                 if (!isSearching) {
                     item(key = "header") {
@@ -327,6 +338,14 @@ fun SpotifyLikedSongsScreen(
                 headerItems = if (!isSearching) 1 else 0,
             )
         }
+
+        HeaderHazeBackdrop(
+            progress = headerProgress,
+            hasCollapsibleHeader = true,
+            hazeState = hazeState,
+            alwaysShowFallback = true,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
 
         SpotifyLikedTopBar(
             isSearching = isSearching,

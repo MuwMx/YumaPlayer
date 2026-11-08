@@ -73,6 +73,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,6 +97,9 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.together.MusicTogetherActivityLogItemUiModel
@@ -163,9 +167,17 @@ fun MusicTogetherScreen(
         MusicTogetherDialogs(model = model, viewModel = viewModel)
     }
 
+    val hazeState = remember { HazeState() }
+
     Scaffold(
         topBar = {
-            LargeFlexibleTopAppBar(
+            Box {
+                HeaderHazeBackdrop(
+                    progress = { scrollBehavior.state.collapsedFraction },
+                    hazeState = hazeState,
+                    alwaysShowFallback = true,
+                )
+                LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.music_together)) },
                 navigationIcon = {
                     AtIconButton(
@@ -193,6 +205,7 @@ fun MusicTogetherScreen(
                     ),
                 scrollBehavior = scrollBehavior,
             )
+            }
         },
         contentWindowInsets = WindowInsets.safeDrawing,
         containerColor = Color.Transparent,
@@ -208,7 +221,8 @@ fun MusicTogetherScreen(
                     .padding(innerPadding)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                    ),
+                    )
+                    .hazeSource(hazeState),
         ) {
             when (val state = screenState) {
                 MusicTogetherScreenState.Loading -> {

@@ -102,10 +102,7 @@ internal fun PlayerSettingsContent(
     onRetry: () -> Unit = {},
 ) {
     Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .playerAwareBottomPadding()
-            .padding(bottom = SettingsDimensions.ScreenBottomPadding),
+        modifier = modifier,
     ) {
         PlayerLosslessSection(state = state, actions = actions)
         PlayerAudioSection(state = state, actions = actions)

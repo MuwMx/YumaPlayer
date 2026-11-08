@@ -25,7 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import moe.rukamori.archivetune.ui.component.GlassDefaults
-import moe.rukamori.archivetune.ui.component.GlassScaffold
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -152,36 +152,12 @@ fun PrivacySettings(navController: NavController) {
         )
     }
 
-    GlassScaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.privacy)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-            )
-        },
-    ) { innerPadding ->
-        val topPadding = innerPadding.calculateTopPadding()
-
-        Column(
-            Modifier
-                .padding(top = topPadding)
-                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .playerAwareBottomPadding()
-                .padding(bottom = SettingsDimensions.ScreenBottomPadding),
-        ) {
-            PreferenceGroup(title = stringResource(R.string.listen_history)) {
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.privacy)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
+        PreferenceGroup(title = stringResource(R.string.listen_history)) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_listen_history)) },
@@ -241,5 +217,4 @@ fun PrivacySettings(navController: NavController) {
                 }
             }
         }
-    }
 }

@@ -72,7 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import moe.rukamori.archivetune.ui.component.GlassDefaults
-import moe.rukamori.archivetune.ui.component.GlassScaffold
+import moe.rukamori.archivetune.ui.screens.settings.YumaSettingsScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -162,41 +162,19 @@ fun DebugSettings(navController: NavController) {
 
     val playerConnection = LocalPlayerConnection.current
 
-    GlassScaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.experiment_settings),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-                colors = GlassDefaults.topAppBarColors(),
-            )
+    YumaSettingsScaffold(
+        title = {
+            Column {
+                Text(
+                    text = stringResource(R.string.experiment_settings),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         },
-    ) { innerPadding: PaddingValues ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .windowInsetsPadding(
-                        LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                    ).verticalScroll(rememberScrollState())
-                    .playerAwareBottomPadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PreferenceGroup(title = stringResource(R.string.experimental_features)) {
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+    ) {
+        PreferenceGroup(title = stringResource(R.string.experimental_features)) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.show_discord_debug_ui)) },
@@ -258,8 +236,9 @@ fun DebugSettings(navController: NavController) {
 
             Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding))
         }
+
+        LogViewerPanel()
     }
-}
 
 @Composable
 private fun DiscordDebugSection() {
@@ -394,8 +373,6 @@ private fun DiscordDebugSection() {
             }
         }
     }
-
-    LogViewerPanel()
 }
 
 @Composable

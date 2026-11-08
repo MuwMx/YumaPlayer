@@ -12,25 +12,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,20 +35,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.BuildConfig
-import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.UpdateChannel
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
@@ -75,6 +70,9 @@ fun ChangelogScreen(
     var releases by remember { mutableStateOf<List<ChangelogRelease>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    val statusBarTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val headerTopPadding = AppBarHeight + statusBarTop + 8.dp
 
     suspend fun loadReleases(forceRefresh: Boolean) {
         val result =
@@ -136,42 +134,24 @@ fun ChangelogScreen(
             },
         )
 
-    SettingsScreenBackground {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.changelog)) },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain,
-                        ) {
-                            Icon(
-                                painterResource(R.drawable.arrow_back),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    colors =
-                        TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            scrolledContainerColor = Color.Transparent,
-                        ),
-                )
-            },
-        ) { paddingValues ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(top = paddingValues.calculateTopPadding())
-                        .windowInsetsPadding(
-                            LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal),
-                        ),
-            ) {
+    val hazeState = remember { HazeState() }
+    val density = LocalDensity.current
+    val thresholdPx = remember(density) { with(density) { 48.dp.toPx() } }
+
+    YumaSettingsScaffold(
+        title = { Text(stringResource(R.string.changelog)) },
+        onBackClick = navController::navigateUp,
+        onBackLongClick = navController::backToMain,
+        scrollable = false,
+        hazeState = hazeState,
+        scrollProgress = {
+            if (listState.firstVisibleItemIndex > 0) 1f else (listState.firstVisibleItemScrollOffset / thresholdPx).coerceIn(0f, 1f)
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+        ) {
                 when {
                     isLoading -> {
                         CircularWavyProgressIndicator(
@@ -228,13 +208,14 @@ fun ChangelogScreen(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                                    .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                                    .padding(top = headerTopPadding)
+                                    .hazeSource(hazeState),
                         )
                     }
                 }
             }
         }
-    }
 }
 
 @ThemePreviews
