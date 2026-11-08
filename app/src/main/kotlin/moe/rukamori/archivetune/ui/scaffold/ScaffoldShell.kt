@@ -218,7 +218,7 @@ fun ScaffoldShell(
                         maxHeight = this@BoxWithConstraints.maxHeight, bottomInset = appState.bottomInset,
                         shouldShowNav = appState.shouldShowNavigationBar, isYearInMusic = appState.isYearInMusicScreen,
                         useRail = appState.useRail, hazeState = scaffoldHazeState.effectiveHazeState,
-                        blurRadius = appState.blurRadius, pureBlack = pureBlack, playerViewModel = playerViewModel,
+                        blurRadius = appState.blurRadius, pureBlack = pureBlack, playerViewModel = playerViewModel, blurNavBar = appState.blurNavBar,
                         homeViewModel = appState.homeViewModel, playerConnection = playerConnection, database = database,
                         systemBarController = systemBarController, window = activity.window, sheetState = appState.playerBottomSheetState,
                         aodModeLaunchRequestCount = aodModeLaunchRequestCount, onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,

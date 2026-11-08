@@ -35,6 +35,7 @@ internal fun BoxScope.NavigationToolbarBridge(
     navigationItems: List<Screens>,
     pureBlack: Boolean,
     hazeState: HazeState?,
+    blurNavBar: Boolean = true,
     blurRadius: Float,
     isMiniPlayerActive: Boolean,
     playerExpansionAnimatable: Animatable<Float, AnimationVector1D>,
@@ -58,6 +59,7 @@ internal fun BoxScope.NavigationToolbarBridge(
         pureBlack = pureBlack,
         capsuleShape = barShape,
         hazeState = hazeState,
+        blurNavBar = blurNavBar,
         blurRadius = blurRadius,
         showBorder = !isMiniPlayerActive || playerExpansionAnimatable.value >= SettingsDimensions.FullyExpandedThreshold,
         blurEnabled = bottomNavigationBarHeight != 0.dp &&

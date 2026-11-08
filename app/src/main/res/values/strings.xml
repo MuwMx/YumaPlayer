@@ -1306,14 +1306,12 @@
     <string name="canvas_settings_update_failed">Could not update Canvas settings</string>
     <string name="settings_graphics_title">Graphics &amp; Performance</string>
     <string name="settings_graphics_summary">Blur, procedural backgrounds, refresh rate</string>
-    <string name="settings_graphics_hud_placeholder">Device Load HUD (GPU / Frame rate)</string>
+    <string name="settings_graphics_hud_title">Device Load &amp; GPU</string>
+    <string name="settings_graphics_hud_status_optimal">Optimal</string>
+    <string name="settings_graphics_hud_status_alert">Alert</string>
+    <string name="settings_graphics_hud_status_high">High Load</string>
+    <string name="settings_graphics_hud_status_throttle">Throttle</string>
+    <string name="settings_graphics_hud_load_value">Render load: %1$d%%</string>
     <string name="settings_graphics_blur_group">Blur effects</string>
     <string name="settings_graphics_performance_group">Performance &amp; animations</string>
-    <string name="lyrics_animation_style">Lyrics animation style</string>
-    <string name="lyrics_animation_style_none">None</string>
-    <string name="lyrics_animation_style_fade">Fade</string>
-    <string name="lyrics_animation_style_glow">Glow</string>
-    <string name="lyrics_animation_style_slide">Slide</string>
-    <string name="lyrics_animation_style_karaoke">Karaoke</string>
-    <string name="lyrics_animation_style_apple">Apple Music</string>
 </resources>

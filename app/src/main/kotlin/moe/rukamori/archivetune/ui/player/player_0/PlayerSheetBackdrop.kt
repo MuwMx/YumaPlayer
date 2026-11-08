@@ -37,7 +37,9 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
+import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 internal fun rememberMiniHazeStyle(
@@ -85,35 +87,39 @@ internal fun Modifier.playerSheetBackdrop(
     hazeStyle: HazeBlurStyle,
     backgroundBrush: Brush,
     pureBlack: Boolean = false,
+    blurNavBar: Boolean? = null,
     expansionFractionProvider: () -> Float = { 0f },
-): Modifier = this.then(
-    if (pureBlack) {
+): Modifier = this.composed {
+    val (blurNavBarPref) = rememberPreference(BlurNavBarKey, defaultValue = true)
+    val effectiveBlurNavBar = blurNavBar ?: blurNavBarPref
+
+    val baseBackground = if (pureBlack) {
         Modifier.background(Color.Black)
     } else {
         Modifier.background(backgroundBrush)
     }
-).then(
-    if (hazeState != null && !pureBlack) {
-        Modifier.composed {
-            val currentProvider by rememberUpdatedState(expansionFractionProvider)
-            val isBlurEnabled by remember {
-                derivedStateOf { currentProvider() < 0.99f }
+
+    if (hazeState != null && !pureBlack && effectiveBlurNavBar) {
+        val currentProvider by rememberUpdatedState(expansionFractionProvider)
+        val isBlurEnabled by remember {
+            derivedStateOf { currentProvider() < 0.99f }
+        }
+        val dynamicStyle = remember(hazeStyle, isBlurEnabled) {
+            hazeStyle.then {
+                blurEnabled(isBlurEnabled)
             }
-            val dynamicStyle = remember(hazeStyle, isBlurEnabled) {
-                hazeStyle.then {
-                    blurEnabled(isBlurEnabled)
-                }
-            }
+        }
+        baseBackground.then(
             Modifier.hazeBlur(
                 input = HazeInput.Sources(hazeState),
                 style = dynamicStyle,
                 performanceMode = HazePerformanceMode.Fixed(SettingsDimensions.HazeQualityFraction),
-            )
-        }
+            ),
+        )
     } else {
-        Modifier
+        baseBackground
     }
-)
+}
 
 internal fun Modifier.playerSheetGlassBorder(
     expansionFractionProvider: () -> Float,

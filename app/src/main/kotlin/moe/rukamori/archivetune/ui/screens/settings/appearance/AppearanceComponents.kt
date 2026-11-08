@@ -103,8 +103,8 @@ internal fun BlurRadiusSliderItem(
     sliderState.value = localValue
 
     PreferenceEntry(
-        title = { Text(stringResource(R.string.blur_radius)) },
-        description = "${stringResource(R.string.blur_radius_desc)} (${localValue.roundToInt()} dp)",
+        title = { Text("${stringResource(R.string.blur_radius)} — ${localValue.roundToInt()} dp") },
+        description = stringResource(R.string.blur_radius_desc),
         content = {
             Spacer(Modifier.height(4.dp))
             Slider(

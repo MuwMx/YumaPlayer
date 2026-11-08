@@ -64,6 +64,7 @@ fun FloatingNavigationToolbar(
     blurRadius: Float = SettingsDimensions.BlurRadiusDefault,
     showBorder: Boolean = true,
     blurEnabled: Boolean = true,
+    blurNavBar: Boolean = true,
     visibilityFactor: Float = 1f,
     onShuffleClick: (() -> Unit)? = null,
     shuffleIconRes: Int? = null,
@@ -142,7 +143,7 @@ fun FloatingNavigationToolbar(
             .navigationShapeShadow(capsuleShape, shadowPaint)
             .clip(capsuleShape)
             .then(
-                if (hazeState != null) {
+                if (hazeState != null && blurNavBar && blurEnabled) {
                     Modifier.hazeBlur(
                         input = HazeInput.Sources(hazeState),
                         style = hazeStyle,

@@ -16,16 +16,14 @@ internal data class ScaffoldHazeState(
 @Composable
 internal fun rememberScaffoldHazeState(blurNavBar: Boolean): ScaffoldHazeState {
     val hazeState = remember { HazeState() }
-    val effectiveHazeState = if (blurNavBar) hazeState else null
     val searchHazeState = remember { HazeState() }
-    val effectiveSearchHazeState = if (blurNavBar) searchHazeState else null
 
-    return remember(blurNavBar, hazeState, searchHazeState) {
+    return remember(hazeState, searchHazeState) {
         ScaffoldHazeState(
             hazeState = hazeState,
-            effectiveHazeState = effectiveHazeState,
+            effectiveHazeState = hazeState,
             searchHazeState = searchHazeState,
-            effectiveSearchHazeState = effectiveSearchHazeState,
+            effectiveSearchHazeState = searchHazeState,
         )
     }
 }

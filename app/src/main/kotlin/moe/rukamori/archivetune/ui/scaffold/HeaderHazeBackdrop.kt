@@ -94,7 +94,7 @@ fun HeaderHazeBackdrop(
             .fillMaxWidth()
             .height(effectiveHeight)
             .then(
-                if (isBlurActive && hazeStyle != null && hazeState != null) {
+                if (isBlurActive && hazeStyle != null) {
                     Modifier
                         .graphicsLayer {
                             val p = progress()
@@ -119,17 +119,26 @@ fun HeaderHazeBackdrop(
                                 ),
                             ),
                         )
-                } else if (alwaysShowFallback) {
-                    Modifier.background(
-                        Brush.verticalGradient(
-                            listOf(
-                                surfaceColor.copy(alpha = 0.95f),
-                                surfaceColor.copy(alpha = 0.85f),
-                                surfaceColor.copy(alpha = 0.6f),
-                                Color.Transparent,
+                } else if (alwaysShowFallback || !blurNavBar) {
+                    Modifier
+                        .graphicsLayer {
+                            val p = progress()
+                            alpha = if (hasCollapsibleHeader) {
+                                smoothstep(0.70f, 0.95f, p)
+                            } else {
+                                if (alwaysShowFallback) 1f else p
+                            }
+                        }
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    surfaceColor.copy(alpha = 0.95f),
+                                    surfaceColor.copy(alpha = 0.85f),
+                                    surfaceColor.copy(alpha = 0.6f),
+                                    Color.Transparent,
+                                ),
                             ),
-                        ),
-                    )
+                        )
                 } else {
                     Modifier
                 },
