@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -126,22 +128,13 @@ fun BoxScope.GlobalDialogsHost(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                YumaMascot(
-                    mood = YumaMood.Alert,
-                    modifier = Modifier.size(44.dp),
-                )
-                Text(
-                    text = "v$latestVersionName",
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    textAlign = TextAlign.Center,
-                )
-            }
+            YumaMascot(
+                mood = YumaMood.Chill,
+                modifier = Modifier
+                    .fillMaxWidth(0.46f)
+                    .widthIn(min = 96.dp, max = 132.dp)
+                    .aspectRatio(1f),
+            )
             Spacer(Modifier.height(8.dp))
             SineWaveLine(
                 modifier = Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 8.dp),
