@@ -50,7 +50,7 @@ data class PlayerUiState(
 
     val sleepTimerRemainingSeconds: Int? = null,
 
-    val placeholderResId: Int = moe.rukamori.archivetune.R.drawable.mascot_1,
+    val placeholderResId: Int = moe.rukamori.archivetune.designsystem.R.drawable.yuma_chill,
 
     val isLoading: Boolean = false,
     val isConnectActive: Boolean = false,

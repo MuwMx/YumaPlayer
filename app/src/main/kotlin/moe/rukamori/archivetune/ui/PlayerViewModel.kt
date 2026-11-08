@@ -49,16 +49,6 @@ import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
 
-private val MascotAssets = listOf(
-    moe.rukamori.archivetune.R.drawable.mascot_1,
-    moe.rukamori.archivetune.R.drawable.mascot_2,
-    moe.rukamori.archivetune.R.drawable.mascot_3,
-    moe.rukamori.archivetune.R.drawable.mascot_4,
-    moe.rukamori.archivetune.R.drawable.mascot_5,
-    moe.rukamori.archivetune.R.drawable.mascot_6,
-    moe.rukamori.archivetune.R.drawable.mascot_7,
-    moe.rukamori.archivetune.R.drawable.mascot_8
-)
 
 /**
  * Единый источник правды и бизнес-логики для плеера Yuma.
