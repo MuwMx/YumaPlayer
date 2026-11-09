@@ -82,6 +82,27 @@ internal fun buildAppendShuffleOrder(
 }
 
 @OptIn(UnstableApi::class)
+internal fun buildMovedShuffleOrder(
+    timeline: Timeline,
+    fromIndex: Int,
+    toIndex: Int,
+    randomSeed: Long = System.currentTimeMillis(),
+): DefaultShuffleOrder? {
+    if (fromIndex == toIndex || timeline.isEmpty) return null
+    val playOrder = mutableListOf<Int>()
+    var index = timeline.getFirstWindowIndex(true)
+    while (index != C.INDEX_UNSET) {
+        playOrder += index
+        index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
+    }
+    val from = playOrder.indexOf(fromIndex)
+    val to = playOrder.indexOf(toIndex)
+    if (from < 0 || to < 0) return null
+    playOrder.add(to, playOrder.removeAt(from))
+    return DefaultShuffleOrder(playOrder.toIntArray(), randomSeed)
+}
+
+@OptIn(UnstableApi::class)
 internal fun buildPlayNextShuffleOrder(
     timeline: Timeline,
     mediaItemCount: Int,

@@ -105,7 +105,11 @@ class QueueStateHolder(
         val toIndex = resolveWindowIndex(timeline, toUid) ?: return
 
         if (fromIndex != toIndex && fromIndex in 0 until timeline.windowCount && toIndex in 0 until timeline.windowCount) {
-            player.moveMediaItem(fromIndex, toIndex)
+            if (player.shuffleModeEnabled) {
+                playerConnectionProvider()?.moveInShuffleOrder(fromIndex, toIndex)
+            } else {
+                player.moveMediaItem(fromIndex, toIndex)
+            }
         }
     }
 
