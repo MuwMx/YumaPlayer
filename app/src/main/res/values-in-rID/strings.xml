@@ -1281,4 +1281,14 @@
     <string name="canvas_settings_load_failed">Tidak dapat memuat pengaturan Kanvas</string>
     <string name="canvas_settings_update_failed">Tidak dapat memperbarui pengaturan Kanvas</string>
     <string name="login_browser">Browser web</string>
+    <string name="settings_graphics_title">Grafis &amp; Performa</string>
+    <string name="settings_graphics_hud_status_optimal">Optimal</string>
+    <string name="settings_graphics_blur_group">Efek buram</string>
+    <string name="settings_graphics_performance_group">Performa &amp; animasi</string>
+    <string name="settings_graphics_hud_status_alert">Peringatan</string>
+    <string name="settings_graphics_summary">Buram, latar belakang prosedural, refresh rate</string>
+    <string name="settings_graphics_hud_title">Beban Perangkat &amp; GPU</string>
+    <string name="settings_graphics_hud_status_high">Beban Tinggi</string>
+    <string name="settings_graphics_hud_load_value">Beban render: %1$d%%</string>
+    <string name="settings_graphics_hud_status_throttle">Pelambatan</string>
 </resources>
