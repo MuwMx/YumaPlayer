@@ -1,6 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
+ * YumaPlayer (2026) | Original work by MuwMix
  * GPL-3.0 License | Contributors: see git history
  */
 
@@ -35,6 +34,10 @@ class SpotifyPlaceholderQueue(
         SpotifyPlaybackResolver.resolveStoredPlaceholders(it)
     },
 ) : Queue {
+
+    init {
+        SpotifyPlaceholders.register(items)
+    }
     private val safeStartIndex: Int
         get() = if (items.isEmpty()) 0 else startIndex.coerceIn(items.indices)
 
@@ -43,7 +46,6 @@ class SpotifyPlaceholderQueue(
 
     override suspend fun getInitialStatus(): Queue.Status =
         withContext(Dispatchers.IO) {
-            SpotifyPlaceholders.register(items)
             val placeholders = items.filter { SpotifyPlaceholders.isPlaceholder(it.id) }
             val matches =
                 try {

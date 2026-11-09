@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
 
 const val SPOTIFY_PLACEHOLDER_PREFIX = "spotify:"
 
@@ -109,8 +110,18 @@ object SpotifyPlaceholders {
         placeholderId: String,
         database: MusicDatabase,
         priority: MatchPriority = MatchPriority.PLAYING,
+        force: Boolean = false,
     ): MediaMetadata? {
-        if (!isPlaceholder(placeholderId) || isKnownUnmatched(placeholderId)) return null
+        if (!isPlaceholder(placeholderId)) return null
+        if (force) {
+            unmatchedAt.remove(placeholderId)
+        } else if (isKnownUnmatched(placeholderId)) {
+            val hasStoredMatch = withContext(Dispatchers.IO) {
+                database.getSpotifyMatch(placeholderId.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)) != null
+            }
+            if (!hasStoredMatch) return null
+            unmatchedAt.remove(placeholderId)
+        }
         val owners = inFlight.getValue(priority)
         while (true) {
             val running =
@@ -120,7 +131,7 @@ object SpotifyPlaceholders {
             if (running != null) {
                 try {
                     return running.await()
-                } catch (e: CancellationException) {
+                } catch (_: CancellationException) {
                     currentCoroutineContext().ensureActive()
                     continue
                 }
@@ -138,7 +149,6 @@ object SpotifyPlaceholders {
             }
         }
     }
-
     suspend fun youtubeIdFor(mediaId: String): String {
         if (!isPlaceholder(mediaId)) return mediaId
         val database = SpotifyPlaybackResolver.database() ?: return mediaId
@@ -146,17 +156,17 @@ object SpotifyPlaceholders {
             resolve(mediaId, database, MatchPriority.UPCOMING)?.id ?: mediaId
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             mediaId
         }
     }
-
     fun resolveBlocking(
         placeholderId: String,
         database: MusicDatabase,
+        force: Boolean = false,
     ): MediaMetadata? =
         try {
-            runBlocking { withTimeout(RESOLVE_TIMEOUT_MS) { resolve(placeholderId, database) } }
+            runBlocking { withTimeout(RESOLVE_TIMEOUT_MS.milliseconds) { resolve(placeholderId, database, force = force) } }
         } catch (e: TimeoutCancellationException) {
             throw IOException("Matching $placeholderId took longer than ${RESOLVE_TIMEOUT_MS / 1000} s", e)
         }

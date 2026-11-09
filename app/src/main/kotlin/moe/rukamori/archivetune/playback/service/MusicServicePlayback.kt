@@ -6,24 +6,17 @@
 
 package moe.rukamori.archivetune.playback.service
 
-import moe.rukamori.archivetune.playback.engine.*
-import moe.rukamori.archivetune.playback.crossfade.cancelCrossfade
-
-import moe.rukamori.archivetune.playback.MusicService
-
 import android.content.Intent
-import android.net.NetworkCapabilities
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.Cache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.PlaybackSource
@@ -31,7 +24,18 @@ import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.extensions.directorySizeBytes
 import moe.rukamori.archivetune.extensions.findNextMediaItemById
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.playback.MusicService
+import moe.rukamori.archivetune.playback.crossfade.cancelCrossfade
 import moe.rukamori.archivetune.playback.crossfade.isTrackFullyCached
+import moe.rukamori.archivetune.playback.engine.LEGACY_FLAC_CACHE_KEY_PREFIX
+import moe.rukamori.archivetune.playback.engine.STREAM_V2_FLAC_PREFIX
+import moe.rukamori.archivetune.playback.engine.extractMediaIdFromCacheKey
+import moe.rukamori.archivetune.playback.engine.flacCacheKey
+import moe.rukamori.archivetune.playback.engine.flacStreamCacheKey
+import moe.rukamori.archivetune.playback.engine.shouldBypassYouTubeResolver
+import moe.rukamori.archivetune.playback.engine.streamCacheKey
+import moe.rukamori.archivetune.playback.engine.validateLegacyCacheKeyAcrossCaches
+import moe.rukamori.archivetune.playback.engine.ytStreamCacheKey
 import moe.rukamori.archivetune.playback.recovery.PlaybackRecoveryEngine
 import moe.rukamori.archivetune.playback.resolvers.effectiveSource
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
@@ -62,7 +66,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
     if (SpotifyPlaceholders.isPlaceholder(mediaId)) {
         val youtubeId =
             try {
-                SpotifyPlaceholders.resolveBlocking(mediaId, database)?.id
+                SpotifyPlaceholders.resolveBlocking(mediaId, database, force = true)?.id
             } catch (e: InterruptedException) {
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
             } catch (e: CancellationException) {
@@ -288,7 +292,7 @@ internal fun MusicService.createPlaybackRecoveryEngine(): PlaybackRecoveryEngine
         loginPrompt = object : PlaybackRecoveryEngine.LoginPrompt {
             override fun isAppInForeground(): Boolean = this@createPlaybackRecoveryEngine.isAppInForeground()
             override fun openLogin(mediaId: String, targetUrl: String) {
-                val deepLink = Uri.parse("archivetune://login?url=${Uri.encode(targetUrl)}")
+                val deepLink = "archivetune://login?url=${Uri.encode(targetUrl)}".toUri()
                 val intent =
                     Intent(Intent.ACTION_VIEW, deepLink, this@createPlaybackRecoveryEngine, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
