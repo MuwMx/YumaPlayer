@@ -67,8 +67,9 @@ fun LyricsHeader(
 
     // Изолированная анимация вращения пластинки
     val rotation = remember { Animatable(0f) }
-    LaunchedEffect(state.isPlaying, isVisible) {
-        if (state.isPlaying && isVisible) {
+    val isAudible = state.isPlaying && state.isReady
+    LaunchedEffect(isAudible, isVisible) {
+        if (isAudible && isVisible) {
             while (true) {
                 rotation.animateTo(
                     targetValue = rotation.value + 360f,

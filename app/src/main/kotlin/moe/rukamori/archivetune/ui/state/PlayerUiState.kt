@@ -22,6 +22,7 @@ data class PlayerUiState(
 
     // Статусы плеера
     val isPlaying: Boolean = false,
+    val isReady: Boolean = false,
     val isLiked: Boolean = false,
     val durationMs: Long = 0L,
 

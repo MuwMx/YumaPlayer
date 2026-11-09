@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,9 +74,10 @@ internal fun MiniPlayerContentInternal(
     }
 
     val rotation = remember { Animatable(0f) }
+    val isAudible = state.isPlaying && state.isReady
 
-    LaunchedEffect(state.isPlaying, isVisible) {
-        if (state.isPlaying && isVisible) {
+    LaunchedEffect(isAudible, isVisible) {
+        if (isAudible && isVisible) {
             while (true) {
                 val currentDegree = rotation.value % 360f
                 rotation.snapTo(currentDegree)
@@ -113,7 +115,8 @@ internal fun MiniPlayerContentInternal(
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                waveSpeed = if (isAudible && isVisible) WavyProgressIndicatorDefaults.CircularWavelength else 0.dp,
             )
 
             Box(
