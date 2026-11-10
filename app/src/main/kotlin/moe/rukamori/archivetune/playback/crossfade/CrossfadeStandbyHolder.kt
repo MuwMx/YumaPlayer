@@ -27,13 +27,11 @@ import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.audio.applyEffectiveVolumeImmediately
 import moe.rukamori.archivetune.playback.bumpCrossfadePlanGeneration
-import moe.rukamori.archivetune.playback.engine.createMediaSourceFactory
 import moe.rukamori.archivetune.playback.engine.ExoDeckController
 import moe.rukamori.archivetune.playback.engine.SafeTrackSelectionFactory
 import moe.rukamori.archivetune.playback.engine.prepareNext
 import moe.rukamori.archivetune.playback.audio.isPlayerInitialized
 import moe.rukamori.archivetune.playback.audio.playbackAudioAttributes
-import moe.rukamori.archivetune.playback.engine.shouldBypassPlayerCache
 import moe.rukamori.archivetune.playback.smart.TrackAnalyzer
 
 internal fun MusicService.prepareSecondaryCrossfadePlayer(

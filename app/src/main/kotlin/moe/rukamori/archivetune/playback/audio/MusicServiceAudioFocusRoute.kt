@@ -9,8 +9,6 @@ import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.PlaybackConstants
 import moe.rukamori.archivetune.playback.crossfade.cancelCrossfade
 
-import moe.rukamori.archivetune.playback.audio.AudioPolicyConstants
-
 import android.database.ContentObserver
 import android.media.AudioManager
 import android.os.Handler
@@ -20,6 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 
 internal fun MusicService.setupAudioFocusRequest() {
     audioFocusRequest = AudioManager.AUDIOFOCUS_GAIN.let { _ ->
@@ -222,7 +221,7 @@ internal fun MusicService.updateAudiblePlaybackRecovery() {
     audiblePlaybackRecoveryJob = scope.launch {
         while (isActive && shouldKeepPlaybackAudible()) {
             ensureAudiblePlaybackVolume("watchdog")
-            delay(AudioPolicyConstants.AUDIBLE_PLAYBACK_VOLUME_CHECK_MS)
+            delay(AudioPolicyConstants.AUDIBLE_PLAYBACK_VOLUME_CHECK_MS.milliseconds)
         }
         audiblePlaybackRecoveryJob = null
     }
@@ -237,7 +236,7 @@ internal fun MusicService.onAudioOutputDeviceChanged() {
     player.setAudioAttributes(playbackAudioAttributes(), false)
     audioRouteRecoveryJob?.cancel()
     audioRouteRecoveryJob = scope.launch {
-        delay(AudioPolicyConstants.AUDIO_ROUTE_CHANGE_DEBOUNCE_MS)
+        delay(AudioPolicyConstants.AUDIO_ROUTE_CHANGE_DEBOUNCE_MS.milliseconds)
         recoverAudioRouteAfterDeviceChange()
     }
 }
@@ -245,41 +244,16 @@ internal fun MusicService.onAudioOutputDeviceChanged() {
 internal suspend fun MusicService.recoverAudioRouteAfterDeviceChange() {
     if (!isPlayerInitialized()) return
     rebindAudioEffectsAfterRouteChange()
-    if (!shouldRebuildPlaybackForAudioRouteChange()) return
-    val now = android.os.SystemClock.elapsedRealtime()
-    if (now - lastAudioRouteRecoveryRealtimeMs < AudioPolicyConstants.AUDIO_ROUTE_RECOVERY_MIN_INTERVAL_MS) return
-    lastAudioRouteRecoveryRealtimeMs = now
-    val mediaItemIndex = player.currentMediaItemIndex.takeIf { it != androidx.media3.common.C.INDEX_UNSET } ?: return
-    val playbackPosition = player.currentPosition.coerceAtLeast(0L)
-    val shouldResumePlayback = player.playWhenReady
-    Timber.tag("MusicService").i("Recovering audio route after output change at index=$mediaItemIndex position=$playbackPosition resume=$shouldResumePlayback")
-    if (shouldResumePlayback && !requestAudioFocus()) {
-        wasPlayingBeforeAudioFocusLoss = true
-        player.playWhenReady = false
-        return
-    }
-    player.playWhenReady = false
-    player.prepare()
-    player.seekTo(mediaItemIndex, playbackPosition)
-    delay(AudioPolicyConstants.AUDIO_ROUTE_RECOVERY_RESUME_DELAY_MS)
-    if (shouldResumePlayback && player.currentMediaItem != null && player.playbackState != Player.STATE_ENDED && requestAudioFocus()) {
-        player.playWhenReady = true
-    }
 }
 
 internal suspend fun MusicService.rebindAudioEffectsAfterRouteChange() {
     if (!isAudioEffectSessionOpened) return
     closeAudioEffectSession()
     if (!player.playWhenReady) return
-    delay(AudioPolicyConstants.AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS)
+    delay(AudioPolicyConstants.AUDIO_EFFECT_ROUTE_REBIND_DELAY_MS.milliseconds)
     openAudioEffectSession()
 }
 
-internal fun MusicService.shouldRebuildPlaybackForAudioRouteChange(): Boolean {
-    if (player.currentMediaItem == null) return false
-    if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return false
-    return player.playWhenReady || player.playbackState == Player.STATE_BUFFERING
-}
 
 internal fun MusicService.currentAudioOutputDeviceSignature(): String = runCatching {
     audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).asSequence().filter { it.isSink }.sortedWith(
@@ -287,19 +261,8 @@ internal fun MusicService.currentAudioOutputDeviceSignature(): String = runCatch
     ).joinToString(separator = "|") { device -> "${device.type}:${device.id}:${device.productName?.toString().orEmpty()}" }
 }.getOrDefault("")
 
-internal fun MusicService.playbackAudioAttributes(): androidx.media3.common.AudioAttributes = androidx.media3.common.AudioAttributes.Builder()
+internal fun playbackAudioAttributes(): androidx.media3.common.AudioAttributes = androidx.media3.common.AudioAttributes.Builder()
     .setUsage(androidx.media3.common.C.USAGE_MEDIA).setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
     .setAllowedCapturePolicy(androidx.media3.common.C.ALLOW_CAPTURE_BY_ALL).build()
-
-internal fun MusicService.bluetoothAutoStartEnabled(): Boolean = autoStartOnBluetoothEnabled
-
-internal fun MusicService.handleBluetoothAutoStart() {
-    if (isTogetherGuestSession()) return
-    if (player.currentMediaItem != null && player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED) {
-        if (!player.playWhenReady) player.play()
-        return
-    }
-    if (player.mediaItemCount > 0) { player.prepare(); player.play() }
-}
 
 internal fun MusicService.isPlayerInitialized(): Boolean = try { player; true } catch (_: UninitializedPropertyAccessException) { false }

@@ -1,3 +1,13 @@
+/*
+ * Copyright (C) 2026 MuwMix <https://github.com/MuwMx> (YumaPlayer)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+
 //
 // Created by muwmix on 11/10/26.
 //

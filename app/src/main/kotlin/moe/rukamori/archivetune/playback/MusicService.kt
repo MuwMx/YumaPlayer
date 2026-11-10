@@ -16,7 +16,6 @@ import moe.rukamori.archivetune.playback.recovery.PlaybackStreamRecoveryTracker
 import moe.rukamori.archivetune.playback.resolvers.updateActualPlaybackSources
 import moe.rukamori.archivetune.playback.together.ServiceTogetherCoordinator
 import moe.rukamori.archivetune.playback.audio.*
-import moe.rukamori.archivetune.playback.crossfade.*
 import moe.rukamori.archivetune.playback.discord.*
 import moe.rukamori.archivetune.playback.engine.*
 import moe.rukamori.archivetune.playback.host.*
@@ -175,6 +174,15 @@ class MusicService :
         val currentPlayingId = runCatching { player.currentMediaItem?.mediaId }.getOrNull()
         actualPlaybackSources.update { current ->
             updateActualPlaybackSources(current, mediaId, source, currentPlayingId)
+        }
+    }
+
+    private var isBecomingNoisyRegistered = false
+    private val becomingNoisyReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+            if (intent.action == android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                player.pause()
+            }
         }
     }
 
@@ -508,14 +516,13 @@ class MusicService :
                 .setRenderersFactory(createRenderersFactory(localDjFilter))
                 .setLoadControl(createPrimaryLoadControl())
                 .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
-                .setHandleAudioBecomingNoisy(true)
+                .setHandleAudioBecomingNoisy(false)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .setAudioAttributes(
                     playbackAudioAttributes(),
                     false,
                 ).setSeekBackIncrementMs(5000)
                 .setSeekForwardIncrementMs(5000)
-                .setDeviceVolumeControlEnabled(true)
                 .build()
                 .apply {
                     addAnalyticsListener(PlaybackStatsListener(false, playerListeners))
@@ -601,9 +608,18 @@ class MusicService :
         connectivityManager = getSystemService()!!
         connectivityObserver = NetworkConnectivityObserver(this)
 
+        if (!isBecomingNoisyRegistered) {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this,
+                becomingNoisyReceiver,
+                android.content.IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            isBecomingNoisyRegistered = true
+        }
+
         serviceLifecycle.onCreate()
     }
-
     internal fun ensureScopesActive() {
         if (!scopeJob.isActive) scopeJob = Job()
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + scopeJob)
@@ -738,6 +754,10 @@ class MusicService :
         moe.rukamori.archivetune.playback.discord.createTransientSongFromMedia(media)
 
     override fun onDestroy() {
+        if (isBecomingNoisyRegistered) {
+            runCatching { unregisterReceiver(becomingNoisyReceiver) }
+            isBecomingNoisyRegistered = false
+        }
         SpotifyPlaceholders.isOnline = { true }
         sponsorBlockPlaybackController.detach()
         serviceLifecycle.onDestroy {
