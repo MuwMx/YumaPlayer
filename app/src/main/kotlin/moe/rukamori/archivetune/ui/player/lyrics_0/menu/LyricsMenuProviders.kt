@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.rememberPreference
+import kotlin.time.Duration.Companion.milliseconds
 
 private enum class LyricsSyncKind {
     NONE,
@@ -70,6 +71,17 @@ private data class ProviderState(
     val syncKind: LyricsSyncKind = LyricsSyncKind.NONE,
 )
 
+private object LyricsCandidatesCache {
+    private val cache = androidx.collection.LruCache<String, Map<PreferredLyricsProvider, ProviderState>>(20)
+
+    fun get(songId: String): Map<PreferredLyricsProvider, ProviderState>? = cache[songId]
+
+    fun updateProvider(songId: String, provider: PreferredLyricsProvider, state: ProviderState) {
+        val current = cache[songId]?.toMutableMap() ?: mutableMapOf()
+        current[provider] = state
+        cache.put(songId, current)
+    }
+}
 private fun getLyricsProvider(provider: PreferredLyricsProvider): LyricsProvider =
     when (provider) {
         PreferredLyricsProvider.BETTER_LYRICS -> BetterLyricsProvider
@@ -108,52 +120,63 @@ internal fun LyricsMenuProviders(
     val album = mediaMetadata?.album?.title ?: state.album
     val duration = mediaMetadata?.duration ?: (state.durationMs / 1000).toInt()
 
+    val cachedStates = songId.let { LyricsCandidatesCache.get(it) }
+
     var providerStates by remember(songId) {
         mutableStateOf(
-            availableProviders.associateWith { ProviderState(isChecking = true) }
+            cachedStates ?: availableProviders.associateWith { ProviderState(isChecking = true) }
         )
     }
 
     LaunchedEffect(songId) {
-        if (!songId.isNullOrBlank() && title.isNotBlank()) {
-            availableProviders.forEach { provider ->
-                launch(Dispatchers.IO) {
-                    val providerImpl = getLyricsProvider(provider)
-                    val result = runCatching {
-                        withTimeoutOrNull(7000L) {
-                            providerImpl.getLyrics(
-                                id = songId,
-                                title = title,
-                                artist = artist,
-                                album = album,
-                                duration = duration,
-                            ).getOrNull()
-                        }
-                    }.getOrNull()
+        if (songId.isBlank() || title.isBlank()) {
+            providerStates = availableProviders.associateWith { ProviderState(isChecking = false) }
+            return@LaunchedEffect
+        }
 
-                    val validLyrics = result?.takeIf {
-                        it.isNotBlank() && it != LyricsEntity.LYRICS_NOT_FOUND
-                    }
-                    val syncKind = when {
-                        validLyrics == null -> LyricsSyncKind.NONE
-                        LrcParser.hasWordSyncedLyrics(validLyrics) || LrcParser.isTtml(validLyrics) -> LyricsSyncKind.WORD
-                        LrcParser.isLineSyncedLrc(validLyrics) -> LyricsSyncKind.LINE
-                        LrcParser.hasMeaningfulLyricsContent(validLyrics) -> LyricsSyncKind.PLAIN
-                        else -> LyricsSyncKind.NONE
-                    }
+        // 2. Если для этого трека уже есть готовые (не проверяющиеся) результаты — пропускаем сетевой опрос
+        val hasCompletedCache = cachedStates?.values?.none { it.isChecking } == true
+        if (hasCompletedCache) {
+            return@LaunchedEffect
+        }
 
-                    withContext(Dispatchers.Main) {
-                        providerStates = providerStates + (provider to ProviderState(
-                            isChecking = false,
-                            lyrics = validLyrics,
-                            syncKind = syncKind,
-                        ))
+        availableProviders.forEach { provider ->
+            launch(Dispatchers.IO) {
+                val providerImpl = getLyricsProvider(provider)
+                val result = runCatching {
+                    withTimeoutOrNull(7000L.milliseconds) {
+                        providerImpl.getLyrics(
+                            id = songId,
+                            title = title,
+                            artist = artist,
+                            album = album,
+                            duration = duration,
+                        ).getOrNull()
                     }
+                }.getOrNull()
+
+                val validLyrics = result?.takeIf {
+                    it.isNotBlank() && it != LyricsEntity.LYRICS_NOT_FOUND
                 }
-            }
-        } else {
-            providerStates = availableProviders.associateWith {
-                ProviderState(isChecking = false)
+                val syncKind = when {
+                    validLyrics == null -> LyricsSyncKind.NONE
+                    LrcParser.hasWordSyncedLyrics(validLyrics) || LrcParser.isTtml(validLyrics) -> LyricsSyncKind.WORD
+                    LrcParser.isLineSyncedLrc(validLyrics) -> LyricsSyncKind.LINE
+                    LrcParser.hasMeaningfulLyricsContent(validLyrics) -> LyricsSyncKind.PLAIN
+                    else -> LyricsSyncKind.NONE
+                }
+
+                val newState = ProviderState(
+                    isChecking = false,
+                    lyrics = validLyrics,
+                    syncKind = syncKind,
+                )
+
+                LyricsCandidatesCache.updateProvider(songId, provider, newState)
+
+                withContext(Dispatchers.Main) {
+                    providerStates = providerStates + (provider to newState)
+                }
             }
         }
     }
@@ -207,7 +230,7 @@ internal fun LyricsMenuProviders(
                 onClick = {
                     setProviderStr(provider.name)
                     val lyrics = providerState.lyrics
-                    if (lyrics != null && !songId.isNullOrBlank()) {
+                    if (lyrics != null && songId.isNotBlank()) {
                         coroutineScope.launch(Dispatchers.IO) {
                             database.query {
                                 replaceLyrics(songId, lyrics, LyricsEntity.Source.USER_SELECTION.value)
@@ -231,8 +254,7 @@ internal fun LyricsMenuProviders(
                         val badgeLabel = when (providerState.syncKind) {
                             LyricsSyncKind.WORD -> "SYNCED"
                             LyricsSyncKind.LINE -> "LRC"
-                            LyricsSyncKind.PLAIN -> "PLAIN"
-                            LyricsSyncKind.NONE -> ""
+                            else -> "PLAIN"
                         }
                         Box(
                             modifier = Modifier
