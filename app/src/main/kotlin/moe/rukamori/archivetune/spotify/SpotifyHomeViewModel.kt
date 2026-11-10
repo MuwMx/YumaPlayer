@@ -111,15 +111,30 @@ class SpotifyHomeViewModel @Inject constructor(
                 var frequentArtists = emptyList<SpotifyArtist>()
                 var recentItems = emptyList<SpotifyRecentItem>()
 
+                val recentlyPlayedDeferred = async { Spotify.recentlyPlayed(limit = 20) }
                 val topTracksDeferred = async { Spotify.topTracks(limit = 20) }
                 val newReleasesDeferred = async { Spotify.newReleases(limit = 20) }
                 val homeDeferred = async { Spotify.home(sectionItemsLimit = 10) }
                 val topArtistsDeferred = async { Spotify.topArtists(limit = 20) }
 
+                val recentlyPlayedResult = recentlyPlayedDeferred.await()
                 val topTracksResult = topTracksDeferred.await()
                 val newReleasesResult = newReleasesDeferred.await()
                 val homeResult = homeDeferred.await()
                 val topArtistsResult = topArtistsDeferred.await()
+
+                recentlyPlayedResult.onSuccess { recentlyPlayed ->
+                    val recentTracks = recentlyPlayed.items.map { it.track }.filter { it.name.isNotBlank() }
+                    if (recentTracks.isNotEmpty()) {
+                        sections.add(
+                            SpotifyHomeSection(
+                                title = "spotify_recently_played_tracks",
+                                type = SectionType.TRACKS,
+                                tracks = recentTracks,
+                            )
+                        )
+                    }
+                }
 
                 var topTracksList = emptyList<SpotifyTrack>()
                 topTracksResult.onSuccess { topTracks ->
