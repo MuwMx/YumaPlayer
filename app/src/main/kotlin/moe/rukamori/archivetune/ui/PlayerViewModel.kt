@@ -232,6 +232,7 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.Repeat -> playbackStateHolder.toggleRepeat()
             is PlayerAction.ToggleAutoDownload -> appearanceStateHolder.toggleAutoDownload()
             is PlayerAction.SearchLyrics -> refreshLyrics()
+            is PlayerAction.ApplyLyrics -> applyLyrics(action.songId, action.lyrics)
             is PlayerAction.Lyrics -> setLyricsVisible(true)
             is PlayerAction.StartSleepTimer -> playbackStateHolder.startSleepTimer(action.minutes)
             is PlayerAction.StopSleepTimer -> playbackStateHolder.stopSleepTimer()
@@ -431,6 +432,17 @@ class PlayerViewModel @Inject constructor(
 
     fun saveLyrics(text: String) {
         lyricsDelegate.saveLyrics(text)
+    }
+
+    fun applyLyrics(songId: String, lyrics: String) {
+        if (songId.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            effectiveLyricsRepository.replaceLyrics(
+                id = songId,
+                lyrics = lyrics,
+                source = LyricsEntity.Source.USER_SELECTION.value,
+            )
+        }
     }
 
     fun translateLyrics(langCode: String, useAi: Boolean) {

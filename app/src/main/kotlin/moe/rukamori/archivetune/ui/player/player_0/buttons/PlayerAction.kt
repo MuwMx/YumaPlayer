@@ -23,6 +23,7 @@ sealed interface PlayerAction {
     object ForceRefresh : PlayerAction
     object DeleteLyrics : PlayerAction
     object ToggleAutoDownload : PlayerAction
+    data class ApplyLyrics(val songId: String, val lyrics: String) : PlayerAction
 
     // Таймер сна
     data class StartSleepTimer(val minutes: Int) : PlayerAction
