@@ -1343,4 +1343,7 @@
     <string name="lyrics_provider_desc">Select provider for lyrics fetching</string>
     <string name="lyrics_provider_active">Active</string>
     <string name="lyrics_provider_select">Select</string>
+    <string name="lyrics_provider_checking">Checking…</string>
+    <string name="lyrics_provider_found">Found</string>
+    <string name="lyrics_provider_not_found">Not found</string>
 </resources>

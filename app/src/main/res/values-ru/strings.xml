@@ -1331,4 +1331,7 @@
     <string name="lyrics_provider_desc">Выбор провайдера для загрузки текстов</string>
     <string name="lyrics_provider_active">Активен</string>
     <string name="lyrics_provider_select">Выбрать</string>
+    <string name="lyrics_provider_checking">Проверка…</string>
+    <string name="lyrics_provider_found">Найдено</string>
+    <string name="lyrics_provider_not_found">Не найдено</string>
 </resources>

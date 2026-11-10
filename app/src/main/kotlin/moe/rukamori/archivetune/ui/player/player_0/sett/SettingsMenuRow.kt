@@ -32,6 +32,7 @@ fun SettingsMenuRow(
     showArrow: Boolean = false,
     index: Int = 0,
     count: Int = 1,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val shape = remember(index, count) {
         val large = SettingsDimensions.SegmentedCornerLarge
@@ -89,7 +90,10 @@ fun SettingsMenuRow(
                     fontFamily = LocalArchiveTuneFontFamily.current
                 )
             }
-            if (showArrow) {
+            if (trailingContent != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                trailingContent()
+            } else if (showArrow) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     painter = painterResource(id = R.drawable.ic_arrow_right),
