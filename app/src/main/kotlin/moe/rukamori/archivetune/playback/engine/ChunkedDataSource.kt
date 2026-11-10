@@ -2,8 +2,6 @@ package moe.rukamori.archivetune.playback.engine
 
 import moe.rukamori.archivetune.playback.PlaybackTiming
 
-import moe.rukamori.archivetune.playback.MusicService
-
 import android.net.Uri
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -81,6 +79,7 @@ class ChunkedDataSource(
     }
 
     private fun openChunk() {
+        closeChunk()
         val length = minOf(rangeBytes, bytesRemaining)
         val spec = requireNotNull(baseSpec).buildUpon()
             .setPosition(position)

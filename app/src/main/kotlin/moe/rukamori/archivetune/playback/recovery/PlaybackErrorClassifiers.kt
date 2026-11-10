@@ -33,6 +33,21 @@ object PlaybackErrorClassifiers {
         return null
     }
 
+    fun isStreamEofOrTruncated(error: PlaybackException): Boolean {
+        if (error.errorCode != PlaybackException.ERROR_CODE_IO_UNSPECIFIED &&
+            error.errorCode != PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+        ) {
+            return false
+        }
+        var throwable: Throwable? = error.cause
+        while (throwable != null) {
+            if (throwable is EOFException) return true
+            if (throwable is java.net.SocketException && throwable.message?.contains("reset", ignoreCase = true) == true) return true
+            throwable = throwable.cause
+        }
+        return false
+    }
+
     fun isRetryableRemoteParserFailure(error: PlaybackException): Boolean {
         if (
             error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||

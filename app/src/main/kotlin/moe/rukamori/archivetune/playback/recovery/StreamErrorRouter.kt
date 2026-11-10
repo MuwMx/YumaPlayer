@@ -30,7 +30,6 @@ class StreamErrorRouter(
     private val loginPrompt: PlaybackRecoveryEngine.LoginPrompt,
     private val networkStallReviver: NetworkStallReviver,
     private val classifiers: PlaybackErrorClassifiers = PlaybackErrorClassifiers,
-    private val maintenanceOps: RecoveryMaintenanceOps = RecoveryMaintenanceOps,
     private val getConsecutivePlaybackErr: () -> Int = { 0 },
     private val setConsecutivePlaybackErr: (Int) -> Unit = {},
 ) {
@@ -67,9 +66,10 @@ class StreamErrorRouter(
 
         val isConnectionError =
             error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
-                ((error.cause?.cause is PlaybackException) &&
-                    (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED)
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                    classifiers.isStreamEofOrTruncated(error) ||
+                    ((error.cause?.cause is PlaybackException) &&
+                            (error.cause?.cause as PlaybackException).errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED)
 
         if (!isLocalMedia && !isFullyCachedMedia) {
             if (!networkState.isNetworkConnected()) {
@@ -106,6 +106,7 @@ class StreamErrorRouter(
 
         val retryableStreamFailure = classifiers.findRetryableStreamFailure(error)
         if (retryableStreamFailure != null) {
+            cacheOps.invalidatePlaybackUrlCache(currentMediaId)
             if (retryPlaybackAfterStreamFailure(currentMediaId, isFullyCachedMedia, retryableStreamFailure)) {
                 return RecoveryDecision.Retry
             }
