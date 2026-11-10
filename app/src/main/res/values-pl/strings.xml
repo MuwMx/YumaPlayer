@@ -459,4 +459,18 @@
     <string name="not_logged_in">Niezalogowany</string>
     <string name="playback_requires_youtube_music_confirmation">Potwierdź odtwarzanie w Youtube Music, a potem wróć do YumaPlayer.</string>
     <string name="playback_login_refresh_required">Odśwież login YouTube Music</string>
+    <string name="hide_video">Chowaj widea muzyczne</string>
+    <string name="ai_content_filter">Filter treści AI</string>
+    <string name="ai_content_filter_hide">Chowaj treści wygenerowane przez AI</string>
+    <string name="ai_content_filter_hide_summary">Filtruj utwory, widea, albumy, artystów i playlisty z kanałów z wysokim prawdobodobieństwem AI</string>
+    <string name="ai_content_filter_moderate_summary">Chowaj kanały, które prawdopodobnie, ale nie z pewnością używają treści AI</string>
+    <string name="ai_content_filter_update">Zaktualizuj listę kanałów</string>
+    <string name="ai_content_filter_list_counts">Wysokie prawdopodobieństwo: %1$d · Średnie prawdopodobieństo: %2$d</string>
+    <string name="ai_content_filter_source">O liście AI</string>
+    <string name="ai_content_filter_source_summary">Dane utrzymywane poprzez społeczność z AiSlopList.com</string>
+    <string name="ai_content_filter_updated">Zaktualizowano listę kanałów AI</string>
+    <string name="ai_content_filter_update_failed">Nie udało się zaktualizować listy kanałów AI. Poprzednia lista pozostanie aktywna.</string>
+    <string name="backup_restore">Kopia zapasowa i przywracanie danych</string>
+    <string name="action_backup">Kopia zapasowa</string>
+    <string name="action_restore">Przywróć dane</string>
 </resources>
