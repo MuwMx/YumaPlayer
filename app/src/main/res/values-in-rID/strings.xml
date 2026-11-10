@@ -1291,4 +1291,27 @@
     <string name="settings_graphics_hud_status_high">Beban Tinggi</string>
     <string name="settings_graphics_hud_load_value">Beban render: %1$d%%</string>
     <string name="settings_graphics_hud_status_throttle">Pelambatan</string>
+    <string name="copy_to_playlist">Salin ke playlist…</string>
+    <string name="copy_reading">Membaca playlist…</string>
+    <string name="copy_new_youtube">Playlist YouTube baru</string>
+    <string name="copy_writing">Menulis playlist…</string>
+    <string name="copy_choose_target">Pilih lokasi untuk menyalin playlist ini</string>
+    <string name="make_editable_copy">Buat salinan yang dapat diedit</string>
+    <string name="update_editable_copy">Perbarui salinan yang dapat diedit</string>
+    <string name="editable_copy_description">Playlist pribadi yang dapat diedit. Playlist ini akan terus diperbarui dengan lagu-lagu baru dari Spotify.</string>
+    <string name="copy_new_personal">Playlist pribadi baru</string>
+    <string name="copy_matching">Mencocokkan %1$d dari %2$d</string>
+    <plurals name="copy_complete">
+        <item quantity="other">%1$d lagu disalin</item>
+    </plurals>
+    <string name="copy_failed">Tidak dapat menyalin playlist</string>
+    <plurals name="copy_missing">
+        <item quantity="other">%1$d lagu tidak disalin</item>
+    </plurals>
+    <string name="copy_failure_item">%1$s - %2$s: %3$s</string>
+    <string name="copy_retry_missing">Coba lagi yang hilang</string>
+    <string name="copy_reason_no_match">tidak ada yang cocok di YouTube Music</string>
+    <string name="copy_reason_search_failed">pencarian gagal</string>
+    <string name="copy_reason_local_file">file lokal tidak dapat diunggah ke YouTube</string>
+    <string name="page_not_found_on_youtube">Tidak dapat menemukan ini di YouTube</string>
 </resources>
