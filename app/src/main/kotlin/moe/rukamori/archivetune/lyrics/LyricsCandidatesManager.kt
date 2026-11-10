@@ -38,9 +38,11 @@ object LyricsCandidatesManager {
     fun getCached(songId: String): Map<PreferredLyricsProvider, CandidateState>? = cache[songId]
 
     fun updateCache(songId: String, provider: PreferredLyricsProvider, state: CandidateState) {
-        val current = cache[songId]?.toMutableMap() ?: mutableMapOf()
-        current[provider] = state
-        cache.put(songId, current)
+        synchronized(cache) {
+            val current = cache[songId]?.toMutableMap() ?: mutableMapOf()
+            current[provider] = state
+            cache.put(songId, current)
+        }
     }
 
     fun resolveProvider(provider: PreferredLyricsProvider): LyricsProvider =
