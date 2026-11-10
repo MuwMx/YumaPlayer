@@ -34,7 +34,7 @@ internal fun LyricsMenuMain(
     onNavigateTo: (LyricsMenuScreen) -> Unit
 ) {
     val font = LocalArchiveTuneFontFamily.current
-    val count = 6
+    val count = 7
     val (showPlayerControls, setShowPlayerControls) = rememberPreference(ShowLyricsPlayerControlsKey, true)
 
     Column(
@@ -116,6 +116,19 @@ internal fun LyricsMenuMain(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsMenuRow(
+            title = stringResource(R.string.lyrics_provider),
+            subtitle = stringResource(R.string.lyrics_provider_desc),
+            iconResId = R.drawable.queue_music,
+            onClick = {
+                onNavigateTo(LyricsMenuScreen.PROVIDERS)
+            },
+            index = 5,
+            count = count,
+        )
+
+        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+
+        SettingsMenuRow(
             title = stringResource(R.string.search_refresh_lyrics),
             subtitle = stringResource(R.string.search_refresh_lyrics_desc),
             iconResId = R.drawable.ic_search,
@@ -123,7 +136,7 @@ internal fun LyricsMenuMain(
                 onAction(PlayerAction.SearchLyrics)
                 onDismiss()
             },
-            index = 5,
+            index = 6,
             count = count,
         )
     }

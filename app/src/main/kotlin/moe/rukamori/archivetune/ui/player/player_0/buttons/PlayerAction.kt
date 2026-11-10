@@ -69,4 +69,4 @@ sealed interface PlayerAction {
     object Dismiss : PlayerAction
 }
 
-enum class LyricsMenuScreen { MAIN, EDIT, TRANSLATE, SYNC_OFFSET }
+enum class LyricsMenuScreen { MAIN, EDIT, TRANSLATE, SYNC_OFFSET, PROVIDERS}

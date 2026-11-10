@@ -1327,4 +1327,8 @@
     <string name="settings_graphics_blur_group">Эффекты размытия</string>
     <string name="settings_graphics_performance_group">Производительность и анимации</string>
     <string name="lyrics_line_blur">Размывать строки текста</string>
+    <string name="lyrics_provider">Источник текста</string>
+    <string name="lyrics_provider_desc">Выбор провайдера для загрузки текстов</string>
+    <string name="lyrics_provider_active">Активен</string>
+    <string name="lyrics_provider_select">Выбрать</string>
 </resources>

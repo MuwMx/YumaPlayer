@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuDragHandle
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuEdit
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuMain
+import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuProviders
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuSyncOffset
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.LyricsMenuTranslate
 import moe.rukamori.archivetune.ui.player.lyrics_0.menu.rememberLyricsMenuState
@@ -66,7 +67,6 @@ fun LyricsOptionsMenu(
     state: PlayerUiState,
     modifier: Modifier = Modifier,
 ) {
-    // Локальное состояние текущего экрана
     var currentScreen by remember { mutableStateOf(LyricsMenuScreen.MAIN) }
     val menuState = rememberLyricsMenuState(
         isVisible = isVisible,
@@ -208,6 +208,11 @@ fun LyricsOptionsMenu(
                                             onBack = { currentScreen = LyricsMenuScreen.MAIN }
                                         )
                                         LyricsMenuScreen.SYNC_OFFSET -> LyricsMenuSyncOffset(
+                                            state = state,
+                                            onAction = onAction,
+                                            onBack = { currentScreen = LyricsMenuScreen.MAIN }
+                                        )
+                                        LyricsMenuScreen.PROVIDERS -> LyricsMenuProviders(
                                             state = state,
                                             onAction = onAction,
                                             onBack = { currentScreen = LyricsMenuScreen.MAIN }
