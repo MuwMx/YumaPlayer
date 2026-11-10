@@ -1346,4 +1346,7 @@
     <string name="lyrics_provider_checking">Checking…</string>
     <string name="lyrics_provider_found">Found</string>
     <string name="lyrics_provider_not_found">Not found</string>
+    <string name="lyrics_provider_automatic">Automatic</string>
+    <string name="lyrics_provider_in_use">In use: %1$s</string>
+    <string name="lyrics_provider_searching">Searching lyrics…</string>
 </resources>

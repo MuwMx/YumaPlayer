@@ -1334,4 +1334,7 @@
     <string name="lyrics_provider_checking">Проверка…</string>
     <string name="lyrics_provider_found">Найдено</string>
     <string name="lyrics_provider_not_found">Не найдено</string>
+    <string name="lyrics_provider_automatic">Автоматически</string>
+    <string name="lyrics_provider_in_use">Используется: %1$s</string>
+    <string name="lyrics_provider_searching">Поиск текста…</string>
 </resources>

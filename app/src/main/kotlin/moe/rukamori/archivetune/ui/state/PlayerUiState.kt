@@ -36,6 +36,8 @@ data class PlayerUiState(
     val isRefreshingLyrics: Boolean = false,
     val isLoadingLyrics: Boolean = false,
     val lyricsError: String? = null,
+    val lyricsProviderName: String? = null,
+    val isLyricsUserSelected: Boolean = false,
 
     // Динамическая палитра цветов (Material You)
     val vibrantColor: Int = Color.WHITE,
