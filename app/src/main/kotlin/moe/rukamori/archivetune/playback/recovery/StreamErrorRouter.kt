@@ -77,6 +77,9 @@ class StreamErrorRouter(
                 return RecoveryDecision.WaitForNetwork
             } else if (isConnectionError) {
                 cacheOps.invalidatePlaybackUrlCache(currentMediaId)
+                scope.launch(Dispatchers.IO) {
+                    cacheOps.playerCache.removeResource(moe.rukamori.archivetune.playback.engine.ytStreamCacheKey(currentMediaId))
+                }
                 if (networkStallReviver.forceRevivePlayback()) return RecoveryDecision.Retry
             }
         }
