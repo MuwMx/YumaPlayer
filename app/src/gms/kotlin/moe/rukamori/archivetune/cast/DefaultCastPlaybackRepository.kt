@@ -216,7 +216,16 @@ private class GmsCastMediaItemConverter(
 
     override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem =
         try {
-            delegate.toMediaItem(mediaQueueItem)
+            val item = delegate.toMediaItem(mediaQueueItem)
+            if (item.localConfiguration?.uri != null) {
+                item
+            } else {
+                val fallback = mediaQueueItem.toFallbackMediaItem()
+                item.buildUpon()
+                    .setUri(fallback.localConfiguration?.uri)
+                    .setTag(fallback.localConfiguration?.tag ?: item.localConfiguration?.tag)
+                    .build()
+            }
         } catch (error: RuntimeException) {
             Timber.tag("Cast").w(error, "Falling back to manual Cast media item conversion")
             mediaQueueItem.toFallbackMediaItem()
