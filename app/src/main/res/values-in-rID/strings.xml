@@ -1314,4 +1314,14 @@
     <string name="copy_reason_search_failed">pencarian gagal</string>
     <string name="copy_reason_local_file">file lokal tidak dapat diunggah ke YouTube</string>
     <string name="page_not_found_on_youtube">Tidak dapat menemukan ini di YouTube</string>
+    <string name="lyrics_provider_active">Aktif</string>
+    <string name="lyrics_provider_checking">Memeriksa…</string>
+    <string name="lyrics_provider_select">Pilih</string>
+    <string name="lyrics_provider">Penyedia lirik</string>
+    <string name="lyrics_provider_found">Ditemukan</string>
+    <string name="lyrics_provider_not_found">Tidak ditemukan</string>
+    <string name="lyrics_provider_automatic">Otomatis</string>
+    <string name="lyrics_provider_in_use">Sedang digunakan: %1$s</string>
+    <string name="lyrics_provider_searching">Mencari lirik…</string>
+    <string name="lyrics_provider_desc">Pilih penyedia untuk mengambil lirik</string>
 </resources>
