@@ -7,37 +7,24 @@
 package moe.rukamori.archivetune.innertube
 
 import io.ktor.client.call.body
-import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
-import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.innertube.models.ArtistItem
+import io.ktor.client.statement.HttpResponse
+import moe.rukamori.archivetune.innertube.client.MediaInfoResolver
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.models.MediaInfo
-import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
-import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB
-import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
-import moe.rukamori.archivetune.innertube.models.getContinuation
-import moe.rukamori.archivetune.innertube.models.response.BrowseResponse
-import moe.rukamori.archivetune.innertube.models.response.GetQueueResponse
-import moe.rukamori.archivetune.innertube.models.response.GetTranscriptResponse
-import moe.rukamori.archivetune.innertube.models.response.NextResponse
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
-import moe.rukamori.archivetune.innertube.pages.NextPage
+import moe.rukamori.archivetune.innertube.network.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.pages.NextResult
 import moe.rukamori.archivetune.innertube.pages.RelatedPage
-import kotlin.random.Random
+import moe.rukamori.archivetune.innertube.playback.PlayerMetadataOps
+import moe.rukamori.archivetune.innertube.playback.PlayerTrackingOps
+import moe.rukamori.archivetune.innertube.playback.PlayerWatchNextOps
+import moe.rukamori.archivetune.innertube.playback.YouTubePlayerFacade
 
-object PlayerClient {
-    const val MAX_GET_QUEUE_SIZE = 1000
-    private val VISITOR_DATA_REGEX = Regex("^Cg[t|s]")
+object PlayerClient : YouTubePlayerFacade {
+    const val MAX_GET_QUEUE_SIZE = PlayerWatchNextOps.MAX_GET_QUEUE_SIZE
 
     private inline val innerTube: InnerTube get() = YouTube.innerTube
 
@@ -47,11 +34,10 @@ object PlayerClient {
         client: YouTubeClient,
         explicitPoToken: String?,
         authState: PlaybackAuthState,
-    ): String? =
-        authState.resolvePlayerPoToken(
-            client = client,
-            explicitPoToken = explicitPoToken,
-        )
+    ): String? = authState.resolvePlayerPoToken(
+        client = client,
+        explicitPoToken = explicitPoToken,
+    )
 
     internal fun resolveGvsPoToken(authState: PlaybackAuthState = currentPlaybackAuthState()): String? =
         authState.resolveGvsPoToken()
@@ -68,324 +54,97 @@ object PlayerClient {
         return "$url${separator}pot=$token"
     }
 
-    suspend fun player(
+    override suspend fun player(
         videoId: String,
-        playlistId: String? = null,
+        playlistId: String?,
         client: YouTubeClient,
-        signatureTimestamp: Int? = null,
-        poToken: String? = null,
-        setLogin: Boolean = true,
-        authState: PlaybackAuthState = currentPlaybackAuthState(),
-    ): Result<PlayerResponse> =
-        runCatching {
-            val resolvedPoToken = resolvePlayerPoToken(client, poToken, authState)
-            innerTube
-                .player(
-                    client = client,
-                    videoId = videoId,
-                    playlistId = playlistId,
-                    signatureTimestamp = signatureTimestamp,
-                    poToken = resolvedPoToken,
-                    setLogin = setLogin,
-                    authState = authState,
-                ).body<PlayerResponse>()
-        }
-
-    fun newCpn(): String =
-        (1..16)
-            .map {
-                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"[
-                    Random.Default.nextInt(0, 64),
-                ]
-            }.joinToString("")
-
-    suspend fun registerPlayback(
-        playlistId: String? = null,
-        playbackTracking: String,
-        cpn: String = newCpn(),
-        authState: PlaybackAuthState = currentPlaybackAuthState(),
-    ) = runCatching {
-        innerTube.registerPlayback(
-            url = playbackTracking,
-            playlistId = playlistId,
-            cpn = cpn,
-            authState = authState,
-        )
-        cpn
+        signatureTimestamp: Int?,
+        poToken: String?,
+        setLogin: Boolean,
+        authState: PlaybackAuthState,
+    ): Result<PlayerResponse> = runCatching {
+        val resolvedPoToken = resolvePlayerPoToken(client, poToken, authState)
+        innerTube
+            .player(
+                client = client,
+                videoId = videoId,
+                playlistId = playlistId,
+                signatureTimestamp = signatureTimestamp,
+                poToken = resolvedPoToken,
+                setLogin = setLogin,
+                authState = authState,
+            ).body<PlayerResponse>()
     }
 
-    suspend fun pingAtr(
+    fun newCpn(): String = PlayerTrackingOps.newCpn()
+
+    override suspend fun registerPlayback(
+        playlistId: String?,
+        playbackTracking: String,
+        cpn: String,
+        authState: PlaybackAuthState,
+    ): Result<String> = PlayerTrackingOps.registerPlayback(
+        innerTube = innerTube,
+        playlistId = playlistId,
+        playbackTracking = playbackTracking,
+        cpn = cpn,
+        authState = authState,
+    )
+
+    override suspend fun pingAtr(
         atrUrl: String,
         cpn: String,
-        authState: PlaybackAuthState = currentPlaybackAuthState(),
-    ) = runCatching {
-        innerTube.pingAtr(
-            url = atrUrl,
-            cpn = cpn,
-            authState = authState,
-        )
-    }
+        authState: PlaybackAuthState,
+    ): Result<HttpResponse> = PlayerTrackingOps.pingAtr(
+        innerTube = innerTube,
+        atrUrl = atrUrl,
+        cpn = cpn,
+        authState = authState,
+    )
 
-    suspend fun pingWatchtime(
+    override suspend fun pingWatchtime(
         watchtimeUrl: String,
         cpn: String,
         seconds: Long,
-        final: Boolean = false,
-        authState: PlaybackAuthState = currentPlaybackAuthState(),
-    ) = runCatching {
-        innerTube.pingWatchtime(
-            url = watchtimeUrl,
-            cpn = cpn,
-            seconds = seconds,
-            final = final,
-            authState = authState,
-        )
-    }
+        final: Boolean,
+        authState: PlaybackAuthState,
+    ): Result<HttpResponse> = PlayerTrackingOps.pingWatchtime(
+        innerTube = innerTube,
+        watchtimeUrl = watchtimeUrl,
+        cpn = cpn,
+        seconds = seconds,
+        final = final,
+        authState = authState,
+    )
 
-    suspend fun next(
+    override suspend fun next(
         endpoint: WatchEndpoint,
-        continuation: String? = null,
-        followAutomixPreview: Boolean = true,
-    ): Result<NextResult> =
-        runCatching {
-            val response =
-                innerTube
-                    .next(
-                        WEB_REMIX,
-                        endpoint.videoId,
-                        endpoint.playlistId,
-                        endpoint.playlistSetVideoId,
-                        endpoint.index,
-                        endpoint.params,
-                        continuation,
-                    ).body<NextResponse>()
-            val playlistPanelRenderer =
-                response.continuationContents?.playlistPanelContinuation
-                    ?: response.contents.singleColumnMusicWatchNextResultsRenderer
-                        ?.tabbedRenderer
-                        ?.watchNextTabbedResultsRenderer
-                        ?.tabs
-                        ?.get(0)
-                        ?.tabRenderer
-                        ?.content
-                        ?.musicQueueRenderer
-                        ?.content
-                        ?.playlistPanelRenderer!!
-            val title =
-                response.contents.singleColumnMusicWatchNextResultsRenderer
-                    ?.tabbedRenderer
-                    ?.watchNextTabbedResultsRenderer
-                    ?.tabs
-                    ?.get(0)
-                    ?.tabRenderer
-                    ?.content
-                    ?.musicQueueRenderer
-                    ?.header
-                    ?.musicQueueHeaderRenderer
-                    ?.subtitle
-                    ?.runs
-                    ?.firstOrNull()
-                    ?.text
-            val items =
-                playlistPanelRenderer.contents.mapNotNull { content ->
-                    content.playlistPanelVideoRenderer
-                        ?.let(NextPage::fromPlaylistPanelVideoRenderer)
-                        ?.let { it to content.playlistPanelVideoRenderer.selected }
-                }
-            val songs = items.map { it.first }
-            val currentIndex = items.indexOfFirst { it.second }.takeIf { it != -1 }
+        continuation: String?,
+        followAutomixPreview: Boolean,
+    ): Result<NextResult> = PlayerWatchNextOps.next(
+        innerTube = innerTube,
+        endpoint = endpoint,
+        continuation = continuation,
+        followAutomixPreview = followAutomixPreview,
+    )
 
-            if (followAutomixPreview) {
-                // Keep automix opt-in so ordered playlist queues can page through their own continuation first.
-                playlistPanelRenderer.contents
-                    .lastOrNull()
-                    ?.automixPreviewVideoRenderer
-                    ?.content
-                    ?.automixPlaylistVideoRenderer
-                    ?.navigationEndpoint
-                    ?.watchPlaylistEndpoint
-                    ?.let { watchPlaylistEndpoint ->
-                        return@runCatching next(watchPlaylistEndpoint).getOrThrow().let { result ->
-                            result.copy(
-                                title = title,
-                                items = songs + result.items,
-                                lyricsEndpoint =
-                                    response.contents.singleColumnMusicWatchNextResultsRenderer
-                                        ?.tabbedRenderer
-                                        ?.watchNextTabbedResultsRenderer
-                                        ?.tabs
-                                        ?.getOrNull(
-                                            1,
-                                        )?.tabRenderer
-                                        ?.endpoint
-                                        ?.browseEndpoint,
-                                relatedEndpoint =
-                                    response.contents.singleColumnMusicWatchNextResultsRenderer
-                                        ?.tabbedRenderer
-                                        ?.watchNextTabbedResultsRenderer
-                                        ?.tabs
-                                        ?.getOrNull(
-                                            2,
-                                        )?.tabRenderer
-                                        ?.endpoint
-                                        ?.browseEndpoint,
-                                currentIndex = currentIndex,
-                                endpoint = watchPlaylistEndpoint,
-                            )
-                        }
-                    }
-            }
-            NextResult(
-                title = title,
-                items = songs,
-                currentIndex = currentIndex,
-                lyricsEndpoint =
-                    response.contents.singleColumnMusicWatchNextResultsRenderer
-                        ?.tabbedRenderer
-                        ?.watchNextTabbedResultsRenderer
-                        ?.tabs
-                        ?.getOrNull(
-                            1,
-                        )?.tabRenderer
-                        ?.endpoint
-                        ?.browseEndpoint,
-                relatedEndpoint =
-                    response.contents.singleColumnMusicWatchNextResultsRenderer
-                        ?.tabbedRenderer
-                        ?.watchNextTabbedResultsRenderer
-                        ?.tabs
-                        ?.getOrNull(
-                            2,
-                        )?.tabRenderer
-                        ?.endpoint
-                        ?.browseEndpoint,
-                continuation = playlistPanelRenderer.continuations?.getContinuation(),
-                endpoint = endpoint,
-            )
-        }
+    override suspend fun lyrics(endpoint: BrowseEndpoint): Result<String?> =
+        PlayerMetadataOps.lyrics(innerTube, endpoint)
 
-    suspend fun lyrics(endpoint: BrowseEndpoint): Result<String?> =
-        runCatching {
-            val response = innerTube.browse(WEB_REMIX, endpoint.browseId, endpoint.params).body<BrowseResponse>()
-            response.contents
-                ?.sectionListRenderer
-                ?.contents
-                ?.firstOrNull()
-                ?.musicDescriptionShelfRenderer
-                ?.description
-                ?.runs
-                ?.firstOrNull()
-                ?.text
-        }
+    override suspend fun related(endpoint: BrowseEndpoint): Result<RelatedPage> =
+        PlayerMetadataOps.related(innerTube, endpoint)
 
-    suspend fun related(endpoint: BrowseEndpoint): Result<RelatedPage> =
-        runCatching {
-            val response = innerTube.browse(WEB_REMIX, endpoint.browseId).body<BrowseResponse>()
-            val songs = mutableListOf<SongItem>()
-            val albums = mutableListOf<AlbumItem>()
-            val artists = mutableListOf<ArtistItem>()
-            val playlists = mutableListOf<PlaylistItem>()
-            response.contents?.sectionListRenderer?.contents?.forEach { sectionContent ->
-                sectionContent.musicCarouselShelfRenderer?.contents?.forEach { content ->
-                    when (
-                        val item =
-                            content.musicResponsiveListItemRenderer?.let(RelatedPage.Companion::fromMusicResponsiveListItemRenderer)
-                                ?: content.musicTwoRowItemRenderer?.let(RelatedPage.Companion::fromMusicTwoRowItemRenderer)
-                    ) {
-                        is SongItem -> {
-                            if (content.musicResponsiveListItemRenderer
-                                    ?.overlay
-                                    ?.musicItemThumbnailOverlayRenderer
-                                    ?.content
-                                    ?.musicPlayButtonRenderer
-                                    ?.playNavigationEndpoint
-                                    ?.watchEndpoint
-                                    ?.watchEndpointMusicSupportedConfigs
-                                    ?.watchEndpointMusicConfig
-                                    ?.musicVideoType == MUSIC_VIDEO_TYPE_ATV
-                            ) {
-                                songs.add(item)
-                            }
-                        }
+    override suspend fun queue(
+        videoIds: List<String>?,
+        playlistId: String?,
+    ): Result<List<SongItem>> = PlayerWatchNextOps.queue(innerTube, videoIds, playlistId)
 
-                        is AlbumItem -> {
-                            albums.add(item)
-                        }
+    override suspend fun transcript(videoId: String): Result<String> =
+        PlayerMetadataOps.transcript(innerTube, videoId)
 
-                        is ArtistItem -> {
-                            artists.add(item)
-                        }
+    override suspend fun visitorData(): Result<String> =
+        PlayerTrackingOps.visitorData(innerTube)
 
-                        is PlaylistItem -> {
-                            playlists.add(item)
-                        }
-
-                        null -> {}
-                    }
-                }
-            }
-            RelatedPage(songs, albums, artists, playlists)
-        }
-
-    suspend fun queue(
-        videoIds: List<String>? = null,
-        playlistId: String? = null,
-    ): Result<List<SongItem>> =
-        runCatching {
-            if (videoIds != null) {
-                assert(videoIds.size <= MAX_GET_QUEUE_SIZE) // Max video limit
-            }
-            innerTube
-                .getQueue(WEB_REMIX, videoIds, playlistId)
-                .body<GetQueueResponse>()
-                .queueDatas
-                .mapNotNull {
-                    it.content.playlistPanelVideoRenderer?.let { renderer ->
-                        NextPage.fromPlaylistPanelVideoRenderer(renderer)
-                    }
-                }
-        }
-
-    suspend fun transcript(videoId: String): Result<String> =
-        runCatching {
-            val response = innerTube.getTranscript(WEB, videoId).body<GetTranscriptResponse>()
-            response.actions
-                ?.firstOrNull()
-                ?.updateEngagementPanelAction
-                ?.content
-                ?.transcriptRenderer
-                ?.body
-                ?.transcriptBodyRenderer
-                ?.cueGroups
-                ?.joinToString(
-                    separator = "\n",
-                ) { group ->
-                    val time =
-                        group.transcriptCueGroupRenderer.cues[0]
-                            .transcriptCueRenderer.startOffsetMs
-                    val text =
-                        group.transcriptCueGroupRenderer.cues[0]
-                            .transcriptCueRenderer.cue.simpleText
-                            .trim('♪')
-                            .trim(' ')
-                    "[%02d:%02d.%03d]$text".format(time / 60000, (time / 1000) % 60, time % 1000)
-                }!!
-        }
-
-    suspend fun visitorData(): Result<String> =
-        runCatching {
-            Json
-                .parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))
-                .jsonArray[0]
-                .jsonArray[2]
-                .jsonArray
-                .first {
-                    (it as? JsonPrimitive)?.contentOrNull?.let { candidate ->
-                        VISITOR_DATA_REGEX.containsMatchIn(candidate)
-                    } ?: false
-                }.jsonPrimitive.content
-        }
-
-    suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
+    override suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
         MediaInfoResolver.getMediaInfo(innerTube, videoId)
 }

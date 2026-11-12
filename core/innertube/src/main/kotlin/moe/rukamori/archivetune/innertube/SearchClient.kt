@@ -20,11 +20,12 @@ import moe.rukamori.archivetune.innertube.pages.SearchResult
 import moe.rukamori.archivetune.innertube.pages.SearchSuggestionPage
 import moe.rukamori.archivetune.innertube.pages.SearchSummary
 import moe.rukamori.archivetune.innertube.pages.SearchSummaryPage
+import moe.rukamori.archivetune.innertube.search.YouTubeSearchFacade
 
-object SearchClient {
+object SearchClient : YouTubeSearchFacade {
     private inline val innerTube: InnerTube get() = YouTube.innerTube
 
-    suspend fun searchSuggestions(query: String): Result<SearchSuggestions> =
+    override suspend fun searchSuggestions(query: String): Result<SearchSuggestions> =
         runCatching {
             val response = innerTube.getSearchSuggestions(WEB_REMIX, query).body<GetSearchSuggestionsResponse>()
             SearchSuggestions(
@@ -52,7 +53,7 @@ object SearchClient {
             )
         }
 
-    suspend fun searchSummary(query: String): Result<SearchSummaryPage> =
+    override suspend fun searchSummary(query: String): Result<SearchSummaryPage> =
         runCatching {
             val response = innerTube.search(WEB_REMIX, query).body<SearchResponse>()
             val contents =
@@ -108,10 +109,10 @@ object SearchClient {
             )
         }
 
-    suspend fun search(
+    override suspend fun search(
         query: String,
-        filter: SearchFilter? = null,
-        useAccountContext: Boolean = true,
+        filter: SearchFilter?,
+        useAccountContext: Boolean,
     ): Result<SearchResult> =
         runCatching {
             val response =
@@ -164,9 +165,9 @@ object SearchClient {
             )
         }
 
-    suspend fun searchContinuation(
+    override suspend fun searchContinuation(
         continuation: String,
-        useAccountContext: Boolean = true,
+        useAccountContext: Boolean,
     ): Result<SearchResult> =
         runCatching {
             val response =
