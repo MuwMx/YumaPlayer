@@ -387,7 +387,5 @@ object PlayerClient {
         }
 
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
-        runCatching {
-            return innerTube.getMediaInfo(videoId)
-        }
+        MediaInfoResolver.getMediaInfo(innerTube, videoId)
 }

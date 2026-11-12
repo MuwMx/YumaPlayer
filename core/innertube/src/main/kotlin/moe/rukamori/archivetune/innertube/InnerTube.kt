@@ -6,61 +6,32 @@
 
 package moe.rukamori.archivetune.innertube
 
-import io.ktor.client.*
-import io.ktor.client.call.body
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.compression.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import moe.rukamori.archivetune.innertube.models.Context
 import moe.rukamori.archivetune.innertube.models.MediaInfo
-import moe.rukamori.archivetune.innertube.models.ReturnYouTubeDislikeResponse
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
-import moe.rukamori.archivetune.innertube.models.body.*
-import moe.rukamori.archivetune.innertube.models.response.NextResponse
 import moe.rukamori.archivetune.innertube.proxy.RotatingProxySelector
-import moe.rukamori.archivetune.innertube.utils.sha1
-import moe.rukamori.archivetune.innertube.utils.youtubeLoginCookieValue
-import okhttp3.Dispatcher
 import okhttp3.Dns
-import java.io.IOException
 import java.net.Proxy
-import java.util.*
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import java.util.Locale
 
 /**
- * Provide access to InnerTube endpoints.
- * For making HTTP requests, not parsing response.
+ * Facade providing access to InnerTube endpoints.
+ * Dispatches to specialized network delegates.
  */
-@OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
-    private var httpClient = createClient()
+    internal val http = InnerTubeHttp()
+    private val playback = InnerTubePlayback(http)
+    private val browseDelegate = InnerTubeBrowse(http)
+    private val library = InnerTubeLibrary(http)
+    private val account = InnerTubeAccount(http)
 
-    private companion object {
-        const val HTTP_HEADER_ACCEPT_LANGUAGE = "Accept-Language"
-        const val HTTP_HEADER_CACHE_CONTROL = "Cache-Control"
-        const val PLAYBACK_TELEMETRY_VER = "2"
-        const val PLAYBACK_TELEMETRY_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
-        const val PLAYBACK_TELEMETRY_CACHE_CONTROL = "no-cache"
+    object TimingHook {
+        var onRetry: ((attempt: Int, delayMs: Long) -> Unit)?
+            get() = InnerTubeHttp.TimingHook.onRetry
+            set(value) { InnerTubeHttp.TimingHook.onRetry = value }
     }
 
-    var locale =
-        YouTubeLocale(
-            gl = Locale.getDefault().country,
-            hl = Locale.getDefault().toLanguageTag(),
-        )
+    var locale = YouTubeLocale(gl = Locale.getDefault().country, hl = Locale.getDefault().toLanguageTag())
     private val queueLocale = YouTubeLocale(gl = "US", hl = "en")
 
     @Volatile
@@ -68,433 +39,56 @@ class InnerTube {
 
     var visitorData: String?
         get() = authState.visitorData
-        set(value) {
-            authState = authState.copy(visitorData = value).normalized()
-        }
+        set(value) { authState = authState.copy(visitorData = value).normalized() }
     var dataSyncId: String?
         get() = authState.dataSyncId
-        set(value) {
-            authState = authState.copy(dataSyncId = value).normalized()
-        }
-    val delegatedSessionId: String?
-        get() = authState.delegatedSessionId
+        set(value) { authState = authState.copy(dataSyncId = value).normalized() }
+    val delegatedSessionId: String? get() = authState.delegatedSessionId
     var poToken: String?
         get() = authState.poToken
-        set(value) {
-            authState = authState.copy(poToken = value).normalized()
-        }
+        set(value) { authState = authState.copy(poToken = value).normalized() }
     var cookie: String?
         get() = authState.cookie
-        set(value) {
-            authState = authState.copy(cookie = value).normalized()
-        }
+        set(value) { authState = authState.copy(cookie = value).normalized() }
 
-    var proxy: Proxy? = null
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
-
-    var proxyUsername: String? = null
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
-
-    var proxyPassword: String? = null
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
-
-    internal var proxySelector: RotatingProxySelector? = null
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
-
-    var dns: Dns = Dns.SYSTEM
-        set(value) {
-            field = value
-            httpClient.close()
-            httpClient = createClient()
-        }
+    var proxy: Proxy?
+        get() = http.proxy
+        set(value) { http.proxy = value }
+    var proxyUsername: String?
+        get() = http.proxyUsername
+        set(value) { http.proxyUsername = value }
+    var proxyPassword: String?
+        get() = http.proxyPassword
+        set(value) { http.proxyPassword = value }
+    internal var proxySelector: RotatingProxySelector?
+        get() = http.proxySelector
+        set(value) { http.proxySelector = value }
+    var dns: Dns
+        get() = http.dns
+        set(value) { http.dns = value }
 
     var useLoginForBrowse: Boolean = false
 
     fun currentAuthState(): PlaybackAuthState = authState
+    fun applyAuthState(value: PlaybackAuthState) { authState = value.normalized() }
 
-    fun applyAuthState(value: PlaybackAuthState) {
-        authState = value.normalized()
-    }
-
-    @OptIn(ExperimentalSerializationApi::class)
-    private fun createClient() =
-        HttpClient(OkHttp) {
-            expectSuccess = true
-
-            install(ContentNegotiation) {
-                json(
-                    Json {
-                        ignoreUnknownKeys = true
-                        explicitNulls = false
-                        encodeDefaults = true
-                    },
-                )
-            }
-
-            install(ContentEncoding) {
-                gzip(0.9F)
-                deflate(0.8F)
-            }
-
-            install(HttpTimeout) {
-                requestTimeoutMillis = 15000
-                connectTimeoutMillis = 10000
-                socketTimeoutMillis = 15000
-            }
-
-            engine {
-                config {
-                    dns(this@InnerTube.dns)
-                    dispatcher(
-                        Dispatcher().apply {
-                            maxRequests = 64
-                            maxRequestsPerHost = 16
-                        },
-                    )
-                    val sel = this@InnerTube.proxySelector
-                    if (sel != null) {
-                        // Priority: rotating proxy selector takes precedence over fixed proxy settings.
-                        // Rotating proxies are unauthenticated public endpoints; fixed credentials must not be routed to them.
-                        proxySelector(sel)
-                    } else if (this@InnerTube.proxy == null) {
-                        proxy(Proxy.NO_PROXY)
-                    } else if (this@InnerTube.proxy != null && !proxyUsername.isNullOrBlank() && !proxyPassword.isNullOrBlank()) {
-                        proxyAuthenticator { _, response ->
-                            if (response.request.header("Proxy-Authorization") != null) {
-                                return@proxyAuthenticator null
-                            }
-                            val credential = okhttp3.Credentials.basic(proxyUsername!!, proxyPassword!!)
-                            response.request
-                                .newBuilder()
-                                .header("Proxy-Authorization", credential)
-                                .build()
-                        }
-                    }
-                }
-                if (this@InnerTube.proxySelector == null && this@InnerTube.proxy != null) {
-                    proxy = this@InnerTube.proxy
-                }
-            }
-
-            defaultRequest {
-                url(YouTubeClient.API_URL_YOUTUBE_MUSIC)
-            }
-        }
-
-    private fun HttpRequestBuilder.ytClient(
-        client: YouTubeClient,
-        setLogin: Boolean = false,
-        authState: PlaybackAuthState = currentAuthState(),
-        includeVisitorData: Boolean = true,
-    ) {
-        val requestOrigin = client.requestOrigin()
-        val requestReferer = client.requestReferer()
-        contentType(ContentType.Application.Json)
-        headers {
-            append("X-Goog-Api-Format-Version", "1")
-            append("X-YouTube-Client-Name", client.clientId)
-            append("X-YouTube-Client-Version", client.clientVersion)
-            append("X-Origin", requestOrigin)
-            append("Referer", requestReferer)
-            if (includeVisitorData) {
-                authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
-            }
-            if (setLogin && client.loginSupported) {
-                authState.cookie?.let { cookie ->
-                    append("cookie", cookie)
-                    val loginCookieValue = youtubeLoginCookieValue(cookie) ?: return@let
-                    val currentTime = System.currentTimeMillis() / 1000
-                    val sapisidHash = sha1("$currentTime $loginCookieValue $requestOrigin")
-                    append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
-                }
-            }
-        }
-        userAgent(client.userAgent)
-        parameter("prettyPrint", false)
-    }
-
-    private fun HttpRequestBuilder.ytPlaybackTrackingClient(
-        client: YouTubeClient,
-        authState: PlaybackAuthState = currentAuthState(),
-    ) {
-        val requestOrigin = client.requestOrigin()
-        contentType(ContentType.Application.Json)
-        headers {
-            append(HttpHeaders.Accept, ContentType.Application.Json.toString())
-            append(HTTP_HEADER_ACCEPT_LANGUAGE, PLAYBACK_TELEMETRY_ACCEPT_LANGUAGE)
-            append(HTTP_HEADER_CACHE_CONTROL, PLAYBACK_TELEMETRY_CACHE_CONTROL)
-            append("X-Goog-Api-Format-Version", "1")
-            append("X-YouTube-Client-Name", client.clientId)
-            append("X-YouTube-Client-Version", client.clientVersion)
-            append("X-Origin", requestOrigin)
-            append("Referer", client.requestReferer())
-            authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
-            if (client.loginSupported) {
-                authState.cookie?.let { cookie ->
-                    append("cookie", cookie)
-                    val loginCookieValue = youtubeLoginCookieValue(cookie) ?: return@let
-                    val currentTime = System.currentTimeMillis() / 1000
-                    val sapisidHash = sha1("$currentTime $loginCookieValue $requestOrigin")
-                    append("Authorization", "SAPISIDHASH ${currentTime}_$sapisidHash")
-                }
-            }
-        }
-        userAgent(client.userAgent)
-    }
-
-    object TimingHook {
-        @Volatile var onRetry: ((attempt: Int, delayMs: Long) -> Unit)? = null
-    }
-
-    private suspend fun <T> withRetry(
-        maxAttempts: Int = 3,
-        initialDelay: Long = 500L,
-        factor: Double = 2.0,
-        block: suspend () -> T,
-    ): T {
-        val resolvedMaxAttempts = proxySelector?.activeCount()?.coerceIn(maxAttempts, 6) ?: maxAttempts
-        var currentDelay = initialDelay
-        var attempt = 0
-        while (true) {
-            try {
-                return block()
-            } catch (e: Throwable) {
-                if (e is CancellationException || !e.isTransientNetworkFailure()) throw e
-                attempt++
-                proxySelector?.markLastSelectedFailed()
-                proxySelector?.rotate()
-                if (attempt >= resolvedMaxAttempts) throw e
-                runCatching { TimingHook.onRetry?.invoke(attempt, currentDelay) }
-                delay(currentDelay)
-                currentDelay = (currentDelay * factor).toLong()
-            }
-        }
-    }
-
-    private fun Throwable.isTransientNetworkFailure(): Boolean {
-        var current: Throwable? = this
-        while (current != null) {
-            if (current is IOException || current is HttpRequestTimeoutException) return true
-            if (current.message?.contains("Request timeout has expired", ignoreCase = true) == true) return true
-            current = current.cause
-        }
-        return false
-    }
-
+    // Browse / Search / Queue
     suspend fun search(
         client: YouTubeClient,
         query: String? = null,
         params: String? = null,
         continuation: String? = null,
         useAccountContext: Boolean = true,
-    ) = withRetry {
-        httpClient.post("search") {
-            ytClient(
-                client = client,
-                setLogin = useAccountContext && useLoginForBrowse,
-                includeVisitorData = useAccountContext,
-            )
-            setBody(
-                SearchBody(
-                    context =
-                        client.toContext(
-                            locale,
-                            if (useAccountContext) visitorData else null,
-                            if (useAccountContext && useLoginForBrowse) dataSyncId else null,
-                        ),
-                    query = query,
-                    params = params,
-                ),
-            )
-            parameter("continuation", continuation)
-            parameter("ctoken", continuation)
-        }
-    }
-
-    suspend fun player(
-        client: YouTubeClient,
-        videoId: String,
-        playlistId: String?,
-        signatureTimestamp: Int?,
-        poToken: String? = null,
-        setLogin: Boolean = true,
-        authState: PlaybackAuthState = currentAuthState(),
-    ) = withRetry {
-        val includeDataSyncId = setLogin && client.loginSupported && !authState.dataSyncId.isNullOrBlank()
-        try {
-            executePlayerRequest(
-                client = client,
-                videoId = videoId,
-                playlistId = playlistId,
-                signatureTimestamp = signatureTimestamp,
-                poToken = poToken,
-                setLogin = setLogin,
-                authState = authState,
-                includeDataSyncId = includeDataSyncId,
-            )
-        } catch (failure: Throwable) {
-            if (!shouldRetryPlayerRequestWithoutDataSyncId(failure, includeDataSyncId)) throw failure
-            executePlayerRequest(
-                client = client,
-                videoId = videoId,
-                playlistId = playlistId,
-                signatureTimestamp = signatureTimestamp,
-                poToken = poToken,
-                setLogin = false,
-                authState = authState,
-                includeDataSyncId = false,
-            )
-        }
-    }
-
-    private suspend fun executePlayerRequest(
-        client: YouTubeClient,
-        videoId: String,
-        playlistId: String?,
-        signatureTimestamp: Int?,
-        poToken: String?,
-        setLogin: Boolean,
-        authState: PlaybackAuthState,
-        includeDataSyncId: Boolean,
-    ) = httpClient.post(client.requestApiUrl("player")) {
-        ytClient(client, setLogin = setLogin, authState = authState)
-        setBody(
-            PlayerBody(
-                context =
-                    client
-                        .toContext(
-                            locale = locale,
-                            visitorData = authState.visitorData,
-                            dataSyncId = if (includeDataSyncId) authState.dataSyncId else null,
-                        ).let {
-                            if (client.isEmbedded) {
-                                it.copy(
-                                    thirdParty =
-                                        Context.ThirdParty(
-                                            embedUrl = "https://www.youtube.com/watch?v=$videoId",
-                                        ),
-                                )
-                            } else {
-                                it
-                            }
-                        },
-                videoId = videoId,
-                playlistId = playlistId,
-                playbackContext =
-                    if (client.useSignatureTimestamp && signatureTimestamp != null) {
-                        PlayerBody.PlaybackContext(
-                            PlayerBody.PlaybackContext.ContentPlaybackContext(
-                                signatureTimestamp,
-                            ),
-                        )
-                    } else {
-                        null
-                    },
-                serviceIntegrityDimensions =
-                    poToken?.let {
-                        PlayerBody.ServiceIntegrityDimensions(poToken = it)
-                    },
-            ),
-        )
-    }
-
-    private fun shouldRetryPlayerRequestWithoutDataSyncId(
-        failure: Throwable,
-        includeDataSyncId: Boolean,
-    ): Boolean {
-        if (!includeDataSyncId) return false
-        val clientError = failure as? ClientRequestException ?: return false
-        if (clientError.response.status != HttpStatusCode.BadRequest) return false
-        val message = clientError.message.orEmpty()
-        if (!message.contains("/youtubei/v1/player", ignoreCase = true)) return false
-        if (message.contains("Origin doesn't match Host", ignoreCase = true)) return false
-        return message.contains("INVALID_ARGUMENT", ignoreCase = true) ||
-            message.contains("invalid argument", ignoreCase = true)
-    }
-
-    private fun HttpRequestBuilder.appendPlaybackStatsClientParams(
-        client: YouTubeClient,
-        cpn: String,
-    ) {
-        parameter("ver", PLAYBACK_TELEMETRY_VER)
-        parameter("c", client.clientName)
-        parameter("cver", client.clientVersion)
-        parameter("cpn", cpn)
-        parameter("cplayer", "UNIPLAYER")
-        parameter("cbr", "Chrome")
-        parameter("cbrver", "141.0.0.0")
-        parameter("cos", "Windows")
-        parameter("cosver", "10.0")
-        parameter("hl", locale.hl.replace('-', '_'))
-        parameter("cr", locale.gl)
-        parameter("prettyPrint", false)
-    }
-
-    suspend fun registerPlayback(
-        url: String,
-        cpn: String,
-        playlistId: String?,
-        client: YouTubeClient = YouTubeClient.WEB_REMIX,
-        authState: PlaybackAuthState = currentAuthState(),
-    ) = withRetry {
-        httpClient.get(url) {
-            ytPlaybackTrackingClient(client, authState = authState)
-            appendPlaybackStatsClientParams(client, cpn)
-
-            if (playlistId != null) {
-                parameter("list", playlistId)
-                parameter("referrer", "https://music.youtube.com/playlist?list=$playlistId")
-            }
-        }
-    }
-
-    suspend fun pingAtr(
-        url: String,
-        cpn: String,
-        client: YouTubeClient = YouTubeClient.WEB_REMIX,
-        authState: PlaybackAuthState = currentAuthState(),
-    ) = withRetry {
-        httpClient.get(url) {
-            ytPlaybackTrackingClient(client, authState = authState)
-            parameter("cpn", cpn)
-            parameter("prettyPrint", false)
-        }
-    }
-
-    suspend fun pingWatchtime(
-        url: String,
-        cpn: String,
-        seconds: Long,
-        final: Boolean = false,
-        client: YouTubeClient = YouTubeClient.WEB_REMIX,
-        authState: PlaybackAuthState = currentAuthState(),
-    ) = withRetry {
-        httpClient.get(url) {
-            ytPlaybackTrackingClient(client, authState = authState)
-            appendPlaybackStatsClientParams(client, cpn)
-            parameter("st", "0")
-            parameter("et", seconds.toString())
-            parameter("cmt", seconds.toString())
-            parameter("state", if (final) "paused" else "playing")
-            if (final) parameter("final", "1")
-        }
-    }
+    ) = browseDelegate.search(
+        client = client,
+        query = query,
+        params = params,
+        continuation = continuation,
+        useAccountContext = useAccountContext,
+        authState = currentAuthState(),
+        locale = locale,
+        useLoginForBrowse = useLoginForBrowse,
+    )
 
     suspend fun browse(
         client: YouTubeClient,
@@ -502,24 +96,16 @@ class InnerTube {
         params: String? = null,
         continuation: String? = null,
         setLogin: Boolean = false,
-    ) = withRetry {
-        httpClient.post("browse") {
-            ytClient(client, setLogin = setLogin || useLoginForBrowse)
-            setBody(
-                BrowseBody(
-                    context =
-                        client.toContext(
-                            locale,
-                            visitorData,
-                            if (setLogin || useLoginForBrowse) dataSyncId else null,
-                        ),
-                    browseId = browseId,
-                    params = params,
-                    continuation = continuation,
-                ),
-            )
-        }
-    }
+    ) = browseDelegate.browse(
+        client = client,
+        browseId = browseId,
+        params = params,
+        continuation = continuation,
+        setLogin = setLogin,
+        authState = currentAuthState(),
+        locale = locale,
+        useLoginForBrowse = useLoginForBrowse,
+    )
 
     suspend fun next(
         client: YouTubeClient,
@@ -529,441 +115,147 @@ class InnerTube {
         index: Int?,
         params: String?,
         continuation: String? = null,
-    ) = withRetry {
-        httpClient.post("next") {
-            ytClient(client, setLogin = true)
-            setBody(
-                NextBody(
-                    context = client.toContext(queueLocale, visitorData, dataSyncId),
-                    videoId = videoId,
-                    playlistId = playlistId,
-                    playlistSetVideoId = playlistSetVideoId,
-                    index = index,
-                    params = params,
-                    continuation = continuation,
-                ),
-            )
-        }
-    }
+    ) = browseDelegate.next(
+        client = client,
+        videoId = videoId,
+        playlistId = playlistId,
+        playlistSetVideoId = playlistSetVideoId,
+        index = index,
+        params = params,
+        continuation = continuation,
+        authState = currentAuthState(),
+        queueLocale = queueLocale,
+    )
 
-    suspend fun getSearchSuggestions(
-        client: YouTubeClient,
-        input: String,
-    ) = withRetry {
-        httpClient.post("music/get_search_suggestions") {
-            ytClient(client)
-            setBody(
-                GetSearchSuggestionsBody(
-                    context = client.toContext(locale, visitorData, null),
-                    input = input,
-                ),
-            )
-        }
-    }
+    suspend fun getSearchSuggestions(client: YouTubeClient, input: String) =
+        browseDelegate.getSearchSuggestions(client, input, currentAuthState(), locale)
 
-    suspend fun getQueue(
-        client: YouTubeClient,
-        videoIds: List<String>?,
-        playlistId: String?,
-    ) = withRetry {
-        httpClient.post("music/get_queue") {
-            ytClient(client)
-            setBody(
-                GetQueueBody(
-                    context = client.toContext(locale, visitorData, null),
-                    videoIds = videoIds,
-                    playlistId = playlistId,
-                ),
-            )
-        }
-    }
+    suspend fun getQueue(client: YouTubeClient, videoIds: List<String>?, playlistId: String?) =
+        browseDelegate.getQueue(client, videoIds, playlistId, currentAuthState(), locale)
 
-    suspend fun getTranscript(
+    suspend fun getTranscript(client: YouTubeClient, videoId: String) =
+        browseDelegate.getTranscript(client, videoId, currentAuthState(), locale)
+
+    suspend fun getSwJsData() = browseDelegate.getSwJsData()
+
+    // Playback & Telemetry
+    suspend fun player(
         client: YouTubeClient,
         videoId: String,
-    ) = withRetry {
-        httpClient.post("https://music.youtube.com/youtubei/v1/get_transcript") {
-            parameter("key", "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX3")
-            headers {
-                append("Content-Type", "application/json")
-            }
-            setBody(
-                GetTranscriptBody(
-                    context = client.toContext(locale, null, null),
-                    params =
-                        Base64.Default.encode(
-                            "\n${11.toChar()}$videoId".encodeToByteArray(),
-                        ),
-                ),
-            )
-        }
-    }
+        playlistId: String?,
+        signatureTimestamp: Int?,
+        poToken: String? = null,
+        setLogin: Boolean = true,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = playback.player(
+        client = client,
+        videoId = videoId,
+        playlistId = playlistId,
+        signatureTimestamp = signatureTimestamp,
+        poToken = poToken,
+        setLogin = setLogin,
+        authState = authState,
+        locale = locale,
+    )
 
-    suspend fun getSwJsData() = withRetry { httpClient.get("https://music.youtube.com/sw.js_data") }
+    suspend fun registerPlayback(
+        url: String,
+        cpn: String,
+        playlistId: String?,
+        client: YouTubeClient = YouTubeClient.WEB_REMIX,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = playback.registerPlayback(
+        url = url,
+        cpn = cpn,
+        playlistId = playlistId,
+        client = client,
+        authState = authState,
+        locale = locale,
+    )
 
+    suspend fun pingAtr(
+        url: String,
+        cpn: String,
+        client: YouTubeClient = YouTubeClient.WEB_REMIX,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = playback.pingAtr(
+        url = url,
+        cpn = cpn,
+        client = client,
+        authState = authState,
+    )
+
+    suspend fun pingWatchtime(
+        url: String,
+        cpn: String,
+        seconds: Long,
+        final: Boolean = false,
+        client: YouTubeClient = YouTubeClient.WEB_REMIX,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = playback.pingWatchtime(
+        url = url,
+        cpn = cpn,
+        seconds = seconds,
+        final = final,
+        client = client,
+        authState = authState,
+        locale = locale,
+    )
+
+    // Account
     suspend fun accountMenu(client: YouTubeClient) =
-        withRetry {
-            httpClient.post("account/account_menu") {
-                ytClient(client, setLogin = true)
-                setBody(AccountMenuBody(client.toContext(locale, visitorData, dataSyncId)))
-            }
-        }
+        account.accountMenu(client, currentAuthState(), locale)
 
     suspend fun accountChannels(client: YouTubeClient) =
-        withRetry {
-            val delegatedId = authState.delegatedSessionId
-            val requestUrl = client.requestApiUrl("account/accounts_list")
-            httpClient.post(requestUrl) {
-                ytClient(client, setLogin = true)
-                headers {
-                    append("X-Goog-AuthUser", "0")
-                    if (!delegatedId.isNullOrBlank()) {
-                        append("X-Goog-PageId", delegatedId)
-                    }
-                }
-                setBody(AccountsListBody(client.toContext(locale, visitorData, dataSyncId)))
-            }
-        }
+        account.accountChannels(client, currentAuthState(), locale)
 
-    private suspend fun HttpResponse.ensureNoInnertubeError(action: String): HttpResponse {
-        val rawBody = bodyAsText()
-        if (rawBody.contains("\"error\"")) {
-            throw IOException("InnerTube $action refused by server: ${rawBody.take(300)}")
-        }
-        return this
-    }
+    // Library
+    suspend fun likeVideo(client: YouTubeClient, videoId: String) =
+        library.likeVideo(client, videoId, currentAuthState(), locale)
 
-    suspend fun likeVideo(
-        client: YouTubeClient,
-        videoId: String,
-    ) = withRetry {
-        httpClient.post("like/like") {
-            ytClient(client, setLogin = true)
-            setBody(
-                LikeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId),
-                ),
-            )
-        }.ensureNoInnertubeError("likeVideo($videoId)")
-    }
+    suspend fun unlikeVideo(client: YouTubeClient, videoId: String) =
+        library.unlikeVideo(client, videoId, currentAuthState(), locale)
 
-    suspend fun unlikeVideo(
-        client: YouTubeClient,
-        videoId: String,
-    ) = withRetry {
-        httpClient.post("like/removelike") {
-            ytClient(client, setLogin = true)
-            setBody(
-                LikeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId),
-                ),
-            )
-        }.ensureNoInnertubeError("unlikeVideo($videoId)")
-    }
+    suspend fun subscribeChannel(client: YouTubeClient, channelId: String) =
+        library.subscribeChannel(client, channelId, currentAuthState(), locale)
 
-    suspend fun subscribeChannel(
-        client: YouTubeClient,
-        channelId: String,
-    ) = withRetry {
-        httpClient.post("subscription/subscribe") {
-            ytClient(client, setLogin = true)
-            setBody(
-                SubscribeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    channelIds = listOf(channelId),
-                ),
-            )
-        }
-    }
+    suspend fun unsubscribeChannel(client: YouTubeClient, channelId: String) =
+        library.unsubscribeChannel(client, channelId, currentAuthState(), locale)
 
-    suspend fun unsubscribeChannel(
-        client: YouTubeClient,
-        channelId: String,
-    ) = withRetry {
-        httpClient.post("subscription/unsubscribe") {
-            ytClient(client, setLogin = true)
-            setBody(
-                SubscribeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    channelIds = listOf(channelId),
-                ),
-            )
-        }
-    }
+    suspend fun likePlaylist(client: YouTubeClient, playlistId: String) =
+        library.likePlaylist(client, playlistId, currentAuthState(), locale)
 
-    suspend fun likePlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-    ) = withRetry {
-        httpClient.post("like/like") {
-            ytClient(client, setLogin = true)
-            setBody(
-                LikeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId),
-                ),
-            )
-        }
-    }
+    suspend fun unlikePlaylist(client: YouTubeClient, playlistId: String) =
+        library.unlikePlaylist(client, playlistId, currentAuthState(), locale)
 
-    suspend fun unlikePlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-    ) = withRetry {
-        httpClient.post("like/removelike") {
-            ytClient(client, setLogin = true)
-            setBody(
-                LikeBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId),
-                ),
-            )
-        }
-    }
+    suspend fun addToPlaylist(client: YouTubeClient, playlistId: String, videoId: String) =
+        library.addToPlaylist(client, playlistId, videoId, currentAuthState(), locale)
 
-    suspend fun addToPlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-        videoId: String,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId.removePrefix("VL"),
-                    actions =
-                        listOf(
-                            Action.AddVideoAction(addedVideoId = videoId),
-                        ),
-                ),
-            )
-        }
-    }
+    suspend fun addSongsToPlaylist(client: YouTubeClient, playlistId: String, videoIds: List<String>) =
+        library.addSongsToPlaylist(client, playlistId, videoIds, currentAuthState(), locale)
 
-    suspend fun addSongsToPlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-        videoIds: List<String>,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId.removePrefix("VL"),
-                    actions =
-                        videoIds.map { videoId ->
-                            Action.AddVideoAction(addedVideoId = videoId)
-                        },
-                ),
-            )
-        }
-    }
+    suspend fun addPlaylistToPlaylist(client: YouTubeClient, playlistId: String, addPlaylistId: String) =
+        library.addPlaylistToPlaylist(client, playlistId, addPlaylistId, currentAuthState(), locale)
 
-    suspend fun addPlaylistToPlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-        addPlaylistId: String,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId.removePrefix("VL"),
-                    actions =
-                        listOf(
-                            Action.AddPlaylistAction(addedFullListId = addPlaylistId),
-                        ),
-                ),
-            )
-        }
-    }
-
-    suspend fun removeFromPlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-        videoId: String,
-        setVideoId: String,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId.removePrefix("VL"),
-                    actions =
-                        listOf(
-                            Action.RemoveVideoAction(
-                                removedVideoId = videoId,
-                                setVideoId = setVideoId,
-                            ),
-                        ),
-                ),
-            )
-        }
-    }
+    suspend fun removeFromPlaylist(client: YouTubeClient, playlistId: String, videoId: String, setVideoId: String) =
+        library.removeFromPlaylist(client, playlistId, videoId, setVideoId, currentAuthState(), locale)
 
     suspend fun moveSongPlaylist(
         client: YouTubeClient,
         playlistId: String,
         setVideoId: String,
         successorSetVideoId: String?,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId,
-                    actions =
-                        listOf(
-                            Action.MoveVideoAction(
-                                movedSetVideoIdSuccessor = successorSetVideoId,
-                                setVideoId = setVideoId,
-                            ),
-                        ),
-                ),
-            )
-        }
-    }
+    ) = library.moveSongPlaylist(client, playlistId, setVideoId, successorSetVideoId, currentAuthState(), locale)
 
-    suspend fun createPlaylist(
-        client: YouTubeClient,
-        title: String,
-        videoIds: List<String> = emptyList(),
-    ) = withRetry {
-        httpClient.post("playlist/create") {
-            ytClient(client, true)
-            setBody(
-                CreatePlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    title = title,
-                    videoIds = videoIds,
-                ),
-            )
-        }
-    }
+    suspend fun createPlaylist(client: YouTubeClient, title: String, videoIds: List<String> = emptyList()) =
+        library.createPlaylist(client, title, videoIds, currentAuthState(), locale)
 
-    suspend fun renamePlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-        name: String,
-    ) = withRetry {
-        httpClient.post("browse/edit_playlist") {
-            ytClient(client, setLogin = true)
-            setBody(
-                EditPlaylistBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId,
-                    actions =
-                        listOf(
-                            Action.RenamePlaylistAction(
-                                playlistName = name,
-                            ),
-                        ),
-                ),
-            )
-        }
-    }
+    suspend fun renamePlaylist(client: YouTubeClient, playlistId: String, name: String) =
+        library.renamePlaylist(client, playlistId, name, currentAuthState(), locale)
 
-    suspend fun deletePlaylist(
-        client: YouTubeClient,
-        playlistId: String,
-    ) = withRetry {
-        httpClient.post("playlist/delete") {
-            println("deleting $playlistId")
-            ytClient(client, setLogin = true)
-            setBody(
-                PlaylistDeleteBody(
-                    context = client.toContext(locale, visitorData, dataSyncId),
-                    playlistId = playlistId,
-                ),
-            )
-        }
-    }
-
-    private suspend fun returnYouTubeDislike(videoId: String) =
-        withRetry {
-            httpClient.get("https://returnyoutubedislikeapi.com/Votes?videoId=$videoId") {
-                contentType(ContentType.Application.Json)
-            }
-        }
+    suspend fun deletePlaylist(client: YouTubeClient, playlistId: String) =
+        library.deletePlaylist(client, playlistId, currentAuthState(), locale)
 
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
-        runCatching {
-            val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
-
-            val baseForInfo =
-                response.contents.twoColumnWatchNextResults
-                    ?.results
-                    ?.results
-                    ?.content
-                    ?.find {
-                        it?.videoSecondaryInfoRenderer != null
-                    }?.videoSecondaryInfoRenderer
-
-            val baseForTitle =
-                response.contents.twoColumnWatchNextResults
-                    ?.results
-                    ?.results
-                    ?.content
-                    ?.find {
-                        it?.videoPrimaryInfoRenderer != null
-                    }?.videoPrimaryInfoRenderer
-
-            val returnYouTubeDislikeResponse =
-                returnYouTubeDislike(videoId).body<ReturnYouTubeDislikeResponse>()
-
-            return@runCatching MediaInfo(
-                videoId = videoId,
-                title =
-                    baseForTitle
-                        ?.title
-                        ?.runs
-                        ?.firstOrNull()
-                        ?.text,
-                author =
-                    baseForInfo
-                        ?.owner
-                        ?.videoOwnerRenderer
-                        ?.title
-                        ?.runs
-                        ?.firstOrNull()
-                        ?.text,
-                authorId =
-                    baseForInfo
-                        ?.owner
-                        ?.videoOwnerRenderer
-                        ?.navigationEndpoint
-                        ?.browseEndpoint
-                        ?.browseId,
-                authorThumbnail =
-                    baseForInfo
-                        ?.owner
-                        ?.videoOwnerRenderer
-                        ?.thumbnail
-                        ?.thumbnails
-                        ?.find {
-                            it.height == 48
-                        }?.url
-                        ?.replace("s48", "s960"),
-                description = baseForInfo?.attributedDescription?.content,
-                subscribers =
-                    baseForInfo
-                        ?.owner
-                        ?.videoOwnerRenderer
-                        ?.subscriberCountText
-                        ?.simpleText
-                        ?.split(" ")
-                        ?.firstOrNull(),
-                uploadDate = baseForTitle?.dateText?.simpleText,
-                viewCount = returnYouTubeDislikeResponse.viewCount,
-                like = returnYouTubeDislikeResponse.likes,
-                dislike = returnYouTubeDislikeResponse.dislikes,
-            )
-        }
+        MediaInfoResolver.getMediaInfo(this, videoId)
 }
