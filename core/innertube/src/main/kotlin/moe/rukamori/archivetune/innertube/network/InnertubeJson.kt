@@ -4,7 +4,7 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-package moe.rukamori.archivetune.innertube
+package moe.rukamori.archivetune.innertube.network
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -71,9 +71,7 @@ internal fun JsonElement.objectsNamed(name: String): Sequence<JsonObject> =
                 element.forEach { yieldAll(it.objectsNamed(name)) }
             }
 
-            else -> {
-                Unit
-            }
+            else -> {}
         }
     }
 

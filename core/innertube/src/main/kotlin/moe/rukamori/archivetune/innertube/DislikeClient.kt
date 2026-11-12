@@ -6,21 +6,4 @@
 
 package moe.rukamori.archivetune.innertube
 
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import moe.rukamori.archivetune.innertube.models.ReturnYouTubeDislikeResponse
-
-internal object DislikeClient {
-    private const val VOTES_URL = "https://returnyoutubedislikeapi.com/Votes"
-
-    suspend fun getDislikes(
-        http: InnerTubeHttp,
-        videoId: String,
-    ): ReturnYouTubeDislikeResponse = http.withRetry {
-        http.client.get("$VOTES_URL?videoId=$videoId") {
-            contentType(ContentType.Application.Json)
-        }.body<ReturnYouTubeDislikeResponse>()
-    }
-}
+internal typealias DislikeClient = moe.rukamori.archivetune.innertube.client.DislikeClient

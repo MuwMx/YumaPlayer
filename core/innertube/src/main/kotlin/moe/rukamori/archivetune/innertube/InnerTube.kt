@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.innertube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
+import moe.rukamori.archivetune.innertube.network.InnerTubeHttp
 import moe.rukamori.archivetune.innertube.proxy.RotatingProxySelector
 import okhttp3.Dns
 import java.net.Proxy
