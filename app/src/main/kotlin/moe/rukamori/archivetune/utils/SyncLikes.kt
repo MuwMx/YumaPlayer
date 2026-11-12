@@ -12,21 +12,28 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SpotifySyncLikesKey
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.spotify.SpotifySync
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SyncLikes
-    @Inject
-    constructor(
-        private val state: SyncState,
-    ) {
+@Inject
+constructor(
+    private val state: SyncState,
+) {
+    private val ytmSongMutexes = ConcurrentHashMap<String, Mutex>()
+    private val latestYtmLikeVersions = ConcurrentHashMap<String, AtomicInteger>()
+    private val latestYtmLikeStates = ConcurrentHashMap<String, Boolean>()
         fun likeSong(
             s: SongEntity,
             source: LikeSource,
@@ -57,7 +64,25 @@ class SyncLikes
                         }
                         val gen = state.syncGeneration.get()
                         if (!state.isSyncStillEnabled(gen)) return@launch
-                        YouTube.likeVideo(s.id, s.likedYtm)
+
+                        state.markYtmLikeMutated(s.id)
+                        latestYtmLikeStates[s.id] = s.likedYtm
+                        val version = latestYtmLikeVersions
+                            .computeIfAbsent(s.id) { AtomicInteger(0) }
+                            .incrementAndGet()
+                        val mutex = ytmSongMutexes.computeIfAbsent(s.id) { Mutex() }
+
+                        mutex.withLock {
+                            if (!state.isSyncStillEnabled(gen)) return@withLock
+                            val currentVersion = latestYtmLikeVersions[s.id]?.get() ?: version
+                            if (version != currentVersion) return@withLock
+                            val targetLiked = latestYtmLikeStates[s.id] ?: s.likedYtm
+                            state.markYtmLikeMutated(s.id)
+                            YouTube.likeVideo(s.id, targetLiked)
+                                .onFailure { e ->
+                                    Timber.w(e, "Failed to sync YTM like for %s (liked=%s)", s.id, targetLiked)
+                                }
+                        }
                     }
                 }
             }
@@ -101,6 +126,7 @@ class SyncLikes
                         batch.map { song ->
                             async {
                                 if (!state.isSyncStillEnabled(gen)) return@async
+                                state.markYtmLikeMutated(song.id)
                                 YouTube.likeVideo(song.id, song.likedYtm)
                             }
                         }.awaitAll()

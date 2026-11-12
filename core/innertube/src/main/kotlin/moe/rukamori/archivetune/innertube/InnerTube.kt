@@ -14,6 +14,8 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CancellationException
@@ -426,6 +428,24 @@ class InnerTube {
             message.contains("invalid argument", ignoreCase = true)
     }
 
+    private fun HttpRequestBuilder.appendPlaybackStatsClientParams(
+        client: YouTubeClient,
+        cpn: String,
+    ) {
+        parameter("ver", PLAYBACK_TELEMETRY_VER)
+        parameter("c", client.clientName)
+        parameter("cver", client.clientVersion)
+        parameter("cpn", cpn)
+        parameter("cplayer", "UNIPLAYER")
+        parameter("cbr", "Chrome")
+        parameter("cbrver", "141.0.0.0")
+        parameter("cos", "Windows")
+        parameter("cosver", "10.0")
+        parameter("hl", locale.hl.replace('-', '_'))
+        parameter("cr", locale.gl)
+        parameter("prettyPrint", false)
+    }
+
     suspend fun registerPlayback(
         url: String,
         cpn: String,
@@ -435,15 +455,44 @@ class InnerTube {
     ) = withRetry {
         httpClient.get(url) {
             ytPlaybackTrackingClient(client, authState = authState)
-            parameter("ver", PLAYBACK_TELEMETRY_VER)
-            parameter("c", client.clientName)
-            parameter("cpn", cpn)
-            parameter("prettyPrint", false)
+            appendPlaybackStatsClientParams(client, cpn)
 
             if (playlistId != null) {
                 parameter("list", playlistId)
                 parameter("referrer", "https://music.youtube.com/playlist?list=$playlistId")
             }
+        }
+    }
+
+    suspend fun pingAtr(
+        url: String,
+        cpn: String,
+        client: YouTubeClient = YouTubeClient.WEB_REMIX,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = withRetry {
+        httpClient.get(url) {
+            ytPlaybackTrackingClient(client, authState = authState)
+            parameter("cpn", cpn)
+            parameter("prettyPrint", false)
+        }
+    }
+
+    suspend fun pingWatchtime(
+        url: String,
+        cpn: String,
+        seconds: Long,
+        final: Boolean = false,
+        client: YouTubeClient = YouTubeClient.WEB_REMIX,
+        authState: PlaybackAuthState = currentAuthState(),
+    ) = withRetry {
+        httpClient.get(url) {
+            ytPlaybackTrackingClient(client, authState = authState)
+            appendPlaybackStatsClientParams(client, cpn)
+            parameter("st", "0")
+            parameter("et", seconds.toString())
+            parameter("cmt", seconds.toString())
+            parameter("state", if (final) "paused" else "playing")
+            if (final) parameter("final", "1")
         }
     }
 
@@ -576,6 +625,14 @@ class InnerTube {
             }
         }
 
+    private suspend fun HttpResponse.ensureNoInnertubeError(action: String): HttpResponse {
+        val rawBody = bodyAsText()
+        if (rawBody.contains("\"error\"")) {
+            throw IOException("InnerTube $action refused by server: ${rawBody.take(300)}")
+        }
+        return this
+    }
+
     suspend fun likeVideo(
         client: YouTubeClient,
         videoId: String,
@@ -588,7 +645,7 @@ class InnerTube {
                     target = LikeBody.Target.VideoTarget(videoId),
                 ),
             )
-        }
+        }.ensureNoInnertubeError("likeVideo($videoId)")
     }
 
     suspend fun unlikeVideo(
@@ -603,7 +660,7 @@ class InnerTube {
                     target = LikeBody.Target.VideoTarget(videoId),
                 ),
             )
-        }
+        }.ensureNoInnertubeError("unlikeVideo($videoId)")
     }
 
     suspend fun subscribeChannel(

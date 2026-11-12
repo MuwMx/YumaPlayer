@@ -366,10 +366,36 @@ object YouTube {
     suspend fun registerPlayback(
         playlistId: String? = null,
         playbackTracking: String,
+        cpn: String = PlayerClient.newCpn(),
         authState: PlaybackAuthState = currentPlaybackAuthState(),
     ) = PlayerClient.registerPlayback(
         playlistId = playlistId,
         playbackTracking = playbackTracking,
+        cpn = cpn,
+        authState = authState,
+    )
+
+    suspend fun pingAtr(
+        atrUrl: String,
+        cpn: String,
+        authState: PlaybackAuthState = currentPlaybackAuthState(),
+    ) = PlayerClient.pingAtr(
+        atrUrl = atrUrl,
+        cpn = cpn,
+        authState = authState,
+    )
+
+    suspend fun pingWatchtime(
+        watchtimeUrl: String,
+        cpn: String,
+        seconds: Long,
+        final: Boolean = false,
+        authState: PlaybackAuthState = currentPlaybackAuthState(),
+    ) = PlayerClient.pingWatchtime(
+        watchtimeUrl = watchtimeUrl,
+        cpn = cpn,
+        seconds = seconds,
+        final = final,
         authState = authState,
     )
 

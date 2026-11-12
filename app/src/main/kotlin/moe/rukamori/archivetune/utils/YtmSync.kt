@@ -187,13 +187,16 @@ class YtmSync
                                     .map { it.song }
                                     .filterNot { it.isLocal }
                                     .filterNot { it.id in remoteIds }
+                                    .filterNot { state.hasRecentYtmLikeMutation(it.id) }
                                     .map { it.copy(liked = it.likedSpotify, likedYtm = false, likedDate = if (it.likedSpotify) it.likedDate else null) }
                                     .toList()
                             } else {
                                 emptyList()
                             }
 
-                        val newRemoteSongs = remoteSongs.filter { it.id !in localLikedIds }
+                        val newRemoteSongs = remoteSongs.filter {
+                            it.id !in localLikedIds && !state.hasRecentYtmLikeMutation(it.id)
+                        }
 
                         if (staleLikedSongs.isEmpty() && newRemoteSongs.isEmpty()) {
                             Timber.d("syncLikedSongs: No changes detected (stale: 0, new: 0), skipping database writes")

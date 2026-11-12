@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.spotify.SpotifyLibraryRepository
 import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,6 +45,18 @@ class SyncState
         val ytmPlaylistSyncMutex = Mutex()
         val spotifyPlaylistSyncMutex = Mutex()
         val dbWriteSemaphore = Semaphore(2)
+        val recentYtmLikeMutations = ConcurrentHashMap<String, Long>()
+
+        fun markYtmLikeMutated(songId: String) {
+            recentYtmLikeMutations[songId] = System.currentTimeMillis()
+        }
+
+        fun hasRecentYtmLikeMutation(songId: String, cooldownMs: Long = 120_000L): Boolean {
+            val mutatedAt = recentYtmLikeMutations[songId] ?: return false
+            if (System.currentTimeMillis() - mutatedAt < cooldownMs) return true
+            recentYtmLikeMutations.remove(songId, mutatedAt)
+            return false
+        }
 
         init {
             syncScope.launch {

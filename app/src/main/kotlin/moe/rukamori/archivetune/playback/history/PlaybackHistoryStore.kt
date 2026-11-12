@@ -15,10 +15,14 @@ import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.innertube.PlayerClient
 import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
 import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
@@ -41,6 +45,7 @@ import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import timber.log.Timber
 import java.sql.SQLException
 import java.time.LocalDateTime
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class PlaybackHistoryStore(
     private val service: MusicService,
@@ -78,13 +83,20 @@ internal class PlaybackHistoryStore(
         val mediaId = service.historyCoordinator.currentHistoryMediaId ?: return
         if (service.historyCoordinator.currentHistorySessionQueued) return
 
+        service.historyCoordinator.remoteWatchtimeJob?.cancel()
+        service.historyCoordinator.remoteWatchtimeJob = null
+
         service.historyCoordinator.pendingHistoryFinalizations.getOrPut(mediaId) { mutableListOf() }.add(
             PendingHistoryFinalization(
                 sessionToken = service.historyCoordinator.currentHistorySessionToken,
                 eventId = service.historyCoordinator.currentHistoryEventId,
                 remoteRegistered = service.historyCoordinator.currentHistoryRemoteRegistered,
+                remoteCpn = service.historyCoordinator.currentHistoryCpn,
+                remoteTracking = service.historyCoordinator.currentHistoryTracking,
             ),
         )
+        service.historyCoordinator.currentHistoryCpn = null
+        service.historyCoordinator.currentHistoryTracking = null
         service.historyCoordinator.currentHistorySessionQueued = true
     }
 
@@ -166,36 +178,80 @@ internal class PlaybackHistoryStore(
     suspend fun registerRemotePlaybackHistory(mediaId: String): Boolean {
         if (service.database.song(mediaId).first()?.song?.isLocal == true) return false
 
-        suspend fun registerTracking(playbackTrackingUrl: String): Boolean =
-            YouTube.registerPlayback(playlistId = null, playbackTracking = playbackTrackingUrl)
+        val tracking =
+            service.historyCoordinator.remoteTrackingCache[mediaId]
+                ?: service.retryWithoutPlaybackLoginContext {
+                    YTPlayerUtils.playerResponseForMetadata(mediaId)
+                }.onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    when (throwable) {
+                        is YTPlayerUtils.InvalidPlaybackLoginContextException -> service.promptLoginRecovery(mediaId, throwable.targetUrl)
+                        is YTPlayerUtils.LoginRequiredForPlaybackException ->
+                            Timber.tag("MusicService").w(throwable, "Playback confirmation is required before refreshing remote playback tracking for %s", mediaId)
+                        else ->
+                            Timber.tag("MusicService").w(throwable, "Failed to refresh remote playback tracking for %s", mediaId)
+                    }
+                }.getOrNull()?.playbackTracking?.also {
+                    service.historyCoordinator.remoteTrackingCache[mediaId] = it
+                }
+
+        val playbackUrl = tracking?.remotePlaybackTrackingUrl() ?: return false
+        service.remotePlaybackTrackingUrlCache[mediaId] = playbackUrl
+        val cpn = PlayerClient.newCpn()
+
+        val registered =
+            YouTube.registerPlayback(playlistId = null, playbackTracking = playbackUrl, cpn = cpn)
                 .onFailure { throwable ->
                     if (throwable is CancellationException) throw throwable
+                    service.historyCoordinator.remoteTrackingCache.remove(mediaId, tracking)
+                    service.remotePlaybackTrackingUrlCache.remove(mediaId, playbackUrl)
                     Timber.tag("MusicService").w(throwable, "Failed to register remote playback history for %s", mediaId)
                 }
                 .onSuccess { YouTube.notifyHistorySynced() }
                 .isSuccess
 
-        service.remotePlaybackTrackingUrlCache[mediaId]?.let { cachedPlaybackTrackingUrl ->
-            if (registerTracking(cachedPlaybackTrackingUrl)) return true
-            service.remotePlaybackTrackingUrlCache.remove(mediaId, cachedPlaybackTrackingUrl)
+        if (!registered) return false
+
+        val sessionToken = service.historyCoordinator.currentHistorySessionToken
+        if (service.historyCoordinator.currentHistoryMediaId == mediaId && !service.historyCoordinator.currentHistorySessionQueued) {
+            service.historyCoordinator.currentHistoryCpn = cpn
+            service.historyCoordinator.currentHistoryTracking = tracking
+            startRemoteWatchtimeLoop(mediaId, sessionToken, cpn, tracking)
         }
+        return true
+    }
 
-        val remotePlaybackTracking = service.retryWithoutPlaybackLoginContext {
-            YTPlayerUtils.playerResponseForMetadata(mediaId)
-        }.onFailure { throwable ->
-            if (throwable is CancellationException) throw throwable
-            when (throwable) {
-                is YTPlayerUtils.InvalidPlaybackLoginContextException -> service.promptLoginRecovery(mediaId, throwable.targetUrl)
-                is YTPlayerUtils.LoginRequiredForPlaybackException ->
-                    Timber.tag("MusicService").w(throwable, "Playback confirmation is required before refreshing remote playback tracking for %s", mediaId)
-                else ->
-                    Timber.tag("MusicService").w(throwable, "Failed to refresh remote playback tracking for %s", mediaId)
+    private fun startRemoteWatchtimeLoop(
+        mediaId: String,
+        sessionToken: Long,
+        cpn: String,
+        tracking: PlayerResponse.PlaybackTracking,
+    ) {
+        service.historyCoordinator.remoteWatchtimeJob?.cancel()
+        val atrUrl = tracking.atrUrl?.baseUrl?.trim()?.takeIf { it.isNotEmpty() }
+        val watchtimeUrl = tracking.videostatsWatchtimeUrl?.baseUrl?.trim()?.takeIf { it.isNotEmpty() }
+        if (atrUrl == null && watchtimeUrl == null) return
+
+        service.historyCoordinator.remoteWatchtimeJob =
+            service.ioScope.launch {
+                if (atrUrl != null) {
+                    delay(5_000L.milliseconds)
+                    if (!isActive || service.historyCoordinator.currentHistorySessionToken != sessionToken) return@launch
+                    YouTube.pingAtr(atrUrl = atrUrl, cpn = cpn)
+                }
+                if (watchtimeUrl == null) return@launch
+                while (isActive &&
+                    service.historyCoordinator.currentHistorySessionToken == sessionToken &&
+                    !service.historyCoordinator.currentHistorySessionQueued
+                ) {
+                    delay(30_000L.milliseconds)
+                    if (service.historyCoordinator.currentHistorySessionToken != sessionToken ||
+                        service.historyCoordinator.currentHistorySessionQueued
+                    ) break
+                    val playedSec = (currentHistoryPlayedMs() / 1000L).coerceAtLeast(1L)
+                    YouTube.pingWatchtime(watchtimeUrl = watchtimeUrl, cpn = cpn, seconds = playedSec, final = false)
+                }
             }
-        }.getOrNull()?.playbackTracking
-
-        val refreshedPlaybackTrackingUrl = remotePlaybackTracking?.remotePlaybackTrackingUrl() ?: return false
-        service.remotePlaybackTrackingUrlCache[mediaId] = refreshedPlaybackTrackingUrl
-        return registerTracking(refreshedPlaybackTrackingUrl)
     }
 
     fun handlePlaybackStatsReady(
@@ -256,6 +312,16 @@ internal class PlaybackHistoryStore(
                 if (pendingResult?.remoteRegistered != true) {
                     registerRemotePlaybackHistory(mediaId)
                 }
+
+                val cpn = pendingResult?.remoteCpn ?: service.historyCoordinator.currentHistoryCpn
+                val tracking = pendingResult?.remoteTracking ?: service.historyCoordinator.currentHistoryTracking
+                val watchtimeUrl = tracking?.videostatsWatchtimeUrl?.baseUrl?.trim()?.takeIf { it.isNotEmpty() }
+                if (cpn != null && watchtimeUrl != null) {
+                    val totalSec = (playbackStats.totalPlayTimeMs / 1000L).coerceAtLeast(1L)
+                    withContext(NonCancellable) {
+                        YouTube.pingWatchtime(watchtimeUrl = watchtimeUrl, cpn = cpn, seconds = totalSec, final = true)
+                    }
+                }
             }
 
             service.ioScope.launch {
@@ -266,7 +332,7 @@ internal class PlaybackHistoryStore(
 
                     val lbEnabled = service.dataStore.get(ListenBrainzEnabledKey, false)
                     val lbToken = service.dataStore.get(ListenBrainzTokenKey, "")
-                    if (lbEnabled && !lbToken.isNullOrBlank()) {
+                    if (lbEnabled && lbToken.isNotBlank()) {
                         val endMs = System.currentTimeMillis()
                         val startMs = endMs - playbackStats.totalPlayTimeMs
                         try {
@@ -281,7 +347,6 @@ internal class PlaybackHistoryStore(
         }
     }
 }
-
 internal fun PlayerResponse.PlaybackTracking.remotePlaybackTrackingUrl(): String? =
     videostatsPlaybackUrl?.baseUrl?.trim()?.takeIf { it.isNotEmpty() }
 
@@ -289,6 +354,8 @@ internal data class PendingHistoryFinalization(
     val sessionToken: Long,
     val eventId: Long?,
     val remoteRegistered: Boolean,
+    val remoteCpn: String? = null,
+    val remoteTracking: PlayerResponse.PlaybackTracking? = null,
 )
 
 internal data class ImmediateHistoryResult(

@@ -91,26 +91,53 @@ object PlayerClient {
                 ).body<PlayerResponse>()
         }
 
+    fun newCpn(): String =
+        (1..16)
+            .map {
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"[
+                    Random.Default.nextInt(0, 64),
+                ]
+            }.joinToString("")
+
     suspend fun registerPlayback(
         playlistId: String? = null,
         playbackTracking: String,
+        cpn: String = newCpn(),
         authState: PlaybackAuthState = currentPlaybackAuthState(),
     ) = runCatching {
-        val cpn =
-            (1..16)
-                .map {
-                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"[
-                        Random.Default.nextInt(
-                            0,
-                            64,
-                        ),
-                    ]
-                }.joinToString("")
-
         innerTube.registerPlayback(
             url = playbackTracking,
             playlistId = playlistId,
             cpn = cpn,
+            authState = authState,
+        )
+        cpn
+    }
+
+    suspend fun pingAtr(
+        atrUrl: String,
+        cpn: String,
+        authState: PlaybackAuthState = currentPlaybackAuthState(),
+    ) = runCatching {
+        innerTube.pingAtr(
+            url = atrUrl,
+            cpn = cpn,
+            authState = authState,
+        )
+    }
+
+    suspend fun pingWatchtime(
+        watchtimeUrl: String,
+        cpn: String,
+        seconds: Long,
+        final: Boolean = false,
+        authState: PlaybackAuthState = currentPlaybackAuthState(),
+    ) = runCatching {
+        innerTube.pingWatchtime(
+            url = watchtimeUrl,
+            cpn = cpn,
+            seconds = seconds,
+            final = final,
             authState = authState,
         )
     }
