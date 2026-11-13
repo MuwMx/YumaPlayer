@@ -211,7 +211,7 @@ YumaPlayer is organized as a 20-module Clean Architecture project following Unid
 📖 **Detailed Developer Documentation:**
 - [Architecture Overview & Module Graph](docs/architecture/ARCHITECTURE.md)
 - [Architectural Decision Records (ADRs)](docs/architecture/DECISIONS.md)
-- [Yuma Design System Specification (YDS 2.1)](docs/design/YDS.md)
+- [Yuma Design System Specification (YDS 2.2)](docs/design/YDS.md)
 - [Coding Standards & Rules](docs/development/YUMA_RULES.md)
 
 ---
