@@ -53,8 +53,8 @@ android {
     applicationId = "re.muwmix.yumaplayer"
         minSdk = 26
         targetSdk = 37
-        versionCode = 6
-        versionName = "1.2.0-RC.1"
+        versionCode = 7
+        versionName = "1.2.0-RC.2"
 
         manifestPlaceholders["appName"] = "@string/app_name"
 
