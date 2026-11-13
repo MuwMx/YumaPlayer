@@ -18,7 +18,7 @@ internal object HeroCarouselTokens {
     val HeroSlideEasing = CubicBezierEasing(0.32f, 0f, 0.15f, 1f)
 
     const val HeroStillFrom = 0.08f
-    const val HeroDim = 0.36f
+    const val HeroDim = 0.18f
 
     val PageSwitchBlur = 18.dp
     const val PageMediaTravel = 0.18f
@@ -62,10 +62,16 @@ internal object HeroCarouselTokens {
     const val BottomBlurHeightFraction = 0.50f
     const val BottomBlurRadius = 30f
 
-    const val ScrimTopEnd = 0.39f
-    const val ScrimBottomStart = 0.533f
-    const val ScrimBottomEnd = 0.989f
+    const val ScrimTopEnd = 0.28f
+    const val ScrimTopStartAlpha = 0.70f
+    const val ScrimTopMidAlpha = 0.38f
+    const val ScrimTopMidRatio = 0.475f
 
+    const val ScrimBottomStart = 0.58f
+    const val ScrimBottomEnd = 0.989f
+    const val ScrimBottomMidAlpha = 0.30f
+    const val ScrimBottomEndAlpha = 0.60f
+    const val ScrimBottomMidRatio = 0.457f
     val ArtOverlayTextPrimary = Color(0xFFFFFFFF)
     val ArtOverlayTextSecondary = Color(0xD1FFFFFF)
     val ArtOverlayTextTertiary = Color(0xB8FFFFFF)

@@ -261,13 +261,13 @@ private fun BoxScope.HeroScrims() {
                 val bottomStart = HeroCarouselTokens.ScrimBottomStart
                 val bottomEnd = HeroCarouselTokens.ScrimBottomEnd
                 val scrim = Brush.verticalGradient(
-                    0f to heroScrimBlack(0.86f),
-                    0.475f * topEnd to heroScrimBlack(0.59f),
+                    0f to heroScrimBlack(HeroCarouselTokens.ScrimTopStartAlpha),
+                    HeroCarouselTokens.ScrimTopMidRatio * topEnd to heroScrimBlack(HeroCarouselTokens.ScrimTopMidAlpha),
                     topEnd to heroScrimBlack(0f),
                     bottomStart to heroScrimBlack(0f),
-                    bottomStart + 0.457f * (bottomEnd - bottomStart) to heroScrimBlack(0.59f),
-                    bottomEnd to heroScrimBlack(1f),
-                    1f to heroScrimBlack(1f),
+                    bottomStart + HeroCarouselTokens.ScrimBottomMidRatio * (bottomEnd - bottomStart) to heroScrimBlack(HeroCarouselTokens.ScrimBottomMidAlpha),
+                    bottomEnd to heroScrimBlack(HeroCarouselTokens.ScrimBottomEndAlpha),
+                    1f to heroScrimBlack(HeroCarouselTokens.ScrimBottomEndAlpha),
                     startY = 0f,
                     endY = size.height,
                 )
