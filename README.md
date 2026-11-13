@@ -290,6 +290,7 @@ YumaPlayer is built on the shoulders of the open-source community:
 
 - **[ArchiveTune](https://github.com/rukamori/ArchiveTune)** — for the solid playback foundations, rich settings base, and core architecture.
 - **[Meld](https://github.com/FrancescoGrazioso/Meld)** — for the conceptual breakthrough and implementation of the Spotify hybrid integration.
+- **[Mochy Music](https://github.com/realidkroo/Mochy-Music)** — for UI themes, visual styling, and interface components.
 - **[Stash](https://github.com/rawnaldclark/Stash)** — for inspiration in organizing lossless FLAC streaming and download pipelines.
 - **[Metrolist](https://github.com/mostafaalagamy/Metrolist)** & **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** — for early lyrics parsing and interface inspirations.
 - **[PixelPlayer](https://github.com/theovilardo/PixelPlayer)** — for swipe kinematics ideas and queue structure.
