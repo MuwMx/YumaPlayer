@@ -105,6 +105,15 @@ No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-p
 
 ---
 
+</table>
+
+### 🎬 Feature Walkthrough
+
+https://github.com/user-attachments/assets/d363db0c-522b-4694-bd19-0dd9155ca240
+
+
+---
+
 ## ✨ Key Features
 
 ### 🎛️ Audio Engine & Smart Automix 
