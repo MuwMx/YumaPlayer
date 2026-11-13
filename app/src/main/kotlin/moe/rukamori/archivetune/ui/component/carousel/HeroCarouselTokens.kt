@@ -53,7 +53,7 @@ internal object HeroCarouselTokens {
     const val IdleWakeMillis = 28L
 
     const val TopShadeEnd = 0f
-    const val BottomShadeStart = 0.85f
+    const val BottomShadeStart = 0.88f
 
     val MinTouchTarget = 48.dp
 

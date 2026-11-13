@@ -10,16 +10,13 @@ import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,10 +24,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -134,7 +134,32 @@ internal fun HeroCarousel(
                 val item = displayItems[page.mod(displayItems.size)]
                 "${item.key}_$page"
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+                .drawWithCache {
+                    val fadeStart = HeroCarouselTokens.BottomShadeStart
+                    val fadeMid = fadeStart + (1f - fadeStart) * 0.55f
+                    val mask = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black,
+                            fadeStart to Color.Black,
+                            fadeMid to Color.Black.copy(alpha = 0.45f),
+                            1f to Color.Transparent,
+                        ),
+                        startY = 0f,
+                        endY = size.height,
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = mask,
+                            blendMode = BlendMode.DstIn,
+                        )
+                    }
+                },
         ) { page ->
             when (val displayItem = displayItems[page.mod(displayItems.size)]) {
                 is HeroDisplayItem.RollCard -> {
@@ -168,32 +193,6 @@ internal fun HeroCarousel(
                 }
             }
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(HeroCarouselTokens.TopShadeEnd)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        0.0f to MaterialTheme.colorScheme.surface,
-                        1.0f to Color.Transparent,
-                    )
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(1f - HeroCarouselTokens.BottomShadeStart)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        0.0f to Color.Transparent,
-                        1.0f to MaterialTheme.colorScheme.surface,
-                    )
-                )
-        )
     }
 }
 
