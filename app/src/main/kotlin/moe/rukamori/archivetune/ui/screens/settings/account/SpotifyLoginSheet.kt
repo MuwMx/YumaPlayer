@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,6 +61,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
+import moe.rukamori.archivetune.utils.keepScrollGestures
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -162,6 +164,7 @@ fun SpotifyLoginSheet(
                 Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
+                    .imePadding()
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -314,6 +317,7 @@ private fun getCleanChromeUserAgent(context: android.content.Context): String {
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.configureSpotifyLoginWebView() {
     val cleanUa = getCleanChromeUserAgent(context)
+    keepScrollGestures()
 
     settings.apply {
         javaScriptEnabled = true

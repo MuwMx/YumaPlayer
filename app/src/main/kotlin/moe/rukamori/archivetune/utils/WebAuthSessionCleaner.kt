@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.webkit.CookieManager
 import android.webkit.WebStorage
@@ -38,6 +39,15 @@ suspend fun clearWebAuthSession(context: Context) {
                 }
             }
         }
+    }
+}
+
+// Compose parents (bottom sheet, pager) otherwise steal vertical drags from the page.
+@SuppressLint("ClickableViewAccessibility")
+fun WebView.keepScrollGestures() {
+    setOnTouchListener { view, _ ->
+        view.parent?.requestDisallowInterceptTouchEvent(true)
+        false
     }
 }
 
