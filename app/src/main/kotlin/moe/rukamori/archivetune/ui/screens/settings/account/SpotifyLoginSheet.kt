@@ -23,6 +23,8 @@ import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -164,9 +166,10 @@ fun SpotifyLoginSheet(
                 Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .imePadding()
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 20.dp),
+                    .padding(bottom = 20.dp)
+                    .consumeWindowInsets(PaddingValues(bottom = 20.dp))
+                    .imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
