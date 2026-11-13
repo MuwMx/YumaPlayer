@@ -4,15 +4,6 @@
 
   <h1>YumaPlayer (Yuma)</h1>
 
-   <p align="center">
-    <a href="README.md">
-      <img src="https://img.shields.io/badge/🇺🇸%20English-6366f1?style=for-the-badge&labelColor=1e1e2e" alt="English" />
-    </a>
-    <a href="README_RU.md">
-      <img src="https://img.shields.io/badge/🇷🇺%20Русский-6366f1?style=for-the-badge&labelColor=1e1e2e" alt="Russian" />
-    </a>
-  </p>
-
   <p>
     <strong>A hybrid music client for Android focused on usability, clean aesthetics, and audiophile-grade sound.</strong><br>
     <em>Spotify UI + Discovery Algorithms + YouTube Music Library + Hi-Res Lossless (FLAC) + Smart Automix.</em>
