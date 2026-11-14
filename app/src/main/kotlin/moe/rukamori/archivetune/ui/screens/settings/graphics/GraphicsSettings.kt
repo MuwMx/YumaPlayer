@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DisableAnimationsKey
+import moe.rukamori.archivetune.constants.DisablePlayerCoverAnimationsKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.HomeBackgroundBrightnessKey
 import moe.rukamori.archivetune.constants.HomeBackgroundParallaxEnabledKey
@@ -87,6 +88,7 @@ fun GraphicsSettings(navController: NavController) {
     val (homeBackgroundParallaxStrength, onHomeBackgroundParallaxStrengthChange) = rememberPreference(HomeBackgroundParallaxStrengthKey, defaultValue = 0.6f)
     val (homeBackgroundBrightness, onHomeBackgroundBrightnessChange) = rememberPreference(HomeBackgroundBrightnessKey, defaultValue = 1f)
     val (forceHighRefreshRate, onForceHighRefreshRateChange) = rememberPreference(ForceHighRefreshRateKey, defaultValue = false)
+    val (disablePlayerCoverAnimations, onDisablePlayerCoverAnimationsChange) = rememberPreference(DisablePlayerCoverAnimationsKey, defaultValue = false)
     val (disableAnimations, onDisableAnimationsChange) = rememberPreference(DisableAnimationsKey, defaultValue = defaultDisableAnimations)
 
     val supportedHighestFps = rememberSupportedHighestFps()
@@ -104,6 +106,7 @@ fun GraphicsSettings(navController: NavController) {
         forceHighRefreshRate = forceHighRefreshRate,
         isHighRefreshRateSupported = isHighRefreshRateSupported,
         supportedHighestFps = supportedHighestFps,
+        disablePlayerCoverAnimations = disablePlayerCoverAnimations,
         disableAnimations = disableAnimations,
     )
 
@@ -119,6 +122,7 @@ fun GraphicsSettings(navController: NavController) {
             onHomeBackgroundParallaxStrengthChange = onHomeBackgroundParallaxStrengthChange,
             onHomeBackgroundBrightnessChange = onHomeBackgroundBrightnessChange,
             onForceHighRefreshRateChange = onForceHighRefreshRateChange,
+            onDisablePlayerCoverAnimationsChange = onDisablePlayerCoverAnimationsChange,
             onDisableAnimationsChange = onDisableAnimationsChange,
         )
     }
@@ -244,6 +248,15 @@ internal fun GraphicsSettingsScreen(
                         icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
                         checked = state.disableAnimations,
                         onCheckedChange = actions.onDisableAnimationsChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.disable_player_cover_animations)) },
+                        description = stringResource(R.string.disable_player_cover_animations_desc),
+                        icon = { Icon(painterResource(R.drawable.animation), null, modifier = Modifier.size(24.dp)) },
+                        checked = state.disablePlayerCoverAnimations,
+                        onCheckedChange = actions.onDisablePlayerCoverAnimationsChange,
                     )
                 }
             }

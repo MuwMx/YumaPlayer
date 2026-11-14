@@ -81,6 +81,7 @@ data class GraphicsSettingsUiState(
     val forceHighRefreshRate: Boolean = false,
     val isHighRefreshRateSupported: Boolean = false,
     val supportedHighestFps: Float = 60f,
+    val disablePlayerCoverAnimations: Boolean = false,
     val disableAnimations: Boolean = false,
 )
 
@@ -96,5 +97,6 @@ data class GraphicsSettingsUiActions(
     val onHomeBackgroundParallaxStrengthChange: (Float) -> Unit = {},
     val onHomeBackgroundBrightnessChange: (Float) -> Unit = {},
     val onForceHighRefreshRateChange: (Boolean) -> Unit = {},
+    val onDisablePlayerCoverAnimationsChange: (Boolean) -> Unit = {},
     val onDisableAnimationsChange: (Boolean) -> Unit = {},
 )

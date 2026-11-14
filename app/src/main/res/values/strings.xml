@@ -1349,4 +1349,6 @@
     <string name="lyrics_provider_automatic">Automatic</string>
     <string name="lyrics_provider_in_use">In use: %1$s</string>
     <string name="lyrics_provider_searching">Searching lyrics…</string>
+    <string name="disable_player_cover_animations">Disable cover animations</string>
+    <string name="disable_player_cover_animations_desc">Disable cover bounce on play/pause and track change</string>
 </resources>

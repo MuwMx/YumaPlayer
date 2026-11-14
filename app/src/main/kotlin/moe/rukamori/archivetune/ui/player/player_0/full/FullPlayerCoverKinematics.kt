@@ -20,9 +20,12 @@ internal data class CoverKinematics(
 )
 
 @Composable
-internal fun rememberCoverPlayPauseScale(isPlaying: Boolean): State<Float> {
+internal fun rememberCoverPlayPauseScale(
+    isPlaying: Boolean,
+    disabled: Boolean = false,
+): State<Float> {
     return animateFloatAsState(
-        targetValue = if (isPlaying) 1.0f else 0.84f,
+        targetValue = if (disabled || isPlaying) 1.0f else 0.84f,
         animationSpec = spring(
             dampingRatio = 0.55f,
             stiffness = 350f,

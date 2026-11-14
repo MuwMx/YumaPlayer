@@ -24,6 +24,9 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import coil3.SingletonImageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -324,6 +327,19 @@ class DownloadUtil
                             }
 
                         upsert(updatedSong)
+
+                        val thumbnailUrl =
+                            getSongByIdBlocking(mediaId)?.song?.thumbnailUrl
+                                ?: playbackData.videoDetails?.thumbnail?.thumbnails?.lastOrNull()?.url
+                        if (!thumbnailUrl.isNullOrBlank()) {
+                            SingletonImageLoader.get(context).enqueue(
+                                ImageRequest.Builder(context)
+                                    .data(thumbnailUrl)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.DISABLED)
+                                    .build(),
+                            )
+                        }
                     }
                 }
             }
