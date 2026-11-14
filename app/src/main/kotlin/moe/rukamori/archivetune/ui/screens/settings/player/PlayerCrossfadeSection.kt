@@ -60,6 +60,8 @@ internal fun PlayerCrossfadeSection(
                         AutomixTransitionDuration.S4 -> stringResource(R.string.automix_duration_4s)
                         AutomixTransitionDuration.S8 -> stringResource(R.string.automix_duration_8s)
                         AutomixTransitionDuration.S12 -> stringResource(R.string.automix_duration_12s)
+                        AutomixTransitionDuration.S16 -> stringResource(R.string.automix_duration_16s)
+                        AutomixTransitionDuration.S20 -> stringResource(R.string.automix_duration_20s)
                     }
                 },
             )

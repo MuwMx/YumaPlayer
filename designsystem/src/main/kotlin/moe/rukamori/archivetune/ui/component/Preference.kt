@@ -103,6 +103,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.designsystem.R
+import moe.rukamori.archivetune.constants.CROSSFADE_SLIDER_DEFAULT_SECONDS
+import moe.rukamori.archivetune.constants.CROSSFADE_SLIDER_RANGE
+import moe.rukamori.archivetune.constants.CROSSFADE_SLIDER_STEPS
+import moe.rukamori.archivetune.constants.CROSSFADE_SLIDER_STEP_SECONDS
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_RANGE
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -985,8 +989,12 @@ fun CrossfadeSliderPreference(
         mutableStateOf(false)
     }
 
+    fun snapToStep(value: Float): Float =
+        ((value / CROSSFADE_SLIDER_STEP_SECONDS).roundToInt() * CROSSFADE_SLIDER_STEP_SECONDS)
+            .coerceIn(CROSSFADE_SLIDER_RANGE)
+
     var sliderValue by remember {
-        mutableFloatStateOf(valueSeconds.coerceIn(0f, 10f))
+        mutableFloatStateOf(valueSeconds.coerceIn(CROSSFADE_SLIDER_RANGE))
     }
 
     if (showDialog) {
@@ -1006,25 +1014,21 @@ fun CrossfadeSliderPreference(
             },
             onDismiss = { showDialog = false },
             onConfirm = {
-                val rounded =
-                    ((sliderValue * 2f).roundToInt().toFloat() / 2f)
-                        .coerceIn(0f, 10f)
+                val rounded = snapToStep(sliderValue)
                 sliderValue = rounded
                 showDialog = false
                 onValueChange.invoke(rounded)
             },
             onCancel = {
-                sliderValue = valueSeconds.coerceIn(0f, 10f)
+                sliderValue = valueSeconds.coerceIn(CROSSFADE_SLIDER_RANGE)
                 showDialog = false
             },
             onReset = {
-                sliderValue = 5f
+                sliderValue = CROSSFADE_SLIDER_DEFAULT_SECONDS
             },
             content = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val rounded =
-                        ((sliderValue * 2f).roundToInt().toFloat() / 2f)
-                            .coerceIn(0f, 10f)
+                    val rounded = snapToStep(sliderValue)
                     val isWhole =
                         (rounded - rounded.roundToInt().toFloat()).let { delta ->
                             kotlin.math.abs(delta) < 0.001f
@@ -1054,11 +1058,11 @@ fun CrossfadeSliderPreference(
                     val crossfadeSliderState =
                         rememberSliderState(
                             value = sliderValue,
-                            steps = 19,
-                            valueRange = 0f..10f,
+                            steps = CROSSFADE_SLIDER_STEPS,
+                            valueRange = CROSSFADE_SLIDER_RANGE,
                             onValueChangeFinished = {},
                         )
-                    crossfadeSliderState.onValueChange = { sliderValue = it.coerceIn(0f, 10f) }
+                    crossfadeSliderState.onValueChange = { sliderValue = it.coerceIn(CROSSFADE_SLIDER_RANGE) }
                     crossfadeSliderState.value = sliderValue
 
                     Slider(
@@ -1076,9 +1080,7 @@ fun CrossfadeSliderPreference(
         )
     }
 
-    val rounded =
-        ((valueSeconds * 2f).roundToInt().toFloat() / 2f)
-            .coerceIn(0f, 10f)
+    val rounded = snapToStep(valueSeconds)
     val isWhole =
         (rounded - rounded.roundToInt().toFloat()).let { delta ->
             kotlin.math.abs(delta) < 0.001f

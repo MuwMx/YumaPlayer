@@ -1292,6 +1292,8 @@
     <string name="automix_duration_4s">4s</string>
     <string name="automix_duration_8s">8s</string>
     <string name="automix_duration_12s">12s</string>
+    <string name="automix_duration_16s">16s</string>
+    <string name="automix_duration_20s">20s</string>
     <string name="sponsor_block_group">SponsorBlock</string>
     <string name="sponsor_block_use">Use SponsorBlock</string>
     <string name="sponsor_block_categories">Categories</string>

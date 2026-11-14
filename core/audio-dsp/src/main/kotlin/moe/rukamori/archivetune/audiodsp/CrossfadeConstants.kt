@@ -10,15 +10,24 @@ object CrossfadeConstants {
     const val PRIME_LEAD_MS = 3000L
     const val PRIME_MAX_DRIFT_MS = 40L
     const val CLAMP_MIN_S = 1
-    const val CLAMP_MAX_S = 12
+    const val CLAMP_MAX_S = 20
     const val MS_PER_SECOND = 1000L
     const val CLAMP_MIN_MS = CLAMP_MIN_S * MS_PER_SECOND
     const val CLAMP_MAX_MS = CLAMP_MAX_S * MS_PER_SECOND
 
+    // The BPM-less fallback lead before the analyzer has measured anything. Kept at the historical
+    // auto ceiling so widening the user-facing clamp (CLAMP_MAX_S) does not silently move the
+    // trigger point of every unanalysed transition; a wider lead here would start fades 8s earlier
+    // on tracks where the analyzer never produces a BPM.
+    const val AUTO_FALLBACK_LEAD_S = 12.0
+
     const val SOFT_MIN_S = 6.0
     const val SOFT_MAX_S = 14.0
     const val STANDARD_MIN_S = 4.0
-    const val STANDARD_MAX_S = 12.0
+
+    // Must stay equal to CLAMP_MAX_S: STANDARD is the aggressiveness every runtime caller
+    // (scheduler, seekbar marker) plans with, so it tracks the user-facing ceiling.
+    const val STANDARD_MAX_S = 20.0
     const val CLUB_MIN_S = 3.0
     const val CLUB_MAX_S = 8.0
 
