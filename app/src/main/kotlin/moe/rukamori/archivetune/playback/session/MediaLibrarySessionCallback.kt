@@ -49,6 +49,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.HideYtmLikedSongsKey
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.MediaSessionConstants
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
@@ -563,7 +564,7 @@ class MediaLibrarySessionCallback
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
-                                    source = LikeSource.YTM,
+                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
                                 ).first()
                                 .map { it.toMediaItem(parentId) }
                         }
@@ -1050,7 +1051,7 @@ class MediaLibrarySessionCallback
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
-                                    source = LikeSource.YTM,
+                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
                                 ).first()
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
                     }
@@ -1444,7 +1445,7 @@ class MediaLibrarySessionCallback
                         .likedSongs(
                             songSortType,
                             descending = sortOption?.descending ?: true,
-                            source = LikeSource.YTM,
+                            source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
                         ).first()
                 }
 
