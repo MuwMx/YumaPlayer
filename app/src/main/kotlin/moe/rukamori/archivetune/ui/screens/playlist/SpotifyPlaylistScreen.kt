@@ -75,7 +75,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playlistcopy.PlaylistCopySource
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.spotifyAwareQueue
-import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
+import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.spotify.toPlaceholderId
 import moe.rukamori.archivetune.spotify.toPlaceholderMetadata
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistViewModel
@@ -293,7 +293,7 @@ fun SpotifyPlaylistScreen(
                 onToggleLike = if (database != null && syncUtils != null) {
                     { track ->
                         scope.launch(Dispatchers.IO) {
-                            toggleSpotifyTrackLike(track, database, syncUtils)
+                            SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
                         }
                     }
                 } else null,

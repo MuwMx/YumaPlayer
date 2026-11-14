@@ -42,8 +42,38 @@ object SpotifyLibraryMutations {
     fun syncLike(context: Context, spotifyId: String, isLiked: Boolean) = setTrackSaved(context, spotifyId, isLiked)
 
     fun setTrackSaved(context: Context, trackId: String, saved: Boolean) {
-        val rawId = trackId.removePrefix("spotify:track:")
+        val rawId = LikeSourceResolver.extractCleanSpotifyId(trackId) ?: trackId
         if (rawId.isNotBlank()) setSaved(context, rawId, "spotify:track:$rawId", saved)
+    }
+
+    suspend fun toggleTrackLike(
+        track: SpotifyTrack,
+        database: MusicDatabase,
+        syncUtils: SyncUtils,
+    ) {
+        val cleanSpotifyId = LikeSourceResolver.extractCleanSpotifyId(track.id)
+        val isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() }
+        val song = database.withTransaction {
+            val currentSongEntity =
+                database.getSongByMetadata(
+                    songId = track.id,
+                    spotifyId = cleanSpotifyId,
+                    isrc = isrc,
+                ) ?: run {
+                    val meta = track.toPlaceholderMetadata()
+                    meta?.let { database.insert(it) { entity -> entity.copy(isLocal = false) } }
+                    database.getSongByMetadata(
+                        songId = track.id,
+                        spotifyId = cleanSpotifyId,
+                        isrc = isrc,
+                    ) ?: meta?.let { database.getSongById(it.id) } ?: database.getSongById(track.id)
+                } ?: return@withTransaction null
+
+            currentSongEntity.song.localToggleLike(LikeSource.SPOTIFY).also(database::update)
+        } ?: return
+
+        val spotifyId = cleanSpotifyId ?: if (LikeSourceResolver.isSpotifyId(song.id, song.isLocal)) song.id else null
+        syncUtils.likeSong(song, LikeSource.SPOTIFY, spotifyId)
     }
 
     fun setAlbumSaved(context: Context, albumId: String, saved: Boolean) {
@@ -160,8 +190,8 @@ object SpotifyLibraryMutations {
         explicitSpotifyId: String? = null,
     ): ResolvedSpotifyMatch? {
         if (!explicitSpotifyId.isNullOrBlank()) {
-            val rawId = explicitSpotifyId.removePrefix("spotify:track:").removePrefix("spotify:")
-            if (rawId.length == 22 && rawId.all { it.isLetterOrDigit() }) {
+            val rawId = LikeSourceResolver.extractCleanSpotifyId(explicitSpotifyId)
+            if (rawId != null && rawId.length == 22 && rawId.all { it.isLetterOrDigit() }) {
                 val matchToPersist = if (song.id != rawId && !song.id.startsWith("spotify:")) {
                     val artistsText = database.getSongById(song.id)?.artists?.joinToString(" ") { it.name }.orEmpty()
                     val existingMatch = database.getSpotifyMatch(rawId)
@@ -176,9 +206,7 @@ object SpotifyLibraryMutations {
                 return ResolvedSpotifyMatch(rawId, matchToPersist)
             }
         }
-        if (song.id.startsWith("spotify:track:")) return ResolvedSpotifyMatch(song.id.removePrefix("spotify:track:"))
-        if (song.id.startsWith("spotify:")) return ResolvedSpotifyMatch(song.id.removePrefix("spotify:"))
-        if (song.id.length == 22 && song.id.all { it.isLetterOrDigit() }) return ResolvedSpotifyMatch(song.id)
+        LikeSourceResolver.extractCleanSpotifyId(song.id)?.let { return ResolvedSpotifyMatch(it) }
         val match = database.getSpotifyMatchesByYouTubeIds(listOf(song.id)).firstOrNull()
         if (match != null && match.spotifyId.isNotBlank()) return ResolvedSpotifyMatch(match.spotifyId)
 

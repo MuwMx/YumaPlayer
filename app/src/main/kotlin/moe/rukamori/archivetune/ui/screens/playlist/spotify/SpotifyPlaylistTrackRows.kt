@@ -14,10 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.spotify.isTrackLiked
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
+import moe.rukamori.archivetune.utils.isTrackLiked
 
 @Composable
 internal fun SpotifyPlaylistTrackRow(

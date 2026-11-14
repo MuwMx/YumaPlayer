@@ -9,11 +9,19 @@ package moe.rukamori.archivetune.spotify
 import android.content.Context
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.spotify.sync.SpotifyTokenManager
+import moe.rukamori.archivetune.utils.SyncUtils
 
 object SpotifySync {
     typealias ResolvedSpotifyMatch = SpotifyLibraryMutations.ResolvedSpotifyMatch
+
+    suspend fun toggleTrackLike(
+        track: SpotifyTrack,
+        database: MusicDatabase,
+        syncUtils: SyncUtils,
+    ) = SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
 
     fun syncLike(spotifyId: String, isLiked: Boolean) {
         SpotifyLibraryMutations.syncLike(spotifyId, isLiked)

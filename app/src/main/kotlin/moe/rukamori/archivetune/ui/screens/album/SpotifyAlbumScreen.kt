@@ -64,9 +64,9 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
-import moe.rukamori.archivetune.spotify.isTrackLiked
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
-import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
+import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
+import moe.rukamori.archivetune.utils.isTrackLiked
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
