@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.constants.ArtistSortType
 import moe.rukamori.archivetune.constants.ArtistSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.HideYtmLikedSongsKey
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.PlaylistSortDescendingKey
@@ -112,25 +113,40 @@ class LibrarySongsViewModel
         val allSongs =
             context.dataStore.data
                 .map {
-                    Triple(
-                        Triple(
+                    Pair(
+                        listOf(
                             it[SongFilterKey].toEnum(SongFilter.LIKED),
                             it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
-                            (it[SongSortDescendingKey] ?: true),
+                            it[SongSortDescendingKey] ?: true,
+                            it[HideYtmLikedSongsKey] ?: false,
                         ),
-                        it[HideExplicitKey] ?: false,
-                        it[HideVideoKey] ?: false,
+                        Pair(
+                            it[HideExplicitKey] ?: false,
+                            it[HideVideoKey] ?: false,
+                        ),
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (filterSort, hideExplicit, hideVideo) ->
-                    val (filter, sortType, descending) = filterSort
+                .flatMapLatest { (configs, hideFlags) ->
+                    val filter = configs[0] as SongFilter
+                    val sortType = configs[1] as SongSortType
+                    val descending = configs[2] as Boolean
+                    val hideYtmLikedSongs = configs[3] as Boolean
+                    val (hideExplicit, hideVideo) = hideFlags
                     when (filter) {
                         SongFilter.LIBRARY -> {
-                            database.songs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
+                            database.songs(sortType, descending, hideVideo).map { songs ->
+                                val list = if (hideYtmLikedSongs) {
+                                    songs.filterNot { it.song.likedYtm && !it.song.likedSpotify }
+                                } else {
+                                    songs
+                                }
+                                list.filterExplicit(hideExplicit)
+                            }
                         }
 
                         SongFilter.LIKED -> {
-                            database.likedSongs(sortType, descending, hideVideo, source = LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
+                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else null
+                            database.likedSongs(sortType, descending, hideVideo, source = source).map { it.filterExplicit(hideExplicit) }
                         }
 
                         SongFilter.DOWNLOADED -> {
@@ -140,7 +156,8 @@ class LibrarySongsViewModel
                                     .flowOn(Dispatchers.IO)
                                     .map { songs ->
                                         songs.filter { song: Song ->
-                                            downloads[song.id]?.state == Download.STATE_COMPLETED
+                                            downloads[song.id]?.state == Download.STATE_COMPLETED &&
+                                                (!hideYtmLikedSongs || !(song.song.likedYtm && !song.song.likedSpotify))
                                         }
                                     }.map { songs ->
                                         when (sortType) {

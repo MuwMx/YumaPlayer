@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.HideYtmLikedSongsKey
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -72,21 +73,28 @@ class AutoPlaylistViewModel
         val likedSongs =
             context.dataStore.data
                 .map {
-                    Triple(
-                        it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (
-                            it[AutoPlaylistSongSortDescendingKey]
-                                ?: true
+                    Pair(
+                        listOf(
+                            it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE),
+                            it[AutoPlaylistSongSortDescendingKey] ?: true,
+                            it[HideYtmLikedSongsKey] ?: false,
                         ),
-                        it[HideExplicitKey] ?: false,
-                        it[HideVideoKey] ?: false,
+                        Pair(
+                            it[HideExplicitKey] ?: false,
+                            it[HideVideoKey] ?: false,
+                        ),
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (sortDesc, hideExplicit, hideVideo) ->
-                    val (sortType, descending) = sortDesc
+                .flatMapLatest { (configs, hideFlags) ->
+                    val sortType = configs[0] as AutoPlaylistSongSortType
+                    val descending = configs[1] as Boolean
+                    val hideYtmLikedSongs = configs[2] as Boolean
+                    val (hideExplicit, hideVideo) = hideFlags
                     val songSortType = sortType.toSongSortType()
                     when (playlist) {
                         "liked" -> {
-                            database.likedSongs(songSortType, descending, hideVideo, LikeSource.YTM).map { it.filterExplicit(hideExplicit) }
+                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else null
+                            database.likedSongs(songSortType, descending, hideVideo, source).map { it.filterExplicit(hideExplicit) }
                         }
 
                         "downloaded" -> {
