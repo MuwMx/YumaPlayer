@@ -30,6 +30,7 @@ class SpotifyPlaceholdersTest {
     fun setUp() {
         mockkObject(SpotifyPlaybackResolver)
         SpotifyPlaceholders.isOnline = { true }
+        coEvery { database.getSpotifyMatch(any()) } returns null
     }
 
     @After

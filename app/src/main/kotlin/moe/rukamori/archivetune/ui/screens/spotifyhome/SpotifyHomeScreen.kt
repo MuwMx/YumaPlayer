@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -26,6 +27,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
@@ -36,6 +40,7 @@ import moe.rukamori.archivetune.spotify.SpotifyHomeNavigationEvent
 import moe.rukamori.archivetune.spotify.SpotifyHomeScreenState
 import moe.rukamori.archivetune.spotify.SpotifyHomeViewModel
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
+import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.screens.home.HomeSectionHeader
 import moe.rukamori.archivetune.ui.screens.spotifyhome.HomeStatePane
@@ -56,6 +61,12 @@ fun SpotifyHomeScreen(
     onSwitchToYoutube: () -> Unit = {}
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val database = playerConnection.service.database
+    val syncUtils = playerConnection.service.syncUtils
+    val likedKeys by remember(database) {
+        database.likedSpotifyTrackKeys().map { it.toSet() }
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
+    val scope = rememberCoroutineScope()
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val hazeState = LocalScaffoldHazeState.current
@@ -162,6 +173,12 @@ fun SpotifyHomeScreen(
                                         SpotifyTrackSectionRow(
                                             tracks = section.tracks,
                                             horizontalItemWidth = 240.dp,
+                                            likedKeys = likedKeys,
+                                            onToggleLike = { track ->
+                                                scope.launch(Dispatchers.IO) {
+                                                    toggleSpotifyTrackLike(track, database, syncUtils)
+                                                }
+                                            },
                                             onTrackClick = { track ->
                                                 playerConnection.playQueue(
                                                     SpotifyTracksQueue(

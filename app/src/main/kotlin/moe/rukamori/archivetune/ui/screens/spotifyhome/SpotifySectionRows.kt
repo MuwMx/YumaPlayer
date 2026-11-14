@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.spotify.SpotifyHomeSection
+import moe.rukamori.archivetune.spotify.isTrackLiked
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
@@ -76,6 +77,8 @@ internal fun SpotifyTrackSectionRow(
     horizontalItemWidth: Dp,
     onTrackClick: (SpotifyTrack) -> Unit,
     modifier: Modifier = Modifier,
+    likedKeys: Set<String> = emptySet(),
+    onToggleLike: ((SpotifyTrack) -> Unit)? = null,
 ) {
     LazyHorizontalGrid(
         state = rememberLazyGridState(),
@@ -96,8 +99,11 @@ internal fun SpotifyTrackSectionRow(
                     .fillMaxHeight()
                     .width(horizontalItemWidth),
             ) {
+                val isLiked = remember(track, likedKeys) { likedKeys.isTrackLiked(track) }
                 SpotifyTrackListItem(
                     track = track,
+                    isLiked = isLiked,
+                    onToggleLike = onToggleLike?.let { toggle -> { toggle(track) } },
                     modifier = Modifier
                         .fillMaxWidth()
                         .yumaClickable(onClick = { onTrackClick(track) }),

@@ -51,7 +51,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -65,6 +67,7 @@ import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
+import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
@@ -92,6 +95,11 @@ fun SpotifyLikedSongsScreen(
     var showSpotifyLogin by remember { mutableStateOf(false) }
 
     val playerConnection = LocalPlayerConnection.current
+    val database = playerConnection?.service?.database
+    val syncUtils = playerConnection?.service?.syncUtils
+    val likedKeys by remember(database) {
+        database?.likedSpotifyTrackKeys()?.map { it.toSet() } ?: kotlinx.coroutines.flow.flowOf(emptySet())
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
     val isPlaying by playerConnection?.isPlaying?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) }
@@ -313,6 +321,14 @@ fun SpotifyLikedSongsScreen(
                     mediaMetadata = mediaMetadata,
                     resolvingTrackId = resolvingTrackId,
                     isPlaying = isPlaying,
+                    likedKeys = likedKeys,
+                    onToggleLike = if (database != null && syncUtils != null) {
+                        { track ->
+                            coroutineScope.launch(Dispatchers.IO) {
+                                toggleSpotifyTrackLike(track, database, syncUtils)
+                            }
+                        }
+                    } else null,
                     onTrackClick = { track, index, trackIsActive ->
                         if (trackIsActive) {
                             playerConnection?.player?.togglePlayPause()

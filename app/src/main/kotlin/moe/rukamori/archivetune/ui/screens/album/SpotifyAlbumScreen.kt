@@ -89,6 +89,11 @@ fun SpotifyAlbumScreen(
     viewModel: SpotifyAlbumViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val database = playerConnection.service.database
+    val syncUtils = playerConnection.service.syncUtils
+    val likedKeys by remember(database) {
+        database.likedSpotifyTrackKeys().map { it.toSet() }
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
@@ -217,11 +222,18 @@ fun SpotifyAlbumScreen(
                         ) { index, track ->
                             val isActive = remember(track, mediaMetadata) { track.isResolvedAs(mediaMetadata) }
                             val isResolving = resolvingTrackId == track.id
+                            val isLiked = remember(track, likedKeys) { likedKeys.isTrackLiked(track) }
                             SpotifyTrackListItem(
                                 track = track,
                                 albumIndex = track.trackNumber ?: (index + 1),
                                 isActive = isActive || isResolving,
                                 isPlaying = isPlaying && !isResolving,
+                                isLiked = isLiked,
+                                onToggleLike = {
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        toggleSpotifyTrackLike(track, database, syncUtils)
+                                    }
+                                },
                                 trailingContent = {
                                     if (isResolving) {
                                         CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
