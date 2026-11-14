@@ -15,6 +15,8 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +39,7 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.utils.keepScrollGestures
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import moe.rukamori.archivetune.auth.LoginEvent
 import moe.rukamori.archivetune.auth.LoginViewModel
@@ -107,10 +110,13 @@ fun LoginScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
+                    .imePadding(),
                 factory = { context ->
                     WebView(context).apply {
                         setBackgroundColor(0)
+                        keepScrollGestures()
                         val cookieManager = CookieManager.getInstance()
                         webViewClient =
                             object : WebViewClient() {
