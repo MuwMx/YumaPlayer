@@ -35,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.valentinilk.shimmer.shimmer
+import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
@@ -59,6 +63,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 
@@ -221,6 +226,11 @@ fun LazyItemScope.OnlinePlaylistSongRow(
     actions: OnlinePlaylistActions,
     modifier: Modifier = Modifier,
 ) {
+    val database = LocalDatabase.current
+    val isFavorite by remember(song.item.second.id) {
+        database.song(song.item.second.id).map { it?.song?.liked == true }
+    }.collectAsStateWithLifecycle(initialValue = false)
+
     YouTubeListItem(
         item = song.item.second,
         viewCountText =
@@ -230,6 +240,8 @@ fun LazyItemScope.OnlinePlaylistSongRow(
         isActive = activeMediaId == song.item.second.id,
         isPlaying = isPlaying,
         isSelected = song.isSelected && selection,
+        isFavorite = isFavorite,
+        onToggleLike = { actions.onSongToggleLike(song.item.second) },
         trailingContent = {
             IconButton(
                 onClick = { actions.onSongMenu(song.item.second) },

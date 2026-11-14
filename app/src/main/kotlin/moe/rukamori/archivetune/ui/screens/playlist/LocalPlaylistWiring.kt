@@ -570,6 +570,11 @@ fun LazyListScope.localPlaylistSongs(
             if (!searchState.selection) searchState.selection = true
             searchState.selectedSongMapIds = setOf(song.map.id)
         },
+        onToggleLike = { song ->
+            val s = song.song.localToggleLike(LikeSource.YTM)
+            database.query { update(s) }
+            playerConnection.service.syncUtils.likeSong(s, LikeSource.YTM)
+        },
     )
 }
 
