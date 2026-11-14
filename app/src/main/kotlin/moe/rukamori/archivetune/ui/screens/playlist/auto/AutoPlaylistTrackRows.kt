@@ -50,6 +50,8 @@ import moe.rukamori.archivetune.ui.screens.playlist.CONTENT_TYPE_EMPTY
 import moe.rukamori.archivetune.ui.screens.playlist.CONTENT_TYPE_SONG
 import moe.rukamori.archivetune.ui.screens.playlist.CONTENT_TYPE_SONG_ACTIVE
 import moe.rukamori.archivetune.ui.screens.playlist.CONTENT_TYPE_SONG_SELECTED
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
 
 @Composable
@@ -65,23 +67,29 @@ internal fun AutoPlaylistTrackRow(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SongListItem(
-        song = songWrapper.item,
-        isActive = isActive,
-        isPlaying = isPlaying,
-        showInLibraryIcon = true,
-        downloadState = downloadState,
-        downloadProgress = downloadProgress,
-        trailingContent = trailingContent,
-        isSelected = isSelected,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                ),
-    )
+    PlaylistSongRow(
+        capabilities = PlaylistRowCapabilities.ReadOnly,
+        isScrollInProgress = false,
+        modifier = modifier,
+    ) {
+        SongListItem(
+            song = songWrapper.item,
+            isActive = isActive,
+            isPlaying = isPlaying,
+            showInLibraryIcon = true,
+            downloadState = downloadState,
+            downloadProgress = downloadProgress,
+            trailingContent = trailingContent,
+            isSelected = isSelected,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    ),
+        )
+    }
 }
 
 internal fun LazyListScope.autoPlaylistEmptyState() {

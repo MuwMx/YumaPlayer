@@ -17,6 +17,8 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
 import moe.rukamori.archivetune.utils.isTrackLiked
 
 @Composable
@@ -29,17 +31,23 @@ internal fun SpotifyPlaylistTrackRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SpotifyTrackListItem(
-        track = track,
-        isActive = isActive,
-        isPlaying = isPlaying,
-        isLiked = isLiked,
-        onToggleLike = onToggleLike,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick),
-    )
+    PlaylistSongRow(
+        capabilities = PlaylistRowCapabilities.Spotify,
+        isScrollInProgress = false,
+        modifier = modifier,
+    ) {
+        SpotifyTrackListItem(
+            track = track,
+            isActive = isActive,
+            isPlaying = isPlaying,
+            isLiked = isLiked,
+            onToggleLike = onToggleLike,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick),
+        )
+    }
 }
 
 internal fun LazyListScope.spotifyPlaylistTrackRows(

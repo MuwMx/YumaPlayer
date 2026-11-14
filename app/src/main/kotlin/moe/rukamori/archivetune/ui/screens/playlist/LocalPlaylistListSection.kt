@@ -20,15 +20,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +43,9 @@ import moe.rukamori.archivetune.ui.component.SortHeader
 import moe.rukamori.archivetune.ui.component.YumaEmptyState
 import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDragHandle
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
@@ -161,33 +158,13 @@ fun LazyItemScope.LocalPlaylistSongItem(
                 compositingStrategy = CompositingStrategy.Offscreen
             },
     ) {
-        val currentOnDelete by rememberUpdatedState(onDelete)
-        val currentIsScrollInProgress by rememberUpdatedState(isScrollInProgress)
-
-        val dismissBoxState =
-            rememberSwipeToDismissBoxState(
-                positionalThreshold = { totalDistance -> totalDistance },
-                confirmValueChange = { targetValue ->
-                    targetValue == SwipeToDismissBoxValue.Settled || !currentIsScrollInProgress
-                },
-            )
-        var processedDismiss by remember { mutableStateOf(false) }
-        LaunchedEffect(dismissBoxState.currentValue) {
-            val dv = dismissBoxState.currentValue
-            if (!processedDismiss && (
-                    dv == SwipeToDismissBoxValue.StartToEnd ||
-                        dv == SwipeToDismissBoxValue.EndToStart
-                )
-            ) {
-                processedDismiss = true
-                currentOnDelete()
-            }
-            if (dv == SwipeToDismissBoxValue.Settled) {
-                processedDismiss = false
-            }
-        }
-
-        val content: @Composable () -> Unit = {
+        PlaylistSongRow(
+            capabilities = PlaylistRowCapabilities(
+                swipeDelete = canSwipeDismiss,
+            ),
+            isScrollInProgress = isScrollInProgress,
+            onSwipeDelete = onDelete,
+        ) {
             SongListItem(
                 song = song.song,
                 viewCountText = viewCountText,
@@ -217,19 +194,12 @@ fun LazyItemScope.LocalPlaylistSongItem(
                     }
 
                     if (showDragHandle) {
-                        IconButton(
-                            onClick = { },
-                            onLongClick = {},
-                            modifier =
+                        PlaylistDragHandle(
+                            onDragHandleModifier =
                                 Modifier
                                     .draggableHandle()
                                     .graphicsLayer { alpha = 0.99f },
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.drag_handle),
-                                contentDescription = null,
-                            )
-                        }
+                        )
                     }
                 },
                 isSelected = isSelected,
@@ -241,17 +211,6 @@ fun LazyItemScope.LocalPlaylistSongItem(
                             onLongClick = onLongClick,
                         ),
             )
-        }
-
-        if (!canSwipeDismiss) {
-            content()
-        } else {
-            SwipeToDismissBox(
-                state = dismissBoxState,
-                backgroundContent = {},
-            ) {
-                content()
-            }
         }
     }
 }

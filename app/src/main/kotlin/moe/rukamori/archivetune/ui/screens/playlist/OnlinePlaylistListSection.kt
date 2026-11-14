@@ -64,6 +64,8 @@ import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 
@@ -231,36 +233,43 @@ fun LazyItemScope.OnlinePlaylistSongRow(
         database.song(song.item.second.id).map { it?.song?.liked == true }
     }.collectAsStateWithLifecycle(initialValue = false)
 
-    YouTubeListItem(
-        item = song.item.second,
-        viewCountText =
-            viewCounts[song.item.second.id]?.let { count ->
-                formatCompactCount(count.toLong())
+    PlaylistSongRow(
+        capabilities = PlaylistRowCapabilities.ReadOnly,
+        isScrollInProgress = false,
+        modifier = Modifier.animateItem(),
+    ) {
+        YouTubeListItem(
+            item = song.item.second,
+            viewCountText =
+                viewCounts[song.item.second.id]?.let { count ->
+                    formatCompactCount(count.toLong())
+                },
+            isActive = activeMediaId == song.item.second.id,
+            isPlaying = isPlaying,
+            isSelected = song.isSelected && selection,
+            isFavorite = isFavorite,
+            onToggleLike = { actions.onSongToggleLike(song.item.second) },
+            trailingContent = {
+                IconButton(
+                    onClick = { actions.onSongMenu(song.item.second) },
+                    onLongClick = {},
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = null,
+                    )
+                }
             },
-        isActive = activeMediaId == song.item.second.id,
-        isPlaying = isPlaying,
-        isSelected = song.isSelected && selection,
-        isFavorite = isFavorite,
-        onToggleLike = { actions.onSongToggleLike(song.item.second) },
-        trailingContent = {
-            IconButton(
-                onClick = { actions.onSongMenu(song.item.second) },
-                onLongClick = {},
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = null,
-                )
-            }
-        },
-        modifier =
-            modifier
-                .combinedClickable(
-                    enabled = !hideExplicit || !song.item.second.explicit,
-                    onClick = { actions.onSongClick(song) },
-                    onLongClick = { actions.onSongLongClick(song) },
-                ).animateItem(),
-    )
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        enabled = !hideExplicit || !song.item.second.explicit,
+                        onClick = { actions.onSongClick(song) },
+                        onLongClick = { actions.onSongLongClick(song) },
+                    ),
+        )
+    }
 }
 
 fun LazyListScope.onlinePlaylistLoadingMoreItem() {
