@@ -52,7 +52,11 @@ object LikeSourceResolver {
 
 fun Set<String>.isTrackLiked(track: SpotifyTrack): Boolean {
     val cleanId = LikeSourceResolver.extractCleanSpotifyId(track.id)
-    if (cleanId != null && cleanId in this) return true
+    if (cleanId != null) {
+        if (cleanId in this) return true
+        if ("spotify:$cleanId" in this) return true
+        if ("spotify:track:$cleanId" in this) return true
+    }
     if (track.id.isNotBlank() && track.id in this) return true
     val isrc = track.externalIds?.isrc?.trim()
     return !isrc.isNullOrBlank() && isrc in this
