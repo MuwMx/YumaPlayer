@@ -826,6 +826,34 @@ interface SongDao {
     fun song(songId: String?): Flow<Song?>
 
     @Transaction
+    @Query("""
+        SELECT * FROM song
+        WHERE (:songId IS NOT NULL AND id = :songId)
+           OR (:spotifyId IS NOT NULL AND id IN (SELECT youtubeId FROM spotify_match WHERE spotifyId = :spotifyId))
+           OR (:spotifyId IS NOT NULL AND id = :spotifyId)
+           OR (:spotifyId IS NOT NULL AND id = 'spotify:track:' || :spotifyId)
+           OR (:songId IS NOT NULL AND id IN (SELECT spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:track:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:isrc IS NOT NULL AND :isrc != '' AND isrc = :isrc)
+        ORDER BY liked DESC, (likedSpotify OR likedYtm) DESC, inLibrary DESC LIMIT 1
+    """)
+    fun songByMetadata(songId: String?, spotifyId: String?, isrc: String?): Flow<Song?>
+
+    @Transaction
+    @Query("""
+        SELECT * FROM song
+        WHERE (:songId IS NOT NULL AND id = :songId)
+           OR (:spotifyId IS NOT NULL AND id IN (SELECT youtubeId FROM spotify_match WHERE spotifyId = :spotifyId))
+           OR (:spotifyId IS NOT NULL AND id = :spotifyId)
+           OR (:spotifyId IS NOT NULL AND id = 'spotify:track:' || :spotifyId)
+           OR (:songId IS NOT NULL AND id IN (SELECT spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:track:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:isrc IS NOT NULL AND :isrc != '' AND isrc = :isrc)
+        ORDER BY liked DESC, (likedSpotify OR likedYtm) DESC, inLibrary DESC LIMIT 1
+    """)
+    suspend fun getSongByMetadata(songId: String?, spotifyId: String?, isrc: String?): Song?
+
+    @Transaction
     @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
     suspend fun getSongById(songId: String): Song?
 

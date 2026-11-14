@@ -154,8 +154,17 @@ class PlaybackStateHolder(
                 .filterNotNull()
                 .flatMapLatest { connection ->
                     combine(connection.mediaMetadata, connection.currentSong) { metadata, song ->
-                        if (metadata == null || song == null) return@combine false
-                        song.song.liked
+                        if (metadata == null) return@combine false
+                        if (song != null) return@combine song.song.liked
+                        val cleanSpotifyId = (metadata.spotifyTrackId ?: metadata.id)
+                            .removePrefix("spotify:track:")
+                            .removePrefix("spotify:")
+                            .takeIf { it.isNotBlank() }
+                        connection.service.database.getSongByMetadata(
+                            songId = metadata.id,
+                            spotifyId = cleanSpotifyId,
+                            isrc = metadata.isrc?.takeIf { it.isNotBlank() },
+                        )?.song?.liked == true
                     }
                 }
                 .collect { isLiked ->

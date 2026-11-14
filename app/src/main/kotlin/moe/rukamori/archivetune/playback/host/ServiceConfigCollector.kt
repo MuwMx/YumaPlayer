@@ -97,7 +97,19 @@ internal class ServiceConfigCollector(
     val currentSong: StateFlow<Song?> =
         currentMediaMetadata
             .flatMapLatest { mediaMetadata ->
-                database.song(mediaMetadata?.id)
+                if (mediaMetadata == null) {
+                    kotlinx.coroutines.flow.flowOf(null)
+                } else {
+                    val cleanSpotifyId = (mediaMetadata.spotifyTrackId ?: mediaMetadata.id)
+                        .removePrefix("spotify:track:")
+                        .removePrefix("spotify:")
+                        .takeIf { it.isNotBlank() }
+                    database.songByMetadata(
+                        songId = mediaMetadata.id,
+                        spotifyId = cleanSpotifyId,
+                        isrc = mediaMetadata.isrc?.takeIf { it.isNotBlank() },
+                    )
+                }
             }.flowOn(Dispatchers.IO)
             .stateIn(scope, SharingStarted.Lazily, null)
 
