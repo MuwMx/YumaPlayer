@@ -274,7 +274,7 @@ fun SpotifyTrackListItem(
     isLiked: Boolean = false,
     onToggleLike: (() -> Unit)? = null,
     badges: @Composable RowScope.() -> Unit = {
-        if (isLiked) {
+        if (isLiked && onToggleLike == null) {
             ItemFavoriteBadge()
         }
         if (track.explicit) {

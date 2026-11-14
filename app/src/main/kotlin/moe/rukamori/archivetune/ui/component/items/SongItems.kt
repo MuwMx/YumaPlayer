@@ -11,13 +11,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,8 +67,9 @@ fun SongListItem(
     downloadProgress: Float = -1f,
     isFavorite: Boolean = song.song.liked,
     inLibrary: Boolean = song.song.inLibrary != null,
+    onToggleLike: (() -> Unit)? = null,
     badges: @Composable RowScope.() -> Unit = {
-        if (showLikedIcon && isFavorite) {
+        if (showLikedIcon && isFavorite && onToggleLike == null) {
             ItemFavoriteBadge()
         }
         if (song.song.explicit) {
@@ -109,7 +114,22 @@ fun SongListItem(
                     modifier = Modifier.size(ListThumbnailSize),
                 )
             },
-            trailingContent = trailingContent,
+            trailingContent = {
+                if (onToggleLike != null) {
+                    IconButton(
+                        onClick = onToggleLike,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                            contentDescription = null,
+                            tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                trailingContent()
+            },
             modifier = modifier,
             isActive = isActive,
         )
@@ -250,9 +270,10 @@ fun YouTubeListItem(
     isDownloaded: Boolean = false,
     downloadState: Int? = if (isDownloaded) Download.STATE_COMPLETED else null,
     downloadProgress: Float = -1f,
+    onToggleLike: (() -> Unit)? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
-        if (isFavorite) {
+        if (isFavorite && onToggleLike == null) {
             ItemFavoriteBadge()
         }
         if (item.explicit) ItemExplicitBadge()
@@ -303,7 +324,22 @@ fun YouTubeListItem(
                     modifier = Modifier.size(ListThumbnailSize),
                 )
             },
-            trailingContent = trailingContent,
+            trailingContent = {
+                if (onToggleLike != null) {
+                    IconButton(
+                        onClick = onToggleLike,
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                            contentDescription = null,
+                            tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                trailingContent()
+            },
             modifier = modifier,
             isActive = isActive,
         )

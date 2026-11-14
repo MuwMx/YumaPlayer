@@ -12,6 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
@@ -236,6 +239,20 @@ fun rememberOnlinePlaylistActions(
                         navController = navController,
                         onDismiss = menuState::dismiss,
                     )
+                }
+            },
+            onSongToggleLike = { songItem ->
+                coroutineScope.launch(Dispatchers.IO) {
+                    val currentSong = database.getSongById(songItem.id)
+                        ?: run {
+                            database.insert(songItem.toMediaMetadata())
+                            database.getSongById(songItem.id)
+                        }
+                    currentSong?.let {
+                        val updated = it.song.localToggleLike(LikeSource.YTM)
+                        database.update(updated)
+                        playerConnection.service.syncUtils.likeSong(updated, LikeSource.YTM)
+                    }
                 }
             },
             onDownload = {

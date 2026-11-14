@@ -53,6 +53,7 @@ data class OnlinePlaylistActions(
     val onLike: () -> Unit = {},
     val onMenu: () -> Unit = {},
     val onSongMenu: (SongItem) -> Unit = {},
+    val onSongToggleLike: (SongItem) -> Unit = {},
     val onDownload: () -> Unit = {},
     val onRetry: () -> Unit = {},
     val onLoadMore: () -> Unit = {},
