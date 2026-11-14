@@ -24,9 +24,10 @@ import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
 import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.OnlinePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
+import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
+import moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailScreen
 
 private val ArtworkDetailPrefixes = listOf(
     "album/",
@@ -133,8 +134,13 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                     type = NavType.StringType
                 },
             ),
-    ) {
-        OnlinePlaylistScreen(navController)
+    ) { entry ->
+        // PHASE E FLIP (online): the route string is UNCHANGED (deep links,
+        // Android Auto prefix matching, NavigationTabOwnership all key on
+        // it). The unified screen resolves its source from this key written
+        // BEFORE hiltViewModel(entry) creates the ViewModel.
+        entry.savedStateHandle[PLAYLIST_DETAIL_ROUTE_KEY] = "online_playlist"
+        PlaylistDetailScreen(navController, entry, scrollBehavior)
     }
 
     composable(

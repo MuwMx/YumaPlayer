@@ -11,12 +11,12 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playlist.source.InnerTubePlaylistSource
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
+import moe.rukamori.archivetune.playlist.source.PlaylistTracksSource
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
-import moe.rukamori.archivetune.playlist.source.PlaylistTracksSource
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHolder
-import moe.rukamori.archivetune.ui.screens.playlist.toPlaylistPlaybackEndpoint
+import moe.rukamori.archivetune.innertube.models.SongItem
 
 /**
  * Hero PLAY — origin-accurate, mirroring each legacy hero button:
@@ -81,6 +81,24 @@ internal fun onPlaylistDetailAddToQueue(
 ) {
     playerConnection.addToQueue(
         items = tracks.mapNotNull { it.toPlaylistMediaItem() },
+    )
+}
+
+/**
+ * Builds the streaming WatchEndpoint for an online row tap, verbatim the
+ * legacy OnlinePlaylistActions.toPlaylistPlaybackEndpoint: base endpoint
+ * with video/playlist/setVideoId/params fallbacks filled from the playlist.
+ */
+internal fun SongItem.toPlaylistPlaybackEndpoint(
+    playlistId: String,
+    playlistPlayParams: String?,
+): moe.rukamori.archivetune.innertube.models.WatchEndpoint {
+    val baseEndpoint = endpoint ?: moe.rukamori.archivetune.innertube.models.WatchEndpoint(videoId = id)
+    return baseEndpoint.copy(
+        videoId = baseEndpoint.videoId ?: id,
+        playlistId = baseEndpoint.playlistId ?: playlistId,
+        playlistSetVideoId = baseEndpoint.playlistSetVideoId ?: setVideoId,
+        params = baseEndpoint.params ?: playlistPlayParams,
     )
 }
 
