@@ -48,11 +48,9 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistDownl
 import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistSearchStateHolder
 
 /**
- * The unified playlist detail screen, rendered for all six playlist routes.
- * The route flip (Phase E) writes [PLAYLIST_DETAIL_ROUTE_KEY] into the
- * NavBackStackEntry's savedStateHandle BEFORE hiltViewModel(entry) resolves
- * [PlaylistDetailViewModel]. Capability differences flow from
- * uiState.capabilities; per-source extras live in pinned slots.
+ * The unified playlist detail screen for all six playlist routes. The route
+ * flip (Phase E) writes [PLAYLIST_DETAIL_ROUTE_KEY] into the back stack
+ * entry's savedStateHandle before hiltViewModel(entry) resolves the VM.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,9 +83,8 @@ fun PlaylistDetailScreen(
     val downloadHolder = rememberPlaylistDownloadStateHolder()
     val downloadUtil = LocalDownloadUtil.current
     val haptics = rememberYumaHaptics()
-
-    // LOCAL PLAYLIST SLOT — the edit lock and swipe-to-song preference gate
-    // reorder/swipe-delete like the legacy screen (LocalPlaylistScreen.kt:95).
+    // LOCAL PLAYLIST SLOT — lock + swipe-to-song gate reorder/swipe-delete
+    // (LocalPlaylistScreen.kt:95).
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
     val swipeToSongEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
 
@@ -119,9 +116,7 @@ fun PlaylistDetailScreen(
         viewModel = viewModel,
     )
 
-    // Render model: optimistic list while idle, wrapped list while
-    // selecting/searching; selection is identity-based. See
-    // rememberPlaylistDetailRenderState for the rationale.
+    // Render model: see rememberPlaylistDetailRenderState.
     val renderState =
         rememberPlaylistDetailRenderState(
             tracks = tracks,
@@ -162,6 +157,16 @@ fun PlaylistDetailScreen(
                             systemBarsTopPadding = systemBarsTopPadding,
                             headerProgress = headerProgress,
                             disableBlur = disableBlur,
+                            actions = {
+                                PlaylistDetailHeroActionsHost(
+                                    capabilities = capabilities,
+                                    source = viewModel.source,
+                                    playerConnection = playerConnection,
+                                    downloadHolder = downloadHolder,
+                                    title = uiState.header?.title.orEmpty(),
+                                    tracks = visibleTracks,
+                                )
+                            },
                         )
 
                         renderPlaylistDetailHeaderSlot(
@@ -201,17 +206,11 @@ fun PlaylistDetailScreen(
                                     )
                                 },
                                 onSongLongClick = { _, track ->
-                                    haptics.longPress()
-                                    // Legacy long-press semantics (Local
-                                    // Wiring.kt:565-568, Online
-                                    // Actions.kt:204-211): enter selection
-                                    // and select exactly the pressed song,
-                                    // clearing any prior selection.
-                                    searchState.wrappedItems.forEach { it.isSelected = false }
-                                    searchState.filteredItems
-                                        .firstOrNull { it.item === track }
-                                        ?.let { it.isSelected = true }
-                                    searchState.selection = true
+                                    onPlaylistDetailRowLongClick(
+                                        searchState = searchState,
+                                        track = track,
+                                        onHaptic = haptics::longPress,
+                                    )
                                 },
                                 onSwipeDelete = viewModel::removeSong,
                             )

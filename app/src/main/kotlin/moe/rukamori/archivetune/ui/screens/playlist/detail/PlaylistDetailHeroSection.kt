@@ -33,8 +33,8 @@ import moe.rukamori.archivetune.ui.screens.playlist.MetadataChip
 
 /**
  * The unified hero head: artwork, title, author and song-count from the
- * [source header][PlaylistHeaderInfo]. Buttons and download affordances are
- * capability-driven and live in [PlaylistDetailHeroActions] so this file
+ * [source header][PlaylistHeaderInfo]. The action row lives in
+ * [PlaylistDetailHeroActions] and is injected via [actions] so this file
  * stays a pure display component under 250 lines.
  */
 @Composable
@@ -44,6 +44,7 @@ internal fun PlaylistDetailHeroSection(
     headerProgress: () -> Float,
     disableBlur: Boolean,
     modifier: Modifier = Modifier,
+    actions: (@Composable () -> Unit)? = null,
 ) {
     val hasArtwork = !header.thumbnailUrl.isNullOrBlank()
 
@@ -108,6 +109,11 @@ internal fun PlaylistDetailHeroSection(
                     icon = R.drawable.music_note,
                     text = header.songCount.toString(),
                 )
+            }
+
+            if (actions != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                actions()
             }
         }
     }

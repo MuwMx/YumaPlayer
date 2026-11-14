@@ -53,8 +53,16 @@ data class PlaylistCapabilities(
             supportsDownload = true,
         )
 
-        /** Cache and Top playlists: pure read-only lists. */
+        /** Cache playlists and the Top chart: no edit/sort/paging; downloads
+         *  supported (both legacy heroes carry a download button — Top's
+         *  sendAddMissingDownloads flow over Room songs, verified against
+         *  TopPlaylistScreen.kt:334-354). */
         val ReadOnly = PlaylistCapabilities()
+
+        /** Read-only AND downloadable — the Top playlist's real shape. */
+        val Top = PlaylistCapabilities(
+            supportsDownload = true,
+        )
     }
 }
 

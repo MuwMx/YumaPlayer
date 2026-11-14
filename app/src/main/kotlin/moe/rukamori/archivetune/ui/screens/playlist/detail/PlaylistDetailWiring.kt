@@ -139,6 +139,24 @@ internal fun rememberIsAnyDragging(state: ReorderableLazyListState): Boolean =
     state.isAnyItemDragging
 
 /**
+ * Long-press behavior: legacy semantics (Local Wiring.kt:565-568, Online
+ * Actions.kt:204-211) — enter selection and select exactly the pressed song,
+ * clearing any prior selection.
+ */
+internal fun onPlaylistDetailRowLongClick(
+    searchState: moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHolder<PlaylistTrack>,
+    track: PlaylistTrack,
+    onHaptic: () -> Unit,
+) {
+    onHaptic()
+    searchState.wrappedItems.forEach { it.isSelected = false }
+    searchState.filteredItems
+        .firstOrNull { it.item === track }
+        ?.let { it.isSelected = true }
+    searchState.selection = true
+}
+
+/**
  * The screen's side-effect block, extracted from PlaylistDetailScreen to
  * keep it under the 250-line rule: download sync, paginated load-more and
  * the local reorder commit.

@@ -38,6 +38,7 @@ internal fun LazyListScope.playlistDetailHeroItem(
     systemBarsTopPadding: androidx.compose.ui.unit.Dp,
     headerProgress: () -> Float,
     disableBlur: Boolean,
+    actions: (@Composable () -> Unit)? = null,
 ) {
     if (header == null) return
     item(key = PLAYLIST_DETAIL_KEY_HEADER, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_HEADER) {
@@ -46,6 +47,7 @@ internal fun LazyListScope.playlistDetailHeroItem(
             systemBarsTopPadding = systemBarsTopPadding,
             headerProgress = headerProgress,
             disableBlur = disableBlur,
+            actions = actions,
         )
     }
 }

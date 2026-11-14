@@ -19,6 +19,72 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHo
 import moe.rukamori.archivetune.ui.screens.playlist.toPlaylistPlaybackEndpoint
 
 /**
+ * Hero PLAY — origin-accurate, mirroring each legacy hero button:
+ * InnerTube sources stream the playlist via YouTubeQueue (playlist
+ * playEndpoint, OnlinePlaylistActions.kt:146-152); every other source plays
+ * a ListQueue of origin-mapped media items (Local Wiring onPlay, Auto
+ * Header, Top/Cache heroes).
+ */
+internal fun onPlaylistDetailPlay(
+    source: PlaylistTracksSource,
+    playerConnection: PlayerConnection,
+    title: String,
+    tracks: List<PlaylistTrack>,
+) {
+    val innerTubeSource = source as? InnerTubePlaylistSource
+    if (innerTubeSource?.playEndpoint != null) {
+        playerConnection.playQueue(
+            YouTubeQueue.playlist(innerTubeSource.playEndpoint!!),
+        )
+        return
+    }
+    playerConnection.playQueue(
+        ListQueue(
+            title = title,
+            items = tracks.mapNotNull { it.toPlaylistMediaItem() },
+        ),
+    )
+}
+
+/**
+ * Hero SHUFFLE — same dispatch as [onPlaylistDetailPlay] with the
+ * shuffleEndpoint for InnerTube, a shuffled ListQueue otherwise.
+ */
+internal fun onPlaylistDetailShuffle(
+    source: PlaylistTracksSource,
+    playerConnection: PlayerConnection,
+    title: String,
+    tracks: List<PlaylistTrack>,
+) {
+    val innerTubeSource = source as? InnerTubePlaylistSource
+    if (innerTubeSource?.shuffleEndpoint != null) {
+        playerConnection.playQueue(
+            YouTubeQueue.playlist(innerTubeSource.shuffleEndpoint!!),
+        )
+        return
+    }
+    playerConnection.playQueue(
+        ListQueue(
+            title = title,
+            items = tracks.shuffled().mapNotNull { it.toPlaylistMediaItem() },
+        ),
+    )
+}
+
+/**
+ * Hero ADD-TO-QUEUE — mirror of the Auto/Top/Cache hero queue buttons:
+ * origin-mapped media items appended to the playing queue.
+ */
+internal fun onPlaylistDetailAddToQueue(
+    playerConnection: PlayerConnection,
+    tracks: List<PlaylistTrack>,
+) {
+    playerConnection.addToQueue(
+        items = tracks.mapNotNull { it.toPlaylistMediaItem() },
+    )
+}
+
+/**
  * The row-click entry point the screen wires into playlistDetailSongs; keeps
  * the InnerTube source cast out of the screen file.
  */

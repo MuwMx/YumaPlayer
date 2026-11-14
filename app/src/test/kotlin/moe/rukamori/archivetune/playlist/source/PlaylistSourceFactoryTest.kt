@@ -41,6 +41,8 @@ class PlaylistSourceFactoryTest {
         assertEquals(PlaylistCapabilities.Spotify, factory.sourceFor("spotify_playlist", "p").capabilities)
         assertEquals(PlaylistCapabilities.Auto, factory.sourceFor("auto_playlist", "p").capabilities)
         assertEquals(PlaylistCapabilities.ReadOnly, factory.sourceFor("cache_playlist", "p").capabilities)
-        assertEquals(PlaylistCapabilities.ReadOnly, factory.sourceFor("top_playlist", "p").capabilities)
+        // Top is read-only but downloadable — its legacy hero has a download
+        // button (TopPlaylistScreen.kt:334-354).
+        assertEquals(PlaylistCapabilities.Top, factory.sourceFor("top_playlist", "p").capabilities)
     }
 }

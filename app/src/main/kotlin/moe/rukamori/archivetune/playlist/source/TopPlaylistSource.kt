@@ -29,7 +29,7 @@ class TopPlaylistSource
         private val database: MusicDatabase,
     ) : PlaylistTracksSource {
     override val id: String = "top:$top"
-    override val capabilities: PlaylistCapabilities = PlaylistCapabilities.ReadOnly
+    override val capabilities: PlaylistCapabilities = PlaylistCapabilities.Top
 
     /** Period filter; the unified screen's sort header chip drives this. */
     val topPeriod = MutableStateFlow(MyTopFilter.ALL_TIME)

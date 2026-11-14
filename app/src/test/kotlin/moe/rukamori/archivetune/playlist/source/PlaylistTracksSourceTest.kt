@@ -59,7 +59,7 @@ class PlaylistTracksSourceTest {
     }
 
     @Test
-    fun `cache and top sources are fully read-only`() {
+    fun `cache sources are fully read-only`() {
         val caps = PlaylistCapabilities.ReadOnly
         assertFalse(caps.editable)
         assertFalse(caps.reorderable)
@@ -67,6 +67,19 @@ class PlaylistTracksSourceTest {
         assertFalse(caps.paginated)
         assertFalse(caps.swipeDelete)
         assertFalse(caps.supportsDownload)
+    }
+
+    @Test
+    fun `top source is read-only but downloadable`() {
+        val caps = PlaylistCapabilities.Top
+        assertFalse(caps.editable)
+        assertFalse(caps.reorderable)
+        assertFalse(caps.sortable)
+        assertFalse(caps.paginated)
+        assertFalse(caps.swipeDelete)
+        // The legacy Top hero ships a download button (sendAddMissingDownloads
+        // over Room songs); the plan's original matrix missed it.
+        assertTrue(caps.supportsDownload)
     }
 
     @Test
