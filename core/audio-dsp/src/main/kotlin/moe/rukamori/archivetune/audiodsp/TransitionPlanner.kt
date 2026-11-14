@@ -8,7 +8,11 @@ import org.json.JSONObject
 object TransitionPlanner {
     private const val MAX_STRETCH_DEVIATION = 0.04f
     const val AUTO_FAST_TRACK_MIN_SECONDS = 6.0
-    const val AUTO_MAX_SECONDS = CrossfadeConstants.STANDARD_MAX_S
+    // BPM-less fallback lead. Pinned to the historical auto ceiling instead of following
+    // STANDARD_MAX_S (now CLAMP_MAX_S, 20s) so widening the user-facing clamp does not pull the
+    // trigger point of every unanalysed transition earlier; the fade length itself follows the
+    // preset, only the unmeasured lead stays put.
+    const val AUTO_MAX_SECONDS = CrossfadeConstants.AUTO_FALLBACK_LEAD_S
     const val AUTO_FALLBACK_SECONDS = 8.0
     const val FAST_TRACK_BPM_THRESHOLD = 140.0
     const val OCTAVE_UPPER_BOUND = 1.5
@@ -50,6 +54,8 @@ object TransitionPlanner {
         "4" -> 4L * MS_PER_SECOND
         "8" -> 8L * MS_PER_SECOND
         "12" -> 12L * MS_PER_SECOND
+        "16" -> 16L * MS_PER_SECOND
+        "20" -> 20L * MS_PER_SECOND
         else -> null
     }
 

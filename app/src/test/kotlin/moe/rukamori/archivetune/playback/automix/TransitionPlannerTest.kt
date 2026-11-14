@@ -11,9 +11,11 @@ package moe.rukamori.archivetune.playback.automix
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.audiodsp.TransitionPlanner
 import moe.rukamori.archivetune.audiodsp.TransitionStyle
@@ -34,20 +36,46 @@ class TransitionPlannerTest {
 
     @Test
     fun calculateAdaptiveDuration_boundedWithinDocumentedRange() {
+        val standardMin = TransitionPlanner.minSecondsFor("standard")
+        val standardMax = TransitionPlanner.maxSecondsFor("standard")
+
         val durationNormal = TransitionPlanner.calculateAdaptiveDurationSeconds(120.0, 120.0)
-        assertTrue(durationNormal in 4.0..12.0)
+        assertTrue(durationNormal in standardMin..standardMax)
 
         val durationFast = TransitionPlanner.calculateAdaptiveDurationSeconds(160.0, 160.0)
-        assertTrue(durationFast in 6.0..12.0)
+        assertTrue(durationFast in 6.0..standardMax)
 
         val durationFallback = TransitionPlanner.calculateAdaptiveDurationSeconds(null, null)
         assertEquals(8.0, durationFallback, 1e-6)
 
         val durationClampedLow = TransitionPlanner.calculateAdaptiveDurationSeconds(null, null, 1.0)
-        assertEquals(4.0, durationClampedLow, 1e-6)
+        assertEquals(standardMin, durationClampedLow, 1e-6)
 
         val durationClampedHigh = TransitionPlanner.calculateAdaptiveDurationSeconds(null, null, 25.0)
-        assertEquals(12.0, durationClampedHigh, 1e-6)
+        assertEquals(standardMax, durationClampedHigh, 1e-6)
+    }
+
+    @Test
+    fun widenedClamp_expandsStandardWindowToTwentySeconds() {
+        assertEquals(20, CrossfadeConstants.CLAMP_MAX_S)
+        assertEquals(20_000L, CrossfadeConstants.CLAMP_MAX_MS)
+        assertEquals(20.0, TransitionPlanner.maxSecondsFor("standard"), 1e-6)
+    }
+
+    @Test
+    fun bpmlessFallbackLead_staysPinnedAtTheHistoricalTwelveSecondCeiling() {
+        // The unanalysed lead must not follow STANDARD_MAX_S: widening the user clamp would
+        // otherwise pull the trigger of every BPM-less transition 8s earlier.
+        assertEquals(12.0, CrossfadeConstants.AUTO_FALLBACK_LEAD_S, 1e-6)
+        assertEquals(12.0, TransitionPlanner.AUTO_MAX_SECONDS, 1e-6)
+    }
+
+    @Test
+    fun resolveForcedDurationMs_supportsTheSixteenAndTwentySecondPresets() {
+        assertEquals(16_000L, TransitionPlanner.resolveForcedDurationMs("16"))
+        assertEquals(20_000L, TransitionPlanner.resolveForcedDurationMs("20"))
+        assertEquals(20_000L, TransitionPlanner.resolvePreferredDurationMs("20", 7_000L))
+        assertNull(TransitionPlanner.resolveForcedDurationMs("25"))
     }
 
     @Test
@@ -78,7 +106,7 @@ class TransitionPlannerTest {
             nextBpm = 122.0,
         )
 
-        assertTrue(plan.durationMs in 4_000L..12_000L)
+        assertTrue(plan.durationMs in 4_000L..CrossfadeConstants.CLAMP_MAX_MS)
         assertEquals(plan.durationMs, plan.triggerOffsetMs)
         assertEquals(0L, plan.incomingStartMs)
         assertTrue(plan.enableBassSwap)
@@ -144,7 +172,7 @@ class TransitionPlannerTest {
             currentDurationMs = 200_000L,
         )
 
-        assertTrue(plan.durationMs in 4_000L..12_000L)
+        assertTrue(plan.durationMs in 4_000L..CrossfadeConstants.CLAMP_MAX_MS)
         assertEquals(182_000L, plan.triggerAtMs)
         assertEquals(4_000L, plan.incomingStartMs)
     }
