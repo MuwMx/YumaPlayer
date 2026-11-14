@@ -53,9 +53,11 @@ data class SongEntity(
             LikeSource.YTM -> {
                 val wasLiked = likedYtm || liked
                 val newLikedYtm = !wasLiked
-                val newLiked = if (wasLiked) (likedYtm && likedSpotify) else true
+                val newLikedSpotify = if (wasLiked && !likedYtm) false else likedSpotify
+                val newLiked = newLikedYtm || newLikedSpotify
                 copy(
                     likedYtm = newLikedYtm,
+                    likedSpotify = newLikedSpotify,
                     liked = newLiked,
                     likedDate = if (newLiked) (likedDate ?: LocalDateTime.now()) else null,
                     inLibrary = if (newLiked) (inLibrary ?: LocalDateTime.now()) else inLibrary,
@@ -64,9 +66,11 @@ data class SongEntity(
             LikeSource.SPOTIFY -> {
                 val wasLiked = likedSpotify || liked
                 val newLikedSpotify = !wasLiked
-                val newLiked = if (wasLiked) (likedYtm && likedSpotify) else true
+                val newLikedYtm = if (wasLiked && !likedSpotify) false else likedYtm
+                val newLiked = newLikedYtm || newLikedSpotify
                 copy(
                     likedSpotify = newLikedSpotify,
+                    likedYtm = newLikedYtm,
                     liked = newLiked,
                     likedDate = if (newLiked) (likedDate ?: LocalDateTime.now()) else null,
                     inLibrary = if (newLiked) (inLibrary ?: LocalDateTime.now()) else inLibrary,

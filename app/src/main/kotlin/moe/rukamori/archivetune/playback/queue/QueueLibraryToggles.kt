@@ -106,10 +106,7 @@ internal class QueueLibraryToggles(
             queue = delegate.getActiveQueue(),
             isLocal = currentSongSong?.isLocal ?: mediaMetadata.id.isLocalMediaId(),
         )
-        val cleanSpotifyId = (mediaMetadata.spotifyTrackId ?: mediaMetadata.id)
-            .removePrefix("spotify:track:")
-            .removePrefix("spotify:")
-            .takeIf { it.isNotBlank() }
+        val cleanSpotifyId = LikeSourceResolver.extractCleanSpotifyId(mediaMetadata.spotifyTrackId ?: mediaMetadata.id)
         ioScope.launch {
             try {
                 val song =

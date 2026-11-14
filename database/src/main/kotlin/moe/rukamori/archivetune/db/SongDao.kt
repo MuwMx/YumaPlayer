@@ -840,8 +840,10 @@ interface SongDao {
         WHERE (:songId IS NOT NULL AND id = :songId)
            OR (:spotifyId IS NOT NULL AND id IN (SELECT youtubeId FROM spotify_match WHERE spotifyId = :spotifyId))
            OR (:spotifyId IS NOT NULL AND id = :spotifyId)
+           OR (:spotifyId IS NOT NULL AND id = 'spotify:' || :spotifyId)
            OR (:spotifyId IS NOT NULL AND id = 'spotify:track:' || :spotifyId)
            OR (:songId IS NOT NULL AND id IN (SELECT spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
            OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:track:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
            OR (:isrc IS NOT NULL AND :isrc != '' AND isrc = :isrc)
         ORDER BY liked DESC, (likedSpotify OR likedYtm) DESC, inLibrary DESC LIMIT 1
@@ -854,8 +856,10 @@ interface SongDao {
         WHERE (:songId IS NOT NULL AND id = :songId)
            OR (:spotifyId IS NOT NULL AND id IN (SELECT youtubeId FROM spotify_match WHERE spotifyId = :spotifyId))
            OR (:spotifyId IS NOT NULL AND id = :spotifyId)
+           OR (:spotifyId IS NOT NULL AND id = 'spotify:' || :spotifyId)
            OR (:spotifyId IS NOT NULL AND id = 'spotify:track:' || :spotifyId)
            OR (:songId IS NOT NULL AND id IN (SELECT spotifyId FROM spotify_match WHERE youtubeId = :songId))
+           OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
            OR (:songId IS NOT NULL AND id IN (SELECT 'spotify:track:' || spotifyId FROM spotify_match WHERE youtubeId = :songId))
            OR (:isrc IS NOT NULL AND :isrc != '' AND isrc = :isrc)
         ORDER BY liked DESC, (likedSpotify OR likedYtm) DESC, inLibrary DESC LIMIT 1

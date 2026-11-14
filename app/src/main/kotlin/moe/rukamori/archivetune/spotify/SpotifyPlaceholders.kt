@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.spotify
 
-import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
@@ -16,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.toMediaMetadata
@@ -28,7 +26,6 @@ import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.spotify.parser.SpotifyLocalFile
 import moe.rukamori.archivetune.utils.LikeSourceResolver
-import moe.rukamori.archivetune.utils.SyncUtils
 import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -38,14 +35,8 @@ const val SPOTIFY_PLACEHOLDER_PREFIX = "spotify:"
 
 const val SPOTIFY_LOCAL_FILE_PLACEHOLDER_PREFIX = SPOTIFY_PLACEHOLDER_PREFIX + SpotifyLocalFile.ID_PREFIX
 
-fun SpotifyTrack.toPlaceholderId(): String? {
-    val spotifyId =
-        id
-            .removePrefix("spotify:track:")
-            .removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)
-            .trim()
-    return spotifyId.takeIf { it.isNotBlank() }?.let { SPOTIFY_PLACEHOLDER_PREFIX + it }
-}
+fun SpotifyTrack.toPlaceholderId(): String? =
+    LikeSourceResolver.extractCleanSpotifyId(id)?.let { SPOTIFY_PLACEHOLDER_PREFIX + it }
 
 fun SpotifyTrack.toPlaceholderMetadata(): MediaMetadata? {
     val placeholderId = toPlaceholderId() ?: return null
@@ -76,49 +67,6 @@ fun MediaMetadata.toPlaceholderSpotifyTrack(): SpotifyTrack =
         durationMs = if (duration > 0) duration * 1000 else 0,
         explicit = explicit,
     )
-
-fun Set<String>.isTrackLiked(track: SpotifyTrack): Boolean {
-    val cleanId = track.id.removePrefix("spotify:track:").removePrefix(SPOTIFY_PLACEHOLDER_PREFIX).trim()
-    if (cleanId.isNotBlank() && cleanId in this) return true
-    if (track.id.isNotBlank() && track.id in this) return true
-    val isrc = track.externalIds?.isrc?.trim()
-    return !isrc.isNullOrBlank() && isrc in this
-}
-
-suspend fun toggleSpotifyTrackLike(
-    track: SpotifyTrack,
-    database: MusicDatabase,
-    syncUtils: SyncUtils,
-) {
-    val cleanSpotifyId = track.id
-        .removePrefix("spotify:track:")
-        .removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)
-        .trim()
-        .takeIf { it.isNotBlank() }
-    val isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() }
-    val song = database.withTransaction {
-        val currentSongEntity =
-            database.getSongByMetadata(
-                songId = track.id,
-                spotifyId = cleanSpotifyId,
-                isrc = isrc,
-            ) ?: run {
-                track.toPlaceholderMetadata()?.let { meta ->
-                    database.insert(meta) { it.copy(isLocal = false) }
-                }
-                database.getSongByMetadata(
-                    songId = track.id,
-                    spotifyId = cleanSpotifyId,
-                    isrc = isrc,
-                ) ?: database.getSongById(track.id)
-            } ?: return@withTransaction null
-
-        currentSongEntity.song.localToggleLike(LikeSource.SPOTIFY).also(database::update)
-    } ?: return
-
-    val spotifyId = cleanSpotifyId ?: if (LikeSourceResolver.isSpotifyId(song.id, song.isLocal)) song.id else null
-    syncUtils.likeSong(song, LikeSource.SPOTIFY, spotifyId)
-}
 
 object SpotifyPlaceholders {
     private const val RESOLVE_TIMEOUT_MS = 15_000L
@@ -168,7 +116,8 @@ object SpotifyPlaceholders {
             unmatchedAt.remove(placeholderId)
         } else if (isKnownUnmatched(placeholderId)) {
             val hasStoredMatch = withContext(Dispatchers.IO) {
-                database.getSpotifyMatch(placeholderId.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)) != null
+                val cleanId = LikeSourceResolver.extractCleanSpotifyId(placeholderId) ?: placeholderId
+                database.getSpotifyMatch(cleanId) != null
             }
             if (!hasStoredMatch) return null
             unmatchedAt.remove(placeholderId)

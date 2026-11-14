@@ -11,8 +11,18 @@ import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistQueue
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
 object LikeSourceResolver {
+
+    fun extractCleanSpotifyId(rawId: String?): String? {
+        if (rawId.isNullOrBlank()) return null
+        return rawId
+            .removePrefix("spotify:track:")
+            .removePrefix("spotify:")
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
 
     fun isSpotifyId(id: String?, isLocal: Boolean = false): Boolean {
         if (id.isNullOrBlank()) return false
@@ -38,4 +48,12 @@ object LikeSourceResolver {
         }
         return LikeSource.YTM
     }
+}
+
+fun Set<String>.isTrackLiked(track: SpotifyTrack): Boolean {
+    val cleanId = LikeSourceResolver.extractCleanSpotifyId(track.id)
+    if (cleanId != null && cleanId in this) return true
+    if (track.id.isNotBlank() && track.id in this) return true
+    val isrc = track.externalIds?.isrc?.trim()
+    return !isrc.isNullOrBlank() && isrc in this
 }

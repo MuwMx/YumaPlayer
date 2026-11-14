@@ -30,6 +30,7 @@ import moe.rukamori.archivetune.spotify.matching.SpotifySearchScorer
 import moe.rukamori.archivetune.spotify.matching.TrackMatcher
 import moe.rukamori.archivetune.spotify.matching.TrackQuery
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
@@ -75,7 +76,7 @@ object SpotifyPlaybackResolver {
             val bySpotifyId =
                 items
                     .filter { SpotifyPlaceholders.isPlaceholder(it.id) }
-                    .associateBy { it.id.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX) }
+                    .associateBy { LikeSourceResolver.extractCleanSpotifyId(it.id).orEmpty() }
             if (bySpotifyId.isEmpty()) return@withContext emptyMap()
 
             val matches = db.getSpotifyMatches(bySpotifyId.keys.toList())
@@ -161,7 +162,7 @@ object SpotifyPlaybackResolver {
                 databaseRef = database
             }
 
-            val rawSpotifyId = track.id.removePrefix("spotify:track:").removePrefix("spotify:")
+            val rawSpotifyId = LikeSourceResolver.extractCleanSpotifyId(track.id).orEmpty()
 
             mutex.withLock {
                 (cache[rawSpotifyId] ?: cache[track.id])?.let { cached ->

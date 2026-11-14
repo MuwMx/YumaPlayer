@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.playback.EqSettings
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.together.ControlAction
@@ -100,10 +101,7 @@ internal class ServiceConfigCollector(
                 if (mediaMetadata == null) {
                     kotlinx.coroutines.flow.flowOf(null)
                 } else {
-                    val cleanSpotifyId = (mediaMetadata.spotifyTrackId ?: mediaMetadata.id)
-                        .removePrefix("spotify:track:")
-                        .removePrefix("spotify:")
-                        .takeIf { it.isNotBlank() }
+                    val cleanSpotifyId = LikeSourceResolver.extractCleanSpotifyId(mediaMetadata.spotifyTrackId ?: mediaMetadata.id)
                     database.songByMetadata(
                         songId = mediaMetadata.id,
                         spotifyId = cleanSpotifyId,

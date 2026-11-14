@@ -47,6 +47,7 @@ import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.playback.resolvers.getFormatForSource
 import moe.rukamori.archivetune.playback.together.requestTogetherControl
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.reportException
 import java.util.concurrent.ExecutionException
 import jakarta.inject.Inject
@@ -84,10 +85,7 @@ class PlayerConnection(
             if (metadata == null) {
                 kotlinx.coroutines.flow.flowOf(null)
             } else {
-                val cleanSpotifyId = (metadata.spotifyTrackId ?: metadata.id)
-                    .removePrefix("spotify:track:")
-                    .removePrefix("spotify:")
-                    .takeIf { it.isNotBlank() }
+                val cleanSpotifyId = LikeSourceResolver.extractCleanSpotifyId(metadata.spotifyTrackId ?: metadata.id)
                 database.songByMetadata(
                     songId = metadata.id,
                     spotifyId = cleanSpotifyId,
