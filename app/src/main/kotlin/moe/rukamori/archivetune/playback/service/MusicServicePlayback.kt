@@ -55,6 +55,7 @@ import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.StreamUrlCache
 import moe.rukamori.archivetune.utils.get
 import timber.log.Timber
+import java.io.IOException
 import java.io.InterruptedIOException
 
 internal fun MusicService.resolvePlaybackDataSpec(
@@ -71,6 +72,12 @@ internal fun MusicService.resolvePlaybackDataSpec(
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
             } catch (e: CancellationException) {
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
+            } catch (e: IOException) {
+                throw PlaybackException(
+                    "Network error resolving $mediaId",
+                    e,
+                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                )
             } ?: run {
                 SpotifyPlaceholders.markUnmatched(mediaId)
                 throw PlaybackException(
