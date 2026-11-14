@@ -18,6 +18,7 @@ import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.extensions.reversed
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.utils.SyncUtils
+import moe.rukamori.archivetune.utils.reportException
 import java.text.Collator
 import java.util.Locale
 import javax.inject.Inject
@@ -64,6 +65,7 @@ class RoomPlaylistSource
                             )
                         },
                     tracks = sorted.map { it.toPlaylistTrack() },
+                    sortInfo = PlaylistSortInfo(sortType, sortDescending),
                 )
             }.flowOn(Dispatchers.Default)
 
@@ -117,5 +119,56 @@ class RoomPlaylistSource
                 move(map.playlistId, map.position, Int.MAX_VALUE)
                 delete(map.copy(position = Int.MAX_VALUE))
             }
+        }
+
+    override suspend fun setSort(
+        sortType: PlaylistSongSortType,
+        descending: Boolean,
+    ): Result<Unit> =
+        runCatching {
+            // Mirrors LocalPlaylistViewModel.updateSortPreference: persist and
+            // let observe()'s live query re-emit the reordered list.
+            database.updatePlaylistSortPreference(
+                playlistId = playlistId,
+                sortType = sortType.name,
+                descending = descending,
+            )
+        }
+
+    /**
+     * LOCAL PLAYLIST SLOT — legacy open-time hygiene from
+     * LocalPlaylistViewModel.init, moved here verbatim so the unified
+     * screen's ViewModel stays free of MusicDatabase:
+     *   1. compact song positions to 0..n (reorder correctness),
+     *   2. eagerly sync synced-but-empty playlists (VL browseId, no songs).
+     * A new local-only open-time behavior belongs here, NOT in the screen.
+     */
+    override suspend fun ensureLoaded(): Result<Unit> =
+        runCatching {
+            val sortedSongs =
+                database
+                    .playlistSongs(playlistId)
+                    .first()
+                    .sortedWith(compareBy({ it.map.position }, { it.map.id }))
+            database.withTransaction {
+                sortedSongs.forEachIndexed { index, playlistSong ->
+                    if (playlistSong.map.position != index) {
+                        update(playlistSong.map.copy(position = index))
+                    }
+                }
+            }
+        }.also {
+            // Eager sync of empty synced playlists (verbatim init behavior);
+            // a sync failure must not fail the open.
+            runCatching {
+                val playlist =
+                    database
+                        .playlist(playlistId)
+                        .first() ?: return@runCatching
+                val browseId = playlist.playlist.browseId ?: return@runCatching
+                if (browseId.startsWith("VL") && playlist.songCount == 0) {
+                    syncUtils.syncPlaylistNow(browseId = browseId, playlistId = playlist.id)
+                }
+            }.onFailure { reportException(it) }
         }
 }

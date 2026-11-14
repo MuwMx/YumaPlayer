@@ -64,4 +64,6 @@ class SpotifyPlaylistSource
             }
             Result.success(Unit)
         }
+
+    override suspend fun ensureLoaded(): Result<Unit> = refresh()
 }

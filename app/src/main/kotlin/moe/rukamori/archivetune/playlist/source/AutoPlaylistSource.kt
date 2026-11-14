@@ -7,6 +7,7 @@
 package moe.rukamori.archivetune.playlist.source
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +23,7 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.LikeSource
+import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.download.DownloadUtil
@@ -64,6 +66,28 @@ class AutoPlaylistSource
             AutoPlaylistSongSortType.PLAY_TIME -> SongSortType.PLAY_TIME
         }
 
+    /**
+     * Auto playlists have no CUSTOM order; the unified sort header's CUSTOM
+     * selection maps to CREATE_DATE (the legacy default) instead of failing.
+     */
+    private fun PlaylistSongSortType.toAutoPlaylistSongSortType(): AutoPlaylistSongSortType =
+        when (this) {
+            PlaylistSongSortType.CUSTOM -> AutoPlaylistSongSortType.CREATE_DATE
+            PlaylistSongSortType.CREATE_DATE -> AutoPlaylistSongSortType.CREATE_DATE
+            PlaylistSongSortType.NAME -> AutoPlaylistSongSortType.NAME
+            PlaylistSongSortType.ARTIST -> AutoPlaylistSongSortType.ARTIST
+            PlaylistSongSortType.PLAY_TIME -> AutoPlaylistSongSortType.PLAY_TIME
+        }
+
+    /** Reports the applied sort back in the unified enum space. */
+    private fun AutoPlaylistSongSortType.toPlaylistSongSortType(): PlaylistSongSortType =
+        when (this) {
+            AutoPlaylistSongSortType.CREATE_DATE -> PlaylistSongSortType.CREATE_DATE
+            AutoPlaylistSongSortType.NAME -> PlaylistSongSortType.NAME
+            AutoPlaylistSongSortType.ARTIST -> PlaylistSongSortType.ARTIST
+            AutoPlaylistSongSortType.PLAY_TIME -> PlaylistSongSortType.PLAY_TIME
+        }
+
     override fun observe(): Flow<PlaylistTracksResult> =
         context.dataStore.data
             .map {
@@ -101,11 +125,13 @@ class AutoPlaylistSource
                         }
 
                     else -> MutableStateFlow(emptyList())
-                }
-            }.map { songs ->
+                }.map { songs -> songs to sortDesc }
+            }.map { (songs, sortDesc) ->
+                val (autoSortType, descending) = sortDesc
                 PlaylistTracksResult(
                     header = null,
                     tracks = songs.map { it.toPlaylistTrack() },
+                    sortInfo = PlaylistSortInfo(autoSortType.toPlaylistSongSortType(), descending),
                 )
             }
 
@@ -139,6 +165,19 @@ class AutoPlaylistSource
                 } finally {
                     _isRefreshing.value = false
                 }
+            }
+        }
+
+    override suspend fun setSort(
+        sortType: PlaylistSongSortType,
+        descending: Boolean,
+    ): Result<Unit> =
+        runCatching {
+            // Mirrors rememberEnumPreference's write path (PreferenceStore key +
+            // DataStore); observe() re-emits with the new sort automatically.
+            context.dataStore.edit { preferences ->
+                preferences[AutoPlaylistSongSortTypeKey] = sortType.toAutoPlaylistSongSortType().name
+                preferences[AutoPlaylistSongSortDescendingKey] = descending
             }
         }
 }

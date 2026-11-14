@@ -8,6 +8,7 @@ package moe.rukamori.archivetune.playlist.source
 
 import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.flow.Flow
+import moe.rukamori.archivetune.constants.PlaylistSongSortType
 
 /**
  * What a playlist source can do. Drives UI gating in the unified playlist
@@ -93,6 +94,7 @@ data class PlaylistHeaderInfo(
 data class PlaylistTracksResult(
     val header: PlaylistHeaderInfo? = null,
     val tracks: List<PlaylistTrack> = emptyList(),
+    val sortInfo: PlaylistSortInfo? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
@@ -121,6 +123,13 @@ interface PlaylistTracksSource {
     /** Refreshes from the origin; supported by Live sources. */
     suspend fun refresh(): Result<Unit> = Result.success(Unit)
 
+    /**
+     * Open-time one-shot work: the initial network load for one-shot sources
+     * (InnerTube, Spotify), or open-time hygiene for Room sources. Default:
+     * no-op.
+     */
+    suspend fun ensureLoaded(): Result<Unit> = Result.success(Unit)
+
     /** Reorders [from] to [to] (indices into the current track list). */
     suspend fun reorder(
         from: Int,
@@ -131,4 +140,20 @@ interface PlaylistTracksSource {
     suspend fun removeSong(
         position: Int,
     ): Result<Unit> = Result.failure(UnsupportedOperationException("Source $id does not support removal"))
+
+    /**
+     * Applies the sort selection when [PlaylistCapabilities.sortable]; the
+     * implementation owns persistence (Room: per-playlist column, Auto:
+     * DataStore). Returns a failed [Result] when unsupported.
+     */
+    suspend fun setSort(
+        sortType: PlaylistSongSortType,
+        descending: Boolean,
+    ): Result<Unit> = Result.failure(UnsupportedOperationException("Source $id is not sortable"))
 }
+
+@Immutable
+data class PlaylistSortInfo(
+    val sortType: PlaylistSongSortType,
+    val descending: Boolean,
+)

@@ -16,6 +16,7 @@ import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,8 +45,26 @@ class InnerTubePlaylistSource
     private val loadMutex = Mutex()
     private var initialLoaded = false
 
+    /**
+     * ONLINE PLAYLIST SLOT — playback endpoints from the loaded
+     * [PlaylistItem] that the LCD header cannot carry. The unified screen's
+     * song-click and hero play/shuffle actions read these exactly like the
+     * legacy OnlinePlaylistActions did; null until the first load succeeds.
+     */
+    var playEndpoint: WatchEndpoint? = null
+        private set
+
+    var shuffleEndpoint: WatchEndpoint? = null
+        private set
+
+    var radioEndpoint: WatchEndpoint? = null
+        private set
+
     override suspend fun refresh(): Result<Unit> =
         load(initial = false)
+
+    override suspend fun ensureLoaded(): Result<Unit> =
+        load(initial = true)
 
     override suspend fun loadMore(): Result<Unit> =
         continuation?.let { cont ->
@@ -90,6 +109,9 @@ class InnerTubePlaylistSource
                     val visible =
                         page.songs.filterBlockedArtists(database.getBlockedArtistIds().toSet())
                     continuation = page.songsContinuation ?: page.continuation
+                    playEndpoint = playlist.playEndpoint
+                    shuffleEndpoint = playlist.shuffleEndpoint
+                    radioEndpoint = playlist.radioEndpoint
                     state.value =
                         PlaylistTracksResult(
                             header =

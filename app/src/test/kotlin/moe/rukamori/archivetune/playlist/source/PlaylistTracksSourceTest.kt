@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.playlist.source
 
+import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.innertube.models.Album
@@ -134,7 +135,23 @@ class PlaylistTracksSourceTest {
             val source = TopPlaylistSource("10", database)
             assertTrue(source.reorder(0, 1).isFailure)
             assertTrue(source.removeSong(0).isFailure)
+            assertTrue(source.setSort(PlaylistSongSortType.NAME, false).isFailure)
             // loadMore/refresh default to success no-ops.
             assertTrue(source.loadMore().isSuccess)
+        }
+
+    @Test
+    fun `setSort on read-only sources never crashes and stays a failure`() =
+        kotlinx.coroutines.test.runTest {
+            val database: moe.rukamori.archivetune.db.MusicDatabase = io.mockk.mockk(relaxed = true)
+            val cacheSource =
+                CachePlaylistSource(
+                    context = io.mockk.mockk(relaxed = true),
+                    database = database,
+                    downloadUtil = io.mockk.mockk(relaxed = true),
+                    playerCache = io.mockk.mockk(relaxed = true),
+                    downloadCache = io.mockk.mockk(relaxed = true),
+                )
+            assertTrue(cacheSource.setSort(PlaylistSongSortType.NAME, true).isFailure)
         }
 }
