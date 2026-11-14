@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,17 +87,15 @@ import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
 import moe.rukamori.archivetune.ui.menu.removeSongFromRemotePlaylist
-import moe.rukamori.archivetune.ui.utils.DownloadProgressFloatingToolbar
-import moe.rukamori.archivetune.ui.utils.DownloadProgressToolbarState
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadPausedEffect
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadProgressToolbar
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadStateHolder
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.backToMain
-import moe.rukamori.archivetune.ui.utils.hasActiveDownloads
 import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
-import moe.rukamori.archivetune.ui.utils.sendPauseDownloads
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
-import moe.rukamori.archivetune.ui.utils.sendResumeDownloads
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDateTime
@@ -196,12 +193,12 @@ class LocalPlaylistDownloadUiState(
     downloadsPausedState: androidx.compose.runtime.MutableState<Boolean>,
     dismissedState: androidx.compose.runtime.MutableState<Boolean>,
     val mutableSongs: SnapshotStateList<PlaylistSong>,
-) {
-    var downloads by downloadsState
-    var downloadState by downloadStateState
-    var downloadsPaused by downloadsPausedState
-    var dismissed by dismissedState
-}
+) : PlaylistDownloadStateHolder(
+    downloadsState = downloadsState,
+    downloadStateState = downloadStateState,
+    downloadsPausedState = downloadsPausedState,
+    dismissedState = dismissedState,
+)
 
 @Composable
 fun rememberLocalPlaylistDownloadUiState(): LocalPlaylistDownloadUiState {
@@ -858,18 +855,6 @@ fun LocalPlaylistDownloadSyncEffect(
 }
 
 @Composable
-fun LocalPlaylistDownloadPausedEffect(
-    downloadState: HeaderDownloadState,
-    onResetPaused: () -> Unit,
-) {
-    LaunchedEffect(downloadState) {
-        if (downloadState !is HeaderDownloadState.Partial) {
-            onResetPaused()
-        }
-    }
-}
-
-@Composable
 fun LocalPlaylistReorderEffect(
     isDragging: Boolean,
     dragInfo: Pair<Int, Int>?,
@@ -911,7 +896,7 @@ fun LocalPlaylistEffects(
         onDownloadsChange = { downloadState.downloads = it },
         onDownloadStateChange = { downloadState.downloadState = it },
     )
-    LocalPlaylistDownloadPausedEffect(
+    PlaylistDownloadPausedEffect(
         downloadState = downloadState.downloadState,
         onResetPaused = { downloadState.downloadsPaused = false },
     )
@@ -1386,66 +1371,16 @@ fun LocalPlaylistTopBar(
 
 @Composable
 fun LocalPlaylistDownloadProgressToolbar(
-    downloadState: HeaderDownloadState,
-    songs: List<PlaylistSong>,
-    downloads: Map<String, Download>,
-    downloadsPaused: Boolean,
-    dismissed: Boolean,
-    context: Context,
-    onDownloadsPausedChange: (Boolean) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val showDownloadProgressToolbar =
-        downloadState is HeaderDownloadState.Partial &&
-            songs.isNotEmpty() &&
-            !dismissed
-    AnimatedVisibility(
-        visible = showDownloadProgressToolbar,
-        modifier = modifier,
-    ) {
-        if (downloadState is HeaderDownloadState.Partial && songs.isNotEmpty()) {
-            val songIds = remember(songs) { songs.map { it.song.id } }
-            DownloadProgressFloatingToolbar(
-                state =
-                    DownloadProgressToolbarState(
-                        progress = downloadState.progress,
-                        paused = downloadsPaused,
-                        canPause = hasActiveDownloads(songIds, downloads),
-                    ),
-                onPauseResume = {
-                    if (downloadsPaused) {
-                        sendResumeDownloads(context, songIds)
-                    } else {
-                        sendPauseDownloads(context, songIds)
-                    }
-                    onDownloadsPausedChange(!downloadsPaused)
-                },
-                onDismiss = onDismiss,
-            )
-        }
-    }
-}
-
-@Composable
-fun LocalPlaylistDownloadProgressToolbar(
     downloadUiState: LocalPlaylistDownloadUiState,
     songs: List<PlaylistSong>,
     context: Context,
     modifier: Modifier = Modifier,
 ) {
-    LocalPlaylistDownloadProgressToolbar(
-        downloadState = downloadUiState.downloadState,
-        songs = songs,
-        downloads = downloadUiState.downloads,
-        downloadsPaused = downloadUiState.downloadsPaused,
-        dismissed = downloadUiState.dismissed,
+    val songIds = remember(songs) { songs.map { it.song.id } }
+    PlaylistDownloadProgressToolbar(
+        downloadState = downloadUiState,
+        songIds = songIds,
         context = context,
-        onDownloadsPausedChange = { downloadUiState.downloadsPaused = it },
-        onDismiss = {
-            downloadUiState.downloadsPaused = false
-            downloadUiState.dismissed = true
-        },
         modifier = modifier,
     )
 }

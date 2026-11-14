@@ -36,6 +36,7 @@ import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.menu.SelectionMediaMetadataMenu
+import moe.rukamori.archivetune.ui.screens.playlist.online.OnlinePlaylistSearchState
 import moe.rukamori.archivetune.ui.utils.backToMain
 
 @Composable
@@ -55,7 +56,7 @@ fun OnlinePlaylistTopBar(
             ),
         title = {
             if (searchState.selection) {
-                val count = searchState.selectedSongsCount
+                val count = searchState.selectedCount
                 Text(
                     text = pluralStringResource(R.plurals.n_song, count, count),
                     style = MaterialTheme.typography.titleLarge,
@@ -118,7 +119,7 @@ fun OnlinePlaylistTopBar(
         },
         actions = {
             if (searchState.selection) {
-                val count = searchState.selectedSongsCount
+                val count = searchState.selectedCount
                 IconButton(
                     onClick = { searchState.toggleSelectAll() },
                     onLongClick = {},
@@ -126,7 +127,7 @@ fun OnlinePlaylistTopBar(
                     Icon(
                         painter =
                             painterResource(
-                                if (count == searchState.wrappedSongs.size) {
+                                if (count == searchState.wrappedItems.size) {
                                     R.drawable.deselect
                                 } else {
                                     R.drawable.select_all
@@ -140,7 +141,7 @@ fun OnlinePlaylistTopBar(
                         menuState.show {
                             SelectionMediaMetadataMenu(
                                 songSelection =
-                                    searchState.wrappedSongs
+                                    searchState.wrappedItems
                                         .filter { it.isSelected }
                                         .map {
                                             it.item.second

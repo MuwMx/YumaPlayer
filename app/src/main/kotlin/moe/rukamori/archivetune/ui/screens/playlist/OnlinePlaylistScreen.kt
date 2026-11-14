@@ -56,8 +56,12 @@ import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
+import moe.rukamori.archivetune.ui.screens.playlist.online.OnlinePlaylistDownloadProgressToolbar
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.ui.screens.playlist.OnlinePlaylistViewModel
+import moe.rukamori.archivetune.ui.screens.playlist.online.OnlinePlaylistEffects
+import moe.rukamori.archivetune.ui.screens.playlist.online.rememberOnlinePlaylistDownloadUiState
+import moe.rukamori.archivetune.ui.screens.playlist.online.rememberOnlinePlaylistSearchState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,7 +201,7 @@ fun OnlinePlaylistScreen(
                 }
 
                 onlinePlaylistSongItems(
-                    wrappedSongs = searchState.wrappedSongs,
+                    wrappedSongs = searchState.wrappedItems,
                     viewCounts = uiState.viewCounts,
                     activeMediaId = mediaMetadata?.id,
                     isPlaying = isPlaying,

@@ -4,37 +4,15 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-package moe.rukamori.archivetune.ui.screens.playlist
+package moe.rukamori.archivetune.ui.screens.playlist.online
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
-import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.download.DownloadUtil
-
-@Composable
-fun OnlinePlaylistContinuationEffect(
-    lazyListState: LazyListState,
-    songsCount: Int,
-    onLoadMore: () -> Unit,
-) {
-    LaunchedEffect(lazyListState) {
-        snapshotFlow {
-            lazyListState.layoutInfo.visibleItemsInfo
-                .lastOrNull()
-                ?.index
-        }.collect { lastVisibleIndex ->
-            if (
-                songsCount >= 5 &&
-                lastVisibleIndex != null &&
-                lastVisibleIndex >= songsCount - 5
-            ) {
-                onLoadMore()
-            }
-        }
-    }
-}
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadPausedEffect
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadSyncEffect
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistLoadMoreEffect
 
 @Composable
 fun OnlinePlaylistEffects(
@@ -49,19 +27,19 @@ fun OnlinePlaylistEffects(
         isSearching = searchState.isSearching,
         focusRequester = searchState.focusRequester,
     )
-    OnlinePlaylistDownloadSyncEffect(
-        songs = songs,
+    PlaylistDownloadSyncEffect(
+        songIds = songs.map { it.id },
         downloadUtil = downloadUtil,
         onDownloadsChange = { downloadUiState.downloads = it },
         onDownloadStateChange = { downloadUiState.downloadState = it },
     )
-    OnlinePlaylistDownloadPausedEffect(
+    PlaylistDownloadPausedEffect(
         downloadState = downloadUiState.downloadState,
         onResetPaused = { downloadUiState.downloadsPaused = false },
     )
-    OnlinePlaylistContinuationEffect(
+    PlaylistLoadMoreEffect(
         lazyListState = lazyListState,
-        songsCount = songs.size,
+        itemsCount = songs.size,
         onLoadMore = onLoadMore,
     )
 }

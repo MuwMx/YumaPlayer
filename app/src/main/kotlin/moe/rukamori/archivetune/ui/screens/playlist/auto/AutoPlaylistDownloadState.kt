@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -25,18 +24,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.sample
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadSyncEffect
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
-import moe.rukamori.archivetune.ui.utils.headerDownloadState
 import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 
 @Stable
@@ -54,69 +48,6 @@ class AutoPlaylistDownloadUiState(
     var showRemoveDownloadDialog by showRemoveDownloadDialogState
 }
 
-@OptIn(FlowPreview::class)
-@Composable
-fun AutoPlaylistDownloadSyncEffect(
-    songs: List<Song>,
-    downloadUtil: DownloadUtil,
-    onDownloadsChange: (Map<String, Download>) -> Unit,
-    onDownloadStateChange: (HeaderDownloadState) -> Unit,
-    onGlobalStateChange: (HeaderDownloadState, Boolean) -> Unit,
-) {
-    LaunchedEffect(songs, downloadUtil) {
-        val songIds = songs.map { it.song.id }
-        if (songIds.isEmpty()) {
-            onDownloadsChange(emptyMap())
-            onDownloadStateChange(HeaderDownloadState.None)
-            onGlobalStateChange(HeaderDownloadState.None, false)
-            return@LaunchedEffect
-        }
-        withContext(Dispatchers.Default) {
-            downloadUtil.downloads
-                .sample(350L)
-                .distinctUntilChanged()
-                .collect { currentDownloads ->
-                    val calculatedHeaderState = headerDownloadState(songIds, currentDownloads)
-                    val activeDownloads =
-                        currentDownloads.values.filter {
-                            it.state == Download.STATE_DOWNLOADING ||
-                                it.state == Download.STATE_QUEUED ||
-                                it.state == Download.STATE_RESTARTING ||
-                                it.state == Download.STATE_STOPPED
-                        }
-                    val (globalState, isPaused) =
-                        if (activeDownloads.isEmpty()) {
-                            HeaderDownloadState.None to false
-                        } else {
-                            var progressTotal = 0f
-                            var hasRunning = false
-                            var hasPaused = false
-                            activeDownloads.forEach { download ->
-                                val progress = download.percentDownloaded.takeIf { it >= 0f }?.div(100f) ?: 0f
-                                progressTotal += progress.coerceIn(0f, 1f)
-                                if (download.state == Download.STATE_STOPPED) {
-                                    hasPaused = hasPaused || download.stopReason == 1
-                                } else {
-                                    hasRunning = true
-                                }
-                            }
-                            val partial =
-                                HeaderDownloadState.Partial(
-                                    progress = progressTotal / activeDownloads.size,
-                                )
-                            partial to (hasPaused && !hasRunning)
-                        }
-
-                    withContext(Dispatchers.Main) {
-                        onDownloadsChange(currentDownloads)
-                        onDownloadStateChange(calculatedHeaderState)
-                        onGlobalStateChange(globalState, isPaused)
-                    }
-                }
-        }
-    }
-}
-
 @Composable
 fun rememberAutoPlaylistDownloadState(
     songs: List<Song>,
@@ -128,8 +59,11 @@ fun rememberAutoPlaylistDownloadState(
     val globalPaused = remember { mutableStateOf(false) }
     val showRemoveDialog = remember { mutableStateOf(false) }
 
-    AutoPlaylistDownloadSyncEffect(
-        songs = songs,
+    // Shared sync effect (was the per-screen AutoPlaylistDownloadSyncEffect);
+    // Auto rows key downloads by Song.song.id and also track the header's
+    // global paused state (upstream f96ca418 sampling now lives in the shared effect).
+    PlaylistDownloadSyncEffect(
+        songIds = remember(songs) { songs.map { it.song.id } },
         downloadUtil = downloadUtil,
         onDownloadsChange = { downloads.value = it },
         onDownloadStateChange = { downloadState.value = it },

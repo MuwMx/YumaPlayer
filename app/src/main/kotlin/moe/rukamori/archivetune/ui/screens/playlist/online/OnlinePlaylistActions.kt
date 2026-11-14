@@ -30,6 +30,8 @@ import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.screens.playlist.online.OnlinePlaylistDownloadUiState
+import moe.rukamori.archivetune.ui.screens.playlist.online.OnlinePlaylistSearchState
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
@@ -207,7 +209,7 @@ fun rememberOnlinePlaylistActions(
                 if (!searchState.selection) {
                     searchState.selection = true
                 }
-                searchState.wrappedSongs.forEach { it.isSelected = false }
+                searchState.wrappedItems.forEach { it.isSelected = false }
                 song.isSelected = true
             },
             onLike = {

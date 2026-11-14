@@ -138,14 +138,14 @@ fun AutoPlaylistScreen(
     }
 
     val mediaItems =
-        remember(searchState.filteredSongs) {
-            searchState.filteredSongs.map { it.item.toMediaItem() }
+        remember(searchState.filteredItems) {
+            searchState.filteredItems.map { it.item.toMediaItem() }
         }
 
     val onSongClick =
-        remember(mediaItems, searchState.filteredSongs, playlist, playerConnection) {
+        remember(mediaItems, searchState.filteredItems, playlist, playerConnection) {
             { songId: String ->
-                val index = searchState.filteredSongs.indexOfFirst { it.item.id == songId }
+                val index = searchState.filteredItems.indexOfFirst { it.item.id == songId }
                 if (index != -1) {
                     playerConnection.playQueue(
                         ListQueue(
@@ -255,8 +255,8 @@ fun AutoPlaylistScreen(
                 )
 
                 autoPlaylistTrackRows(
-                    filteredSongs = searchState.filteredSongs,
-                    wrappedSongs = searchState.wrappedSongs,
+                    filteredSongs = searchState.filteredItems,
+                    wrappedSongs = searchState.wrappedItems,
                     mediaMetadata = mediaMetadata,
                     isPlaying = isPlaying,
                     selection = searchState.selection,
@@ -289,7 +289,7 @@ fun AutoPlaylistScreen(
                 SelectionTopBarUiState(
                     selection = searchState.selection,
                     selectedCount = searchState.selectedCount,
-                    totalCount = searchState.wrappedSongs.size,
+                    totalCount = searchState.wrappedItems.size,
                     isSearching = searchState.isSearching,
                     query = searchState.query,
                     showTopBarTitle = showTopBarTitle,
@@ -307,7 +307,7 @@ fun AutoPlaylistScreen(
                         menuState.show {
                             SelectionSongMenu(
                                 songSelection =
-                                    searchState.wrappedSongs
+                                    searchState.wrappedItems
                                         .filter { it.isSelected }
                                         .map { it.item },
                                 onDismiss = menuState::dismiss,
