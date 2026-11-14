@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.SpotifyMapper
-import moe.rukamori.archivetune.spotify.isTrackLiked
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.utils.isTrackLiked
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

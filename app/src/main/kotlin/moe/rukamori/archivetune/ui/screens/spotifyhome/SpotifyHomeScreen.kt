@@ -40,7 +40,7 @@ import moe.rukamori.archivetune.spotify.SpotifyHomeNavigationEvent
 import moe.rukamori.archivetune.spotify.SpotifyHomeScreenState
 import moe.rukamori.archivetune.spotify.SpotifyHomeViewModel
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
-import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
+import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.screens.home.HomeSectionHeader
 import moe.rukamori.archivetune.ui.screens.spotifyhome.HomeStatePane
@@ -176,7 +176,7 @@ fun SpotifyHomeScreen(
                                             likedKeys = likedKeys,
                                             onToggleLike = { track ->
                                                 scope.launch(Dispatchers.IO) {
-                                                    toggleSpotifyTrackLike(track, database, syncUtils)
+                                                    SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
                                                 }
                                             },
                                             onTrackClick = { track ->

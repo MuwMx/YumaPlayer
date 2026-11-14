@@ -43,11 +43,11 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.spotify.SpotifyHomeSection
-import moe.rukamori.archivetune.spotify.isTrackLiked
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.utils.isTrackLiked
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.theme.yumaClickable

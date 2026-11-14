@@ -231,7 +231,7 @@ fun SpotifyAlbumScreen(
                                 isLiked = isLiked,
                                 onToggleLike = {
                                     coroutineScope.launch(Dispatchers.IO) {
-                                        toggleSpotifyTrackLike(track, database, syncUtils)
+                                        SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
                                     }
                                 },
                                 trailingContent = {

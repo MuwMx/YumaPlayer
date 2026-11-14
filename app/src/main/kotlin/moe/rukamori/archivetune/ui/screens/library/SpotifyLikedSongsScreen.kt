@@ -67,7 +67,7 @@ import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsViewModel
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyLikedSongsQueue
-import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
+import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
@@ -325,7 +325,7 @@ fun SpotifyLikedSongsScreen(
                     onToggleLike = if (database != null && syncUtils != null) {
                         { track ->
                             coroutineScope.launch(Dispatchers.IO) {
-                                toggleSpotifyTrackLike(track, database, syncUtils)
+                                SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
                             }
                         }
                     } else null,
