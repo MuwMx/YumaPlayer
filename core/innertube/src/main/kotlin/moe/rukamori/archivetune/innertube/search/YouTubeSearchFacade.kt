@@ -14,7 +14,10 @@ import moe.rukamori.archivetune.innertube.pages.SearchSummaryPage
 interface YouTubeSearchFacade {
     suspend fun searchSuggestions(query: String): Result<SearchSuggestions>
 
-    suspend fun searchSummary(query: String): Result<SearchSummaryPage>
+    suspend fun searchSummary(
+        query: String,
+        useAccountContext: Boolean = true,
+    ): Result<SearchSummaryPage>
 
     suspend fun search(
         query: String,

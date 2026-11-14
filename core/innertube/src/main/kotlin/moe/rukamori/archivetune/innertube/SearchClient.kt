@@ -53,9 +53,18 @@ object SearchClient : YouTubeSearchFacade {
             )
         }
 
-    override suspend fun searchSummary(query: String): Result<SearchSummaryPage> =
+    override suspend fun searchSummary(
+        query: String,
+        useAccountContext: Boolean,
+    ): Result<SearchSummaryPage> =
         runCatching {
-            val response = innerTube.search(WEB_REMIX, query).body<SearchResponse>()
+            val response =
+                innerTube
+                    .search(
+                        client = WEB_REMIX,
+                        query = query,
+                        useAccountContext = useAccountContext,
+                    ).body<SearchResponse>()
             val contents =
                 response.contents
                     ?.tabbedSearchResultsRenderer

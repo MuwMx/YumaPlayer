@@ -8,6 +8,7 @@ package moe.rukamori.archivetune.utils.resolver.fetcher
 
 import android.net.ConnectivityManager
 import androidx.media3.common.PlaybackException
+import kotlinx.coroutines.CancellationException
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
@@ -99,20 +100,28 @@ internal object PlaybackFallbackLadderResolver {
         val signatureTimestamp = PlaybackStreamUrlDecipher.getSignatureTimestampOrNull(videoId)
         Timber.tag(TAG).v("Signature timestamp: $signatureTimestamp")
 
-        val metadataResult =
-            PlaybackMetadataFetcher.fetchMetadataForPlayback(
-                videoId = videoId,
-                playlistId = playlistId,
-                signatureTimestamp = signatureTimestamp,
-                initialAuthState = authState,
-                initialCanUseLoggedInPlayback = canUseLoggedInPlayback,
-                fetchAttemptId = fetchAttemptId,
-            )
-        var metadataPlayerResponse = metadataResult.playerResponse
-        var expectedDurationMs = metadataResult.expectedDurationMs
-        authState = metadataResult.authState
-        canUseLoggedInPlayback = metadataResult.canUseLoggedInPlayback
-        val metadataClient = metadataResult.metadataClient
+        val metadataFetchResult =
+            runCatching {
+                PlaybackMetadataFetcher.fetchMetadataForPlayback(
+                    videoId = videoId,
+                    playlistId = playlistId,
+                    signatureTimestamp = signatureTimestamp,
+                    initialAuthState = authState,
+                    initialCanUseLoggedInPlayback = canUseLoggedInPlayback,
+                    fetchAttemptId = fetchAttemptId,
+                )
+            }.onFailure { e ->
+                if (e is CancellationException) throw e
+                Timber.tag(TAG).w(e, "Metadata fetch failed for videoId: $videoId")
+            }
+        val metadataResult = metadataFetchResult.getOrNull()
+        var metadataPlayerResponse = metadataResult?.playerResponse
+        var expectedDurationMs = metadataResult?.expectedDurationMs
+        if (metadataResult != null) {
+            authState = metadataResult.authState
+            canUseLoggedInPlayback = metadataResult.canUseLoggedInPlayback
+        }
+        val metadataClient = metadataResult?.metadataClient
 
         val preferredYouTubeClient = PlaybackClientSelector.resolvePreferredPlaybackClient(preferredStreamClient, authState)
         if (
@@ -204,7 +213,7 @@ internal object PlaybackFallbackLadderResolver {
             }
 
             streamPlayerResponse =
-                if (client == metadataClient) {
+                if (client == metadataClient && metadataPlayerResponse != null) {
                     metadataPlayerResponse
                 } else {
                     Timber.tag(TAG).i("Fetching player response for fallback client: ${PlaybackClientSelector.describeClient(client)}")
@@ -346,6 +355,16 @@ internal object PlaybackFallbackLadderResolver {
                 }
             }
 
+            if (metadataPlayerResponse == null) {
+                metadataPlayerResponse = streamPlayerResponse
+                expectedDurationMs =
+                    metadataPlayerResponse.videoDetails
+                        ?.lengthSeconds
+                        ?.toLongOrNull()
+                        ?.takeIf { it > 0 }
+                        ?.times(1000L)
+            }
+
             val candidate =
                 PlaybackCandidateUrlResolver.resolveClientCandidate(
                     videoId = videoId,
@@ -467,7 +486,7 @@ internal object PlaybackFallbackLadderResolver {
             videoId = videoId,
             resolvedCandidate = resolvedCandidate,
             streamPlayerResponse = streamPlayerResponse,
-            metadataPlayerResponse = metadataPlayerResponse,
+            metadataPlayerResponse = metadataPlayerResponse ?: streamPlayerResponse,
             audioQuality = audioQuality,
             authState = authState,
             fetchAttemptId = fetchAttemptId,

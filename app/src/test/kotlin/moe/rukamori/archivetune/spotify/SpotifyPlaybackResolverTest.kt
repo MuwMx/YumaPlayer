@@ -54,7 +54,9 @@ class SpotifyPlaybackResolverTest {
 
     private fun failSearches() {
         coEvery { YouTube.search(any(), any()) } returns Result.failure(IOException("rate limited"))
+        coEvery { YouTube.search(any(), any(), any()) } returns Result.failure(IOException("rate limited"))
         coEvery { YouTube.searchSummary(any()) } returns Result.failure(IOException("rate limited"))
+        coEvery { YouTube.searchSummary(any(), any()) } returns Result.failure(IOException("rate limited"))
     }
 
     @Test
@@ -82,7 +84,10 @@ class SpotifyPlaybackResolverTest {
     fun emptySearchResultsAreNoMatchEvenWhenTheCallerThrowsOnFailure() =
         runBlocking {
             coEvery { YouTube.search(any(), any()) } returns Result.success(SearchResult(items = emptyList(), continuation = null))
+            coEvery { YouTube.search(any(), any(), any()) } returns Result.success(SearchResult(items = emptyList(), continuation = null))
             coEvery { YouTube.searchSummary(any()) } returns
+                Result.success(moe.rukamori.archivetune.innertube.pages.SearchSummaryPage(summaries = emptyList()))
+            coEvery { YouTube.searchSummary(any(), any()) } returns
                 Result.success(moe.rukamori.archivetune.innertube.pages.SearchSummaryPage(summaries = emptyList()))
 
             assertNull(
@@ -95,7 +100,9 @@ class SpotifyPlaybackResolverTest {
         runBlocking {
             val match = song("yt1", "Song matching", "Artist", 200)
             coEvery { YouTube.search(any(), any()) } returns Result.success(SearchResult(items = listOf(match), continuation = null))
+            coEvery { YouTube.search(any(), any(), any()) } returns Result.success(SearchResult(items = listOf(match), continuation = null))
             coEvery { YouTube.searchSummary(any()) } returns failureOfSummary()
+            coEvery { YouTube.searchSummary(any(), any()) } returns failureOfSummary()
 
             val resolved = SpotifyPlaybackResolver.resolveToMetadata(spotifyTrack("matching"))
 
