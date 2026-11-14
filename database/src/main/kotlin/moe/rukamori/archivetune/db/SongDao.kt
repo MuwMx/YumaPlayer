@@ -825,6 +825,15 @@ interface SongDao {
     @Query("SELECT * FROM song WHERE id = :songId")
     fun song(songId: String?): Flow<Song?>
 
+    @Query("""
+        SELECT DISTINCT s.id FROM song s WHERE s.liked != 0
+        UNION
+        SELECT DISTINCT m.spotifyId FROM spotify_match m JOIN song s ON m.youtubeId = s.id WHERE s.liked != 0
+        UNION
+        SELECT DISTINCT s.isrc FROM song s WHERE s.liked != 0 AND s.isrc IS NOT NULL AND s.isrc != ''
+    """)
+    fun likedSpotifyTrackKeys(): Flow<List<String>>
+
     @Transaction
     @Query("""
         SELECT * FROM song

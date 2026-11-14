@@ -44,6 +44,7 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.ui.component.items.ItemFavoriteBadge
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -271,7 +272,12 @@ fun SpotifyTrackListItem(
     track: SpotifyTrack,
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
+    isLiked: Boolean = false,
+    onToggleLike: (() -> Unit)? = null,
     badges: @Composable RowScope.() -> Unit = {
+        if (isLiked) {
+            ItemFavoriteBadge()
+        }
         if (track.explicit) {
             Icon(
                 painter = painterResource(R.drawable.explicit),
@@ -313,7 +319,22 @@ fun SpotifyTrackListItem(
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
-        trailingContent = trailingContent,
+        trailingContent = {
+            if (onToggleLike != null) {
+                IconButton(
+                    onClick = onToggleLike,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                        contentDescription = null,
+                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            trailingContent()
+        },
         modifier = modifier,
         isActive = isActive,
     )

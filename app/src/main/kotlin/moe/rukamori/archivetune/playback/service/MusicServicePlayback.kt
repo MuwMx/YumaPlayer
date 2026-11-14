@@ -76,7 +76,7 @@ internal fun MusicService.resolvePlaybackDataSpec(
                 throw PlaybackException(
                     "Network error resolving $mediaId",
                     e,
-                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                    PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                 )
             } ?: run {
                 SpotifyPlaceholders.markUnmatched(mediaId)

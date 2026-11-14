@@ -51,21 +51,25 @@ data class SongEntity(
     fun localToggleLike(source: LikeSource = LikeSource.YTM): SongEntity {
         return when (source) {
             LikeSource.YTM -> {
-                val newLikedYtm = !likedYtm
+                val wasLiked = likedYtm || liked
+                val newLikedYtm = !wasLiked
+                val newLiked = if (wasLiked) (likedYtm && likedSpotify) else true
                 copy(
                     likedYtm = newLikedYtm,
-                    liked = newLikedYtm || likedSpotify,
-                    likedDate = if (newLikedYtm) LocalDateTime.now() else if (likedSpotify) likedDate else null,
-                    inLibrary = if (newLikedYtm) (inLibrary ?: LocalDateTime.now()) else inLibrary,
+                    liked = newLiked,
+                    likedDate = if (newLiked) (likedDate ?: LocalDateTime.now()) else null,
+                    inLibrary = if (newLiked) (inLibrary ?: LocalDateTime.now()) else inLibrary,
                 )
             }
             LikeSource.SPOTIFY -> {
-                val newLikedSpotify = !likedSpotify
+                val wasLiked = likedSpotify || liked
+                val newLikedSpotify = !wasLiked
+                val newLiked = if (wasLiked) (likedYtm && likedSpotify) else true
                 copy(
                     likedSpotify = newLikedSpotify,
-                    liked = likedYtm || newLikedSpotify,
-                    likedDate = if (newLikedSpotify) LocalDateTime.now() else if (likedYtm) likedDate else null,
-                    inLibrary = if (newLikedSpotify) (inLibrary ?: LocalDateTime.now()) else inLibrary,
+                    liked = newLiked,
+                    likedDate = if (newLiked) (likedDate ?: LocalDateTime.now()) else null,
+                    inLibrary = if (newLiked) (inLibrary ?: LocalDateTime.now()) else inLibrary,
                 )
             }
         }

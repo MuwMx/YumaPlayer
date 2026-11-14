@@ -42,6 +42,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,6 +62,9 @@ import dev.chrisbanes.haze.hazeSource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -71,6 +75,7 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playlistcopy.PlaylistCopySource
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.spotifyAwareQueue
+import moe.rukamori.archivetune.spotify.toggleSpotifyTrackLike
 import moe.rukamori.archivetune.spotify.toPlaceholderId
 import moe.rukamori.archivetune.spotify.toPlaceholderMetadata
 import moe.rukamori.archivetune.spotify.SpotifyPlaylistViewModel
@@ -104,6 +109,12 @@ fun SpotifyPlaylistScreen(
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
+    val database = playerConnection?.service?.database
+    val syncUtils = playerConnection?.service?.syncUtils
+    val likedKeys by remember(database) {
+        database?.likedSpotifyTrackKeys()?.map { it.toSet() } ?: kotlinx.coroutines.flow.flowOf(emptySet())
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
+    val scope = rememberCoroutineScope()
     val isPlaying by playerConnection?.isPlaying?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle()
@@ -278,6 +289,14 @@ fun SpotifyPlaylistScreen(
                 filteredTracks = filteredTracks,
                 mediaMetadata = mediaMetadata,
                 isPlaying = isPlaying,
+                likedKeys = likedKeys,
+                onToggleLike = if (database != null && syncUtils != null) {
+                    { track ->
+                        scope.launch(Dispatchers.IO) {
+                            toggleSpotifyTrackLike(track, database, syncUtils)
+                        }
+                    }
+                } else null,
                 onTrackClick = { track, index, trackIsActive ->
                     if (trackIsActive) {
                         playerConnection?.player?.togglePlayPause()
