@@ -87,8 +87,9 @@ internal fun LazyListScope.localPlaylistSuggestionsItem(show: Boolean) {
 /**
  * The scaffold tail every route renders after its LazyColumn:
  * [PlaylistDetailOverlays] (scrollbar / haze / download toolbar / snackbar)
- * then [PlaylistDetailTopBarHost]. On the local route the trailing action
- * carries the edit-else-sync button and hosts the rename/delete dialogs.
+ * then [PlaylistDetailTopBarHost]. On the local route the dialogs host
+ * (edit chooser / rename / delete) rides along and the trailing action
+ * is sync-only for non-editable playlists.
  */
 @Composable
 internal fun androidx.compose.foundation.layout.BoxScope.playlistDetailScaffoldTail(
@@ -191,10 +192,13 @@ internal fun localPlaylistPickCoverOverlayOrNull(
 ): (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? {
     if (localGlue?.editable != true) return null
     return {
+        // MERGED EDIT AFFORDANCE — the single hero pencil opens the edit
+        // chooser (rename / change cover) instead of only the cover picker;
+        // the top bar keeps sync only.
         LocalPlaylistPickCoverOverlay(
             systemBarsTopPadding = systemBarsTopPadding,
             hasArtwork = hasArtwork,
-            onPickCover = localGlue.onPickCover,
+            onPickCover = { localGlue.dialogState.showEditChooser = true },
         )
     }
 }
@@ -214,9 +218,11 @@ internal fun localPlaylistLikeSourceHint(
     }
 
 /**
- * The trailing top-bar action for the local route (edit-else-sync) plus the
- * rename/delete dialogs, or the plain trailing action elsewhere. Returns
- * the trailing composable for [PlaylistDetailTopBarHost].
+ * The local route's dialog host (edit chooser / rename / delete) plus the
+ * trailing top-bar action (sync-only for non-editable playlists, none for
+ * editable ones — they edit from the hero pencil), or the plain trailing
+ * action elsewhere. Returns the trailing composable for
+ * [PlaylistDetailTopBarHost].
  */
 @Composable
 internal fun localPlaylistTrailingAndDialogsOrUnified(
@@ -229,21 +235,22 @@ internal fun localPlaylistTrailingAndDialogsOrUnified(
     onClearSelection: () -> Unit,
 ): (@Composable () -> Unit)? {
     if (localGlue != null) {
-        // LOCAL PLAYLIST SLOT — rename + delete dialogs (legacy screens
-        // popped nav after a successful delete, Wiring.kt:318-327).
+        // LOCAL PLAYLIST SLOT — edit-chooser + rename + delete dialogs
+        // (legacy screens popped nav after a successful delete,
+        // Wiring.kt:318-327).
         LocalPlaylistDetailDialogsHost(
             dialogState = localGlue.dialogState,
             playlistName = localGlue.playlistName,
             editable = localGlue.editable,
             onRename = viewModel::renamePlaylist,
             onDeletePlaylist = localGlue.onDeletePlaylist,
+            onPickCover = localGlue.onPickCover,
         )
     }
     return renderPlaylistDetailTrailingAction(
         viewModel, menuState, tracks, header,
         onClearSelection = onClearSelection,
         editable = editable,
-        onEdit = localGlue?.let { { it.dialogState.showEdit = true } },
         onSync = viewModel::refresh,
     )
 }

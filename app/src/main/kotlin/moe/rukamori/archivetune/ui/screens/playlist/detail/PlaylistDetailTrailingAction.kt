@@ -35,10 +35,11 @@ import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
  *    (legacy SpotifyPlaylistScreen.kt:389-397) opening a PlaylistCopyDialog
  *    seeded from this playlist (SpotifyPlaylistScreen.kt:403-415) —
  *    do not lose this in later phases.
- *  - LOCAL PLAYLIST SLOT (pinned): the edit-else-sync button
- *    (legacy LocalPlaylistTopBar, LocalPlaylistWiring.kt:1252-1262) —
- *    editable playlists show the pencil (opens the rename dialog), synced
- *    non-editable ones show the sync icon (re-sync from YouTube).
+ *  - LOCAL PLAYLIST SLOT (pinned): sync-only for non-editable synced
+ *    playlists (legacy LocalPlaylistTopBar, LocalPlaylistWiring.kt:1252-
+ *    1262). The edit AFFORDANCE lives on the hero-overlay pencil (edit
+ *    chooser) since the two-pencil merge; editable playlists get no top-bar
+ *    trailing action.
  *  - Other sources: null, no trailing action.
  */
 @Composable
@@ -49,7 +50,6 @@ internal fun renderPlaylistDetailTrailingAction(
     header: moe.rukamori.archivetune.playlist.source.PlaylistHeaderInfo?,
     onClearSelection: () -> Unit,
     editable: Boolean? = null,
-    onEdit: (() -> Unit)? = null,
     onSync: (() -> Unit)? = null,
 ): (@Composable () -> Unit)? {
     if (viewModel.source is AutoPlaylistSource) {
@@ -86,21 +86,24 @@ internal fun renderPlaylistDetailTrailingAction(
             )
         }
     }
-    if (viewModel.source is moe.rukamori.archivetune.playlist.source.RoomPlaylistSource && onEdit != null && onSync != null) {
-        // LOCAL PLAYLIST SLOT — edit-else-sync, verbatim LocalPlaylistTopBar
-        // (Wiring.kt:1252-1262): editable -> pencil (rename dialog), else -> sync.
-        val editLabel = stringResource(R.string.edit)
-        return {
-            IconButton(
-                onClick = { if (editable == true) onEdit() else onSync() },
-                onLongClick = {},
-            ) {
-                Icon(
-                    painter = painterResource(if (editable == true) R.drawable.edit else R.drawable.sync),
-                    contentDescription = editLabel,
-                )
+    if (viewModel.source is moe.rukamori.archivetune.playlist.source.RoomPlaylistSource && onSync != null) {
+        // LOCAL PLAYLIST SLOT — MERGED EDIT AFFORDANCE: editable playlists
+        // edit from the hero-overlay pencil (edit chooser); the top bar
+        // shows the SYNC icon for non-editable synced playlists only
+        // (LocalPlaylistTopBar, Wiring.kt:1252-1262 — legacy labeled both
+        // icons with R.string.edit).
+        if (editable == false) {
+            val syncLabel = stringResource(R.string.edit)
+            return {
+                IconButton(onClick = onSync, onLongClick = {}) {
+                    Icon(
+                        painter = painterResource(R.drawable.sync),
+                        contentDescription = syncLabel,
+                    )
+                }
             }
         }
+        return null
     }
     return null
 }
