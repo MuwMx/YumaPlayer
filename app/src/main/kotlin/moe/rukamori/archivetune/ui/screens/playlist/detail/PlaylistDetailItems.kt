@@ -53,19 +53,49 @@ internal fun LazyListScope.playlistDetailHeroItem(
 }
 
 /**
- * Empty state: "playlist is empty" for an empty playlist, legacy Cache's
+ * Empty state: "playlist is empty" for an empty playlist, the legacy Cache
  * "no results" wording when a search filters everything out (line 279-285).
+ * Spotify routes pass their own pair (spotify_no_tracks /
+ * ai_model_no_results, SpotifyPlaylistScreen.kt:261-275) via
+ * [rememberPlaylistDetailEmptyTexts].
  */
-internal fun LazyListScope.playlistDetailEmptyItem(isSearching: Boolean) {
+internal fun LazyListScope.playlistDetailEmptyItem(
+    isSearching: Boolean,
+    emptyText: String? = null,
+    searchEmptyText: String? = null,
+) {
     item(key = PLAYLIST_DETAIL_KEY_EMPTY, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_EMPTY) {
         YumaEmptyState(
             title =
-                stringResource(
-                    if (isSearching) R.string.no_results_found else R.string.playlist_is_empty,
-                ),
+                when {
+                    isSearching -> searchEmptyText ?: stringResource(R.string.no_results_found)
+                    else -> emptyText ?: stringResource(R.string.playlist_is_empty)
+                },
             mood = YumaMood.Shrug,
         )
     }
+}
+
+/**
+ * SPOTIFY PLAYLIST SLOT — the empty-state wordings the legacy Spotify screen
+ * shows (SpotifyPlaylistScreen.kt:261-275): "No Spotify tracks found." for
+ * an empty playlist, "No models match your search" when filtering empties
+ * it. Null keeps the shared default pair on every other route.
+ */
+internal data class PlaylistDetailEmptyTexts(
+    val empty: String,
+    val searchEmpty: String,
+)
+
+@Composable
+internal fun rememberPlaylistDetailEmptyTexts(
+    viewModel: PlaylistDetailViewModel,
+): PlaylistDetailEmptyTexts? {
+    if (viewModel.source !is moe.rukamori.archivetune.playlist.source.SpotifyPlaylistSource) return null
+    return PlaylistDetailEmptyTexts(
+        empty = stringResource(R.string.spotify_no_tracks),
+        searchEmpty = stringResource(R.string.ai_model_no_results),
+    )
 }
 
 /** Loading-more footer for paginated sources (InnerTube, Spotify). */

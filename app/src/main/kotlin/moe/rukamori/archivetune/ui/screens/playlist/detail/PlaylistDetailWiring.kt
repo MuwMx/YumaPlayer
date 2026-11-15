@@ -13,7 +13,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.res.stringResource
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.move
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
 import moe.rukamori.archivetune.ui.utils.ItemWrapper
@@ -147,7 +149,7 @@ internal fun rememberPlaylistDetailHeader(
         // TOP HERO TITLE — stringResource(R.string.my_top) + " N", exactly the
         // legacy TopPlaylistScreen.kt:194 shape. Pinned: do not lose this in a
         // later refactor.
-        val myTop = androidx.compose.ui.res.stringResource(moe.rukamori.archivetune.R.string.my_top)
+        val myTop = stringResource(moe.rukamori.archivetune.R.string.my_top)
         return header.copy(title = "$myTop ${topSource.maxSize}")
     }
     val autoSource = viewModel.source as? moe.rukamori.archivetune.playlist.source.AutoPlaylistSource
@@ -155,7 +157,7 @@ internal fun rememberPlaylistDetailHeader(
         // AUTO HERO TITLE — "Liked" / "Offline", the localized labels the
         // legacy screen picks (AutoPlaylistScreen.kt:91-92). Pinned.
         val label =
-            androidx.compose.ui.res.stringResource(
+            stringResource(
                 if (autoSource.playlistName == "liked") {
                     moe.rukamori.archivetune.R.string.liked
                 } else {
@@ -167,7 +169,7 @@ internal fun rememberPlaylistDetailHeader(
     if (viewModel.source is moe.rukamori.archivetune.playlist.source.CachePlaylistSource) {
         // CACHE HERO TITLE — the localized "Cached playlist" label
         // (CachePlaylistScreen.kt:290, 486, 657). Pinned.
-        val label = androidx.compose.ui.res.stringResource(moe.rukamori.archivetune.R.string.cached_playlist)
+        val label = stringResource(moe.rukamori.archivetune.R.string.cached_playlist)
         return header.copy(title = label)
     }
     return header

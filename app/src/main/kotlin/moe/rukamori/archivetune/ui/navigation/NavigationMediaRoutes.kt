@@ -23,7 +23,6 @@ import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseScreen
 import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailScreen
 
@@ -175,7 +174,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 },
             ),
     ) {
-        SpotifyPlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(

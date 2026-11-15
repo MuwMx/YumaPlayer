@@ -6,17 +6,39 @@
 
 package moe.rukamori.archivetune.ui.screens.playlist.detail
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.playlist.source.PlaylistCapabilities
 import moe.rukamori.archivetune.playlist.source.PlaylistTracksSource
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
+import moe.rukamori.archivetune.playlist.source.SpotifyPlaylistSource
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadStateHolder
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
@@ -28,11 +50,15 @@ import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
  * legacy Online/Auto/Top shape (Completed -> remove downloads, else ->
  * add missing and un-dismiss the progress toolbar).
  *
+ * SPOTIFY PLAYLIST SLOT: the legacy hero's sync/reload button
+ * (SpotifyPlaylistControls.kt:63-88) renders as the leading action on
+ * Spotify routes; other routes pass [leadingAction] through untouched.
  * LOCAL EDIT SLOT / ONLINE LIKE SLOT: those leading buttons join via
  * [leadingAction] with their route flips — keep this signature stable.
  */
 @Composable
 internal fun PlaylistDetailHeroActionsHost(
+    viewModel: PlaylistDetailViewModel,
     capabilities: PlaylistCapabilities,
     source: PlaylistTracksSource,
     playerConnection: PlayerConnection,
@@ -52,6 +78,15 @@ internal fun PlaylistDetailHeroActionsHost(
             onDismiss = { showRemoveDownloadDialog = false },
         )
     }
+
+    // SPOTIFY PLAYLIST SLOT — the legacy hero's sync/reload button,
+    // re-fetching the playlist from the network (pull-to-refresh's twin).
+    val spotifyLeadingAction: (@Composable () -> Unit)? =
+        if (source is SpotifyPlaylistSource) {
+            { PlaylistDetailHeroSyncButton(onReload = viewModel::refresh) }
+        } else {
+            null
+        }
 
     PlaylistDetailHeroActions(
         capabilities = capabilities,
@@ -99,6 +134,39 @@ internal fun PlaylistDetailHeroActionsHost(
                 tracks = tracks,
             )
         },
-        leadingAction = leadingAction,
+        leadingAction = spotifyLeadingAction ?: leadingAction,
     )
+}
+
+/**
+ * The legacy Spotify hero's sync/reload button, verbatim
+ * SpotifyPlaylistControls.kt:63-88: a 48dp glass circle with the sync icon.
+ */
+@Composable
+private fun PlaylistDetailHeroSyncButton(onReload: () -> Unit) {
+    val syncLabel = stringResource(R.string.spotify_reload_playlist)
+    Box(
+        modifier =
+            Modifier
+                .size(48.dp)
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
+                    onClick = onReload,
+                ).yumaGlassCard(
+                    shape = CircleShape,
+                    backgroundColor = LocalYumaColors.current.glassBackground,
+                ).clip(CircleShape)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = syncLabel
+                    role = Role.Button
+                },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.sync),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+        )
+    }
 }

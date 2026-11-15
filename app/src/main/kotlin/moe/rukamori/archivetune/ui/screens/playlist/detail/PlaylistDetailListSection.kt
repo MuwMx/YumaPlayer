@@ -12,11 +12,13 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.db.entities.PlaylistSong
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playlist.source.PlaylistCapabilities
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.screens.playlist.CachedSong
+import moe.rukamori.archivetune.utils.isTrackLiked
 import sh.calvin.reorderable.ReorderableLazyListState
 
 /**
@@ -33,6 +35,7 @@ internal fun LazyListScope.playlistDetailSongs(
     reorderableState: ReorderableLazyListState,
     isScrollInProgress: Boolean,
     mediaMetadataId: String?,
+    mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
     viewCounts: Map<String, Int>,
     sortType: PlaylistSongSortType,
@@ -45,6 +48,8 @@ internal fun LazyListScope.playlistDetailSongs(
     menuState: MenuState,
     playlistBrowseId: String?,
     downloads: Map<String, androidx.media3.exoplayer.offline.Download> = emptyMap(),
+    spotifyLikedKeys: Set<String> = emptySet(),
+    onSpotifyToggleLike: ((track: SpotifyTrack) -> Unit)? = null,
     onSongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSongLongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSwipeDelete: (index: Int) -> Unit,
@@ -98,8 +103,10 @@ internal fun LazyListScope.playlistDetailSongs(
             is SpotifyTrack ->
                 SpotifyPlaylistOriginRow(
                     track = origin,
-                    mediaMetadataId = mediaMetadataId,
+                    mediaMetadata = mediaMetadata,
                     isPlaying = isPlaying,
+                    isLiked = spotifyLikedKeys.isTrackLiked(origin),
+                    onToggleLike = onSpotifyToggleLike?.let { toggle -> { toggle(origin) } },
                     onClick = { onSongClick(index, track) },
                 )
 

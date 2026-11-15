@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import moe.rukamori.archivetune.spotify.SpotifyLibraryRepository
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
@@ -17,8 +18,10 @@ import javax.inject.Inject
 /**
  * Spotify source for the "spotify_playlist/{playlistId}" route. Mirrors
  * SpotifyPlaylistViewModel's one-shot load (repository.playlist +
- * repository.playlistTracks); paging is exposed via capabilities even though
- * the current repository returns a complete list.
+ * repository.playlistTracks); the hero thumbnail uses the legacy picker
+ * (SpotifyMapper.getPlaylistThumbnail, highest-res —
+ * SpotifyPlaylistScreen.kt:123-126) and the hero carries the loaded-tracks
+ * duration like the legacy header (SpotifyPlaylistHeader.kt:156-163).
  */
 class SpotifyPlaylistSource
     @Inject
@@ -32,13 +35,22 @@ class SpotifyPlaylistSource
     private val state = MutableStateFlow(PlaylistTracksResult())
     override fun observe(): StateFlow<PlaylistTracksResult> = state.asStateFlow()
 
-    override suspend fun refresh(): Result<Unit> =
+    override suspend fun refresh(): Result<Unit> = load(isRefresh = true)
+
+    override suspend fun ensureLoaded(): Result<Unit> = load(isRefresh = false)
+
+    private suspend fun load(isRefresh: Boolean): Result<Unit> =
         runCatching {
             if (playlistId.isBlank()) {
                 state.value = state.value.copy(isLoading = false, error = "Missing Spotify playlist")
                 return Result.success(Unit)
             }
-            state.value = state.value.copy(isLoading = true, error = null)
+            state.value =
+                state.value.copy(
+                    isLoading = !isRefresh && state.value.tracks.isEmpty(),
+                    isRefreshing = isRefresh,
+                    error = null,
+                )
             try {
                 val playlist = repository.playlist(playlistId)
                 val tracks: List<SpotifyTrack> = repository.playlistTracks(playlistId)
@@ -49,8 +61,9 @@ class SpotifyPlaylistSource
                                 id = playlist.id,
                                 title = playlist.name,
                                 author = playlist.owner?.displayName,
-                                thumbnailUrl = playlist.images.firstOrNull()?.url,
+                                thumbnailUrl = SpotifyMapper.getPlaylistThumbnail(playlist),
                                 songCount = playlist.tracks?.total,
+                                totalDurationMs = tracks.sumOf { it.durationMs.toLong() },
                             ),
                         tracks = tracks.map { it.toPlaylistTrack() },
                     )
@@ -59,11 +72,10 @@ class SpotifyPlaylistSource
                 state.value =
                     state.value.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         error = error.message,
                     )
             }
             Result.success(Unit)
         }
-
-    override suspend fun ensureLoaded(): Result<Unit> = refresh()
 }

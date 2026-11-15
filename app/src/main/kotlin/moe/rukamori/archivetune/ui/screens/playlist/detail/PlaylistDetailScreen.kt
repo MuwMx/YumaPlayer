@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -29,10 +30,14 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
+import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -44,6 +49,7 @@ import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistDownloadStateHolder
 import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistSearchStateHolder
 
@@ -70,6 +76,27 @@ fun PlaylistDetailScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
 
+    // SPOTIFY PLAYLIST SLOT — per-row like state (upstream engine):
+    // likedSpotifyTrackKeys() union flow + Set.isTrackLiked (ISRC-bridged),
+    // toggle delegates to SpotifyLibraryMutations.toggleTrackLike
+    // (transactional, metadata-resolving) — one like engine across the app.
+    val database = playerConnection.service.database
+    val syncUtils = playerConnection.service.syncUtils
+    val spotifyLikedKeys by remember(database) {
+        database.likedSpotifyTrackKeys().map { it.toSet() }
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
+    val coroutineScope = rememberCoroutineScope()
+    val onSpotifyToggleLike: ((SpotifyTrack) -> Unit)? =
+        if (syncUtils != null) {
+            { track ->
+                coroutineScope.launch(Dispatchers.IO) {
+                    SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
+                }
+            }
+        } else {
+            null
+        }
+
     val capabilities = uiState.capabilities
     val tracks = uiState.tracks
     val mediaMetadataId = mediaMetadata?.id
@@ -79,7 +106,11 @@ fun PlaylistDetailScreen(
             items = tracks,
             filter = { track, query ->
                 track.title.contains(query, ignoreCase = true) ||
-                    track.artists.any { it.contains(query, ignoreCase = true) }
+                    track.artists.any { it.contains(query, ignoreCase = true) } ||
+                    // SPOTIFY PLAYLIST SLOT — legacy search also matches the
+                    // album name (SpotifyPlaylistScreen.kt:154-158). Pinned.
+                    (track.origin as? SpotifyTrack)?.album?.name
+                        ?.contains(query, ignoreCase = true) == true
             },
         )
     val downloadHolder = rememberPlaylistDownloadStateHolder()
@@ -104,6 +135,7 @@ fun PlaylistDetailScreen(
     val visibleTracks = renderState.visibleTracks
     val selectedTracks = renderState.selectedTracks
     val header = rememberPlaylistDetailHeader(uiState, viewModel, searchState.isSearching)
+    val emptyTexts = rememberPlaylistDetailEmptyTexts(viewModel)
     val hasArtworkBackdrop = header != null && !header?.thumbnailUrl.isNullOrBlank()
 
     // Hero + header-slot items above the track list (drag/scrollbar offsets).
@@ -152,12 +184,9 @@ fun PlaylistDetailScreen(
                             disableBlur = disableBlur,
                             actions = {
                                 PlaylistDetailHeroActionsHost(
-                                    capabilities = capabilities,
-                                    source = viewModel.source,
-                                    playerConnection = playerConnection,
-                                    downloadHolder = downloadHolder,
-                                    title = header?.title.orEmpty(),
-                                    tracks = visibleTracks,
+                                    viewModel, capabilities, viewModel.source,
+                                    playerConnection, downloadHolder,
+                                    header?.title.orEmpty(), visibleTracks,
                                 )
                             },
                         )
@@ -168,7 +197,11 @@ fun PlaylistDetailScreen(
                         )
 
                         if (visibleTracks.isEmpty() && uiState.error == null) {
-                            playlistDetailEmptyItem(searchState.isSearching)
+                            playlistDetailEmptyItem(
+                                searchState.isSearching,
+                                emptyTexts?.empty,
+                                emptyTexts?.searchEmpty,
+                            )
                         } else {
                             playlistDetailSongs(
                                 tracks = visibleTracks,
@@ -177,6 +210,7 @@ fun PlaylistDetailScreen(
                                 reorderableState = reorderableState,
                                 isScrollInProgress = lazyListState.isScrollInProgress,
                                 mediaMetadataId = mediaMetadataId,
+                                mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
                                 viewCounts = uiState.viewCounts,
                                 sortType = uiState.sortInfo?.sortType ?: PlaylistSongSortType.CUSTOM,
@@ -184,27 +218,20 @@ fun PlaylistDetailScreen(
                                 locked = locked, swipeToSongEnabled = swipeToSongEnabled,
                                 showTrackNumbers = capabilities.showsTrackNumbers,
                                 downloads = downloadHolder.downloads,
+                                spotifyLikedKeys = spotifyLikedKeys,
+                                onSpotifyToggleLike = onSpotifyToggleLike,
                                 navController = navController,
                                 playlistBrowseId = null,
                                 menuState = menuState,
                                 onSongClick = { index, track ->
                                     onPlaylistDetailRowClick(
-                                        viewModel = viewModel,
-                                        searchState = searchState,
-                                        playerConnection = playerConnection,
-                                        mediaMetadataId = mediaMetadataId,
-                                        tracks = tracks,
-                                        visibleTracks = visibleTracks,
-                                        playlistTitle = header?.title.orEmpty(),
-                                        track = track,
-                                        index = index,
+                                        viewModel, searchState, playerConnection, mediaMetadata,
+                                        tracks, visibleTracks, header?.title.orEmpty(), track, index,
                                     )
                                 },
                                 onSongLongClick = { _, track ->
                                     onPlaylistDetailRowLongClick(
-                                        searchState = searchState,
-                                        track = track,
-                                        onHaptic = haptics::longPress,
+                                        searchState, track, haptics::longPress,
                                     )
                                 },
                                 onSwipeDelete = viewModel::removeSong,
@@ -239,9 +266,7 @@ fun PlaylistDetailScreen(
                 onRemoveSongFromCache = onPlaylistDetailRemoveSongFromCache(viewModel),
                 trailingAction =
                     renderPlaylistDetailTrailingAction(
-                        viewModel = viewModel,
-                        menuState = menuState,
-                        tracks = tracks,
+                        viewModel, menuState, tracks, header,
                         onClearSelection = { searchState.clearSelection() },
                     ),
             )
