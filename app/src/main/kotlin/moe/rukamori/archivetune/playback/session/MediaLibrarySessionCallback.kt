@@ -336,7 +336,7 @@ class MediaLibrarySessionCallback
 
                 val items =
                     if (isCacheHit) {
-                        cached!!.items
+                        cached.items
                     } else {
                         val requested = (safePage + 1) * safePageSize
                         val searchLimit = max(requested, AUTO_BROWSE_LIMIT)
