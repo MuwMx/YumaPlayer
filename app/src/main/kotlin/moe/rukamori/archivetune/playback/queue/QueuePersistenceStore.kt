@@ -30,6 +30,8 @@ import moe.rukamori.archivetune.extensions.toQueue
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.get
@@ -60,6 +62,7 @@ internal class QueuePersistenceStore(
     private val dataStore: DataStore<Preferences>,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val database: MusicDatabase? = null,
     private val delegate: Delegate,
 ) {
     interface Delegate {
@@ -209,7 +212,14 @@ internal class QueuePersistenceStore(
         val continuationQueue = persistedQueue.toContinuationQueue()
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideo = dataStore.get(HideVideoKey, false)
-        val initialStatus = itemQueue.getInitialStatus().filterExplicit(hideExplicit).filterVideo(hideVideo)
+        val blockedIds = database?.getBlockedArtistIds()?.toSet().orEmpty()
+        val blockedNames = database?.getBlockedArtistNames()?.map { it.trim().lowercase() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
+        val initialStatus =
+            itemQueue
+                .getInitialStatus()
+                .filterExplicit(hideExplicit)
+                .filterVideo(hideVideo)
+                .filterBlockedArtists(blockedIds, blockedNames)
         SpotifyPlaceholders.register(initialStatus.items.mapNotNull { it.metadata })
 
         withContext(Dispatchers.Main) {

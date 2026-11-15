@@ -25,6 +25,7 @@ internal fun MusicService.createQueuePersistenceStore(): QueuePersistenceStore {
         filesDir = filesDir,
         dataStore = dataStore,
         scope = scope,
+        database = database,
         delegate = object : QueuePersistenceStore.Delegate {
             override fun isRestoringPersistentState(): Boolean =
                 service.isRestoringPersistentState

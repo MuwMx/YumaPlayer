@@ -30,9 +30,11 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
@@ -45,14 +47,16 @@ internal class QueueAutomixController(
     private val scope: CoroutineScope,
     private val delegate: Delegate,
     private val dataStore: DataStore<Preferences>? = null,
+    private val database: MusicDatabase? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     constructor(
         scope: CoroutineScope,
         dataStore: DataStore<Preferences>,
         delegate: Delegate,
+        database: MusicDatabase? = null,
         ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    ) : this(scope, delegate, dataStore, ioDispatcher)
+    ) : this(scope, delegate, dataStore, database, ioDispatcher)
 
     interface Delegate : ReadOnlyTimelineDelegate {
         var currentQueue: Queue
@@ -142,12 +146,15 @@ internal class QueueAutomixController(
             val ds = effectiveDataStore
             val hideExplicit = ds?.get(HideExplicitKey, false) ?: false
             val hideVideo = ds?.get(HideVideoKey, false) ?: false
+            val blockedIds = database?.getBlockedArtistIds()?.toSet().orEmpty()
+            val blockedNames = database?.getBlockedArtistNames()?.map { it.trim().lowercase() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
             val initialStatus =
                 withContext(ioDispatcher) {
                     radioQueue
                         .getInitialStatus()
                         .filterExplicit(hideExplicit)
                         .filterVideo(hideVideo)
+                        .filterBlockedArtists(blockedIds, blockedNames)
                 }
             if (!isActive) return@launch
             if (delegate.getActiveQueue() !== targetQueue) return@launch
@@ -235,11 +242,22 @@ internal class QueueAutomixController(
                 try {
                     val seedId = SpotifyPlaceholders.youtubeIdFor(currentMeta.id)
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedId), followAutomixPreview = true)
-                    val status = withContext(ioDispatcher) { radioQueue.getInitialStatus() }
-                    if (!isActive) return@launch
                     val ds = effectiveDataStore
                     val autoLoadMore = ds?.get(AutoLoadMoreKey, true) ?: true
                     if (!autoLoadMore) return@launch
+                    val hideExplicit = ds?.get(HideExplicitKey, false) ?: false
+                    val hideVideo = ds?.get(HideVideoKey, false) ?: false
+                    val blockedIds = database?.getBlockedArtistIds()?.toSet().orEmpty()
+                    val blockedNames = database?.getBlockedArtistNames()?.map { it.trim().lowercase() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
+                    val status =
+                        withContext(ioDispatcher) {
+                            radioQueue
+                                .getInitialStatus()
+                                .filterExplicit(hideExplicit)
+                                .filterVideo(hideVideo)
+                                .filterBlockedArtists(blockedIds, blockedNames)
+                        }
+                    if (!isActive) return@launch
                     val currentActive = delegate.getActiveQueue()
                     if (currentActive !== targetQueue) return@launch
                     if (currentActive.isContextQueue) {

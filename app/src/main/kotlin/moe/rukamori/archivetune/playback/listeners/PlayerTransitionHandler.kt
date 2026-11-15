@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
@@ -114,12 +115,15 @@ internal class PlayerTransitionHandler(
                 try {
                     var loadedItems = emptyList<MediaItem>()
                     while (targetQueue.hasNextPage() && loadedItems.isEmpty()) {
+                        val blockedIds = queueDelegate.database.getBlockedArtistIds().toSet()
+                        val blockedNames = queueDelegate.database.getBlockedArtistNames().map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
                         val batch =
                             withContext(Dispatchers.IO) {
                                 targetQueue
                                     .nextPage()
                                     .filterExplicit(dataStore.get(HideExplicitKey, false))
                                     .filterVideo(dataStore.get(HideVideoKey, false))
+                                    .filterBlockedArtists(blockedIds, blockedNames)
                             }
                         if (!isActive || queueDelegate.currentQueue !== targetQueue) return@launch
                         loadedItems = batch

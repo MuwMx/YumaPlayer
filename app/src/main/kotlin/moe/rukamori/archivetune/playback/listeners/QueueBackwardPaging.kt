@@ -22,6 +22,7 @@ import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.SpotifyQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.utils.get
@@ -97,6 +98,8 @@ internal class QueueBackwardPaging(
                     var loadedItems = emptyList<MediaItem>()
                     var batchGeneration = target.contextGeneration
                     while (target.hasPreviousPage() && loadedItems.isEmpty()) {
+                        val blockedIds = queueDelegate.database.getBlockedArtistIds().toSet()
+                        val blockedNames = queueDelegate.database.getBlockedArtistNames().map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
                         val batch =
                             withContext(ioDispatcher) {
                                 val page = target.previousPage()
@@ -104,6 +107,7 @@ internal class QueueBackwardPaging(
                                 page.items
                                     .filterExplicit(queueDelegate.dataStore.get(HideExplicitKey, false))
                                     .filterVideo(queueDelegate.dataStore.get(HideVideoKey, false))
+                                    .filterBlockedArtists(blockedIds, blockedNames)
                             }
                         if (!isActive || queueDelegate.currentQueue !== target) return@launch
                         if (batchGeneration != target.contextGeneration) {

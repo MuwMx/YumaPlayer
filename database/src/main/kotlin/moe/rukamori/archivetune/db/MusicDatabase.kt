@@ -97,6 +97,19 @@ class MusicDatabase(
 
     override suspend fun getBlockedArtistIds(): List<String> = blockedArtistIdsCache.filterNotNull().first()
 
+    private val blockedArtistNamesCache =
+        delegate.artistDao
+            .blockedArtistNames()
+            .stateIn(CoroutineScope(SupervisorJob() + Dispatchers.IO), SharingStarted.Eagerly, null)
+
+    override suspend fun getBlockedArtistNames(): List<String> = blockedArtistNamesCache.filterNotNull().first()
+
+    fun getBlockedArtistIdsCached(): Set<String> =
+        blockedArtistIdsCache.value?.toSet().orEmpty()
+
+    fun getBlockedArtistNamesCached(): Set<String> =
+        blockedArtistNamesCache.value?.map { it.trim().lowercase() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
+
     fun trackAnalysisDao(): TrackAnalysisDao = delegate.trackAnalysisDao()
 
     fun query(block: MusicDatabase.() -> Unit) =
@@ -516,8 +529,8 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                     SELECT p1.id FROM playlist p1
                     WHERE p1.browseId IS NOT NULL
                     AND EXISTS (
-                        SELECT 1 FROM playlist p2 
-                        WHERE p2.browseId = p1.browseId 
+                        SELECT 1 FROM playlist p2
+                        WHERE p2.browseId = p1.browseId
                         AND p2.id != p1.id
                         AND (
                             (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) >
@@ -539,8 +552,8 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                     SELECT p1.id FROM playlist p1
                     WHERE p1.browseId IS NOT NULL
                     AND EXISTS (
-                        SELECT 1 FROM playlist p2 
-                        WHERE p2.browseId = p1.browseId 
+                        SELECT 1 FROM playlist p2
+                        WHERE p2.browseId = p1.browseId
                         AND p2.id != p1.id
                         AND (
                             (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) >

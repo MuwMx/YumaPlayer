@@ -197,6 +197,12 @@ interface ArtistDao {
     @Query("SELECT id FROM artist WHERE blockedAt IS NOT NULL")
     suspend fun getBlockedArtistIds(): List<String>
 
+    @Query("SELECT name FROM artist WHERE blockedAt IS NOT NULL")
+    fun blockedArtistNames(): Flow<List<String>>
+
+    @Query("SELECT name FROM artist WHERE blockedAt IS NOT NULL")
+    suspend fun getBlockedArtistNames(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(artist: ArtistEntity)
 

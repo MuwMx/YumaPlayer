@@ -37,6 +37,20 @@ class ArtistBlockRepository
                 .map { artist -> artist?.artist?.blockedAt?.let { true } ?: artist?.let { false } }
                 .distinctUntilChanged()
 
+        fun blockedArtistIds(): Flow<Set<String>> =
+            database.blockedArtistIds().map { it.toSet() }.distinctUntilChanged()
+
+        suspend fun getBlockedArtistIds(): Set<String> =
+            database.getBlockedArtistIds().toSet()
+
+        fun blockedArtistNames(): Flow<Set<String>> =
+            database.blockedArtistNames().map { list ->
+                list.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+            }.distinctUntilChanged()
+
+        suspend fun getBlockedArtistNames(): Set<String> =
+            database.getBlockedArtistNames().map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+
         suspend fun setBlocked(request: ArtistBlockRequest) =
             withContext(Dispatchers.IO) {
                 database.withTransaction {

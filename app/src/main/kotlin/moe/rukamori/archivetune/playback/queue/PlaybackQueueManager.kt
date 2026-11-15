@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.playback.queue.QueueLibraryToggles
 import moe.rukamori.archivetune.playback.queue.ReadOnlyTimelineDelegate
 import moe.rukamori.archivetune.playback.queue.buildPlayNextShuffleOrder
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.utils.SyncUtils
 
 @OptIn(UnstableApi::class)
@@ -54,7 +55,7 @@ internal class PlaybackQueueManager(
         fun setMediaItem(item: MediaItem); fun setMediaItems(items: List<MediaItem>, index: Int, positionMs: Long)
         fun addMediaItems(items: List<MediaItem>); fun addMediaItems(index: Int, items: List<MediaItem>)
         fun removeMediaItem(index: Int); fun removeMediaItems(fromIndex: Int, toIndex: Int); fun clearMediaItems()
-        fun prepare(); fun play(); fun stop(); fun seekToNext()
+        fun prepare(); fun play(); fun stop(); fun seekToNext(); fun seekToDefaultPosition(index: Int)
         fun setPlayWhenReady(playWhenReady: Boolean); fun isPlayWhenReady(): Boolean
         fun cancelIdleStop(); fun promoteToStartedService(); fun ensureStartedAsForeground()
         fun cancelRestoredQueueHydration(); fun cancelCrossfade(resetVolume: Boolean, resetPauseAtEnd: Boolean)
@@ -146,7 +147,7 @@ internal class PlaybackQueueManager(
     }
 
     private val automixController: QueueAutomixController =
-        QueueAutomixController(scope, dataStore, queueDelegate, ioDispatcher)
+        QueueAutomixController(scope, dataStore, queueDelegate, database, ioDispatcher)
 
     private val libraryToggles: QueueLibraryToggles = QueueLibraryToggles(
         scope, ioScope, database, syncUtils, dataStore, queueDelegate, ioDispatcher
@@ -156,8 +157,29 @@ internal class PlaybackQueueManager(
         QueueMutationCommands(delegate = queueDelegate)
 
     private val playOrchestrator: QueuePlayOrchestrator = QueuePlayOrchestrator(
-        queueHolder, scope, dataStore, queueDelegate, ioDispatcher
+        queueHolder, scope, dataStore, queueDelegate, ioDispatcher, database
     )
+
+    private val blockedArtistEvictor =
+        BlockedArtistEvictor(
+            scope = scope,
+            database = database,
+            delegate =
+                object : BlockedArtistEvictor.Delegate {
+                    override fun getMediaItemCount(): Int = delegate.getMediaItemCount()
+                    override fun getCurrentMediaItemIndex(): Int = delegate.getCurrentMediaItemIndex()
+                    override fun getMediaItemAt(index: Int): MediaItem = delegate.getMediaItemAt(index)
+                    override fun seekToDefaultPosition(index: Int) = delegate.seekToDefaultPosition(index)
+                    override fun removeMediaItem(index: Int) = delegate.removeMediaItem(index)
+                    override fun stopAndClearPlayback() {
+                        this@PlaybackQueueManager.stopAndClearPlayback()
+                    }
+                },
+        )
+
+    init {
+        blockedArtistEvictor.start()
+    }
 
     fun getCurrentQueue(): Queue = playOrchestrator.getCurrentQueue()
     fun getQueueTitle(): String? = playOrchestrator.getQueueTitle()
@@ -184,12 +206,22 @@ internal class PlaybackQueueManager(
     fun stopAndClearPlayback(clearPersistentState: Boolean = false) =
         queueMutationCommands.stopAndClearPlayback(clearPersistentState)
 
+    private fun filterBlockedItems(items: List<MediaItem>): List<MediaItem> {
+        val blockedIds = database.getBlockedArtistIdsCached()
+        val blockedNames = database.getBlockedArtistNamesCached()
+        return items.filterBlockedArtists(blockedIds, blockedNames)
+    }
+
     fun playNext(items: List<MediaItem>) {
-        if (!togetherGuestCoordinator.gatePlayNext(items)) queueMutationCommands.performPlayNextHostInsert(items)
+        val filtered = filterBlockedItems(items)
+        if (filtered.isEmpty()) return
+        if (!togetherGuestCoordinator.gatePlayNext(filtered)) queueMutationCommands.performPlayNextHostInsert(filtered)
     }
 
     fun addToQueue(items: List<MediaItem>) {
-        if (!togetherGuestCoordinator.gateAddToQueue(items)) queueMutationCommands.performAddToQueueHostInsert(items)
+        val filtered = filterBlockedItems(items)
+        if (filtered.isEmpty()) return
+        if (!togetherGuestCoordinator.gateAddToQueue(filtered)) queueMutationCommands.performAddToQueueHostInsert(filtered)
     }
 
     fun playFromVoiceSearch(query: String) = libraryToggles.playFromVoiceSearch(query)

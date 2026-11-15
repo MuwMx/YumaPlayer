@@ -117,6 +117,9 @@ private fun MusicService.createPlaybackQueueManager(): PlaybackQueueManager {
             override fun seekToNext() {
                 service.player.seekToNext()
             }
+            override fun seekToDefaultPosition(index: Int) {
+                service.player.seekToDefaultPosition(index)
+            }
             override fun setPlayWhenReady(playWhenReady: Boolean) {
                 service.player.playWhenReady = playWhenReady
             }

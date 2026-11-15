@@ -556,6 +556,7 @@ class MusicService :
                 addListener(sleepTimer)
             }
         playerInitialized.value = true
+        queueManager
         widgetUpdater =
             MusicServiceWidgetUpdater(
                 service = this,

@@ -28,6 +28,9 @@ import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.extensions.toMediaItem
+import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
+import moe.rukamori.archivetune.playback.queues.hasBlockedArtist
 import moe.rukamori.archivetune.playback.queue.ReadOnlyTimelineDelegate
 import moe.rukamori.archivetune.playback.queue.applyCurrentFirstShuffleOrder
 import moe.rukamori.archivetune.playback.queues.EmptyQueue
@@ -41,6 +44,7 @@ internal class QueuePlayOrchestrator(
     private val dataStore: DataStore<Preferences>,
     private val delegate: Delegate,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val database: MusicDatabase? = null,
 ) {
     interface Delegate : ReadOnlyTimelineDelegate {
         fun gatePlayQueue(queue: Queue, playWhenReady: Boolean): Boolean
@@ -62,6 +66,8 @@ internal class QueuePlayOrchestrator(
         fun addMediaItems(items: List<MediaItem>)
         fun addMediaItems(index: Int, items: List<MediaItem>)
         fun prepare()
+        fun stop()
+        fun clearMediaItems()
         fun setPlayWhenReady(playWhenReady: Boolean)
         fun onInfiniteQueueEnabled()
         fun getPlaybackState(): Int
@@ -155,7 +161,10 @@ internal class QueuePlayOrchestrator(
         }
 
         delegate.clearAutomix()
-        if (queue.preloadItem != null) {
+        val cachedBlockedIds = database?.getBlockedArtistIdsCached().orEmpty()
+        val cachedBlockedNames = database?.getBlockedArtistNamesCached().orEmpty()
+        val isPreloadBlocked = queue.preloadItem?.toMediaItem()?.hasBlockedArtist(cachedBlockedIds, cachedBlockedNames) == true
+        if (queue.preloadItem != null && !isPreloadBlocked) {
             if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
                 PlaybackTiming.log(
                     "MEDIA_ITEMS_SET", attemptId = attemptId,
@@ -176,12 +185,18 @@ internal class QueuePlayOrchestrator(
             try {
                 val hideExplicit = dataStore.get(HideExplicitKey, false)
                 val hideVideo = dataStore.get(HideVideoKey, false)
+                val blockedIds = database?.getBlockedArtistIds()?.toSet().orEmpty()
+                val blockedNames = database?.getBlockedArtistNames()?.map { it.trim().lowercase() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
                 val ioStartNanos = if (moe.rukamori.archivetune.BuildConfig.DEBUG) PlaybackTiming.nowNanos() else 0L
                 if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
                     PlaybackTiming.log("QUEUE_IO_START", attemptId = attemptId)
                 }
                 val initialStatus = withContext(ioDispatcher) {
-                    queue.getInitialStatus().filterExplicit(hideExplicit).filterVideo(hideVideo)
+                    queue
+                        .getInitialStatus()
+                        .filterExplicit(hideExplicit)
+                        .filterVideo(hideVideo)
+                        .filterBlockedArtists(blockedIds, blockedNames)
                 }
                 if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
                     PlaybackTiming.log(
@@ -194,8 +209,14 @@ internal class QueuePlayOrchestrator(
                     queueTitle = initialStatus.title
                     queueHolder.queueTitle = initialStatus.title
                 }
-                if (initialStatus.items.isEmpty()) return@launch
-                if (queue.preloadItem != null) {
+                if (initialStatus.items.isEmpty()) {
+                    if (queue.preloadItem != null && !isPreloadBlocked) {
+                        delegate.clearMediaItems()
+                        delegate.stop()
+                    }
+                    return@launch
+                }
+                if (queue.preloadItem != null && !isPreloadBlocked) {
                     val preloadMediaId = queue.preloadItem!!.toMediaItem().mediaId
                     val candidateIndex = initialStatus.mediaItemIndex
                     val preloadIndexInItems =

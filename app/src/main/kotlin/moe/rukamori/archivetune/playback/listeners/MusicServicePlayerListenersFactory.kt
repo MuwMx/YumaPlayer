@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
+import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
 import moe.rukamori.archivetune.playback.crossfade.kickOffUpcomingTrackAnalysis
@@ -50,6 +51,7 @@ internal fun MusicService.createMusicServicePlayerListeners(): MusicServicePlaye
             override val isInitializingQueue: Boolean get() = service.isInitializingQueue
             override val autoAddedMediaIds: MutableSet<String> get() = service.autoAddedMediaIds
             override val dataStore: DataStore<Preferences> get() = service.dataStore
+            override val database: MusicDatabase get() = service.database
             override fun onInfiniteQueueEnabled() = service.onInfiniteQueueEnabled()
             override fun setPreviousQueueLoading(isLoading: Boolean) {
                 service.previousQueueLoading.value = isLoading

@@ -48,11 +48,14 @@ interface Queue {
                 this
             }
 
-        fun filterBlockedArtists(blockedArtistIds: Set<String>) =
-            if (blockedArtistIds.isEmpty()) {
+        fun filterBlockedArtists(
+            blockedArtistIds: Set<String>,
+            blockedArtistNames: Set<String> = emptySet(),
+        ) =
+            if (blockedArtistIds.isEmpty() && blockedArtistNames.isEmpty()) {
                 this
             } else {
-                filterItems { !it.hasBlockedArtist(blockedArtistIds) }
+                filterItems { !it.hasBlockedArtist(blockedArtistIds, blockedArtistNames) }
             }
 
         private inline fun filterItems(keep: (MediaItem) -> Boolean): Status {
@@ -117,12 +120,30 @@ fun List<MediaItem>.filterVideo(enabled: Boolean = true) =
         this
     }
 
-fun List<MediaItem>.filterBlockedArtists(blockedArtistIds: Set<String>) =
-    if (blockedArtistIds.isEmpty()) {
+fun List<MediaItem>.filterBlockedArtists(
+    blockedArtistIds: Set<String>,
+    blockedArtistNames: Set<String> = emptySet(),
+) =
+    if (blockedArtistIds.isEmpty() && blockedArtistNames.isEmpty()) {
         this
     } else {
-        filterNot { it.hasBlockedArtist(blockedArtistIds) }
+        filterNot { it.hasBlockedArtist(blockedArtistIds, blockedArtistNames) }
     }
 
-fun MediaItem.hasBlockedArtist(blockedArtistIds: Set<String>): Boolean =
-    metadata?.artists?.any { artist -> artist.id != null && artist.id in blockedArtistIds } == true
+fun MediaItem.hasBlockedArtist(
+    blockedArtistIds: Set<String>,
+    blockedArtistNames: Set<String> = emptySet(),
+): Boolean {
+    val metaArtists = metadata?.artists
+    if (!metaArtists.isNullOrEmpty()) {
+        return metaArtists.any { artist ->
+            (artist.id != null && artist.id in blockedArtistIds) ||
+                artist.name.trim().lowercase() in blockedArtistNames
+        }
+    }
+    val fallbackArtistName = mediaMetadata.artist?.toString()?.trim()?.lowercase()
+    if (!fallbackArtistName.isNullOrEmpty() && fallbackArtistName in blockedArtistNames) {
+        return true
+    }
+    return false
+}

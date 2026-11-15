@@ -31,6 +31,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
+import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.listeners.PlayerEventFanout
 import moe.rukamori.archivetune.playback.listeners.PlayerStateHandler
@@ -66,6 +67,7 @@ internal class MusicServicePlayerListeners(
         val isInitializingQueue: Boolean
         val autoAddedMediaIds: MutableSet<String>
         val dataStore: DataStore<Preferences>
+        val database: MusicDatabase
         fun onInfiniteQueueEnabled()
         fun setPreviousQueueLoading(isLoading: Boolean)
         suspend fun saveQueueToDisk()
