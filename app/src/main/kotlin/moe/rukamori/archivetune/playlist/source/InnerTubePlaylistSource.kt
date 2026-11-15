@@ -121,6 +121,7 @@ class InnerTubePlaylistSource
                                     author = playlist.author?.name,
                                     thumbnailUrl = playlist.thumbnail,
                                     songCount = playlist.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
+                                    description = playlist.description,
                                 ),
                             tracks = visible.map { it.toPlaylistTrack() },
                             hasContinuation = continuation != null,

@@ -107,6 +107,12 @@ data class PlaylistHeaderInfo(
     val songCount: Int? = null,
     /** Total playlist length for the hero's duration chip; null = no chip. */
     val totalDurationMs: Long? = null,
+    /**
+     * Playlist description (legacy Online 160-171 / Spotify
+     * SpotifyPlaylistHeader 165-178 heroes). Only the network sources
+     * populate it; null/blank hides the line.
+     */
+    val description: String? = null,
 )
 
 /** Snapshot emitted by [PlaylistTracksSource.observe]. */

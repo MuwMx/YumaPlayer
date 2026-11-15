@@ -141,6 +141,22 @@ internal fun PlaylistDetailHeroSection(
                 }
             }
 
+            // Description line (legacy OnlinePlaylistHeroSection 160-171
+            // rendered it after the chips; SpotifyPlaylistHeader 165-178
+            // blank-guarded with isNotBlank — take the safer guard here).
+            header.description?.takeIf(String::isNotBlank)?.let { desc ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                )
+            }
+
             if (actions != null) {
                 Spacer(modifier = Modifier.height(20.dp))
                 actions()

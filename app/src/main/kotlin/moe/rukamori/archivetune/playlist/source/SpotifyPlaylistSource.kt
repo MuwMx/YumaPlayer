@@ -64,6 +64,7 @@ class SpotifyPlaylistSource
                                 thumbnailUrl = SpotifyMapper.getPlaylistThumbnail(playlist),
                                 songCount = playlist.tracks?.total,
                                 totalDurationMs = tracks.sumOf { it.durationMs.toLong() },
+                                description = playlist.description,
                             ),
                         tracks = tracks.map { it.toPlaylistTrack() },
                     )
