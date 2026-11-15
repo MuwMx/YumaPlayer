@@ -8,12 +8,15 @@ package moe.rukamori.archivetune.ui.screens.downloads
 
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.viewmodels.DownloadLibraryTab
@@ -24,10 +27,15 @@ internal fun DownloadTabs(
     pagerState: PagerState,
     onSelect: (Int) -> Unit,
 ) {
-    PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+    PrimaryTabRow(
+        selectedTabIndex = pagerState.currentPage,
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
         tabs.forEachIndexed { index, tab ->
+            val isSelected = pagerState.currentPage == index
             Tab(
-                selected = pagerState.currentPage == index,
+                selected = isSelected,
                 onClick = { onSelect(index) },
                 icon = {
                     Icon(
@@ -52,6 +60,8 @@ internal fun DownloadTabs(
                                     R.string.download_in_progress
                                 },
                             ),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -388,7 +388,7 @@ internal fun AutoPlaylistHeader(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.queue_music),
+                        painter = painterResource(R.drawable.playlist_add),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),

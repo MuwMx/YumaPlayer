@@ -30,13 +30,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.IconButton as YumaIconButton
 import moe.rukamori.archivetune.viewmodels.DownloadLibrarySort
 import moe.rukamori.archivetune.viewmodels.DownloadLibrarySortField
 import moe.rukamori.archivetune.viewmodels.DownloadLibrarySortOrder
@@ -116,13 +117,14 @@ internal fun DownloadLibraryTopBar(
                     title = {
                         Text(
                             text = stringResource(R.string.downloads),
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
                     navigationIcon = {
-                        IconButton(
+                        YumaIconButton(
                             onClick = onBack,
                             onLongClick = onBackToMain,
                         ) {
@@ -148,8 +150,8 @@ internal fun DownloadLibraryTopBar(
                     },
                     colors =
                         TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
-                            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
                         ),
                     scrollBehavior = scrollBehavior,
                 )

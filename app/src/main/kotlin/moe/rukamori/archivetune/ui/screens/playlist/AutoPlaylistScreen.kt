@@ -215,6 +215,7 @@ fun AutoPlaylistScreen(
                         songs = songs,
                         downloadState = downloadUiState.downloadState,
                         globalProgress = (downloadUiState.globalDownloadState as? HeaderDownloadState.Partial)?.progress,
+                        globalPaused = downloadUiState.globalPaused,
                         onDownloadToggle = {
                             sendAddMissingDownloads(
                                 context = context,

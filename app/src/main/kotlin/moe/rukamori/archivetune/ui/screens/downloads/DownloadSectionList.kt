@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,9 +35,13 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.downloads.DownloadEntryUiModel
 import moe.rukamori.archivetune.downloads.DownloadSectionUiModel
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
+import moe.rukamori.archivetune.ui.screens.settings.components.segmentedSettingsItemShape
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 
 private const val CONTENT_TYPE_SECTION_HEADER = "download_section_header"
 private const val CONTENT_TYPE_DOWNLOAD_ENTRY = "download_entry"
+private const val CONTENT_TYPE_CHILD_ENTRY = "download_child_entry"
 private const val CONTENT_TYPE_SECTION_SPACER = "download_section_spacer"
 
 @Composable
@@ -96,12 +99,12 @@ internal fun DownloadSections(
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding =
             PaddingValues(
-                start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
-                top = contentPadding.calculateTopPadding() + 16.dp,
-                end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp,
-                bottom = playerPadding.calculateBottomPadding() + 24.dp,
+                start = contentPadding.calculateStartPadding(layoutDirection) + SettingsDimensions.ScreenHorizontalPadding,
+                top = contentPadding.calculateTopPadding() + 8.dp,
+                end = contentPadding.calculateEndPadding(layoutDirection) + SettingsDimensions.ScreenHorizontalPadding,
+                bottom = playerPadding.calculateBottomPadding() + SettingsDimensions.ScreenBottomPadding,
             ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
     ) {
         sections.forEach { section ->
             item(
@@ -123,43 +126,92 @@ internal fun DownloadSections(
                     modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
                 )
             }
-            items(
-                items = section.entries,
-                key = DownloadEntryUiModel::id,
-                contentType = { CONTENT_TYPE_DOWNLOAD_ENTRY },
-            ) { entry ->
-                val isExpanded = entry.id in expandedItemIds
-                DownloadEntry(
-                    entry = entry,
-                    inProgress = inProgress,
-                    onOpen = { onOpenEntry(entry) },
-                    onPause = { onPauseEntry(entry) },
-                    onResume = { onResumeEntry(entry) },
-                    onRemove = {
-                        if (inProgress) {
-                            onRemoveEntry(entry)
-                        } else {
-                            onRequestRemoveEntry(entry)
-                        }
-                    },
-                    isExpanded = isExpanded,
-                    onExpandToggle = {
-                        expandedItemIds =
-                            if (isExpanded) {
-                                expandedItemIds - entry.id
-                            } else {
-                                expandedItemIds + entry.id
-                            }
-                    },
-                    onRemoveChild = if (inProgress) onRemoveEntry else onRequestRemoveEntry,
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
-                )
+
+            item(key = "header_gap:${section.mediaType}") {
+                Spacer(Modifier.height(6.dp))
             }
+
+            val entries = section.entries
+            entries.forEachIndexed { entryIndex, entry ->
+                val isExpanded = entry.id in expandedItemIds
+                val hasChildren = isExpanded && entry.children.isNotEmpty()
+                val entryShape =
+                    if (hasChildren) {
+                        segmentedSettingsItemShape(0, 1 + entry.children.size)
+                    } else {
+                        segmentedSettingsItemShape(entryIndex, entries.size)
+                    }
+                val entryPosition =
+                    if (hasChildren) {
+                        yumaSegmentPosition(0, 1 + entry.children.size)
+                    } else {
+                        yumaSegmentPosition(entryIndex, entries.size)
+                    }
+
+                item(
+                    key = entry.id,
+                    contentType = CONTENT_TYPE_DOWNLOAD_ENTRY,
+                ) {
+                    DownloadEntry(
+                        entry = entry,
+                        inProgress = inProgress,
+                        shape = entryShape,
+                        position = entryPosition,
+                        onOpen = { onOpenEntry(entry) },
+                        onPause = { onPauseEntry(entry) },
+                        onResume = { onResumeEntry(entry) },
+                        onRemove = {
+                            if (inProgress) {
+                                onRemoveEntry(entry)
+                            } else {
+                                onRequestRemoveEntry(entry)
+                            }
+                        },
+                        isExpanded = isExpanded,
+                        onExpandToggle = {
+                            expandedItemIds =
+                                if (isExpanded) {
+                                    expandedItemIds - entry.id
+                                } else {
+                                    expandedItemIds + entry.id
+                                }
+                        },
+                        modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
+                    )
+                }
+
+                if (hasChildren) {
+                    val childCount = 1 + entry.children.size
+                    entry.children.forEachIndexed { childIndex, child ->
+                        val childShape = segmentedSettingsItemShape(1 + childIndex, childCount)
+                        val childPosition = yumaSegmentPosition(1 + childIndex, childCount)
+                        item(
+                            key = "${entry.id}_child_${child.id}",
+                            contentType = CONTENT_TYPE_CHILD_ENTRY,
+                        ) {
+                            DownloadChildEntryRow(
+                                child = child,
+                                shape = childShape,
+                                position = childPosition,
+                                onRemove = {
+                                    if (inProgress) {
+                                        onRemoveEntry(child)
+                                    } else {
+                                        onRequestRemoveEntry(child)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().widthIn(max = 840.dp).animateItem(),
+                            )
+                        }
+                    }
+                }
+            }
+
             item(
                 key = "spacer:${section.mediaType}",
                 contentType = CONTENT_TYPE_SECTION_SPACER,
             ) {
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
             }
         }
     }

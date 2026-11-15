@@ -6,21 +6,25 @@
 
 package moe.rukamori.archivetune.ui.screens.downloads
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -30,6 +34,12 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.downloads.DownloadMediaType
 import moe.rukamori.archivetune.downloads.DownloadSectionUiModel
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
+import moe.rukamori.archivetune.ui.theme.yumaClickable
+import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.formatFileSize
 
 @Composable
@@ -41,20 +51,55 @@ internal fun DownloadSectionHeader(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    val colors = LocalYumaColors.current
+    val shape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .yumaGlassCard(
+                    shape = shape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                    position = YumaSegmentPosition.Single,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
+                .clip(shape)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        ListItem(
-            headlineContent = {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(SettingsDimensions.SegmentedIconBoxSize)
+                        .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(section.mediaType.iconRes()),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+
+            Spacer(Modifier.width(SettingsDimensions.SegmentedIconSpacing))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(
                     text = stringResource(section.mediaType.titleRes()),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-            },
-            supportingContent = {
                 Text(
                     text =
                         if (inProgress) {
@@ -66,47 +111,65 @@ internal fun DownloadSectionHeader(
                         } else {
                             section.countText()
                         },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            },
-            leadingContent = {
-                Surface(
-                    modifier = Modifier.size(52.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(section.mediaType.iconRes()),
-                            contentDescription = null,
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
-                }
-            },
-            trailingContent = {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (inProgress) {
-                        DownloadActionButton(
-                            icon = if (section.paused) R.drawable.play else R.drawable.pause,
-                            contentDescription =
-                                stringResource(
-                                    if (section.paused) R.string.resume_download else R.string.pause_download,
-                                ),
-                            onClick = if (section.paused) onResume else onPause,
-                        )
-                    }
-                    DownloadActionButton(
-                        icon = if (inProgress) R.drawable.close else R.drawable.delete,
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (inProgress) {
+                    YdsHeaderActionButton(
+                        icon = if (section.paused) R.drawable.play else R.drawable.pause,
                         contentDescription =
-                            stringResource(if (inProgress) android.R.string.cancel else R.string.remove_download),
-                        onClick = onRemove,
+                            stringResource(
+                                if (section.paused) R.string.resume_download else R.string.pause_download,
+                            ),
+                        onClick = if (section.paused) onResume else onPause,
                     )
                 }
-            },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                YdsHeaderActionButton(
+                    icon = if (inProgress) R.drawable.close else R.drawable.delete,
+                    contentDescription =
+                        stringResource(if (inProgress) android.R.string.cancel else R.string.remove_download),
+                    onClick = onRemove,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun YdsHeaderActionButton(
+    icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val colors = LocalYumaColors.current
+    Box(
+        modifier =
+            Modifier
+                .size(38.dp)
+                .yumaClickable(
+                    pressedScale = SettingsAnimations.PressScale,
+                    onClick = onClick,
+                )
+                .yumaGlassCard(
+                    shape = CircleShape,
+                    backgroundColor = colors.glassBackground,
+                    borderColor = colors.glassBorder,
+                    position = YumaSegmentPosition.Single,
+                    strokeWidth = SettingsDimensions.GlassBorderThickness,
+                )
+                .clip(CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(18.dp),
         )
     }
 }

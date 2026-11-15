@@ -5,10 +5,12 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.sample
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -45,6 +47,7 @@ class Media3DownloadRepository
         private val database: MusicDatabase,
         private val downloadUtil: DownloadUtil,
     ) : DownloadRepository {
+        @OptIn(FlowPreview::class)
         override fun observeDownloads(): Flow<DownloadRepositorySnapshot> =
             combine(
                 database.allSongs().onStart { emit(emptyList()) },
@@ -59,7 +62,7 @@ class Media3DownloadRepository
                     playlistSongMaps = playlistSongMaps,
                     downloads = emptyMap(),
                 )
-            }.combine(downloadUtil.downloads) { snapshot, downloads ->
+            }.combine(downloadUtil.downloads.sample(350L)) { snapshot, downloads ->
                 snapshot.copy(downloads = downloads)
             }.flowOn(Dispatchers.IO)
 
