@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,14 +29,10 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.playlist.source.RoomPlaylistSource
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
@@ -45,14 +40,14 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
+import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.main.LocalDownloadUtil
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistBadgeStateHolder
 import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistDownloadStateHolder
-import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistSearchStateHolder
 
 /**
  * The unified playlist detail screen for all six playlist routes. Each
@@ -77,44 +72,16 @@ fun PlaylistDetailScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
 
-    // SPOTIFY PLAYLIST SLOT — per-row like state (upstream engine):
-    // likedSpotifyTrackKeys() union flow + Set.isTrackLiked (ISRC-bridged),
-    // toggle delegates to SpotifyLibraryMutations.toggleTrackLike
-    // (transactional, metadata-resolving) — one like engine across the app.
-    val database = playerConnection.service.database
-    val syncUtils = playerConnection.service.syncUtils
-    val spotifyLikedKeys by remember(database) {
-        database.likedSpotifyTrackKeys().map { it.toSet() }
-    }.collectAsStateWithLifecycle(initialValue = emptySet())
-    val coroutineScope = rememberCoroutineScope()
-    val onSpotifyToggleLike: ((SpotifyTrack) -> Unit)? =
-        if (syncUtils != null) {
-            { track ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    SpotifyLibraryMutations.toggleTrackLike(track, database, syncUtils)
-                }
-            }
-        } else {
-            null
-        }
-
     val capabilities = uiState.capabilities
     val tracks = uiState.tracks
     val mediaMetadataId = mediaMetadata?.id
 
-    val searchState =
-        rememberPlaylistSearchStateHolder(
-            items = tracks,
-            filter = { track, query ->
-                track.title.contains(query, ignoreCase = true) ||
-                    track.artists.any { it.contains(query, ignoreCase = true) } ||
-                    // SPOTIFY PLAYLIST SLOT — legacy search also matches the
-                    // album name (SpotifyPlaylistScreen.kt:154-158). Pinned.
-                    (track.origin as? SpotifyTrack)?.album?.name
-                        ?.contains(query, ignoreCase = true) == true
-            },
-        )
+    val searchState = rememberPlaylistDetailSearchState(tracks)
     val downloadHolder = rememberPlaylistDownloadStateHolder()
+    // BADGE HOIST — liked/in-library/spotify-liked id sets, one screen-level
+    // subscription instead of a per-row DB lookup (the 0412b6f7 pattern the
+    // online playlist call site never received).
+    val badgeHolder = rememberPlaylistBadgeStateHolder(LocalDatabase.current)
     val downloadUtil = LocalDownloadUtil.current
     val haptics = rememberYumaHaptics()
     // LOCAL PLAYLIST SLOT — lock + swipe-to-song gate reorder/swipe-delete.
@@ -136,7 +103,7 @@ fun PlaylistDetailScreen(
     val selectedTracks = renderState.selectedTracks
     val header = rememberPlaylistDetailHeader(uiState, viewModel, searchState.isSearching)
     val emptyTexts = rememberPlaylistDetailEmptyTexts(viewModel)
-    val hasArtworkBackdrop = header != null && !header?.thumbnailUrl.isNullOrBlank()
+    val hasArtworkBackdrop = header != null && !header.thumbnailUrl.isNullOrBlank()
 
     // LOCAL PLAYLIST SLOT — pick-cover launcher, dialog flags, live liked/
     // name state. Null on every other route.
@@ -221,8 +188,7 @@ fun PlaylistDetailScreen(
                                 locked = locked, swipeToSongEnabled = swipeToSongEnabled,
                                 showTrackNumbers = capabilities.showsTrackNumbers,
                                 downloads = downloadHolder.downloads,
-                                spotifyLikedKeys = spotifyLikedKeys,
-                                onSpotifyToggleLike = onSpotifyToggleLike,
+                                badges = badgeHolder,
                                 navController = navController,
                                 // LOCAL PLAYLIST SLOT — SongMenu remove-from-playlist
                                 // + like-source hint key on the remote browseId.

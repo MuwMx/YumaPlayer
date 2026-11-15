@@ -274,6 +274,9 @@ fun SpotifyTrackListItem(
     isLiked: Boolean = false,
     onToggleLike: (() -> Unit)? = null,
     badges: @Composable RowScope.() -> Unit = {
+        // Upstream 8f768e65: when an interactive like toggle is supplied,
+        // hide the static badge (the PlaylistLikeButton supplies action rows
+        // from trailingContent instead).
         if (isLiked && onToggleLike == null) {
             ItemFavoriteBadge()
         }
@@ -318,22 +321,7 @@ fun SpotifyTrackListItem(
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
-        trailingContent = {
-            if (onToggleLike != null) {
-                IconButton(
-                    onClick = onToggleLike,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
-                        contentDescription = null,
-                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-            trailingContent()
-        },
+        trailingContent = trailingContent,
         modifier = modifier,
         isActive = isActive,
     )

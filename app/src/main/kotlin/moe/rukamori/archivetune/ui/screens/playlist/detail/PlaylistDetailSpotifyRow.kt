@@ -40,8 +40,7 @@ internal fun SpotifyPlaylistOriginRow(
     track: SpotifyTrack,
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
-    isLiked: Boolean = false,
-    onToggleLike: (() -> Unit)? = null,
+    isFavorite: Boolean = false,
     onClick: () -> Unit,
     onShowMenu: (SpotifyTrack) -> Unit,
     modifier: Modifier = Modifier,
@@ -52,15 +51,18 @@ internal fun SpotifyPlaylistOriginRow(
         isScrollInProgress = false,
         modifier = modifier,
     ) {
-        SpotifySwipeToSongBox(track = track) {
+        SpotifySwipeToSongBox(
+            track = track,
+        ) {
             SpotifyTrackListItem(
                 track = track,
+                isFavorite = isFavorite,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                isLiked = isLiked,
-                onToggleLike = onToggleLike,
                 trailingContent = {
-                    SpotifyRowMenuButton(onClick = { onShowMenu(track) })
+                    SpotifyRowMenuButton(
+                        onClick = { onShowMenu(track) },
+                    )
                 },
                 modifier =
                     Modifier

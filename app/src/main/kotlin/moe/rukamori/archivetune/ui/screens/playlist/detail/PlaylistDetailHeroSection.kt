@@ -68,7 +68,7 @@ internal fun PlaylistDetailHeroSection(
     ) {
         if (hasArtwork) {
             YumaImmersiveArtworkHeader(
-                thumbnailUrl = header.thumbnailUrl!!,
+                thumbnailUrl = header.thumbnailUrl,
                 progress = headerProgress,
                 disableBlur = disableBlur,
                 modifier = Modifier.matchParentSize(),

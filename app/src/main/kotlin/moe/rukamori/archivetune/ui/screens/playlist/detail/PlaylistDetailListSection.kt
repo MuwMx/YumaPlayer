@@ -19,7 +19,7 @@ import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.menu.SpotifySongMenu
 import moe.rukamori.archivetune.ui.screens.playlist.CachedSong
-import moe.rukamori.archivetune.utils.isTrackLiked
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistBadgeStateHolder
 import sh.calvin.reorderable.ReorderableLazyListState
 
 /**
@@ -49,8 +49,7 @@ internal fun LazyListScope.playlistDetailSongs(
     menuState: MenuState,
     playlistBrowseId: String?,
     downloads: Map<String, androidx.media3.exoplayer.offline.Download> = emptyMap(),
-    spotifyLikedKeys: Set<String> = emptySet(),
-    onSpotifyToggleLike: ((track: SpotifyTrack) -> Unit)? = null,
+    badges: PlaylistBadgeStateHolder? = null,
     onSongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSongLongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSwipeDelete: (index: Int) -> Unit,
@@ -99,6 +98,14 @@ internal fun LazyListScope.playlistDetailSongs(
                     viewCount = viewCounts[track.id],
                     selected = selection && track in selectedTracks,
                     menuState = menuState,
+                    // BADGE HOIST — pre-0412b6f7 rows self-subscribed to the
+                    // song row for these badges; the hoist dropped the call-
+                    // site side and hearts vanished from online rows. This
+                    // restores them via the screen-level id sets.
+                    isFavorite = badges?.isLiked(track.id) == true,
+                    inLibrary = badges?.isInLibrary(track.id) == true,
+                    downloadState = downloads[track.id]?.state,
+                    downloadProgress = downloads[track.id]?.percentDownloaded ?: -1f,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )
@@ -108,8 +115,9 @@ internal fun LazyListScope.playlistDetailSongs(
                     track = origin,
                     mediaMetadata = mediaMetadata,
                     isPlaying = isPlaying,
-                    isLiked = spotifyLikedKeys.isTrackLiked(origin),
-                    onToggleLike = onSpotifyToggleLike?.let { toggle -> { toggle(origin) } },
+                    // Spotify-side liked state (likedSpotify), not the
+                    // generic app like — the user's spec for these rows.
+                    isFavorite = badges?.isSpotifyLiked(origin.id) == true,
                     onShowMenu = { track ->
                         menuState.show {
                             SpotifySongMenu(

@@ -31,12 +31,35 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.valentinilk.shimmer.shimmer
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.playlist.source.PlaylistTrack
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.YumaEmptyState
 import moe.rukamori.archivetune.ui.component.YumaMood
 import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHolder
+import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistSearchStateHolder
+
+/**
+ * The screen's search/selection state — title/artist match for every
+ * origin plus the SPOTIFY album-name arm (legacy SpotifyPlaylistScreen
+ * 154-158 matched album names too; pinned).
+ */
+@Composable
+internal fun rememberPlaylistDetailSearchState(
+    tracks: List<PlaylistTrack>,
+): PlaylistSearchStateHolder<PlaylistTrack> =
+    rememberPlaylistSearchStateHolder(
+        items = tracks,
+        filter = { track, query ->
+            track.title.contains(query, ignoreCase = true) ||
+                track.artists.any { it.contains(query, ignoreCase = true) } ||
+                (track.origin as? SpotifyTrack)?.album?.name
+                    ?.contains(query, ignoreCase = true) == true
+        },
+    )
 
 /**
  * Loading shimmer. Mirrors the LOADED screen's shape — hero skeleton

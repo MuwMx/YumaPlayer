@@ -20,6 +20,14 @@ interface SpotifyDao {
     @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
     fun spotifyMatch(spotifyId: String): Flow<SpotifyMatchEntity?>
 
+    /**
+     * Whole-table match rows for badge hoists (small id-pair rows; playback
+     * resolution and the syncs keep writing them, so badge state must stay
+     * live).
+     */
+    @Query("SELECT * FROM spotify_match")
+    fun spotifyMatchesFlow(): Flow<List<SpotifyMatchEntity>>
+
     @Query("SELECT * FROM spotify_match WHERE spotifyId = :spotifyId")
     fun getSpotifyMatch(spotifyId: String): SpotifyMatchEntity?
 

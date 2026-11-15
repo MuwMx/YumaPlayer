@@ -40,6 +40,10 @@ internal fun OnlinePlaylistOriginRow(
     viewCount: Int?,
     selected: Boolean,
     menuState: MenuState,
+    isFavorite: Boolean = false,
+    inLibrary: Boolean = false,
+    downloadState: Int? = null,
+    downloadProgress: Float = -1f,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -55,6 +59,10 @@ internal fun OnlinePlaylistOriginRow(
             isActive = item.id == mediaMetadataId,
             isPlaying = isPlaying,
             isSelected = selected,
+            isFavorite = isFavorite,
+            inLibrary = inLibrary,
+            downloadState = downloadState,
+            downloadProgress = downloadProgress,
             trailingContent = {
                 IconButton(
                     onClick = {
