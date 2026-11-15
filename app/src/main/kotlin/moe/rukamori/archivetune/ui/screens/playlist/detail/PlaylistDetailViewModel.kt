@@ -40,10 +40,10 @@ import javax.inject.Inject
 internal const val PLAYLIST_DETAIL_ROUTE_KEY = "playlist_detail_route"
 
 /**
- * The ONE ViewModel behind every playlist route. The route flip
- * (NavigationMediaRoutes, Phase E) writes the route prefix into the back
- * stack entry's SavedStateHandle before hiltViewModel() resolves this class;
- * the playlist argument keeps its own original nav-arg key.
+ * The ONE ViewModel behind every playlist route. Each flipped route declares
+ * [PLAYLIST_DETAIL_ROUTE_KEY] as a nav ARGUMENT with a defaultValue, so the
+ * key arrives inside this SavedStateHandle the same way the playlist argument
+ * does; the playlist argument keeps its own original nav-arg key.
  *
  * It injects only [PlaylistSourceFactory] — no MusicDatabase, no Context —
  * which fixes the rule debt the legacy LocalPlaylistViewModel and

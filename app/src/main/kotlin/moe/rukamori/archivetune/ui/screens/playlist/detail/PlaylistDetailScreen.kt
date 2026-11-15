@@ -48,9 +48,11 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistDownl
 import moe.rukamori.archivetune.ui.screens.playlist.shared.rememberPlaylistSearchStateHolder
 
 /**
- * The unified playlist detail screen for all six playlist routes. The route
- * flip (Phase E) writes [PLAYLIST_DETAIL_ROUTE_KEY] into the back stack
- * entry's savedStateHandle before hiltViewModel(entry) resolves the VM.
+ * The unified playlist detail screen for all six playlist routes. Each
+ * route declares PLAYLIST_DETAIL_ROUTE_KEY as a nav ARGUMENT with a
+ * defaultValue (never part of the route pattern itself), so hiltViewModel()
+ * resolves the VM with the route key already inside its SavedStateHandle —
+ * the same mechanism every other nav-arg (playlistId et al.) uses.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

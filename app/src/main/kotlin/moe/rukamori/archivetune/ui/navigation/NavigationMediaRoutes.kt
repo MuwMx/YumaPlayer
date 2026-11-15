@@ -133,14 +133,19 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlistId") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (online): the route string is UNCHANGED (deep
+                // links, Android Auto prefix matching, NavigationTabOwnership
+                // all key on it). The route key rides a nav-argument default
+                // into the unified screen's SavedStateHandle — the SAME
+                // mechanism as playlistId (the savedStateHandle write below
+                // does not reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "online_playlist"
+                },
             ),
-    ) { entry ->
-        // PHASE E FLIP (online): the route string is UNCHANGED (deep links,
-        // Android Auto prefix matching, NavigationTabOwnership all key on
-        // it). The unified screen resolves its source from this key written
-        // BEFORE hiltViewModel(entry) creates the ViewModel.
-        entry.savedStateHandle[PLAYLIST_DETAIL_ROUTE_KEY] = "online_playlist"
-        PlaylistDetailScreen(navController, entry, scrollBehavior)
+    ) {
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
@@ -161,6 +166,14 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
             listOf(
                 navArgument("playlistId") {
                     type = NavType.StringType
+                },
+                // PHASE E FLIP (spotify): route string UNCHANGED (deep links,
+                // Android Auto prefix matching, NavigationTabOwnership all
+                // key on it). Route key rides the nav-argument default into
+                // the unified screen's SavedStateHandle.
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "spotify_playlist"
                 },
             ),
     ) {
