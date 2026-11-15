@@ -6,27 +6,109 @@
 
 package moe.rukamori.archivetune.ui.screens.playlist.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.valentinilk.shimmer.shimmer
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.YumaEmptyState
 import moe.rukamori.archivetune.ui.component.YumaMood
+import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 
-/** Loading shimmer, reusing the Online screen's shape. */
+/**
+ * Loading shimmer. Mirrors the LOADED screen's shape — hero skeleton
+ * (title, author, metadata chips, action row) then track rows — the
+ * legacy OnlinePlaylistListSection.onlinePlaylistShimmerItem
+ * (82-155): blank rows alone made the header "jump in" after load.
+ */
 internal fun LazyListScope.playlistDetailShimmerItem() {
     item(key = PLAYLIST_DETAIL_KEY_SHIMMER, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_EMPTY) {
         ShimmerHost {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Title (headlineSmall) + author (titleMedium)
+                TextPlaceholder(
+                    height = 28.dp,
+                    modifier = Modifier.fillMaxWidth(0.6f).padding(horizontal = 32.dp),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextPlaceholder(
+                    height = 20.dp,
+                    modifier = Modifier.fillMaxWidth(0.4f),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // MetadataChip row (song count + duration)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 48.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    repeat(2) {
+                        TextPlaceholder(
+                            height = 32.dp,
+                            modifier = Modifier.width(80.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Hero action row: download circle, Play pill, Shuffle pill
+                // (PlaylistDetailHeroActionsHost's shape).
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(48.dp)
+                                .shimmer()
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurface),
+                    )
+                    ButtonPlaceholder(modifier = Modifier.weight(1f).height(48.dp))
+                    ButtonPlaceholder(modifier = Modifier.weight(1f).height(48.dp))
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(48.dp)
+                                .shimmer()
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurface),
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             repeat(6) { ListItemPlaceHolder() }
         }
     }
