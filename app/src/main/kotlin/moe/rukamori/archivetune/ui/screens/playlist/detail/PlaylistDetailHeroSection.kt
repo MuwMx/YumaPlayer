@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,12 +59,12 @@ internal fun PlaylistDetailHeroSection(
                 .fillMaxWidth()
                 .then(
                     if (hasArtwork) {
-                        Modifier.height(ImmersiveArtworkTokens.HeaderMinHeight)
+                        Modifier.heightIn(min = ImmersiveArtworkTokens.HeaderMinHeight)
                     } else {
                         Modifier
                     },
                 ),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.BottomCenter,
     ) {
         if (hasArtwork) {
             YumaImmersiveArtworkHeader(
@@ -89,6 +90,10 @@ internal fun PlaylistDetailHeroSection(
                         bottom = 16.dp,
                     ),
             horizontalAlignment = Alignment.CenterHorizontally,
+            // Legacy heroes (LocalPlaylistHeroSection.kt:116-125) pin the
+            // text block to the BOTTOM of the artwork box so it sits directly
+            // above the track list; centering leaves dead space below.
+            verticalArrangement = Arrangement.Bottom,
         ) {
             Text(
                 text = header.title,
