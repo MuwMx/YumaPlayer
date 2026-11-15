@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
+import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.shouldUseLegacyPath
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioOffload
@@ -509,7 +510,8 @@ class MusicServiceLifecycle(
             val automix = prefs[AutomixEnabledKey] ?: false
             val automixTransitionPreset = prefs[AutomixTransitionDurationKey] ?: "auto"
             val effectiveEnabled = enabled && togetherState is TogetherSessionState.Idle
-            val durationMs = (durationSeconds.coerceIn(0f, 10f) * 1000f).roundToLong().coerceAtLeast(0L)
+            val durationMs = (durationSeconds * 1000f).roundToLong()
+                .coerceIn(0L, CrossfadeConstants.CLAMP_MAX_MS)
             CrossfadeConfig(
                 durationMs = durationMs,
                 automixEnabled = automix,
