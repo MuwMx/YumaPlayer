@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.YumaImmersiveArtworkHeader
@@ -62,7 +63,7 @@ internal fun SpotifyAlbumHeader(
     onShuffle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val thumbnailUrl = remember(album) { album.images.firstOrNull()?.url?.resize(544, 544) }
+    val thumbnailUrl = remember(album) { SpotifyMapper.getAlbumThumbnail(album)?.resize(544, 544) }
     val hasArtwork = !thumbnailUrl.isNullOrBlank()
     val artists = remember(album.artists) { album.artists.joinToString { it.name } }
     val shuffleLabel = stringResource(R.string.shuffle)

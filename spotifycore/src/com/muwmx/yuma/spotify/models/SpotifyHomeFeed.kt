@@ -29,6 +29,8 @@ data class SpotifyHomeFeedSection(
 
 sealed class SpotifyHomeFeedItem {
     abstract val uri: String
+    abstract val imageUrl: String?
+    abstract val images: List<SpotifyImage>
 
     data class Playlist(
         override val uri: String,
@@ -37,10 +39,11 @@ sealed class SpotifyHomeFeedItem {
         val description: String?,
         val format: String?,
         val totalCount: Int,
-        val imageUrl: String?,
+        override val imageUrl: String?,
         val extractedColorHex: String?,
         val ownerName: String?,
         val madeForUsername: String?,
+        override val images: List<SpotifyImage> = emptyList(),
     ) : SpotifyHomeFeedItem()
 
     data class Album(
@@ -49,13 +52,15 @@ sealed class SpotifyHomeFeedItem {
         val name: String,
         val albumType: String?,
         val artists: List<SpotifySimpleArtist>,
-        val imageUrl: String?,
+        override val imageUrl: String?,
+        override val images: List<SpotifyImage> = emptyList(),
     ) : SpotifyHomeFeedItem()
 
     data class Artist(
         override val uri: String,
         val id: String,
         val name: String,
-        val imageUrl: String?,
+        override val imageUrl: String?,
+        override val images: List<SpotifyImage> = emptyList(),
     ) : SpotifyHomeFeedItem()
 }

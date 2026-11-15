@@ -8,6 +8,8 @@ package moe.rukamori.archivetune.spotify
 
 import moe.rukamori.archivetune.spotify.mapping.SpotifyEntityMapper
 import moe.rukamori.archivetune.spotify.mapping.SpotifyQueryBuilder
+import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifyImage
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
@@ -42,9 +44,13 @@ object SpotifyMapper {
 
     fun getPlaylistThumbnail(playlist: SpotifyPlaylist): String? = SpotifyEntityMapper.getPlaylistThumbnail(playlist)
 
+    fun getAlbumThumbnail(album: SpotifyAlbum): String? = SpotifyEntityMapper.getAlbumThumbnail(album)
+
     fun getTrackThumbnail(track: SpotifyTrack): String? = SpotifyEntityMapper.getTrackThumbnail(track)
 
     fun getTrackThumbnailMedium(track: SpotifyTrack): String? = SpotifyEntityMapper.getTrackThumbnailMedium(track)
+
+    fun getBestImage(images: List<SpotifyImage>): SpotifyImage? = SpotifyEntityMapper.getBestImage(images)
 
     fun precompute(title: String, artist: String, durationMs: Int): PrecomputedTrack {
         val normTitle = cachedNormalize(title)

@@ -6,21 +6,38 @@
 
 package moe.rukamori.archivetune.spotify.mapping
 
+import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifyImage
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 
 object SpotifyEntityMapper {
-    fun getPlaylistThumbnail(playlist: SpotifyPlaylist): String? =
-        playlist.images.let { images ->
-            images.maxByOrNull { it.width ?: 0 }?.url
-                ?: images.firstOrNull()?.url
+    private fun inferCdnDimension(url: String): Int =
+        when {
+            url.contains("0000b273") || url.contains("00000003") -> 640
+            url.contains("00001e02") -> 300
+            url.contains("00004851") -> 64
+            else -> 0
         }
 
-    fun getTrackThumbnail(track: SpotifyTrack): String? =
-        track.album?.images?.let { images ->
-            images.maxByOrNull { it.width ?: 0 }?.url
-                ?: images.firstOrNull()?.url
+    fun getBestImage(images: List<SpotifyImage>): SpotifyImage? {
+        val valid = images.filter { it.url.isNotBlank() }
+        if (valid.isEmpty()) return null
+
+        return valid.maxByOrNull { image ->
+            val explicit = maxOf(image.width ?: 0, image.height ?: 0)
+            if (explicit > 0) explicit else inferCdnDimension(image.url)
         }
+    }
+
+    fun getPlaylistThumbnail(playlist: SpotifyPlaylist): String? =
+        getBestImage(playlist.images)?.url
+
+    fun getTrackThumbnail(track: SpotifyTrack): String? =
+        track.album?.images?.let { getBestImage(it)?.url }
+
+    fun getAlbumThumbnail(album: SpotifyAlbum): String? =
+        getBestImage(album.images)?.url
 
     fun getTrackThumbnailMedium(track: SpotifyTrack): String? {
         val images = track.album?.images?.takeIf { it.isNotEmpty() } ?: return getTrackThumbnail(track)

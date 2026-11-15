@@ -42,7 +42,7 @@ internal fun convertHomeSection(feedSection: SpotifyHomeFeedSection): SpotifyHom
                             id = it.id,
                             name = it.name,
                             description = it.description,
-                            images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
+                            images = it.images.ifEmpty { listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }) },
                             owner = it.ownerName?.let { owner -> SpotifyPlaylistOwner(id = "", displayName = owner) },
                             tracks = SpotifyPlaylistTracksRef(total = it.totalCount),
                             uri = it.uri,
@@ -60,7 +60,7 @@ internal fun convertHomeSection(feedSection: SpotifyHomeFeedSection): SpotifyHom
                             name = it.name,
                             albumType = it.albumType,
                             artists = it.artists,
-                            images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
+                            images = it.images.ifEmpty { listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }) },
                             uri = it.uri,
                         )
                     },
@@ -74,7 +74,7 @@ internal fun convertHomeSection(feedSection: SpotifyHomeFeedSection): SpotifyHom
                         SpotifyArtist(
                             id = it.id,
                             name = it.name,
-                            images = listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }),
+                            images = it.images.ifEmpty { listOfNotNull(it.imageUrl?.let { url -> SpotifyImage(url, null, null) }) },
                             uri = it.uri,
                         )
                     },

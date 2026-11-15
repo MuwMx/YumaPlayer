@@ -12,6 +12,7 @@ import moe.rukamori.archivetune.spotify.arr
 import moe.rukamori.archivetune.spotify.int
 import moe.rukamori.archivetune.spotify.obj
 import moe.rukamori.archivetune.spotify.str
+import moe.rukamori.archivetune.spotify.mapping.SpotifyEntityMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem
@@ -68,12 +69,8 @@ internal object SpotifyHomeParser {
                 ?.arr("items")
                 ?.firstOrNull()
                 ?.jsonObject
-        val imageUrl =
-            imageItem
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
+        val images = SpotifyTrackParser.parseGqlImages(imageItem?.arr("sources"))
+        val imageUrl = SpotifyEntityMapper.getBestImage(images)?.url ?: images.firstOrNull()?.url
         val colorHex = imageItem?.obj("extractedColors")?.obj("colorDark")?.str("hex")
         val madeFor =
             data
@@ -93,6 +90,7 @@ internal object SpotifyHomeParser {
             extractedColorHex = colorHex,
             ownerName = data.obj("ownerV2")?.obj("data")?.str("name"),
             madeForUsername = madeFor,
+            images = images,
         )
     }
 
@@ -102,13 +100,8 @@ internal object SpotifyHomeParser {
             data.obj("artists")?.arr("items")?.mapNotNull {
                 SpotifyTrackParser.parseGqlSimpleArtist(it.jsonObject)
             } ?: emptyList()
-        val imageUrl =
-            data
-                .obj("coverArt")
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
+        val images = SpotifyTrackParser.parseGqlImages(data.obj("coverArt")?.arr("sources"))
+        val imageUrl = SpotifyEntityMapper.getBestImage(images)?.url ?: images.firstOrNull()?.url
 
         return SpotifyHomeFeedItem.Album(
             uri = uri,
@@ -117,25 +110,21 @@ internal object SpotifyHomeParser {
             albumType = data.str("type")?.lowercase(),
             artists = artists,
             imageUrl = imageUrl,
+            images = images,
         )
     }
 
     fun parseHomeArtist(data: JsonObject): SpotifyHomeFeedItem.Artist? {
         val uri = data.str("uri") ?: return null
         val profile = data.obj("profile")
-        val imageUrl =
-            data
-                .obj("visuals")
-                ?.obj("avatarImage")
-                ?.arr("sources")
-                ?.firstOrNull()
-                ?.jsonObject
-                ?.str("url")
+        val images = SpotifyTrackParser.parseGqlImages(data.obj("visuals")?.obj("avatarImage")?.arr("sources"))
+        val imageUrl = SpotifyEntityMapper.getBestImage(images)?.url ?: images.firstOrNull()?.url
         return SpotifyHomeFeedItem.Artist(
             uri = uri,
             id = uri.substringAfterLast(":"),
             name = profile?.str("name") ?: "",
             imageUrl = imageUrl,
+            images = images,
         )
     }
 
