@@ -1324,4 +1324,6 @@
     <string name="lyrics_provider_in_use">Sedang digunakan: %1$s</string>
     <string name="lyrics_provider_searching">Mencari lirik…</string>
     <string name="lyrics_provider_desc">Pilih penyedia untuk mengambil lirik</string>
+    <string name="disable_player_cover_animations">Nonaktifkan animasi sampul</string>
+    <string name="disable_player_cover_animations_desc">Nonaktifkan pantulan sampul saat putar/jeda dan pergantian lagu</string>
 </resources>
