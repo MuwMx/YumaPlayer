@@ -164,16 +164,27 @@ internal fun rememberPlaylistDetailHeader(
             )
         return header.copy(title = label)
     }
+    if (viewModel.source is moe.rukamori.archivetune.playlist.source.CachePlaylistSource) {
+        // CACHE HERO TITLE — the localized "Cached playlist" label
+        // (CachePlaylistScreen.kt:290, 486, 657). Pinned.
+        val label = androidx.compose.ui.res.stringResource(moe.rukamori.archivetune.R.string.cached_playlist)
+        return header.copy(title = label)
+    }
     return header
 }
 
 /**
- * Emits true while the user is actively dragging (distinct), used to freeze
- * swipe-dismiss during drags on reorderable sources.
+ * CACHE PLAYLIST SLOT — per-song cache removal for the unified screen's
+ * top-bar delete and selection-menu branches (null on other routes). The
+ * cache source owns the removal (removeSongResources) exactly like legacy
+ * CachePlaylistViewModel.removeSongFromCache.
  */
-@Composable
-internal fun rememberIsAnyDragging(state: ReorderableLazyListState): Boolean =
-    state.isAnyItemDragging
+internal fun onPlaylistDetailRemoveSongFromCache(
+    viewModel: PlaylistDetailViewModel,
+): ((songId: String) -> Unit)? {
+    val cacheSource = viewModel.source as? moe.rukamori.archivetune.playlist.source.CachePlaylistSource
+    return cacheSource?.let { source -> { songId -> source.removeSongFromCache(songId) } }
+}
 
 /**
  * Long-press behavior: legacy semantics (Local Wiring.kt:565-568, Online

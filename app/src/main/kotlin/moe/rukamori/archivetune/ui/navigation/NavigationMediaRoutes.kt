@@ -22,7 +22,6 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseScreen
 import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
-import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
@@ -237,9 +236,18 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlist") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (cache): route string unchanged. The route key
+                // rides the nav-argument default into the unified screen's
+                // SavedStateHandle — the same bundle mechanism as the id
+                // (an entry.savedStateHandle write never reaches the Hilt
+                // VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "cache_playlist"
+                },
             ),
     ) {
-        CachePlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(

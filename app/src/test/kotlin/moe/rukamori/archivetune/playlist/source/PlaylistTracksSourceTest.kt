@@ -59,11 +59,13 @@ class PlaylistTracksSourceTest {
     }
 
     @Test
-    fun `cache sources are fully read-only`() {
-        val caps = PlaylistCapabilities.ReadOnly
+    fun `cache source sorts but never edits or reorders`() {
+        // CACHE SORT SLOT — the legacy cache screen persisted a sort to
+        // SongSortTypeKey (CachePlaylistScreen.kt:148-178); ReadOnly lost it.
+        val caps = PlaylistCapabilities.Cache
+        assertTrue(caps.sortable)
         assertFalse(caps.editable)
         assertFalse(caps.reorderable)
-        assertFalse(caps.sortable)
         assertFalse(caps.paginated)
         assertFalse(caps.swipeDelete)
         assertFalse(caps.supportsDownload)
@@ -159,14 +161,8 @@ class PlaylistTracksSourceTest {
     fun `setSort on read-only sources never crashes and stays a failure`() =
         kotlinx.coroutines.test.runTest {
             val database: moe.rukamori.archivetune.db.MusicDatabase = io.mockk.mockk(relaxed = true)
-            val cacheSource =
-                CachePlaylistSource(
-                    context = io.mockk.mockk(relaxed = true),
-                    database = database,
-                    downloadUtil = io.mockk.mockk(relaxed = true),
-                    playerCache = io.mockk.mockk(relaxed = true),
-                    downloadCache = io.mockk.mockk(relaxed = true),
-                )
-            assertTrue(cacheSource.setSort(PlaylistSongSortType.NAME, true).isFailure)
+            // Top stays non-sortable; setSort must stay a clean failure.
+            val source = TopPlaylistSource("10", database)
+            assertTrue(source.setSort(PlaylistSongSortType.NAME, true).isFailure)
         }
 }

@@ -236,7 +236,7 @@ fun PlaylistDetailScreen(
                 lazyListState = lazyListState,
                 title = header?.title.orEmpty(),
                 scrollBehavior = scrollBehavior,
-                onSelectionRemoveFromCache = null,
+                onRemoveSongFromCache = onPlaylistDetailRemoveSongFromCache(viewModel),
                 trailingAction =
                     renderPlaylistDetailTrailingAction(
                         viewModel = viewModel,

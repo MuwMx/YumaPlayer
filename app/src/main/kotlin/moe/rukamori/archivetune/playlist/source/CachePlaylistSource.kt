@@ -7,22 +7,35 @@
 package moe.rukamori.archivetune.playlist.source
 
 import android.content.Context
+import androidx.datastore.preferences.core.edit
 import androidx.media3.datasource.cache.Cache
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.PlaybackSource
+import moe.rukamori.archivetune.constants.PlaylistSongSortType
+import moe.rukamori.archivetune.constants.SongSortDescendingKey
+import moe.rukamori.archivetune.constants.SongSortType
+import moe.rukamori.archivetune.constants.SongSortTypeKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.download.DownloadUtil
+import moe.rukamori.archivetune.extensions.reversed
+import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.playback.engine.extractMediaIdFromCacheKey
 import moe.rukamori.archivetune.playback.engine.flacCacheKey
 import moe.rukamori.archivetune.playback.engine.flacStreamCacheKey
 import moe.rukamori.archivetune.ui.screens.playlist.hasUncachedPlayerSource
+import moe.rukamori.archivetune.ui.screens.playlist.removeSongResources
 import moe.rukamori.archivetune.playback.engine.ytStreamCacheKey
 import moe.rukamori.archivetune.playback.resolvers.getFormatForSource
 import moe.rukamori.archivetune.ui.screens.playlist.CachedSong
@@ -35,8 +48,11 @@ import javax.inject.Inject
  * Source for the cache playlist ("cache_playlist/{playlist}"), mirroring
  * CachePlaylistViewModel's updateCacheState: pure-cache media ids only
  * (cached but NOT completed downloads), refreshed on a periodic poll while
- * collected.
+ * collected. Sort persists to the legacy SongSortTypeKey/SongSortDescendingKey
+ * DataStore pair (legacy CachePlaylistScreen.kt:148-178) and re-applies on
+ * every poll tick.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class CachePlaylistSource
     @Inject
     constructor(
@@ -47,17 +63,54 @@ class CachePlaylistSource
         @DownloadCache private val downloadCache: Cache,
     ) : PlaylistTracksSource {
     override val id: String = "cache:all"
-    override val capabilities: PlaylistCapabilities = PlaylistCapabilities.ReadOnly
+    override val capabilities: PlaylistCapabilities = PlaylistCapabilities.Cache
+
+    /**
+     * Cache has no custom order; the unified sort header's CUSTOM selection
+     * maps to CREATE_DATE (the legacy default) instead of failing.
+     */
+    private fun PlaylistSongSortType.toSongSortType(): SongSortType =
+        when (this) {
+            PlaylistSongSortType.CUSTOM -> SongSortType.CREATE_DATE
+            PlaylistSongSortType.CREATE_DATE -> SongSortType.CREATE_DATE
+            PlaylistSongSortType.NAME -> SongSortType.NAME
+            PlaylistSongSortType.ARTIST -> SongSortType.ARTIST
+            PlaylistSongSortType.PLAY_TIME -> SongSortType.PLAY_TIME
+        }
+
+    /** Reports the applied sort back in the unified enum space. */
+    private fun SongSortType.toPlaylistSongSortType(): PlaylistSongSortType =
+        when (this) {
+            SongSortType.CREATE_DATE -> PlaylistSongSortType.CREATE_DATE
+            SongSortType.NAME -> PlaylistSongSortType.NAME
+            SongSortType.ARTIST -> PlaylistSongSortType.ARTIST
+            SongSortType.PLAY_TIME -> PlaylistSongSortType.PLAY_TIME
+        }
 
     override fun observe(): Flow<PlaylistTracksResult> =
-        flow {
-            while (true) {
-                emit(computeSnapshot())
-                kotlinx.coroutines.delay(POLL_INTERVAL_MS)
+        context.dataStore.data
+            .map { preferences ->
+                preferences[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE) to (
+                    preferences[SongSortDescendingKey] ?: true
+                )
+            }.distinctUntilChanged()
+            .flatMapLatest { (sortType, descending) ->
+                // The poll stays INSIDE flatMapLatest so a sort change
+                // restarts it with the new prefs; each tick re-reads the
+                // caches (cache contents, not just the sort, change under
+                // us — that is the whole point of the poll).
+                flow {
+                    while (true) {
+                        emit(computeSnapshot(sortType, descending))
+                        delay(POLL_INTERVAL_MS)
+                    }
+                }.flowOn(Dispatchers.IO)
             }
-        }.flowOn(Dispatchers.IO)
 
-    private suspend fun computeSnapshot(): PlaylistTracksResult {
+    private suspend fun computeSnapshot(
+        sortType: SongSortType,
+        descending: Boolean,
+    ): PlaylistTracksResult {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val playerKeys = playerCache.keys
         val downloadCacheKeys = downloadCache.keys
@@ -97,17 +150,73 @@ class CachePlaylistSource
                 }
             }
 
+        val tracks =
+            withDownloadDates
+                .asSequence()
+                .filter { !hideExplicit || !it.song.song.explicit }
+                .filter { it.song.artists.none { artist -> artist.blockedAt != null } }
+                .toList()
+                // CACHE SORT SLOT — legacy CachePlaylistScreen.kt:158-178: sort
+                // the FILTERED cached songs, then reverse on descending (every
+                // type reverses; the cache has no CUSTOM exception).
+                .let { sortCachedSongs(it, sortType).reversed(descending) }
+                .map { it.toPlaylistTrack() }
+
         return PlaylistTracksResult(
-            header = null,
-            tracks =
-                withDownloadDates
-                    .asSequence()
-                    .filter { !hideExplicit || !it.song.song.explicit }
-                    .filter { it.song.artists.none { artist -> artist.blockedAt != null } }
-                    .sortedByDescending { it.song.song.dateDownload }
-                    .map { it.toPlaylistTrack() }
-                    .toList(),
+            // CACHE HERO — legacy CachePlaylistHeroSection renders first-song
+            // artwork, the localized title (resolved UI-side via
+            // stringResource(R.string.cached_playlist), see
+            // rememberPlaylistDetailHeader), plural count + duration chips
+            // (CachePlaylistScreen.kt:288-296, 656-693).
+            header =
+                PlaylistHeaderInfo(
+                    id = id,
+                    title = "", // resolved UI-side
+                    thumbnailUrl = tracks.firstOrNull()?.thumbnailUrl,
+                    songCount = tracks.size,
+                    totalDurationMs = tracks.sumOf { it.durationMs ?: 0L },
+                ),
+            tracks = tracks,
+            sortInfo = PlaylistSortInfo(sortType.toPlaylistSongSortType(), descending),
         )
+    }
+
+    /** Legacy sort selectors, unchanged from CachePlaylistScreen.kt:160-177. */
+    private fun sortCachedSongs(
+        songs: List<CachedSong>,
+        sortType: SongSortType,
+    ): List<CachedSong> =
+        when (sortType) {
+            SongSortType.CREATE_DATE -> songs.sortedBy { it.song.song.dateDownload ?: LocalDateTime.MIN }
+            SongSortType.NAME -> songs.sortedBy { it.title }
+            SongSortType.ARTIST -> songs.sortedBy { item -> item.artists.joinToString(separator = "") { artist -> artist.name } }
+            SongSortType.PLAY_TIME -> songs.sortedBy { it.song.song.totalPlayTime }
+        }
+
+    /**
+     * Persists the legacy SongSortTypeKey/SongSortDescendingKey pair (legacy
+     * rememberEnumPreference write path); observe() re-emits with the new sort
+     * via its DataStore-backed chain.
+     */
+    override suspend fun setSort(
+        sortType: PlaylistSongSortType,
+        descending: Boolean,
+    ): Result<Unit> =
+        runCatching {
+            context.dataStore.edit { preferences ->
+                preferences[SongSortTypeKey] = sortType.toSongSortType().name
+                preferences[SongSortDescendingKey] = descending
+            }
+        }
+
+    /**
+     * CACHE SLOT — remove-from-cache for the unified screen's selection
+     * delete action and the SelectionSongMenu's cache branch, exactly the
+     * legacy CachePlaylistViewModel.removeSongFromCache (which stays alive
+     * as SongMenu's cache-removal service).
+     */
+    fun removeSongFromCache(songId: String) {
+        removeSongResources(songId, playerCache)
     }
 
     private fun findPureCacheIds(

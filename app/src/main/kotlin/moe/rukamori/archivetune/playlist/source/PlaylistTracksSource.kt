@@ -55,10 +55,15 @@ data class PlaylistCapabilities(
             supportsDownload = true,
         )
 
-        /** Cache playlists and the Top chart: no edit/sort/paging; downloads
-         *  supported (both legacy heroes carry a download button — Top's
-         *  sendAddMissingDownloads flow over Room songs, verified against
-         *  TopPlaylistScreen.kt:334-354). */
+        /** Cache playlists: read-only + vault-like sort (legacy persisted the cache
+         *  sort to SongSortTypeKey; CACHE SORT SLOT — do not lose this). */
+        val Cache = PlaylistCapabilities(
+            sortable = true,
+        )
+
+        /** The bare read-only baseline — the unified UiState's pre-observe
+         *  default; no route uses it directly (cache sorts via [Cache],
+         *  Top's real shape is [Top] with downloads + ranks). */
         val ReadOnly = PlaylistCapabilities()
 
         /** Read-only AND downloadable — the Top playlist's real shape.
