@@ -48,6 +48,13 @@ data class PlaylistDetailUiState(
     val isLoadingMore: Boolean = false,
     val error: String? = null,
     val hasContinuation: Boolean = false,
+    /**
+     * LOCAL PLAYLIST SLOT — live per-playlist flags the local UI keys on
+     * (hero edit/delete vs like, top-bar edit vs sync, swipe-delete rights,
+     * SongMenu playlistBrowseId, suggestion-seeding). Null on other routes.
+     */
+    val editable: Boolean? = null,
+    val browseId: String? = null,
 ) {
     val isEmpty: Boolean get() = tracks.isEmpty() && !isLoading && error == null
 }

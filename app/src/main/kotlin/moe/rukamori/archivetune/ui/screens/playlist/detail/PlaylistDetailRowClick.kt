@@ -90,9 +90,17 @@ internal fun onPlaylistDetailSongClick(
     val resolvedTrack = visibleTracks.getOrNull(index) ?: track
     val spotifyOrigin = resolvedTrack.origin as? SpotifyTrack
     if (spotifyOrigin != null && spotifyOrigin.isResolvedAs(mediaMetadata)) {
-        // Active Spotify rows toggle play/pause like every other origin —
-        // legacy passes trackIsActive out of the same isResolvedAs check
+        // Active Spotify rows toggle play/pause — placeholder ids resolve to
+        // YouTube ids, so isResolvedAs (not raw id equality) is the check
         // (SpotifyPlaylistTrackRows.kt:59-70).
+        playerConnection.player.togglePlayPause()
+        return
+    }
+    // Every other origin toggles play/pause when the tapped row IS the
+    // active media (legacy Local Wiring.kt:646-648, Online Actions, Top
+    // 444-445, Cache 390-392, Auto TrackRows 168-170 — the unified screen
+    // regressed this to a re-enqueue on the shipped flips; fixed here).
+    if (resolvedTrack.id == mediaMetadata?.id) {
         playerConnection.player.togglePlayPause()
         return
     }

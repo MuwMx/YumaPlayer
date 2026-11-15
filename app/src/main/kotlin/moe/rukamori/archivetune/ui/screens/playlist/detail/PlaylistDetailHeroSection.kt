@@ -48,6 +48,7 @@ internal fun PlaylistDetailHeroSection(
     disableBlur: Boolean,
     modifier: Modifier = Modifier,
     actions: (@Composable () -> Unit)? = null,
+    artworkOverlay: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
 ) {
     val hasArtwork = !header.thumbnailUrl.isNullOrBlank()
 
@@ -71,6 +72,12 @@ internal fun PlaylistDetailHeroSection(
                 disableBlur = disableBlur,
                 modifier = Modifier.matchParentSize(),
             )
+        }
+
+        // LOCAL PLAYLIST SLOT — the pick-cover button overlays the artwork's
+        // top-end corner (legacy LocalPlaylistHeroSection.kt:177-208).
+        if (artworkOverlay != null) {
+            artworkOverlay(this)
         }
 
         Column(

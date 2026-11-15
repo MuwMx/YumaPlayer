@@ -22,7 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +38,7 @@ import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
+import moe.rukamori.archivetune.playlist.source.RoomPlaylistSource
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -116,12 +117,11 @@ fun PlaylistDetailScreen(
     val downloadHolder = rememberPlaylistDownloadStateHolder()
     val downloadUtil = LocalDownloadUtil.current
     val haptics = rememberYumaHaptics()
-    // LOCAL PLAYLIST SLOT — lock + swipe-to-song gate reorder/swipe-delete
-    // (LocalPlaylistScreen.kt:95).
+    // LOCAL PLAYLIST SLOT — lock + swipe-to-song gate reorder/swipe-delete.
     var locked by rememberPreference(PlaylistEditLockKey, defaultValue = true)
     val swipeToSongEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
 
-    val systemBarsTopPadding: Dp = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val lazyListState = rememberLazyListState()
     val hazeState = remember { HazeState() }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -138,13 +138,19 @@ fun PlaylistDetailScreen(
     val emptyTexts = rememberPlaylistDetailEmptyTexts(viewModel)
     val hasArtworkBackdrop = header != null && !header?.thumbnailUrl.isNullOrBlank()
 
+    // LOCAL PLAYLIST SLOT — pick-cover launcher, dialog flags, live liked/
+    // name state. Null on every other route.
+    val context = LocalContext.current
+    val localGlue = rememberLocalPlaylistGlue(
+        viewModel.source as? RoomPlaylistSource, uiState.editable, context,
+        onCoverPicked = { uri -> viewModel.updateCover(context, uri) },
+        onDeletePlaylist = { viewModel.deletePlaylist(onDeleted = navController::popBackStack) })
+
     // Hero + header-slot items above the track list (drag/scrollbar offsets).
     val headerItems = if (header != null) 1 + playlistDetailHeaderSlotCount(uiState, viewModel) else 0
-    val reorderableState =
-        rememberPlaylistDetailReorderableState(
-            lazyListState, headerItems, mutableTracks,
-            dragInfo, onDragInfoChange = { dragInfo = it },
-        )
+    val reorderableState = rememberPlaylistDetailReorderableState(
+        lazyListState, headerItems, mutableTracks, dragInfo,
+        onDragInfoChange = { dragInfo = it })
 
     PlaylistDetailEffects(
         downloadHolder = downloadHolder, downloadUtil = downloadUtil, tracks = tracks,
@@ -159,8 +165,7 @@ fun PlaylistDetailScreen(
             collapseDistance = ImmersiveArtworkTokens.BackdropHeight,
             standardThreshold = 48.dp,
         )
-    val artworkBackground =
-        rememberArtworkBackground(header?.thumbnailUrl)
+    val artworkBackground = rememberArtworkBackground(header?.thumbnailUrl)
 
     ExpressivePullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
@@ -177,24 +182,22 @@ fun PlaylistDetailScreen(
                     uiState.error != null ->
                         playlistDetailErrorItem(error = uiState.error, onRetry = viewModel::refresh)
                     else -> {
+                        // LOCAL PLAYLIST SLOT — leading hero button, pick-cover
+                        // overlay and the editable-aware remove-downloads
+                        // confirm; every non-local route passes nulls through.
                         playlistDetailHeroItem(
-                            header = header,
-                            systemBarsTopPadding = systemBarsTopPadding,
-                            headerProgress = headerProgress,
-                            disableBlur = disableBlur,
+                            header, systemBarsTopPadding, headerProgress, disableBlur,
                             actions = {
-                                PlaylistDetailHeroActionsHost(
-                                    viewModel, capabilities, viewModel.source,
-                                    playerConnection, downloadHolder,
-                                    header?.title.orEmpty(), visibleTracks,
+                                localPlaylistHeroActionsOrUnified(
+                                    viewModel, localGlue, capabilities, playerConnection,
+                                    downloadHolder, header?.title.orEmpty(), visibleTracks, context,
                                 )
                             },
+                            artworkOverlay = localPlaylistPickCoverOverlayOrNull(
+                                localGlue, systemBarsTopPadding, hasArtworkBackdrop),
                         )
 
-                        renderPlaylistDetailHeaderSlot(
-                            uiState = uiState,
-                            viewModel = viewModel,
-                        )
+                        renderPlaylistDetailHeaderSlot(uiState, viewModel, locked, { locked = !locked })
 
                         if (visibleTracks.isEmpty() && uiState.error == null) {
                             playlistDetailEmptyItem(
@@ -221,7 +224,9 @@ fun PlaylistDetailScreen(
                                 spotifyLikedKeys = spotifyLikedKeys,
                                 onSpotifyToggleLike = onSpotifyToggleLike,
                                 navController = navController,
-                                playlistBrowseId = null,
+                                // LOCAL PLAYLIST SLOT — SongMenu remove-from-playlist
+                                // + like-source hint key on the remote browseId.
+                                playlistBrowseId = uiState.browseId,
                                 menuState = menuState,
                                 onSongClick = { index, track ->
                                     onPlaylistDetailRowClick(
@@ -230,9 +235,7 @@ fun PlaylistDetailScreen(
                                     )
                                 },
                                 onSongLongClick = { _, track ->
-                                    onPlaylistDetailRowLongClick(
-                                        searchState, track, haptics::longPress,
-                                    )
+                                    onPlaylistDetailRowLongClick(searchState, track, haptics::longPress)
                                 },
                                 onSwipeDelete = viewModel::removeSong,
                             )
@@ -241,34 +244,35 @@ fun PlaylistDetailScreen(
                         if (capabilities.paginated && uiState.hasContinuation && uiState.isLoadingMore) {
                             playlistDetailLoadingMoreItem()
                         }
+
+                        // LOCAL PLAYLIST SLOT — "You might like" footer
+                        // (legacy LocalPlaylistScreen.kt:251-257).
+                        localPlaylistSuggestionsItem(
+                            localGlue != null && !searchState.selection && !searchState.isSearching)
                     }
                 }
             }
 
-            PlaylistDetailOverlays(
+            // Overlays (scrollbar, haze, download toolbar, snackbar) + top bar
+            // — see PlaylistDetailScaffoldTail (Wiring).
+            playlistDetailScaffoldTail(
+                viewModel = viewModel,
+                searchState = searchState,
+                menuState = menuState,
+                navController = navController,
                 lazyListState = lazyListState,
                 headerItems = headerItems,
                 headerProgress = headerProgress,
                 hasArtworkBackdrop = hasArtworkBackdrop,
                 hazeState = hazeState,
                 downloadHolder = downloadHolder,
-                songIds = tracks.map { it.id },
-                snackbarHostState = snackbarHostState,
-            )
-
-            PlaylistDetailTopBarHost(
-                searchState = searchState,
-                menuState = menuState,
-                navController = navController,
-                lazyListState = lazyListState,
+                tracks = tracks,
                 title = header?.title.orEmpty(),
                 scrollBehavior = scrollBehavior,
-                onRemoveSongFromCache = onPlaylistDetailRemoveSongFromCache(viewModel),
-                trailingAction =
-                    renderPlaylistDetailTrailingAction(
-                        viewModel, menuState, tracks, header,
-                        onClearSelection = { searchState.clearSelection() },
-                    ),
+                snackbarHostState = snackbarHostState,
+                localGlue = localGlue,
+                editable = uiState.editable,
+                likeSourceHint = localPlaylistLikeSourceHint(uiState.browseId),
             )
         }
     }

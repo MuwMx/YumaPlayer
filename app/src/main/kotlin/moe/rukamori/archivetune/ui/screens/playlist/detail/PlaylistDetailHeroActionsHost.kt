@@ -53,8 +53,10 @@ import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
  * SPOTIFY PLAYLIST SLOT: the legacy hero's sync/reload button
  * (SpotifyPlaylistControls.kt:63-88) renders as the leading action on
  * Spotify routes; other routes pass [leadingAction] through untouched.
- * LOCAL EDIT SLOT / ONLINE LIKE SLOT: those leading buttons join via
- * [leadingAction] with their route flips — keep this signature stable.
+ * LOCAL PLAYLIST SLOT: the delete-or-like circle rides [leadingAction],
+ * and [localOnRemoveDownloads] overrides the Completed-download confirm's
+ * onConfirm (a non-editable local playlist also clears its songs — legacy
+ * removeLocalPlaylistDownloads) — keep these signatures stable.
  */
 @Composable
 internal fun PlaylistDetailHeroActionsHost(
@@ -66,6 +68,7 @@ internal fun PlaylistDetailHeroActionsHost(
     title: String,
     tracks: List<PlaylistTrack>,
     leadingAction: (@Composable () -> Unit)? = null,
+    localOnRemoveDownloads: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     // Legacy heroes route a Completed download button through a confirm
@@ -76,6 +79,7 @@ internal fun PlaylistDetailHeroActionsHost(
             playlistName = title,
             songIds = tracks.map { it.id },
             onDismiss = { showRemoveDownloadDialog = false },
+            onConfirm = localOnRemoveDownloads,
         )
     }
 

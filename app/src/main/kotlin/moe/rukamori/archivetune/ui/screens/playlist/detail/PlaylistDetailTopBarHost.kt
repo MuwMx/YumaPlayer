@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
 import androidx.compose.foundation.lazy.LazyListState
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
 import moe.rukamori.archivetune.ui.component.MenuState
@@ -28,7 +29,10 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHo
  * button (legacy CachePlaylistScreen.kt:526-536 — selected ids, then clear
  * selection) and the selection menu's from-cache branch (555-566).
  * [trailingAction] carries the auto more-menu and the future Spotify copy
- * button. Keep this signature stable.
+ * button. [likeSourceHint] is the LOCAL PLAYLIST SLOT: legacy
+ * showLocalPlaylistSelectionMenu pinned the selection like toggle to the
+ * playlist's own browse-id space (LikeSource.SPOTIFY for "spotify:"-linked
+ * playlists instead of auto-resolving per song). Keep this signature stable.
  */
 @Composable
 internal fun PlaylistDetailTopBarHost(
@@ -39,6 +43,7 @@ internal fun PlaylistDetailTopBarHost(
     title: String,
     scrollBehavior: TopAppBarScrollBehavior,
     onRemoveSongFromCache: ((songId: String) -> Unit)?,
+    likeSourceHint: LikeSource?,
     trailingAction: (@Composable () -> Unit)?,
 ) {
     // Legacy showTopBarTitle rule: the title appears once the list scrolls
@@ -87,7 +92,7 @@ internal fun PlaylistDetailTopBarHost(
             showPlaylistDetailSelectionMenu(
                 menuState = menuState,
                 selectedTracks = selectedTracks,
-                likeSourceHint = null,
+                likeSourceHint = likeSourceHint,
                 onClearSelection = { searchState.clearSelection() },
                 onRemoveFromCache = menuRemoveFromCache,
             )

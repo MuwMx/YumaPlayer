@@ -105,6 +105,22 @@ class PlaylistDetailViewModel
                 .ensureLoaded()
                 .onFailure { reportException(it) }
         }
+
+        // LOCAL PLAYLIST SLOT — live per-playlist editable/browseId flags
+        // (RoomPlaylistSource re-emits them on playlist-row changes).
+        val roomSource = source as? moe.rukamori.archivetune.playlist.source.RoomPlaylistSource
+        if (roomSource != null) {
+            viewModelScope.launch {
+                roomSource.editable.collect { editable ->
+                    _uiState.update { it.copy(editable = editable) }
+                }
+            }
+            viewModelScope.launch {
+                roomSource.browseId.collect { browseId ->
+                    _uiState.update { it.copy(browseId = browseId) }
+                }
+            }
+        }
     }
 
     fun refresh() {

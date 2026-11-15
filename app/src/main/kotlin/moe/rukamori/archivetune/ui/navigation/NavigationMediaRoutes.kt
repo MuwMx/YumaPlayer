@@ -22,7 +22,6 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseScreen
 import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
-import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailScreen
 
@@ -153,8 +152,13 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                     type = NavType.StringType
                 },
             ),
-    ) {
-        LocalPlaylistScreen(navController, scrollBehavior)
+    ) { entry ->
+        // PHASE E FLIP (local): the Library playlist route renders the unified
+        // screen; the VM resolves the "playlistId" arg. Route string UNCHANGED
+        // (Library.kt fork, deep links and NavigationTabOwnership prefix
+        // matching all key on it).
+        entry.savedStateHandle[PLAYLIST_DETAIL_ROUTE_KEY] = "local_playlist"
+        PlaylistDetailScreen(navController, entry, scrollBehavior)
     }
 
     composable(

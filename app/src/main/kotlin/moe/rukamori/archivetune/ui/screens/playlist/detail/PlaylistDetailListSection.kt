@@ -57,7 +57,9 @@ internal fun LazyListScope.playlistDetailSongs(
     val canReorderNow =
         capabilities.reorderable && sortType == PlaylistSongSortType.CUSTOM &&
             !selection && !isSearching && !locked
-    val canSwipeDeleteNow = capabilities.swipeDelete && !selection && !swipeToSongEnabled
+    // Legacy swipe-delete gating (LocalPlaylistListSection.kt:252): the
+    // reorder lock also freezes swipe-deletes.
+    val canSwipeDeleteNow = capabilities.swipeDelete && !selection && !locked && !swipeToSongEnabled
 
     itemsIndexed(
         items = tracks,

@@ -25,6 +25,8 @@ import moe.rukamori.archivetune.playlist.source.TopPlaylistSource
 internal fun LazyListScope.renderPlaylistDetailHeaderSlot(
     uiState: PlaylistDetailUiState,
     viewModel: PlaylistDetailViewModel,
+    locked: Boolean,
+    onToggleLock: () -> Unit,
 ) {
     val topSource = viewModel.source as? TopPlaylistSource
     if (topSource != null) {
@@ -45,12 +47,14 @@ internal fun LazyListScope.renderPlaylistDetailHeaderSlot(
         PlaylistDetailSortHeader(
             sortInfo = sortInfo,
             editable = uiState.capabilities.editable,
-            locked = false,
+            // LOCAL PLAYLIST SLOT — the reorder lock rides the sort header
+            // like the legacy LocalPlaylistSortHeader (ListSection.kt:83-95).
+            locked = locked,
             onSortTypeChange = { type -> viewModel.updateSortPreference(type, sortInfo.descending) },
             onSortDescendingChange = { descending ->
                 viewModel.updateSortPreference(sortInfo.sortType, descending)
             },
-            onToggleLock = {},
+            onToggleLock = onToggleLock,
         )
     }
 }

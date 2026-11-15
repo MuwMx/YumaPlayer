@@ -32,6 +32,7 @@ internal fun PlaylistDetailRemoveDownloadDialog(
     playlistName: String,
     songIds: List<String>,
     onDismiss: () -> Unit,
+    onConfirm: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     DefaultDialog(
@@ -54,10 +55,16 @@ internal fun PlaylistDetailRemoveDownloadDialog(
             TextButton(
                 onClick = {
                     onDismiss()
-                    sendRemoveDownloads(
-                        context = context,
-                        songIds = songIds,
-                    )
+                    if (onConfirm != null) {
+                        // LOCAL PLAYLIST SLOT — a non-editable local playlist
+                        // also clears its songs (removeLocalPlaylistDownloads).
+                        onConfirm()
+                    } else {
+                        sendRemoveDownloads(
+                            context = context,
+                            songIds = songIds,
+                        )
+                    }
                 },
                 shapes = ButtonDefaults.shapes(),
             ) {
