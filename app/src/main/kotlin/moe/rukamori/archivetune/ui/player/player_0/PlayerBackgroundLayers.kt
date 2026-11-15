@@ -83,9 +83,7 @@ fun PlayerBackgroundLayers(
 
     val needsBlur by remember {
         derivedStateOf {
-            val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
-            val isLyricsFullyOpen = lyricsFraction >= 0.99f
-            (currentState.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen && !isLyricsFullyOpen
+            (currentState.isBlurBackgroundEnabled || blurOverlayAlpha > 0.005f) && isLayerOnScreen
         }
     }
 
@@ -166,8 +164,7 @@ fun PlayerBackgroundLayers(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val lyricsFraction = currentLyricsProvider().coerceIn(0f, 1f)
-                        alpha = blurOverlayAlpha * (1f - lyricsFraction)
+                        alpha = blurOverlayAlpha
                     }
             ) {
                 Box(
