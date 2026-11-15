@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.models.SpotifyRecentItem
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.ui.screens.home.HomeSectionHeader
 
@@ -134,8 +135,7 @@ internal fun SpotifyRecentPanel(
                 columns = 2
             ) { artist ->
                 val thumbnail = remember(artist.id) {
-                    artist.images.maxByOrNull { it.width ?: 0 }?.url
-                        ?: artist.images.firstOrNull()?.url
+                    SpotifyMapper.getArtistThumbnail(artist)
                 }
                 SpotifyQuickGridCell(
                     title = artist.name,

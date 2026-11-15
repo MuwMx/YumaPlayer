@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.spotify.SpotifyHomeSection
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
@@ -131,8 +132,7 @@ internal fun SpotifyArtistSectionRow(
             contentType = { "spotify_artist" }
         ) { artist ->
             val thumbnail = remember(artist.id) {
-                artist.images.maxByOrNull { it.width ?: 0 }?.url
-                    ?: artist.images.firstOrNull()?.url
+                SpotifyMapper.getArtistThumbnail(artist)
             }
 
             Column(
@@ -185,7 +185,7 @@ internal fun SpotifyAlbumSectionRow(
                     playlistId = album.id,
                     title = album.name,
                     artists = album.artists.map { Artist(it.name, it.id) },
-                    thumbnail = album.images.maxByOrNull { it.width ?: 0 }?.url ?: album.images.firstOrNull()?.url ?: "",
+                    thumbnail = SpotifyMapper.getAlbumThumbnail(album).orEmpty(),
                 )
             }
             YouTubeGridItem(
@@ -224,7 +224,7 @@ internal fun SpotifyPlaylistSectionRow(
                     title = playlist.name,
                     author = playlist.owner?.displayName?.let { Artist(it, null) },
                     songCountText = playlist.tracks?.total?.toString(),
-                    thumbnail = playlist.images.maxByOrNull { it.width ?: 0 }?.url ?: playlist.images.firstOrNull()?.url ?: "",
+                    thumbnail = SpotifyMapper.getPlaylistThumbnail(playlist).orEmpty(),
                     playEndpoint = null,
                     shuffleEndpoint = null,
                     radioEndpoint = null,

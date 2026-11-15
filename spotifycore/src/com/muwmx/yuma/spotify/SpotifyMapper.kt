@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.spotify
 import moe.rukamori.archivetune.spotify.mapping.SpotifyEntityMapper
 import moe.rukamori.archivetune.spotify.mapping.SpotifyQueryBuilder
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyImage
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -45,6 +46,8 @@ object SpotifyMapper {
     fun getPlaylistThumbnail(playlist: SpotifyPlaylist): String? = SpotifyEntityMapper.getPlaylistThumbnail(playlist)
 
     fun getAlbumThumbnail(album: SpotifyAlbum): String? = SpotifyEntityMapper.getAlbumThumbnail(album)
+
+    fun getArtistThumbnail(artist: SpotifyArtist): String? = SpotifyEntityMapper.getArtistThumbnail(artist)
 
     fun getTrackThumbnail(track: SpotifyTrack): String? = SpotifyEntityMapper.getTrackThumbnail(track)
 

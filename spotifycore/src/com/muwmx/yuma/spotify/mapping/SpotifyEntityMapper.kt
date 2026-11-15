@@ -7,6 +7,7 @@
 package moe.rukamori.archivetune.spotify.mapping
 
 import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyImage
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -38,6 +39,9 @@ object SpotifyEntityMapper {
 
     fun getAlbumThumbnail(album: SpotifyAlbum): String? =
         getBestImage(album.images)?.url
+
+    fun getArtistThumbnail(artist: SpotifyArtist): String? =
+        getBestImage(artist.images)?.url
 
     fun getTrackThumbnailMedium(track: SpotifyTrack): String? {
         val images = track.album?.images?.takeIf { it.isNotEmpty() } ?: return getTrackThumbnail(track)

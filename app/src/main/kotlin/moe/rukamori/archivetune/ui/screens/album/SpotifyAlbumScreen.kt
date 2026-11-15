@@ -62,6 +62,7 @@ import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
@@ -104,7 +105,10 @@ fun SpotifyAlbumScreen(
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val successState = uiState as? SpotifyAlbumUiState.Success
     val hasHeader = successState != null
-    val hasArtworkBackdrop = hasHeader && successState.album.images.firstOrNull()?.url?.isNotBlank() == true
+    val albumThumbnailUrl = remember(successState?.album) {
+        successState?.album?.let { SpotifyMapper.getAlbumThumbnail(it) }
+    }
+    val hasArtworkBackdrop = hasHeader && !albumThumbnailUrl.isNullOrBlank()
     val headerProgress = rememberHeaderScrollProgress(
         lazyListState = lazyListState,
         hasCollapsibleHeader = hasArtworkBackdrop,
@@ -157,9 +161,7 @@ fun SpotifyAlbumScreen(
         }
     }
 
-    val artworkModel = remember(successState) {
-        successState?.album?.images?.firstOrNull()?.url
-    }
+    val artworkModel = albumThumbnailUrl
     val artworkBackground = rememberArtworkBackground(artworkModel)
 
     Box(modifier = Modifier.fillMaxSize().artworkBackground(artworkBackground)) {

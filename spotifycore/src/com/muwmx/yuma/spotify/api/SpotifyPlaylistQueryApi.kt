@@ -173,10 +173,7 @@ object SpotifyPlaylistQueryApi {
             val ownerData = playlist.obj("ownerV2")?.obj("data")
             val ownerUri = ownerData?.str("uri") ?: ""
 
-            val images =
-                playlist.obj("images")?.arr("items")?.firstOrNull()?.let {
-                    SpotifyParsers.parseGqlImages(it.jsonObject.arr("sources"))
-                } ?: emptyList()
+            val images = SpotifyParsers.parseGqlPlaylistImages(playlist.obj("images"))
 
             SpotifyPlaylist(
                 id = playlistId,

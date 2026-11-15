@@ -69,8 +69,14 @@ class SpotifyEntityMapperTest {
             name = "Test Playlist",
             images = listOf(small, large),
         )
+        val artist = moe.rukamori.archivetune.spotify.models.SpotifyArtist(
+            id = "art1",
+            name = "Test Artist",
+            images = listOf(small, large),
+        )
 
         assertEquals(large.url, SpotifyEntityMapper.getAlbumThumbnail(album))
         assertEquals(large.url, SpotifyEntityMapper.getPlaylistThumbnail(playlist))
+        assertEquals(large.url, SpotifyEntityMapper.getArtistThumbnail(artist))
     }
 }
