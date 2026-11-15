@@ -20,11 +20,19 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabiliti
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
 
 /**
- * SPOTIFY origin row (SpotifyTrack → SpotifyTrackListItem, no per-song
- * menu in the legacy screen either). Mirrors SpotifyPlaylistTrackRows.kt
- * (legacy): active state resolves through [isResolvedAs] against the full
- * MediaMetadata — a resolved Spotify placeholder plays as a YouTube id, so a
- * raw id comparison would silently drop the playing-row highlight.
+ * SPOTIFY origin row (SpotifyTrack → SpotifyTrackListItem). Active state
+ * resolves through [isResolvedAs] against the full MediaMetadata — a
+ * resolved Spotify placeholder plays as a YouTube id, so a raw id
+ * comparison would silently drop the playing-row highlight.
+ *
+ * PARITY WITH OTHER ORIGINS (swipe + per-song menu): every other unified
+ * row offers the global swipe-to-play-next/add-to-queue gesture and a
+ * 3-dot song menu; the Spotify row was the only one without both (the
+ * legacy SpotifyPlaylistScreen had neither). The queue actions wrap the
+ * row in [spotifyAwareQueue] so a swiped track resolves lazily exactly
+ * like a tapped one, and the menu reuses the metadata-menu machinery
+ * (like / add-to-playlist / play-next / add-to-queue) other rows show
+ * for placeholder songs.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -35,6 +43,7 @@ internal fun SpotifyPlaylistOriginRow(
     isLiked: Boolean = false,
     onToggleLike: (() -> Unit)? = null,
     onClick: () -> Unit,
+    onShowMenu: (SpotifyTrack) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isActive = remember(track, mediaMetadata) { track.isResolvedAs(mediaMetadata) }
@@ -43,16 +52,21 @@ internal fun SpotifyPlaylistOriginRow(
         isScrollInProgress = false,
         modifier = modifier,
     ) {
-        SpotifyTrackListItem(
-            track = track,
-            isActive = isActive,
-            isPlaying = isPlaying,
-            isLiked = isLiked,
-            onToggleLike = onToggleLike,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(onClick = onClick),
-        )
+        SpotifySwipeToSongBox(track = track) {
+            SpotifyTrackListItem(
+                track = track,
+                isActive = isActive,
+                isPlaying = isPlaying,
+                isLiked = isLiked,
+                onToggleLike = onToggleLike,
+                trailingContent = {
+                    SpotifyRowMenuButton(onClick = { onShowMenu(track) })
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(onClick = onClick),
+            )
+        }
     }
 }

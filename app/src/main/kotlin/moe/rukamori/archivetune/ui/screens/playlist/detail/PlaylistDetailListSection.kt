@@ -17,6 +17,7 @@ import moe.rukamori.archivetune.playlist.source.PlaylistCapabilities
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.ui.component.MenuState
+import moe.rukamori.archivetune.ui.menu.SpotifySongMenu
 import moe.rukamori.archivetune.ui.screens.playlist.CachedSong
 import moe.rukamori.archivetune.utils.isTrackLiked
 import sh.calvin.reorderable.ReorderableLazyListState
@@ -109,6 +110,14 @@ internal fun LazyListScope.playlistDetailSongs(
                     isPlaying = isPlaying,
                     isLiked = spotifyLikedKeys.isTrackLiked(origin),
                     onToggleLike = onSpotifyToggleLike?.let { toggle -> { toggle(origin) } },
+                    onShowMenu = { track ->
+                        menuState.show {
+                            SpotifySongMenu(
+                                track = track,
+                                onDismiss = menuState::dismiss,
+                            )
+                        }
+                    },
                     onClick = { onSongClick(index, track) },
                 )
 

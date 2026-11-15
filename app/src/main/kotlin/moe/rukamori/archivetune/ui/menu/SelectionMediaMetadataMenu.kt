@@ -60,6 +60,7 @@ fun SelectionMediaMetadataMenu(
     onRemoveFromQueue: ((List<Timeline.Window>) -> Unit)? = null,
     onRemoveFromHistory: (() -> Unit)? = null,
     likeSourceHint: LikeSource? = null,
+    showDownloadSection: Boolean = true,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -213,24 +214,26 @@ fun SelectionMediaMetadataMenu(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        item {
-            SelectionMenuDownloadSection(
-                downloadState = downloadState,
-                onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
-                onDownload = {
-                    sendAddMissingDownloads(
-                        context = context,
-                        songs =
-                            songSelection.map { song ->
-                                HeaderDownloadItem(
-                                    id = song.id,
-                                    title = song.title,
-                                )
-                            },
-                        downloads = downloadUtil.downloads.value,
-                    )
-                },
-            )
+        if (showDownloadSection) {
+            item {
+                SelectionMenuDownloadSection(
+                    downloadState = downloadState,
+                    onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
+                    onDownload = {
+                        sendAddMissingDownloads(
+                            context = context,
+                            songs =
+                                songSelection.map { song ->
+                                    HeaderDownloadItem(
+                                        id = song.id,
+                                        title = song.title,
+                                    )
+                                },
+                            downloads = downloadUtil.downloads.value,
+                        )
+                    },
+                )
+            }
         }
     }
 }
