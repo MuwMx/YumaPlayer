@@ -12,6 +12,11 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.playback.ExoDownloadService
 
 @Immutable
@@ -98,28 +103,41 @@ fun headerDownloadState(
     }
 }
 
+private val downloadDispatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
 fun sendAddMissingDownloads(
     context: Context,
     songs: List<HeaderDownloadItem>,
     downloads: Map<String, Download>,
 ) {
-    songs
-        .distinctBy { it.id }
-        .filter { item -> downloads[item.id]?.state.shouldRequestDownload() }
-        .forEach { item ->
-            val downloadRequest =
-                DownloadRequest
-                    .Builder(item.id, item.id.toUri())
-                    .setCustomCacheKey(item.id)
-                    .setData(item.title.toByteArray())
-                    .build()
-            DownloadService.sendAddDownload(
-                context,
-                ExoDownloadService::class.java,
-                downloadRequest,
-                false,
-            )
+    val itemsToAdd =
+        songs
+            .distinctBy { it.id }
+            .filter { item -> downloads[item.id]?.state.shouldRequestDownload() }
+    if (itemsToAdd.isEmpty()) return
+
+    val appContext = context.applicationContext
+    downloadDispatchScope.launch {
+        itemsToAdd.chunked(30).forEachIndexed { index, batch ->
+            if (index > 0) {
+                delay(40L)
+            }
+            batch.forEach { item ->
+                val downloadRequest =
+                    DownloadRequest
+                        .Builder(item.id, item.id.toUri())
+                        .setCustomCacheKey(item.id)
+                        .setData(item.title.toByteArray())
+                        .build()
+                DownloadService.sendAddDownload(
+                    appContext,
+                    ExoDownloadService::class.java,
+                    downloadRequest,
+                    false,
+                )
+            }
         }
+    }
 }
 
 fun sendRemoveDownloads(

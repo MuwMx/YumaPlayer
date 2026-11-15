@@ -29,9 +29,13 @@ import coil3.SingletonImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
@@ -88,6 +92,9 @@ class DownloadUtil
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
         private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
+        private val downloadPreloadLock = Any()
+        private var downloadPreloadTargetId: String? = null
+        private var downloadPreloadJob: Job? = null
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
             OkHttpClient
@@ -235,6 +242,10 @@ class DownloadUtil
                 maxParallelDownloads = DEFAULT_MAX_PARALLEL_DOWNLOADS
                 addListener(
                     object : DownloadManager.Listener {
+                        override fun onInitialized(downloadManager: DownloadManager) {
+                            updateNextDownloadPreload(downloadManager)
+                        }
+
                         override fun onDownloadChanged(
                             downloadManager: DownloadManager,
                             download: Download,
@@ -251,6 +262,7 @@ class DownloadUtil
                             } else if (download.state == Download.STATE_FAILED || download.state == Download.STATE_STOPPED) {
                                 completedDownloadIds.update { it - download.request.id }
                             }
+                            updateNextDownloadPreload(downloadManager)
                         }
 
                         override fun onDownloadRemoved(
@@ -259,6 +271,7 @@ class DownloadUtil
                         ) {
                             downloads.update { map -> map - download.request.id }
                             completedDownloadIds.update { it - download.request.id }
+                            updateNextDownloadPreload(downloadManager)
                         }
                     },
                 )
@@ -278,6 +291,7 @@ class DownloadUtil
                 }
                 downloads.value = result
                 completedDownloadIds.value = completed
+                updateNextDownloadPreload(downloadManager)
             }
             downloadScope.launch {
                 var previousFingerprint: String? = null
@@ -388,8 +402,85 @@ class DownloadUtil
             }
         }
 
+        private fun updateNextDownloadPreload(downloadManager: DownloadManager) {
+            val currentDownloads = downloadManager.currentDownloads
+            val activeDownloadCount =
+                currentDownloads.count { download ->
+                    download.state == Download.STATE_DOWNLOADING ||
+                        download.state == Download.STATE_RESTARTING
+                }
+            val nextTargetId =
+                if (activeDownloadCount >= DEFAULT_MAX_PARALLEL_DOWNLOADS) {
+                    currentDownloads
+                        .firstOrNull { download -> download.state == Download.STATE_QUEUED }
+                        ?.request
+                        ?.id
+                } else {
+                    null
+                }
+            val jobs =
+                synchronized(downloadPreloadLock) {
+                    if (downloadPreloadTargetId == nextTargetId) return
+
+                    val previousJob = downloadPreloadJob
+                    val nextJob =
+                        nextTargetId?.let { mediaId ->
+                            downloadScope.launch(start = CoroutineStart.LAZY) {
+                                try {
+                                    preloadStreamUrl(mediaId)
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (_: Exception) {
+                                } finally {
+                                    val runningJob = currentCoroutineContext()[Job]
+                                    synchronized(downloadPreloadLock) {
+                                        if (downloadPreloadJob === runningJob) {
+                                            downloadPreloadJob = null
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    downloadPreloadTargetId = nextTargetId
+                    downloadPreloadJob = nextJob
+                    previousJob to nextJob
+                }
+            jobs.first?.cancel()
+            jobs.second?.start()
+        }
+
+        private suspend fun preloadStreamUrl(mediaId: String) {
+            if (playerCache.isCached(mediaId, 0, 1)) return
+            val lowDataModeActive = context.isLowDataModeActive()
+            val requestedAudioQuality = resolveDownloadAudioQuality(lowDataModeActive)
+            val streamCacheKey = buildSongUrlCacheKey(mediaId, requestedAudioQuality)
+            val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
+            if (songUrlCache[streamCacheKey]?.isValidFor(authFingerprint, YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS) == true) {
+                return
+            }
+            val playbackData =
+                withContext(Dispatchers.IO) {
+                    context.retryWithoutPlaybackLoginContext {
+                        YTPlayerUtils.playerResponseForDownload(
+                            mediaId,
+                            audioQuality = requestedAudioQuality,
+                            connectivityManager = connectivityManager,
+                            networkMetered = lowDataModeActive,
+                        )
+                    }
+                }.getOrNull() ?: return
+            persistPlaybackMetadata(mediaId, playbackData)
+            songUrlCache[streamCacheKey] =
+                AuthScopedCacheValue(
+                    url = playbackData.streamUrl,
+                    expiresAtMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L),
+                    authFingerprint = playbackData.authFingerprint,
+                )
+        }
+
         companion object {
-            private const val DEFAULT_MAX_PARALLEL_DOWNLOADS = 6
+            private const val DEFAULT_MAX_PARALLEL_DOWNLOADS = 3
             private const val MAX_IDLE_DOWNLOAD_CONNECTIONS = 12
             private const val MAX_DOWNLOAD_HTTP_REQUESTS = 24
             private const val DOWNLOAD_CONNECTION_KEEP_ALIVE_MINUTES = 5L

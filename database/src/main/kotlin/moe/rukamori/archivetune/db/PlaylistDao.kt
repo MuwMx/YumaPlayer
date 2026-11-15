@@ -33,6 +33,15 @@ import java.util.Locale
 interface PlaylistDao {
     @Transaction
     @Query(
+        "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist ORDER BY rowId",
+    )
+    fun allPlaylistsForDownloads(): Flow<List<Playlist>>
+
+    @Query("SELECT * FROM playlist_song_map ORDER BY playlistId, position")
+    fun allPlaylistSongMapsForDownloads(): Flow<List<PlaylistSongMap>>
+
+    @Transaction
+    @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY rowId",
     )
     fun playlistsByCreateDateAsc(): Flow<List<Playlist>>
