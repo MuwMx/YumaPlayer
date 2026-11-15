@@ -35,9 +35,11 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -46,6 +48,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
@@ -82,6 +85,7 @@ import java.time.LocalDateTime
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+import kotlin.math.max
 import kotlin.math.min
 
 class MediaLibrarySessionCallback
@@ -94,10 +98,17 @@ class MediaLibrarySessionCallback
         private val scope = CoroutineScope(Dispatchers.Main) + Job()
         private var pendingSearchJob: Job? = null
         private val onlineSearchItemCache = ConcurrentHashMap<String, MediaItem>()
+        @Volatile private var cachedSearchResult: CachedSearchResult? = null
         var toggleLike: () -> Unit = {}
         var toggleStartRadio: () -> Unit = {}
         var toggleLibrary: () -> Unit = {}
         var moveInShuffleOrder: (fromIndex: Int, toIndex: Int) -> Boolean = { _, _ -> false }
+
+        private data class CachedSearchResult(
+            val query: String,
+            val items: List<MediaItem>,
+            val timestamp: Long = System.currentTimeMillis(),
+        )
 
         private data class AutoPlaylistSortOption(
             val sortType: PlaylistSongSortType,
@@ -277,22 +288,26 @@ class MediaLibrarySessionCallback
                 pendingSearchJob?.cancel()
                 pendingSearchJob =
                     scope.launch(Dispatchers.IO) {
-                        val count =
-                            runCatching {
-                                if (q.isBlank()) {
-                                    0
-                                } else {
-                                    val localCount =
-                                        searchOfflineSongs(q, previewSize = 25).count +
-                                            database.searchArtistsCount(q) +
-                                            database.searchAlbumsCount(q) +
-                                            database.searchPlaylistsCount(q)
-                                    val onlineCount = searchOnlineSongs(q, previewSize = 25).size
-                                    localCount + onlineCount
-                                }
-                            }.getOrElse { 0 }
-                        withContext(Dispatchers.Main) {
-                            session.notifySearchResultChanged(browser, query, count, params)
+                        var resultCount: Int? = null
+                        try {
+                            if (q.isBlank()) {
+                                cachedSearchResult = null
+                                resultCount = 0
+                            } else {
+                                val items = executeSearch(q, AUTO_BROWSE_LIMIT)
+                                cachedSearchResult = CachedSearchResult(q, items)
+                                resultCount = items.size
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Throwable) {
+                            Timber.tag("MediaLibrary").w(e, "Search failed for %s", q)
+                            resultCount = 0
+                        } finally {
+                            val finalCount = resultCount ?: 0
+                            withContext(NonCancellable + Dispatchers.Main) {
+                                session.notifySearchResultChanged(browser, query, finalCount, params)
+                            }
                         }
                     }
             }
@@ -313,79 +328,22 @@ class MediaLibrarySessionCallback
                     return@future LibraryResult.ofItemList(emptyList(), params)
                 }
 
-                val requested = (safePage + 1) * safePageSize
-                val items = ArrayList<MediaItem>(min(requested, 200))
+                val cached = cachedSearchResult
+                val isCacheHit =
+                    cached != null &&
+                        cached.query == q &&
+                        (System.currentTimeMillis() - cached.timestamp < SEARCH_CACHE_TTL_MS)
 
-                val offlineSongs = searchOfflineSongs(q, previewSize = requested)
-                val existingSongIds =
-                    offlineSongs.items
-                        .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
-                val onlineSongs =
-                    searchOnlineSongs(q, previewSize = requested).filter { onlineItem ->
-                        existingSongIds.add(searchSongIdentity(onlineItem))
+                val items =
+                    if (isCacheHit) {
+                        cached!!.items
+                    } else {
+                        val requested = (safePage + 1) * safePageSize
+                        val searchLimit = max(requested, AUTO_BROWSE_LIMIT)
+                        val fetched = executeSearch(q, searchLimit)
+                        cachedSearchResult = CachedSearchResult(q, fetched)
+                        fetched
                     }
-                onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
-                items +=
-                    interleaveMediaItems(
-                        first = offlineSongs.items,
-                        second = onlineSongs,
-                    ).take(requested)
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val artists = database.searchArtists(q, previewSize = remaining).first()
-                    items +=
-                        artists.map { artist ->
-                            browsableMediaItem(
-                                "${MediaLibraryTreeConstants.ARTIST}/${artist.id}",
-                                artist.title,
-                                context.resources.getQuantityString(
-                                    R.plurals.n_song,
-                                    artist.songCount,
-                                    artist.songCount,
-                                ),
-                                artist.thumbnailUrl?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_ARTIST,
-                            )
-                        }
-                }
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val albums = database.searchAlbums(q, previewSize = remaining).first()
-                    items +=
-                        albums.map { album ->
-                            browsableMediaItem(
-                                "${MediaLibraryTreeConstants.ALBUM}/${album.id}",
-                                album.title,
-                                album.artists.joinToString { it.name },
-                                album.thumbnailUrl?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_ALBUM,
-                            )
-                        }
-                }
-
-                if (items.size < requested) {
-                    val remaining = requested - items.size
-
-                    val playlists = database.searchPlaylists(q, previewSize = remaining).first()
-                    items +=
-                        playlists.map { playlist ->
-                            browsableMediaItem(
-                                "${MediaLibraryTreeConstants.PLAYLIST}/${playlist.id}",
-                                playlist.title,
-                                context.resources.getQuantityString(
-                                    R.plurals.n_song,
-                                    playlist.songCount,
-                                    playlist.songCount,
-                                ),
-                                playlist.thumbnails.firstOrNull()?.toUri(),
-                                MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                            )
-                        }
-                }
 
                 val from = safePage * safePageSize
                 if (from >= items.size) return@future LibraryResult.ofItemList(emptyList(), params)
@@ -2035,25 +1993,111 @@ class MediaLibrarySessionCallback
 
         private fun searchSongIdentity(item: MediaItem): String = item.mediaId.removePrefix("${MediaLibraryTreeConstants.SONG}/")
 
+        private suspend fun executeSearch(
+            query: String,
+            requested: Int,
+        ): List<MediaItem> {
+            val q = query.trim()
+            if (q.isBlank() || requested <= 0) return emptyList()
+
+            val items = ArrayList<MediaItem>(min(requested, 200))
+
+            val offlineSongs = searchOfflineSongs(q, previewSize = requested)
+            val existingSongIds =
+                offlineSongs.items
+                    .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
+            val onlineSongs =
+                searchOnlineSongs(q, previewSize = requested).filter { onlineItem ->
+                    existingSongIds.add(searchSongIdentity(onlineItem))
+                }
+            onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
+            items +=
+                interleaveMediaItems(
+                    first = offlineSongs.items,
+                    second = onlineSongs,
+                ).take(requested)
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val artists = database.searchArtists(q, previewSize = remaining).first()
+                items +=
+                    artists.map { artist ->
+                        browsableMediaItem(
+                            "${MediaLibraryTreeConstants.ARTIST}/${artist.id}",
+                            artist.title,
+                            context.resources.getQuantityString(
+                                R.plurals.n_song,
+                                artist.songCount,
+                                artist.songCount,
+                            ),
+                            artist.thumbnailUrl?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_ARTIST,
+                        )
+                    }
+            }
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val albums = database.searchAlbums(q, previewSize = remaining).first()
+                items +=
+                    albums.map { album ->
+                        browsableMediaItem(
+                            "${MediaLibraryTreeConstants.ALBUM}/${album.id}",
+                            album.title,
+                            album.artists.joinToString { it.name },
+                            album.thumbnailUrl?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_ALBUM,
+                        )
+                    }
+            }
+
+            if (items.size < requested) {
+                val remaining = requested - items.size
+
+                val playlists = database.searchPlaylists(q, previewSize = remaining).first()
+                items +=
+                    playlists.map { playlist ->
+                        browsableMediaItem(
+                            "${MediaLibraryTreeConstants.PLAYLIST}/${playlist.id}",
+                            playlist.title,
+                            context.resources.getQuantityString(
+                                R.plurals.n_song,
+                                playlist.songCount,
+                                playlist.songCount,
+                            ),
+                            playlist.thumbnails.firstOrNull()?.toUri(),
+                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                        )
+                    }
+            }
+
+            return items
+        }
+
         private suspend fun searchOnlineSongs(
             query: String,
             previewSize: Int,
         ): List<MediaItem> {
             if (query.isBlank() || previewSize <= 0) return emptyList()
-            return YouTube
-                .search(query, YouTube.SearchFilter.FILTER_SONG)
-                .getOrNull()
-                ?.items
-                .orEmpty()
-                .asSequence()
-                .filterIsInstance<SongItem>()
-                .distinctBy { it.id }
-                .take(previewSize)
-                .map { it.toMediaItem() }
-                .toList()
+            return withTimeoutOrNull(6_000L) {
+                YouTube
+                    .search(query, YouTube.SearchFilter.FILTER_SONG)
+                    .getOrNull()
+                    ?.items
+                    .orEmpty()
+                    .asSequence()
+                    .filterIsInstance<SongItem>()
+                    .distinctBy { it.id }
+                    .take(previewSize)
+                    .map { it.toMediaItem() }
+                    .toList()
+            } ?: emptyList()
         }
 
         companion object {
+            private const val SEARCH_CACHE_TTL_MS = 30_000L
             private const val EXTRA_CONTENT_STYLE_SUPPORTED = "android.media.browse.CONTENT_STYLE_SUPPORTED"
             private const val EXTRA_CONTENT_STYLE_BROWSABLE_HINT =
                 "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT"

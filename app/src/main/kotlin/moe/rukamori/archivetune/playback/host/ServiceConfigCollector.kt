@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.playback.EqSettings
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
@@ -125,8 +126,26 @@ internal class ServiceConfigCollector(
                 id to effective
             }
         }.distinctUntilChanged().flatMapLatest { target ->
-            if (target == null) kotlinx.coroutines.flow.flowOf(null)
-            else database.formatForSource(target.first, target.second)
+            if (target == null) {
+                kotlinx.coroutines.flow.flowOf(null)
+            } else {
+                val rawId = target.first
+                val resolvedId =
+                    if (SpotifyPlaceholders.isPlaceholder(rawId)) {
+                        val ytId = SpotifyPlaceholders.youtubeIdFor(rawId)
+                        if (ytId != rawId) {
+                            ytId
+                        } else {
+                            val cleanSpotifyId = LikeSourceResolver.extractCleanSpotifyId(rawId) ?: rawId
+                            database.getSpotifyMatch(cleanSpotifyId)?.youtubeId
+                                ?: database.getSpotifyMatch(rawId)?.youtubeId
+                                ?: rawId
+                        }
+                    } else {
+                        rawId
+                    }
+                database.formatForSource(resolvedId, target.second)
+            }
         }.flowOn(Dispatchers.IO)
 
     val desiredEqSettings =
