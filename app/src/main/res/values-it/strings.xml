@@ -1356,4 +1356,23 @@
     <string name="lyrics_provider_automatic">Automatico</string>
     <string name="lyrics_provider_in_use">In uso: %1$s</string>
     <string name="lyrics_provider_searching">Cerco il testo…</string>
+    <string name="automix_duration_16s">16s</string>
+    <string name="automix_duration_20s">20s</string>
+    <string name="disable_player_cover_animations">Disattiva animazioni cover</string>
+    <string name="disable_player_cover_animations_desc">Disattiva movimento della cover con play/pausa e al cambio brano</string>
+    <string name="downloads">Downloads</string>
+    <string name="download_in_progress">In corso</string>
+    <string name="no_downloads">Nessun download presente</string>
+    <string name="no_downloads_in_progress">Nessun download in corso</string>
+    <string name="pause_download">Pausa</string>
+    <string name="resume_download">Riprendi</string>
+    <string name="download_speed">%1$s/s</string>
+    <string name="download_progress_summary">%1$d%% · %2$s/s</string>
+    <string name="downloads_load_failed">Impossibile caricare i download</string>
+    <string name="download_action_failed">Impossibile aggiornare i download</string>
+    <string name="download_failed_state">Download fallito</string>
+    <string name="search_downloads">Cerca nei download</string>
+    <string name="no_matching_downloads">Nessuna corrispondenza</string>
+    <string name="remove_download_confirm">Sei sicuro di voler eliminare l\'oggetto di questo download? Questa azione è irreversibile.</string>
+    <string name="remove_download_section_confirm">Sei sicuro di voler eliminare tutti i download in questa sezione? Questa azione è irreversibile.</string>
 </resources>
