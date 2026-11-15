@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,6 +22,7 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.SyncUtils
 
@@ -49,7 +49,11 @@ fun PlaylistLikeButton(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
             tint = if (isLiked) MaterialTheme.colorScheme.error else LocalContentColor.current,
             contentDescription = null,
-            modifier = Modifier.size(24.dp),
+            // RowIconInnerSize (20dp) — the design system's calibrated icon
+            // size inside row action buttons (PlaylistDetailLocalHero heart,
+            // settings rows); 24dp reads bulky next to the ~5dp ink of the
+            // adjacent 3-dot menu icon.
+            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
         )
     }
 }
