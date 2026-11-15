@@ -87,6 +87,7 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 
 class MediaLibrarySessionCallback
     @Inject
@@ -2081,7 +2082,7 @@ class MediaLibrarySessionCallback
             previewSize: Int,
         ): List<MediaItem> {
             if (query.isBlank() || previewSize <= 0) return emptyList()
-            return withTimeoutOrNull(6_000L) {
+            return withTimeoutOrNull(6_000L.milliseconds) {
                 YouTube
                     .search(query, YouTube.SearchFilter.FILTER_SONG)
                     .getOrNull()
@@ -2091,8 +2092,19 @@ class MediaLibrarySessionCallback
                     .filterIsInstance<SongItem>()
                     .distinctBy { it.id }
                     .take(previewSize)
-                    .map { it.toMediaItem() }
-                    .toList()
+                    .map { song ->
+                        val base = song.toMediaItem()
+                        base
+                            .buildUpon()
+                            .setMediaMetadata(
+                                base.mediaMetadata
+                                    .buildUpon()
+                                    .setIsPlayable(true)
+                                    .setIsBrowsable(false)
+                                    .setExtras(playableExtras())
+                                    .build(),
+                            ).build()
+                    }.toList()
             } ?: emptyList()
         }
 
