@@ -150,6 +150,20 @@ internal fun rememberPlaylistDetailHeader(
         val myTop = androidx.compose.ui.res.stringResource(moe.rukamori.archivetune.R.string.my_top)
         return header.copy(title = "$myTop ${topSource.maxSize}")
     }
+    val autoSource = viewModel.source as? moe.rukamori.archivetune.playlist.source.AutoPlaylistSource
+    if (autoSource != null) {
+        // AUTO HERO TITLE — "Liked" / "Offline", the localized labels the
+        // legacy screen picks (AutoPlaylistScreen.kt:91-92). Pinned.
+        val label =
+            androidx.compose.ui.res.stringResource(
+                if (autoSource.playlistName == "liked") {
+                    moe.rukamori.archivetune.R.string.liked
+                } else {
+                    moe.rukamori.archivetune.R.string.offline
+                },
+            )
+        return header.copy(title = label)
+    }
     return header
 }
 

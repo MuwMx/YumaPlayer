@@ -20,8 +20,8 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistItemsScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseScreen
+import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
-import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
@@ -207,9 +207,27 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                     nullable = true
                     defaultValue = null
                 },
+                // PHASE E FLIP (auto): route string UNCHANGED (NavigationTabOwnership
+                // prefix matching keys on it). Route key rides the nav-argument
+                // default into the unified screen's SavedStateHandle.
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "auto_playlist"
+                },
             ),
-    ) {
-        AutoPlaylistScreen(navController, scrollBehavior)
+    ) { entry ->
+        // Upstream replaced the "downloaded" auto playlist with the tabbed
+        // DownloadLibraryScreen (tabbed Downloaded/Progress manager); the
+        // ?tab=progress deep link into it still arrives here — adopt theirs
+        // rather than forking. Everything else (liked) uses the unified
+        // screen, with the route key on the same nav-argument bundle as
+        // playlistId (an entry.savedStateHandle write never reaches the Hilt
+        // VM's own handle on this dep set).
+        if (entry.arguments?.getString("playlist") == "downloaded") {
+            DownloadLibraryScreen(navController = navController)
+        } else {
+            PlaylistDetailScreen(navController, entry, scrollBehavior)
+        }
     }
 
     composable(

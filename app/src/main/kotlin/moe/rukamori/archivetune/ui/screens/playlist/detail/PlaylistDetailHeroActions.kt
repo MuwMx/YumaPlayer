@@ -67,9 +67,9 @@ internal fun PlaylistDetailHeroActions(
     leadingAction: (@Composable () -> Unit)? = null,
 ) {
     val showsDownloadButton = capabilities.supportsDownload
-    val showsQueueButton =
-        !capabilities.editable && !capabilities.sortable &&
-            !capabilities.paginated // auto/top/cache — read-only Room lists
+    // Queue tail: auto/top/cache legacy heroes add to queue; Local/Online/
+    // Spotify legacy heroes do not (editable or paginated sources).
+    val showsQueueButton = !capabilities.editable && !capabilities.paginated
     val playLabel = stringResource(R.string.play)
     val shuffleLabel = stringResource(R.string.shuffle)
     val downloadLabel = stringResource(R.string.download)

@@ -42,6 +42,8 @@ internal fun SongPlaylistOriginRow(
     selected: Boolean,
     showTrackNumber: Boolean,
     trackNumber: Int,
+    downloadState: Int?,
+    downloadProgress: Float,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -60,6 +62,10 @@ internal fun SongPlaylistOriginRow(
             isActive = song.song.id == mediaMetadataId,
             isPlaying = isPlaying,
             showInLibraryIcon = true,
+            // AUTO BADGE SLOT — legacy AutoPlaylistTrackRow (lines 75-81)
+            // passes the per-song download state/progress into SongListItem.
+            downloadState = downloadState,
+            downloadProgress = downloadProgress,
             isSelected = selected,
             trailingContent = {
                 IconButton(

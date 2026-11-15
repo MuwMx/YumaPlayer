@@ -22,9 +22,11 @@ import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
+import moe.rukamori.archivetune.constants.HideYtmLikedSongsKey
 import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SongSortType
+import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.extensions.filterExplicit
@@ -47,7 +49,8 @@ class AutoPlaylistSource
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val playlistName: String,
+        /** Route playlist arg ("liked"/"downloaded"); drives the hero title. */
+        val playlistName: String,
         private val database: MusicDatabase,
         private val downloadUtil: DownloadUtil,
         private val syncUtils: SyncUtils,
@@ -91,22 +94,31 @@ class AutoPlaylistSource
     override fun observe(): Flow<PlaylistTracksResult> =
         context.dataStore.data
             .map {
-                Triple(
-                    it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE) to (
-                        it[AutoPlaylistSongSortDescendingKey] ?: true
+                Pair(
+                    Triple(
+                        it[AutoPlaylistSongSortTypeKey].toEnum(AutoPlaylistSongSortType.CREATE_DATE),
+                        it[AutoPlaylistSongSortDescendingKey] ?: true,
+                        it[HideYtmLikedSongsKey] ?: false,
                     ),
-                    it[HideExplicitKey] ?: false,
-                    it[HideVideoKey] ?: false,
+                    Pair(
+                        it[HideExplicitKey] ?: false,
+                        it[HideVideoKey] ?: false,
+                    ),
                 )
             }.distinctUntilChanged()
-            .flatMapLatest { (sortDesc, hideExplicit, hideVideo) ->
-                val (sortType, descending) = sortDesc
+            .flatMapLatest { (sortAndHideYtm, hideFlagsAndVideo) ->
+                val (sortType, descending, hideYtmLikedSongs) = sortAndHideYtm
+                val (hideExplicit, hideVideo) = hideFlagsAndVideo
                 val songSortType = sortType.toSongSortType()
                 when (playlistName) {
-                    "liked" ->
+                    "liked" -> {
+                        // Upstream 99bd75f0: with HideYtmLikedSongsKey set,
+                        // the Liked playlist shows Spotify-side likes only.
+                        val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else LikeSource.YTM
                         database
-                            .likedSongs(songSortType, descending, hideVideo, LikeSource.YTM)
+                            .likedSongs(songSortType, descending, hideVideo, source)
                             .map { it.filterExplicit(hideExplicit) }
+                    }
 
                     "downloaded" ->
                         downloadUtil.downloads.flatMapLatest { downloads: Map<String, androidx.media3.exoplayer.offline.Download> ->
@@ -125,12 +137,24 @@ class AutoPlaylistSource
                         }
 
                     else -> MutableStateFlow(emptyList())
-                }.map { songs -> songs to sortDesc }
-            }.map { (songs, sortDesc) ->
-                val (autoSortType, descending) = sortDesc
+                }.map { songs -> songs to (sortType to descending) }
+            }.map { (songs, sortAndDescending) ->
+                val (autoSortType, descending) = sortAndDescending
+                val tracks = songs.map { it.toPlaylistTrack() }
                 PlaylistTracksResult(
-                    header = null,
-                    tracks = songs.map { it.toPlaylistTrack() },
+                    // AUTO HERO — legacy AutoPlaylistHeader renders first-song
+                    // artwork, the localized "Liked"/"Offline" title (resolved
+                    // UI-side, see rememberPlaylistDetailHeader), plural count
+                    // and duration chips (AutoPlaylistScreen.kt:91-99, 207+).
+                    header =
+                        PlaylistHeaderInfo(
+                            id = id,
+                            title = "", // resolved UI-side
+                            thumbnailUrl = tracks.firstOrNull()?.thumbnailUrl,
+                            songCount = tracks.size,
+                            totalDurationMs = tracks.sumOf { it.durationMs ?: 0L },
+                        ),
+                    tracks = tracks,
                     sortInfo = PlaylistSortInfo(autoSortType.toPlaylistSongSortType(), descending),
                 )
             }
@@ -164,6 +188,24 @@ class AutoPlaylistSource
                     syncUtils.syncLikedSongs()
                 } finally {
                     _isRefreshing.value = false
+                }
+            }
+        }
+
+    /**
+     * Open-time sync (legacy AutoPlaylistScreen.kt:119-123 LaunchedEffect):
+     * when YTM sync is enabled and this is the liked playlist, sync liked
+     * songs on open. Pull-to-refresh then re-syncs via [refresh].
+     */
+    override suspend fun ensureLoaded(): Result<Unit> =
+        runCatching {
+            if (playlistName == "liked") {
+                val ytmSync =
+                    context.dataStore.data
+                        .first()
+                        .get(YtmSyncKey) ?: true
+                if (ytmSync) {
+                    syncUtils.syncLikedSongs()
                 }
             }
         }

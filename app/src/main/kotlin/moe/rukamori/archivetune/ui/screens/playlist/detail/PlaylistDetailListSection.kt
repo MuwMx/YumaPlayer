@@ -44,6 +44,7 @@ internal fun LazyListScope.playlistDetailSongs(
     navController: NavController,
     menuState: MenuState,
     playlistBrowseId: String?,
+    downloads: Map<String, androidx.media3.exoplayer.offline.Download> = emptyMap(),
     onSongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSongLongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSwipeDelete: (index: Int) -> Unit,
@@ -112,6 +113,8 @@ internal fun LazyListScope.playlistDetailSongs(
                     selected = selection && track in selectedTracks,
                     showTrackNumber = showTrackNumbers,
                     trackNumber = index + 1,
+                    downloadState = downloads[track.id]?.state,
+                    downloadProgress = downloads[track.id]?.percentDownloaded ?: -1f,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )

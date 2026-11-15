@@ -98,9 +98,8 @@ fun PlaylistDetailScreen(
     val mutableTracks = rememberPlaylistDetailTracks(tracks = tracks)
     var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
-    // Render model (visible = filtered while searching, optimistic list when
-    // idle; identity-based selection) + hero header (hidden while searching;
-    // Top's "My Top N" resolved here).
+    // Render model + hero header: see rememberPlaylistDetailRenderState /
+    // rememberPlaylistDetailHeader (search-gated, origin-aware).
     val renderState = rememberPlaylistDetailRenderState(tracks, mutableTracks, searchState)
     val visibleTracks = renderState.visibleTracks
     val selectedTracks = renderState.selectedTracks
@@ -111,23 +110,15 @@ fun PlaylistDetailScreen(
     val headerItems = if (header != null) 1 + playlistDetailHeaderSlotCount(uiState, viewModel) else 0
     val reorderableState =
         rememberPlaylistDetailReorderableState(
-            lazyListState = lazyListState,
-            headerItems = headerItems,
-            mutableTracks = mutableTracks,
-            dragInfo = dragInfo,
-            onDragInfoChange = { dragInfo = it },
+            lazyListState, headerItems, mutableTracks,
+            dragInfo, onDragInfoChange = { dragInfo = it },
         )
 
     PlaylistDetailEffects(
-        downloadHolder = downloadHolder,
-        downloadUtil = downloadUtil,
-        tracks = tracks,
-        capabilities = capabilities,
-        lazyListState = lazyListState,
-        reorderableState = reorderableState,
-        dragInfo = dragInfo,
-        onResetDragInfo = { dragInfo = null },
-        viewModel = viewModel,
+        downloadHolder = downloadHolder, downloadUtil = downloadUtil, tracks = tracks,
+        capabilities = capabilities, lazyListState = lazyListState,
+        reorderableState = reorderableState, dragInfo = dragInfo,
+        onResetDragInfo = { dragInfo = null }, viewModel = viewModel,
     )
     val headerProgress =
         rememberHeaderScrollProgress(
@@ -192,6 +183,7 @@ fun PlaylistDetailScreen(
                                 selection = searchState.selection, isSearching = searchState.isSearching,
                                 locked = locked, swipeToSongEnabled = swipeToSongEnabled,
                                 showTrackNumbers = capabilities.showsTrackNumbers,
+                                downloads = downloadHolder.downloads,
                                 navController = navController,
                                 playlistBrowseId = null,
                                 menuState = menuState,
@@ -245,7 +237,13 @@ fun PlaylistDetailScreen(
                 title = header?.title.orEmpty(),
                 scrollBehavior = scrollBehavior,
                 onSelectionRemoveFromCache = null,
-                trailingAction = null,
+                trailingAction =
+                    renderPlaylistDetailTrailingAction(
+                        viewModel = viewModel,
+                        menuState = menuState,
+                        tracks = tracks,
+                        onClearSelection = { searchState.clearSelection() },
+                    ),
             )
         }
     }
