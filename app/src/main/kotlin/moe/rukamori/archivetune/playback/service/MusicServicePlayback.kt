@@ -73,6 +73,9 @@ internal fun MusicService.resolvePlaybackDataSpec(
             } catch (e: CancellationException) {
                 throw InterruptedIOException("Placeholder match cancelled").apply { initCause(e) }
             } catch (e: IOException) {
+                if (isNetworkConnected.value) {
+                    SpotifyPlaceholders.markUnmatched(mediaId)
+                }
                 throw PlaybackException(
                     "Network error resolving $mediaId",
                     e,

@@ -63,6 +63,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
+import moe.rukamori.archivetune.utils.getCleanChromeUserAgent
 import moe.rukamori.archivetune.utils.keepScrollGestures
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import androidx.webkit.WebSettingsCompat
@@ -308,13 +309,6 @@ private fun WebView.destroySpotifyLoginWebView() {
     loadUrl("about:blank")
     (parent as? ViewGroup)?.removeView(this)
     destroy()
-}
-
-private fun getCleanChromeUserAgent(context: android.content.Context): String {
-    val defaultUa = WebSettings.getDefaultUserAgent(context)
-    return defaultUa
-        .replace("; wv", "")
-        .replace(Regex("Version/\\d+\\.\\d+\\s?"), "")
 }
 
 @SuppressLint("SetJavaScriptEnabled")
