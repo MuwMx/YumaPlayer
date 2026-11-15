@@ -82,6 +82,7 @@ internal fun AutoPlaylistHeader(
     modifier: Modifier = Modifier,
     systemBarsTopPadding: Dp = WindowInsets.systemBars.asPaddingValues().calculateTopPadding(),
     likeLength: Int = songs.fastSumBy { it.song.duration },
+    globalPaused: Boolean = false,
 ) {
     val thumbnailUrl = songs.firstOrNull()?.song?.thumbnailUrl
     val hasArtwork = !thumbnailUrl.isNullOrBlank()
@@ -182,6 +183,7 @@ internal fun AutoPlaylistHeader(
             val playLabel = stringResource(R.string.play)
             val shuffleLabel = stringResource(R.string.shuffle)
             val downloadLabel = stringResource(R.string.download)
+            val downloadsLabel = stringResource(R.string.downloads)
             val queueLabel = stringResource(R.string.add_to_queue)
 
             Row(
@@ -199,13 +201,9 @@ internal fun AutoPlaylistHeader(
                             .yumaClickable(
                                 pressedScale = SettingsAnimations.PressScale,
                                 onClick = {
-                                    if (globalProgress != null && globalProgress > 0f && downloadState is HeaderDownloadState.Partial) {
-                                        onProgressNavigate()
-                                    } else {
-                                        when (downloadState) {
-                                            HeaderDownloadState.Completed -> onRemoveConfirm()
-                                            else -> onDownloadToggle()
-                                        }
+                                    when (downloadState) {
+                                        HeaderDownloadState.Completed -> onRemoveConfirm()
+                                        else -> onDownloadToggle()
                                     }
                                 },
                             )
@@ -220,40 +218,66 @@ internal fun AutoPlaylistHeader(
                             },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (globalProgress != null && globalProgress > 0f && downloadState is HeaderDownloadState.Partial) {
+                    when (val state = downloadState) {
+                        HeaderDownloadState.Completed -> {
+                            Icon(
+                                painter = painterResource(R.drawable.offline),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                            )
+                        }
+
+                        is HeaderDownloadState.Partial -> {
+                            HeaderDownloadProgressIndicator(
+                                progress = state.progress,
+                                icon = R.drawable.download,
+                            )
+                        }
+
+                        else -> {
+                            Icon(
+                                painter = painterResource(R.drawable.download),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .yumaClickable(
+                                pressedScale = SettingsAnimations.PressScale,
+                                onClick = onProgressNavigate,
+                            )
+                            .yumaGlassCard(
+                                shape = CircleShape,
+                                backgroundColor = LocalYumaColors.current.glassBackground,
+                            )
+                            .clip(CircleShape)
+                            .semantics(mergeDescendants = true) {
+                                contentDescription = downloadsLabel
+                                role = Role.Button
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (globalProgress != null && globalProgress > 0f) {
                         HeaderDownloadProgressIndicator(
                             progress = globalProgress,
+                            paused = globalPaused,
+                            icon = R.drawable.list,
                         )
                     } else {
-                        when (val state = downloadState) {
-                            HeaderDownloadState.Completed -> {
-                                Icon(
-                                    painter = painterResource(R.drawable.offline),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                )
-                            }
-
-                            is HeaderDownloadState.Partial -> {
-                                CircularProgressIndicator(
-                                    progress = { state.progress },
-                                    modifier = Modifier.size(24.dp),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                    strokeWidth = 2.dp,
-                                )
-                            }
-
-                            else -> {
-                                Icon(
-                                    painter = painterResource(R.drawable.download),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
-                                )
-                            }
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.list),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
+                        )
                     }
                 }
 

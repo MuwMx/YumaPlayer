@@ -72,6 +72,7 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +82,11 @@ fun AutoPlaylistScreen(
     scrollBehavior: TopAppBarScrollBehavior,
     viewModel: AutoPlaylistViewModel = hiltViewModel(),
 ) {
+    if (viewModel.playlist == "downloaded") {
+        DownloadLibraryScreen(navController = navController)
+        return
+    }
+
     val context = LocalContext.current
     val menuState = LocalMenuState.current
     val haptics = rememberYumaHaptics()
