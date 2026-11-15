@@ -24,6 +24,8 @@ data class PlaylistCapabilities(
     val paginated: Boolean = false,
     val swipeDelete: Boolean = false,
     val supportsDownload: Boolean = false,
+    /** Rows show their 1-based rank (TopPlaylistScreen.kt:415 albumIndex). */
+    val showsTrackNumbers: Boolean = false,
 ) {
     companion object {
         /** Room-backed local playlists: the full feature set. */
@@ -59,9 +61,12 @@ data class PlaylistCapabilities(
          *  TopPlaylistScreen.kt:334-354). */
         val ReadOnly = PlaylistCapabilities()
 
-        /** Read-only AND downloadable — the Top playlist's real shape. */
+        /** Read-only AND downloadable — the Top playlist's real shape.
+         *  Rows carry their 1-based rank (TopPlaylistScreen.kt:415 passes
+         *  albumIndex = index + 1 — a Top chart without numbers is wrong). */
         val Top = PlaylistCapabilities(
             supportsDownload = true,
+            showsTrackNumbers = true,
         )
     }
 }
@@ -95,6 +100,8 @@ data class PlaylistHeaderInfo(
     val author: String? = null,
     val thumbnailUrl: String? = null,
     val songCount: Int? = null,
+    /** Total playlist length for the hero's duration chip; null = no chip. */
+    val totalDurationMs: Long? = null,
 )
 
 /** Snapshot emitted by [PlaylistTracksSource.observe]. */

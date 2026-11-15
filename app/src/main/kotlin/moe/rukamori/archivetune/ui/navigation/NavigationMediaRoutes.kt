@@ -25,7 +25,6 @@ import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
 import moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailScreen
 
@@ -232,9 +231,20 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("top") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (top): dead route today (registered, no
+                // navigate() call sites) — the cheapest validation of the
+                // flip mechanics. The route string is unchanged; the route
+                // key rides the nav-argument default into the unified
+                // screen's SavedStateHandle, the same mechanism as the id
+                // argument (an entry.savedStateHandle write would never
+                // reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "top_playlist"
+                },
             ),
     ) {
-        TopPlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(

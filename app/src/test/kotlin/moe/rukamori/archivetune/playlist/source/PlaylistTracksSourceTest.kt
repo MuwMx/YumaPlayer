@@ -80,6 +80,8 @@ class PlaylistTracksSourceTest {
         // The legacy Top hero ships a download button (sendAddMissingDownloads
         // over Room songs); the plan's original matrix missed it.
         assertTrue(caps.supportsDownload)
+        // Rows carry their 1-based rank (TopPlaylistScreen.kt:415).
+        assertTrue(caps.showsTrackNumbers)
     }
 
     @Test

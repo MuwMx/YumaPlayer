@@ -7,6 +7,10 @@
 package moe.rukamori.archivetune.ui.screens.playlist.detail
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import moe.rukamori.archivetune.playlist.source.PlaylistCapabilities
 import moe.rukamori.archivetune.playlist.source.PlaylistTracksSource
@@ -16,7 +20,6 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistDownloadState
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadItem
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
-import moe.rukamori.archivetune.ui.utils.sendRemoveDownloads
 
 /**
  * Hero action-row wiring, extracted from PlaylistDetailScreen to keep it
@@ -39,6 +42,16 @@ internal fun PlaylistDetailHeroActionsHost(
     leadingAction: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    // Legacy heroes route a Completed download button through a confirm
+    // dialog (Top/Auto/Local); never remove downloads un-confirmed.
+    var showRemoveDownloadDialog by remember { mutableStateOf(false) }
+    if (showRemoveDownloadDialog) {
+        PlaylistDetailRemoveDownloadDialog(
+            playlistName = title,
+            songIds = tracks.map { it.id },
+            onDismiss = { showRemoveDownloadDialog = false },
+        )
+    }
 
     PlaylistDetailHeroActions(
         capabilities = capabilities,
@@ -62,10 +75,7 @@ internal fun PlaylistDetailHeroActionsHost(
         onDownload = {
             when (downloadHolder.downloadState) {
                 HeaderDownloadState.Completed ->
-                    sendRemoveDownloads(
-                        context = context,
-                        songIds = tracks.map { it.id },
-                    )
+                    showRemoveDownloadDialog = true
 
                 else -> {
                     downloadHolder.dismissed = false

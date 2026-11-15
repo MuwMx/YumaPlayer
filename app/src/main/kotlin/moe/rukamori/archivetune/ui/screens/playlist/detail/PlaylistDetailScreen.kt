@@ -97,10 +97,22 @@ fun PlaylistDetailScreen(
 
     val mutableTracks = rememberPlaylistDetailTracks(tracks = tracks)
     var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    // Render model (visible = filtered while searching, optimistic list when
+    // idle; identity-based selection) + hero header (hidden while searching;
+    // Top's "My Top N" resolved here).
+    val renderState = rememberPlaylistDetailRenderState(tracks, mutableTracks, searchState)
+    val visibleTracks = renderState.visibleTracks
+    val selectedTracks = renderState.selectedTracks
+    val header = rememberPlaylistDetailHeader(uiState, viewModel, searchState.isSearching)
+    val hasArtworkBackdrop = header != null && !header?.thumbnailUrl.isNullOrBlank()
+
+    // Hero + header-slot items above the track list (drag/scrollbar offsets).
+    val headerItems = if (header != null) 1 + playlistDetailHeaderSlotCount(uiState, viewModel) else 0
     val reorderableState =
         rememberPlaylistDetailReorderableState(
             lazyListState = lazyListState,
-            headerItems = if (uiState.header != null) 1 else 0,
+            headerItems = headerItems,
             mutableTracks = mutableTracks,
             dragInfo = dragInfo,
             onDragInfoChange = { dragInfo = it },
@@ -117,18 +129,6 @@ fun PlaylistDetailScreen(
         onResetDragInfo = { dragInfo = null },
         viewModel = viewModel,
     )
-
-    // Render model: see rememberPlaylistDetailRenderState.
-    val renderState =
-        rememberPlaylistDetailRenderState(
-            tracks = tracks,
-            mutableTracks = mutableTracks,
-            searchState = searchState,
-        )
-    val visibleTracks = renderState.visibleTracks
-    val selectedTracks = renderState.selectedTracks
-    val hasHeader = uiState.header != null && !searchState.isSearching
-    val hasArtworkBackdrop = hasHeader && !uiState.header?.thumbnailUrl.isNullOrBlank()
     val headerProgress =
         rememberHeaderScrollProgress(
             lazyListState = lazyListState,
@@ -137,7 +137,7 @@ fun PlaylistDetailScreen(
             standardThreshold = 48.dp,
         )
     val artworkBackground =
-        rememberArtworkBackground(uiState.header?.thumbnailUrl)
+        rememberArtworkBackground(header?.thumbnailUrl)
 
     ExpressivePullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
@@ -155,7 +155,7 @@ fun PlaylistDetailScreen(
                         playlistDetailErrorItem(error = uiState.error, onRetry = viewModel::refresh)
                     else -> {
                         playlistDetailHeroItem(
-                            header = uiState.header,
+                            header = header,
                             systemBarsTopPadding = systemBarsTopPadding,
                             headerProgress = headerProgress,
                             disableBlur = disableBlur,
@@ -165,7 +165,7 @@ fun PlaylistDetailScreen(
                                     source = viewModel.source,
                                     playerConnection = playerConnection,
                                     downloadHolder = downloadHolder,
-                                    title = uiState.header?.title.orEmpty(),
+                                    title = header?.title.orEmpty(),
                                     tracks = visibleTracks,
                                 )
                             },
@@ -177,7 +177,7 @@ fun PlaylistDetailScreen(
                         )
 
                         if (visibleTracks.isEmpty() && uiState.error == null) {
-                            playlistDetailEmptyItem()
+                            playlistDetailEmptyItem(searchState.isSearching)
                         } else {
                             playlistDetailSongs(
                                 tracks = visibleTracks,
@@ -189,10 +189,9 @@ fun PlaylistDetailScreen(
                                 isPlaying = isPlaying,
                                 viewCounts = uiState.viewCounts,
                                 sortType = uiState.sortInfo?.sortType ?: PlaylistSongSortType.CUSTOM,
-                                selection = searchState.selection,
-                                isSearching = searchState.isSearching,
-                                locked = locked,
-                                swipeToSongEnabled = swipeToSongEnabled,
+                                selection = searchState.selection, isSearching = searchState.isSearching,
+                                locked = locked, swipeToSongEnabled = swipeToSongEnabled,
+                                showTrackNumbers = capabilities.showsTrackNumbers,
                                 navController = navController,
                                 playlistBrowseId = null,
                                 menuState = menuState,
@@ -202,7 +201,9 @@ fun PlaylistDetailScreen(
                                         searchState = searchState,
                                         playerConnection = playerConnection,
                                         mediaMetadataId = mediaMetadataId,
-                                        tracks = visibleTracks,
+                                        tracks = tracks,
+                                        visibleTracks = visibleTracks,
+                                        playlistTitle = header?.title.orEmpty(),
                                         track = track,
                                         index = index,
                                     )
@@ -227,7 +228,7 @@ fun PlaylistDetailScreen(
 
             PlaylistDetailOverlays(
                 lazyListState = lazyListState,
-                headerItems = if (hasHeader) 1 else 0,
+                headerItems = headerItems,
                 headerProgress = headerProgress,
                 hasArtworkBackdrop = hasArtworkBackdrop,
                 hazeState = hazeState,
@@ -241,7 +242,7 @@ fun PlaylistDetailScreen(
                 menuState = menuState,
                 navController = navController,
                 lazyListState = lazyListState,
-                title = uiState.header?.title.orEmpty(),
+                title = header?.title.orEmpty(),
                 scrollBehavior = scrollBehavior,
                 onSelectionRemoveFromCache = null,
                 trailingAction = null,

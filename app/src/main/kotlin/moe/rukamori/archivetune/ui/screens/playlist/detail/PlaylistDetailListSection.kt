@@ -40,6 +40,7 @@ internal fun LazyListScope.playlistDetailSongs(
     isSearching: Boolean,
     locked: Boolean,
     swipeToSongEnabled: Boolean,
+    showTrackNumbers: Boolean,
     navController: NavController,
     menuState: MenuState,
     playlistBrowseId: String?,
@@ -109,6 +110,8 @@ internal fun LazyListScope.playlistDetailSongs(
                     mediaMetadataId = mediaMetadataId,
                     isPlaying = isPlaying,
                     selected = selection && track in selectedTracks,
+                    showTrackNumber = showTrackNumbers,
+                    trackNumber = index + 1,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )

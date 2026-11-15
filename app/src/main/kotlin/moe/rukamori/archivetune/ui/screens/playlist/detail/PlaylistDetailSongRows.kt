@@ -40,6 +40,8 @@ internal fun SongPlaylistOriginRow(
     mediaMetadataId: String?,
     isPlaying: Boolean,
     selected: Boolean,
+    showTrackNumber: Boolean,
+    trackNumber: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -51,6 +53,10 @@ internal fun SongPlaylistOriginRow(
     ) {
         SongListItem(
             song = song,
+            // TOP RANK SLOT — the chart shows 1-based rank numbers
+            // (TopPlaylistScreen.kt:415 albumIndex = index + 1); every other
+            // Song-origin screen (auto) passes null.
+            albumIndex = if (showTrackNumber) trackNumber else null,
             isActive = song.song.id == mediaMetadataId,
             isPlaying = isPlaying,
             showInLibraryIcon = true,

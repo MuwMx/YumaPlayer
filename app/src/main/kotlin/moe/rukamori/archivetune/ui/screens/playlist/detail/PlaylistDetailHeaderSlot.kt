@@ -54,3 +54,17 @@ internal fun LazyListScope.renderPlaylistDetailHeaderSlot(
         )
     }
 }
+
+/**
+ * How many LazyColumn items the header slot renders for [uiState] — keeps
+ * the scrollbar/drag header offset in sync with the slot's own conditions
+ * (legacy screens counted hero + slot: Local/Auto/Top = 2, Spotify = 1).
+ */
+internal fun playlistDetailHeaderSlotCount(
+    uiState: PlaylistDetailUiState,
+    viewModel: PlaylistDetailViewModel,
+): Int {
+    if (viewModel.source is TopPlaylistSource) return 1
+    if (uiState.sortInfo != null && uiState.capabilities.sortable) return 1
+    return 0
+}

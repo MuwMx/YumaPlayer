@@ -34,14 +34,31 @@ class TopPlaylistSource
     /** Period filter; the unified screen's sort header chip drives this. */
     val topPeriod = MutableStateFlow(MyTopFilter.ALL_TIME)
 
+    /** Chart size parsed from the "top" route arg; drives the localized title.
+     *  Lazy: tests construct this source with placeholder ids. */
+    val maxSize: Int by lazy { top.toInt() }
+
     override fun observe(): Flow<PlaylistTracksResult> =
         topPeriod
             .flatMapLatest { period ->
-                database.mostPlayedSongs(period.toTimeMillis(), top.toInt())
+                database.mostPlayedSongs(period.toTimeMillis(), maxSize)
             }.map { songs ->
+                val tracks = songs.map { it.toPlaylistTrack() }
                 PlaylistTracksResult(
-                    header = null,
-                    tracks = songs.map { it.toPlaylistTrack() },
+                    // TOP HERO — legacy TopPlaylistScreen.kt:283+637 renders a
+                    // full hero (first-song artwork, "My Top N" title, plural
+                    // count chip + duration chip). The localized title is
+                    // resolved UI-side (sources hold no string resources) in
+                    // PlaylistDetailScreen via [maxSize].
+                    header =
+                        PlaylistHeaderInfo(
+                            id = id,
+                            title = "", // localized "My Top N" resolved UI-side
+                            thumbnailUrl = tracks.firstOrNull()?.thumbnailUrl,
+                            songCount = tracks.size,
+                            totalDurationMs = tracks.sumOf { it.durationMs ?: 0L },
+                        ),
+                    tracks = tracks,
                 )
             }
 

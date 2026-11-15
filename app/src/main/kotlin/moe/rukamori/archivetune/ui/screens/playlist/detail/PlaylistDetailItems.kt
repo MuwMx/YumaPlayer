@@ -52,11 +52,17 @@ internal fun LazyListScope.playlistDetailHeroItem(
     }
 }
 
-/** Empty state — the local wording (works for every source). */
-internal fun LazyListScope.playlistDetailEmptyItem() {
+/**
+ * Empty state: "playlist is empty" for an empty playlist, legacy Cache's
+ * "no results" wording when a search filters everything out (line 279-285).
+ */
+internal fun LazyListScope.playlistDetailEmptyItem(isSearching: Boolean) {
     item(key = PLAYLIST_DETAIL_KEY_EMPTY, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_EMPTY) {
         YumaEmptyState(
-            title = stringResource(R.string.playlist_is_empty),
+            title =
+                stringResource(
+                    if (isSearching) R.string.no_results_found else R.string.playlist_is_empty,
+                ),
             mood = YumaMood.Shrug,
         )
     }

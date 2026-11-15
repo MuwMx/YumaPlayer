@@ -104,7 +104,10 @@ internal fun SongItem.toPlaylistPlaybackEndpoint(
 
 /**
  * The row-click entry point the screen wires into playlistDetailSongs; keeps
- * the InnerTube source cast out of the screen file.
+ * the InnerTube source cast out of the screen file. [tracks] is the FULL
+ * list (legacy enqueues the whole playlist with an identity-found start
+ * index, LocalPlaylistWiring.kt:646-658 / TopPlaylistScreen.kt:443-454);
+ * [visibleTracks] is what the row list renders (may be a search filter).
  */
 internal fun onPlaylistDetailRowClick(
     viewModel: PlaylistDetailViewModel,
@@ -112,6 +115,8 @@ internal fun onPlaylistDetailRowClick(
     playerConnection: PlayerConnection,
     mediaMetadataId: String?,
     tracks: List<PlaylistTrack>,
+    visibleTracks: List<PlaylistTrack>,
+    playlistTitle: String,
     track: PlaylistTrack,
     index: Int,
 ) {
@@ -121,6 +126,8 @@ internal fun onPlaylistDetailRowClick(
         playerConnection = playerConnection,
         mediaMetadataId = mediaMetadataId,
         tracks = tracks,
+        visibleTracks = visibleTracks,
+        playlistTitle = playlistTitle,
         track = track,
         index = index,
         playlistId = viewModel.playlistId,
@@ -134,13 +141,16 @@ internal fun onPlaylistDetailRowClick(
  * selection while a multi-select session is active; otherwise enqueue
  * ORIGIN-accurately — SongItem origins continue streaming via
  * YouTubeQueue.playlist (OnlinePlaylistActions.kt:180-199), Room/cache/auto
- * origins play a local ListQueue of media items.
+ * origins play a local ListQueue of media items with the playlist name as
+ * the queue title (Top "My Top N", Cache "Cache Songs", Local playlist name).
  */
 internal fun onPlaylistDetailSongClick(
     searchState: PlaylistSearchStateHolder<PlaylistTrack>,
     playerConnection: PlayerConnection,
     mediaMetadataId: String?,
     tracks: List<PlaylistTrack>,
+    visibleTracks: List<PlaylistTrack>,
+    playlistTitle: String,
     track: PlaylistTrack,
     index: Int,
     playlistId: String,
@@ -157,7 +167,7 @@ internal fun onPlaylistDetailSongClick(
         wrapper.isSelected = !wrapper.isSelected
         return
     }
-    val resolvedTrack = tracks.getOrNull(index) ?: track
+    val resolvedTrack = visibleTracks.getOrNull(index) ?: track
     if (resolvedTrack.id == mediaMetadataId) {
         playerConnection.player.togglePlayPause()
         return
@@ -181,13 +191,18 @@ internal fun onPlaylistDetailSongClick(
         }
 
         else -> {
+            // Full list + identity-found start index (legacy shape); the
+            // queue shows the playlist name, not the tapped song's title.
             val mediaItems =
                 tracks.mapNotNull { trackItem -> trackItem.toPlaylistMediaItem() }
+            val startIndex =
+                tracks.indexOfFirst { it.id == resolvedTrack.id }.takeIf { it >= 0 }
+                    ?: index
             playerConnection.playQueue(
                 ListQueue(
-                    title = resolvedTrack.title,
+                    title = playlistTitle,
                     items = mediaItems,
-                    startIndex = index,
+                    startIndex = startIndex,
                 ),
             )
         }

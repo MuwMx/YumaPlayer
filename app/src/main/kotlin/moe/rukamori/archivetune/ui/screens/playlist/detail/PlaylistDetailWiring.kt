@@ -93,7 +93,10 @@ internal fun rememberPlaylistDetailTracks(tracks: List<PlaylistTrack>): Snapshot
 /**
  * What the list renders and which rows are selected:
  *  - idle: the optimistic mutable list (drag moves are visible),
- *  - selecting/searching: the wrapped (unfiltered) list.
+ *  - selecting: the wrapped (unfiltered) list (selection mutates wrappers),
+ *  - searching: the FILTERED list (legacy Online/Top/Cache render their
+ *    filtered view while searching — the shipped online flip regressed this;
+ *    now fixed).
  * Selection is identity-based (wrapper.isSelected), never positional against
  * a filtered view — the failure mode the legacy Online screen avoided by
  * passing wrappers everywhere.
@@ -110,10 +113,10 @@ internal fun rememberPlaylistDetailRenderState(
     searchState: moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHolder<PlaylistTrack>,
 ): PlaylistDetailRenderState {
     val visible =
-        if (searchState.selection || searchState.isSearching) {
-            searchState.wrappedItems.map { it.item }
-        } else {
-            mutableTracks.map { it.item }
+        when {
+            searchState.isSearching -> searchState.filteredItems.map { it.item }
+            searchState.selection -> searchState.wrappedItems.map { it.item }
+            else -> mutableTracks.map { it.item }
         }
     val selected =
         searchState.wrappedItems
@@ -122,6 +125,32 @@ internal fun rememberPlaylistDetailRenderState(
             .map { it.item }
             .toSet()
     return PlaylistDetailRenderState(visible, selected)
+}
+
+/**
+ * The hero the screen renders: hidden while searching (legacy Top/Auto/Cache
+ * gate their heroes on !isSearching), and the Top source's localized
+ * "My Top N" title resolved here (sources hold no string resources).
+ */
+@Composable
+internal fun rememberPlaylistDetailHeader(
+    uiState: moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailUiState,
+    viewModel: PlaylistDetailViewModel,
+    isSearching: Boolean,
+): moe.rukamori.archivetune.playlist.source.PlaylistHeaderInfo? {
+    // Legacy gates the hero on !isSearching (Top line 279, Online line 147,
+    // Auto line ~200): searching collapses the list to rows only.
+    if (isSearching) return null
+    val header = uiState.header ?: return null
+    val topSource = viewModel.source as? moe.rukamori.archivetune.playlist.source.TopPlaylistSource
+    if (topSource != null) {
+        // TOP HERO TITLE — stringResource(R.string.my_top) + " N", exactly the
+        // legacy TopPlaylistScreen.kt:194 shape. Pinned: do not lose this in a
+        // later refactor.
+        val myTop = androidx.compose.ui.res.stringResource(moe.rukamori.archivetune.R.string.my_top)
+        return header.copy(title = "$myTop ${topSource.maxSize}")
+    }
+    return header
 }
 
 /**
