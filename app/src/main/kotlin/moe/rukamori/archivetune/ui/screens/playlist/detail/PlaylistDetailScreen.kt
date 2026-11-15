@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
+import moe.rukamori.archivetune.playlist.source.AutoPlaylistSource
 import moe.rukamori.archivetune.playlist.source.RoomPlaylistSource
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
@@ -166,6 +167,15 @@ fun PlaylistDetailScreen(
 
                         renderPlaylistDetailHeaderSlot(uiState, viewModel, locked, { locked = !locked })
 
+                        // ONE HEART RULE (user spec 2026-11-15): the trailing
+                        // like button is on every playlist's rows EXCEPT the
+                        // Liked Songs auto playlist, where it would duplicate
+                        // the list itself. SongPlaylistOriginRow also falls
+                        // back to its subtitle badge when the button is off.
+                        val showLikeButton =
+                            viewModel.source !is AutoPlaylistSource ||
+                                viewModel.source.playlistName != "liked"
+
                         if (visibleTracks.isEmpty() && uiState.error == null) {
                             playlistDetailEmptyItem(
                                 searchState.isSearching,
@@ -189,6 +199,7 @@ fun PlaylistDetailScreen(
                                 showTrackNumbers = capabilities.showsTrackNumbers,
                                 downloads = downloadHolder.downloads,
                                 badges = badgeHolder,
+                                showLikeButton = showLikeButton,
                                 navController = navController,
                                 // LOCAL PLAYLIST SLOT — SongMenu remove-from-playlist
                                 // + like-source hint key on the remote browseId.

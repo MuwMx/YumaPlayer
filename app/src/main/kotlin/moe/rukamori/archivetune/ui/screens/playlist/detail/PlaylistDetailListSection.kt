@@ -50,6 +50,8 @@ internal fun LazyListScope.playlistDetailSongs(
     playlistBrowseId: String?,
     downloads: Map<String, androidx.media3.exoplayer.offline.Download> = emptyMap(),
     badges: PlaylistBadgeStateHolder? = null,
+    /** Trailing row like button; OFF only on the Liked Songs auto playlist. */
+    showLikeButton: Boolean = true,
     onSongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSongLongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSwipeDelete: (index: Int) -> Unit,
@@ -84,6 +86,7 @@ internal fun LazyListScope.playlistDetailSongs(
                     navController = navController,
                     menuState = menuState,
                     playlistBrowseId = playlistBrowseId,
+                    showLikeButton = showLikeButton,
                     onSwipeDelete = { onSwipeDelete(index) },
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
@@ -98,11 +101,8 @@ internal fun LazyListScope.playlistDetailSongs(
                     viewCount = viewCounts[track.id],
                     selected = selection && track in selectedTracks,
                     menuState = menuState,
-                    // BADGE HOIST — pre-0412b6f7 rows self-subscribed to the
-                    // song row for these badges; the hoist dropped the call-
-                    // site side and hearts vanished from online rows. This
-                    // restores them via the screen-level id sets.
-                    isFavorite = badges?.isLiked(track.id) == true,
+                    showLikeButton = showLikeButton,
+                    isLiked = badges?.isLiked(track.id) == true,
                     inLibrary = badges?.isInLibrary(track.id) == true,
                     downloadState = downloads[track.id]?.state,
                     downloadProgress = downloads[track.id]?.percentDownloaded ?: -1f,
@@ -115,13 +115,14 @@ internal fun LazyListScope.playlistDetailSongs(
                     track = origin,
                     mediaMetadata = mediaMetadata,
                     isPlaying = isPlaying,
-                    // Spotify-side liked state (likedSpotify), not the
-                    // generic app like — the user's spec for these rows.
-                    isFavorite = badges?.isSpotifyLiked(origin.id) == true,
+                    showLikeButton = showLikeButton,
+                    isLiked = badges?.isSpotifyLiked(origin.id) == true,
+                    navController = navController,
                     onShowMenu = { track ->
                         menuState.show {
                             SpotifySongMenu(
                                 track = track,
+                                navController = navController,
                                 onDismiss = menuState::dismiss,
                             )
                         }
@@ -141,6 +142,7 @@ internal fun LazyListScope.playlistDetailSongs(
                     trackNumber = index + 1,
                     downloadState = downloads[track.id]?.state,
                     downloadProgress = downloads[track.id]?.percentDownloaded ?: -1f,
+                    showLikeButton = showLikeButton,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )
@@ -153,6 +155,7 @@ internal fun LazyListScope.playlistDetailSongs(
                     mediaMetadataId = mediaMetadataId,
                     isPlaying = isPlaying,
                     selected = selection && track in selectedTracks,
+                    showLikeButton = showLikeButton,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )

@@ -12,18 +12,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.LikeSource
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.SongListItem
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.screens.playlist.CachedSong
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistLikeButton
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
+import moe.rukamori.archivetune.ui.screens.playlist.shared.togglePlaylistSongLike
+import moe.rukamori.archivetune.utils.LikeSourceResolver
 
 /**
  * SONG origin row (Room Song → SongListItem + SongMenu) for auto and top
@@ -44,10 +51,16 @@ internal fun SongPlaylistOriginRow(
     trackNumber: Int,
     downloadState: Int?,
     downloadProgress: Float,
+    showLikeButton: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
+    val coroutineScope = rememberCoroutineScope()
+    val likeSource = LikeSourceResolver.resolve(mediaId = song.song.id, isLocal = song.song.isLocal)
+
     PlaylistSongRow(
         capabilities = PlaylistRowCapabilities.ReadOnly,
         isScrollInProgress = false,
@@ -62,12 +75,29 @@ internal fun SongPlaylistOriginRow(
             isActive = song.song.id == mediaMetadataId,
             isPlaying = isPlaying,
             showInLibraryIcon = true,
+            // One heart per row: the trailing button replaces the subtitle
+            // badge wherever it shows.
+            showLikedIcon = !showLikeButton,
             // AUTO BADGE SLOT — legacy AutoPlaylistTrackRow (lines 75-81)
             // passes the per-song download state/progress into SongListItem.
             downloadState = downloadState,
             downloadProgress = downloadProgress,
             isSelected = selected,
             trailingContent = {
+                if (showLikeButton) {
+                    PlaylistLikeButton(
+                        isLiked = song.song.liked,
+                        onToggle = {
+                            togglePlaylistSongLike(
+                                seed = song.song,
+                                source = likeSource,
+                                database = database,
+                                syncUtils = syncUtils,
+                                coroutineScope = coroutineScope,
+                            )
+                        },
+                    )
+                }
                 IconButton(
                     onClick = {
                         menuState.show {
@@ -106,10 +136,16 @@ internal fun CachePlaylistOriginRow(
     mediaMetadataId: String?,
     isPlaying: Boolean,
     selected: Boolean,
+    showLikeButton: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
+    val coroutineScope = rememberCoroutineScope()
+    val likeSource = LikeSourceResolver.resolve(mediaId = cachedSong.song.song.id, isLocal = cachedSong.song.song.isLocal)
+
     val partiallyLabel = stringResource(R.string.partially_cached)
     val statusText =
         if (cachedSong.isFullyCached) {
@@ -127,10 +163,25 @@ internal fun CachePlaylistOriginRow(
             isActive = cachedSong.id == mediaMetadataId,
             isPlaying = isPlaying,
             showInLibraryIcon = true,
+            showLikedIcon = !showLikeButton,
             isDownloaded = cachedSong.isFullyCached,
             viewCountText = statusText,
             isSelected = selected,
             trailingContent = {
+                if (showLikeButton) {
+                    PlaylistLikeButton(
+                        isLiked = cachedSong.song.song.liked,
+                        onToggle = {
+                            togglePlaylistSongLike(
+                                seed = cachedSong.song.song,
+                                source = likeSource,
+                                database = database,
+                                syncUtils = syncUtils,
+                                coroutineScope = coroutineScope,
+                            )
+                        },
+                    )
+                }
                 IconButton(
                     onClick = {
                         menuState.show {

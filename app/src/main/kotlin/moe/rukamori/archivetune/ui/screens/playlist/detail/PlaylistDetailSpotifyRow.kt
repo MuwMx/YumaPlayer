@@ -11,13 +11,20 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.spotify.toPlaceholderMetadata
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalSyncUtils
 import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
+import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistLikeButton
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistRowCapabilities
 import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
+import moe.rukamori.archivetune.ui.screens.playlist.shared.toggleSpotifyTrackLike
 
 /**
  * SPOTIFY origin row (SpotifyTrack → SpotifyTrackListItem). Active state
@@ -25,14 +32,12 @@ import moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSongRow
  * resolved Spotify placeholder plays as a YouTube id, so a raw id
  * comparison would silently drop the playing-row highlight.
  *
- * PARITY WITH OTHER ORIGINS (swipe + per-song menu): every other unified
- * row offers the global swipe-to-play-next/add-to-queue gesture and a
- * 3-dot song menu; the Spotify row was the only one without both (the
- * legacy SpotifyPlaylistScreen had neither). The queue actions wrap the
- * row in [spotifyAwareQueue] so a swiped track resolves lazily exactly
- * like a tapped one, and the menu reuses the metadata-menu machinery
- * (like / add-to-playlist / play-next / add-to-queue) other rows show
- * for placeholder songs.
+ * PARITY WITH OTHER ORIGINS (user spec 2026-11-15): every unified row
+ * offers the global swipe-to-play-next/add-to-queue gesture, a trailing
+ * like button left of the 3-dot menu (heart keyed on SPOTIFY-side like
+ * state — likedSpotify — not the generic app like), and a per-song menu
+ * matching the YouTube menu's shape (header + action grid + library +
+ * artist; see SpotifySongMenu).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -40,12 +45,19 @@ internal fun SpotifyPlaylistOriginRow(
     track: SpotifyTrack,
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
-    isFavorite: Boolean = false,
-    onClick: () -> Unit,
+    showLikeButton: Boolean = true,
+    isLiked: Boolean = false,
+    navController: NavController,
     onShowMenu: (SpotifyTrack) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isActive = remember(track, mediaMetadata) { track.isResolvedAs(mediaMetadata) }
+    val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
+    val coroutineScope = rememberCoroutineScope()
+    val placeholder = remember(track) { track.toPlaceholderMetadata() }
+
     PlaylistSongRow(
         capabilities = PlaylistRowCapabilities.Spotify,
         isScrollInProgress = false,
@@ -56,10 +68,22 @@ internal fun SpotifyPlaylistOriginRow(
         ) {
             SpotifyTrackListItem(
                 track = track,
-                isFavorite = isFavorite,
                 isActive = isActive,
                 isPlaying = isPlaying,
                 trailingContent = {
+                    if (showLikeButton && placeholder != null) {
+                        PlaylistLikeButton(
+                            isLiked = isLiked,
+                            onToggle = {
+                                toggleSpotifyTrackLike(
+                                    placeholder = placeholder,
+                                    database = database,
+                                    syncUtils = syncUtils,
+                                    coroutineScope = coroutineScope,
+                                )
+                            },
+                        )
+                    }
                     SpotifyRowMenuButton(
                         onClick = { onShowMenu(track) },
                     )
