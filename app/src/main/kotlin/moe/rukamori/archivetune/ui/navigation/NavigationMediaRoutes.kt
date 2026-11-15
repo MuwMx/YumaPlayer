@@ -151,14 +151,19 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlistId") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (local): route string UNCHANGED (Library.kt
+                // fork, deep links, NavigationTabOwnership prefix matching
+                // all key on it). Route key rides the nav-argument default
+                // into the unified screen's SavedStateHandle — the SAME
+                // mechanism as playlistId (an entry.savedStateHandle write
+                // does not reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "local_playlist"
+                },
             ),
-    ) { entry ->
-        // PHASE E FLIP (local): the Library playlist route renders the unified
-        // screen; the VM resolves the "playlistId" arg. Route string UNCHANGED
-        // (Library.kt fork, deep links and NavigationTabOwnership prefix
-        // matching all key on it).
-        entry.savedStateHandle[PLAYLIST_DETAIL_ROUTE_KEY] = "local_playlist"
-        PlaylistDetailScreen(navController, entry, scrollBehavior)
+    ) {
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
