@@ -24,6 +24,7 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import androidx.media3.exoplayer.offline.DownloadProgress
 import coil3.SingletonImageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -50,6 +51,8 @@ import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.playback.engine.ChunkedDataSource
+import moe.rukamori.archivetune.playback.engine.STREAM_CHUNK_BYTES
 import moe.rukamori.archivetune.playback.resolvers.formatIdForSource
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.ProxyAuth
@@ -131,6 +134,7 @@ class DownloadUtil
         }
 
         val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
+        val completedDownloadIds = MutableStateFlow<Set<String>>(emptySet())
 
         private suspend fun resolveDownloadAudioQuality(lowDataModeActive: Boolean): AudioQuality =
             if (lowDataModeActive) {
@@ -188,8 +192,9 @@ class DownloadUtil
                     .Factory()
                     .setCache(playerCache)
                     .setUpstreamDataSourceFactory(
-                        OkHttpDataSource.Factory(
-                            mediaOkHttpClient,
+                        ChunkedDataSource.Factory(
+                            upstream = OkHttpDataSource.Factory(mediaOkHttpClient),
+                            chunkBytes = STREAM_CHUNK_BYTES,
                         ),
                     ).setCacheWriteDataSinkFactory(
                         CacheDataSink.Factory().setCache(playerCache).setBufferSize(DOWNLOAD_WRITE_BUFFER_SIZE),
@@ -235,11 +240,25 @@ class DownloadUtil
                             download: Download,
                             finalException: Exception?,
                         ) {
+                            val snapshot = download.toProgressSnapshot()
                             downloads.update { map ->
                                 map.toMutableMap().apply {
-                                    set(download.request.id, download)
+                                    set(download.request.id, snapshot)
                                 }
                             }
+                            if (download.state == Download.STATE_COMPLETED) {
+                                completedDownloadIds.update { it + download.request.id }
+                            } else if (download.state == Download.STATE_FAILED || download.state == Download.STATE_STOPPED) {
+                                completedDownloadIds.update { it - download.request.id }
+                            }
+                        }
+
+                        override fun onDownloadRemoved(
+                            downloadManager: DownloadManager,
+                            download: Download,
+                        ) {
+                            downloads.update { map -> map - download.request.id }
+                            completedDownloadIds.update { it - download.request.id }
                         }
                     },
                 )
@@ -248,11 +267,17 @@ class DownloadUtil
         init {
             downloadScope.launch {
                 val result = mutableMapOf<String, Download>()
+                val completed = mutableSetOf<String>()
                 val cursor = downloadManager.downloadIndex.getDownloads()
                 while (cursor.moveToNext()) {
-                    result[cursor.download.request.id] = cursor.download
+                    val download = cursor.download.toProgressSnapshot()
+                    result[download.request.id] = download
+                    if (download.state == Download.STATE_COMPLETED) {
+                        completed.add(download.request.id)
+                    }
                 }
                 downloads.value = result
+                completedDownloadIds.value = completed
             }
             downloadScope.launch {
                 var previousFingerprint: String? = null
@@ -269,6 +294,24 @@ class DownloadUtil
         }
 
         fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
+
+        private fun Download.toProgressSnapshot(): Download {
+            val progressSnapshot =
+                DownloadProgress().apply {
+                    bytesDownloaded = this@toProgressSnapshot.bytesDownloaded
+                    percentDownloaded = this@toProgressSnapshot.percentDownloaded
+                }
+            return Download(
+                request,
+                state,
+                startTimeMs,
+                updateTimeMs,
+                contentLength,
+                stopReason,
+                failureReason,
+                progressSnapshot,
+            )
+        }
 
         private fun buildSongUrlCacheKey(
             mediaId: String,

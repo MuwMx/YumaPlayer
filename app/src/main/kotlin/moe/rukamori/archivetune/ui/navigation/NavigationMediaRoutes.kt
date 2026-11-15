@@ -178,11 +178,16 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     }
 
     composable(
-        route = "auto_playlist/{playlist}",
+        route = "auto_playlist/{playlist}?tab={tab}",
         arguments =
             listOf(
                 navArgument("playlist") {
                     type = NavType.StringType
+                },
+                navArgument("tab") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 },
             ),
     ) {

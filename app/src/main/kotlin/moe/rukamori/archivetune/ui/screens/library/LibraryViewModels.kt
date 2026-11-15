@@ -150,20 +150,20 @@ class LibrarySongsViewModel
                         }
 
                         SongFilter.DOWNLOADED -> {
-                            downloadUtil.downloads.flatMapLatest { downloads ->
+                            downloadUtil.completedDownloadIds.flatMapLatest { completedIds ->
                                 database
                                     .allSongs()
                                     .flowOn(Dispatchers.IO)
                                     .map { songs ->
                                         songs.filter { song: Song ->
-                                            downloads[song.id]?.state == Download.STATE_COMPLETED &&
+                                            completedIds.contains(song.id) &&
                                                 (!hideYtmLikedSongs || !(song.song.likedYtm && !song.song.likedSpotify))
                                         }
                                     }.map { songs ->
                                         when (sortType) {
                                             SongSortType.CREATE_DATE -> {
                                                 songs.sortedBy { song: Song ->
-                                                    downloads[song.id]?.updateTimeMs ?: 0L
+                                                    downloadUtil.downloads.value[song.id]?.updateTimeMs ?: 0L
                                                 }
                                             }
 

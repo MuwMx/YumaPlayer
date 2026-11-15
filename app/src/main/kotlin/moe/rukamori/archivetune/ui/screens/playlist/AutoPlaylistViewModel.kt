@@ -98,19 +98,17 @@ class AutoPlaylistViewModel
                         }
 
                         "downloaded" -> {
-                            downloadUtil.downloads.flatMapLatest { downloads ->
+                            downloadUtil.completedDownloadIds.flatMapLatest { completedIds ->
                                 database
                                     .allSongs()
                                     .flowOn(Dispatchers.IO)
                                     .map { songs ->
-                                        songs.filter {
-                                            downloads[it.id]?.state == Download.STATE_COMPLETED
-                                        }
+                                        songs.filter { completedIds.contains(it.id) }
                                     }.map { songs ->
                                         when (songSortType) {
                                             SongSortType.CREATE_DATE -> {
                                                 songs.sortedBy {
-                                                    downloads[it.id]?.updateTimeMs ?: 0L
+                                                    downloadUtil.downloads.value[it.id]?.updateTimeMs ?: 0L
                                                 }
                                             }
 
