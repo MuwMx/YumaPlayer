@@ -36,7 +36,7 @@ private val sharedAmbientShader: Any? by lazy {
     if (Build.VERSION.SDK_INT >= 33) createAgslShader(AmbientShaderSource) else null
 }
 
-private const val LoopSeconds = 60f
+private const val LoopSeconds = 52f
 private const val Downscale = 4
 private const val StepsPerSecond = 30f
 
@@ -45,9 +45,12 @@ fun rememberAmbientClock(running: Boolean = true): () -> Float {
     val time = remember { mutableFloatStateOf(0f) }
     LaunchedEffect(running) {
         if (!running) return@LaunchedEffect
+        var startNanos = -1L
         while (isActive) {
             withInfiniteAnimationFrameNanos { nanos ->
-                time.floatValue = ((nanos / 1_000_000L) % (LoopSeconds * 1000f).toLong()) / 1000f
+                if (startNanos < 0L) startNanos = nanos
+                val elapsedSec = (nanos - startNanos) / 1_000_000_000f
+                time.floatValue = elapsedSec % LoopSeconds
             }
         }
     }
@@ -90,9 +93,9 @@ fun AmbientBackdrop(
                             drawRect(deep)
                             val t = step / StepsPerSecond * (2f * PI.toFloat() / LoopSeconds)
                             val blobs = listOf(
-                                colors.tone(ToneSeamLeft) to (0.24f + 0.22f * sin(t * 4.0f + 0.4f) to 0.55f + 0.12f * cos(t * 6.0f)),
-                                colors.tone(ToneSeamRight) to (0.76f + 0.20f * cos(t * 4.0f + 1.3f) to 0.60f + 0.14f * sin(t * 6.8f + 0.7f)),
-                                colors.tone(ToneAccent) to (0.58f + 0.28f * sin(t * 5.6f + 3.4f) to 0.45f + 0.18f * cos(t * 7.2f + 0.4f)),
+                                colors.tone(ToneSeamLeft) to (0.24f + 0.22f * sin(t * 4.0f + 0.4f) to 0.55f + 0.12f * cos(t * 8.0f)),
+                                colors.tone(ToneSeamRight) to (0.76f + 0.20f * cos(t * 4.0f + 1.3f) to 0.60f + 0.14f * sin(t * 8.0f + 0.7f)),
+                                colors.tone(ToneAccent) to (0.58f + 0.28f * sin(t * 8.0f + 3.4f) to 0.45f + 0.18f * cos(t * 12.0f + 0.4f)),
                             )
                             blobs.forEach { (tone, pos) ->
                                 val (nx, ny) = pos
@@ -155,10 +158,10 @@ half4 main(float2 fragCoord) {
     float w = TAU / 15.0;
     float t = time;
 
-    float2 a = float2(0.24 + 0.22 * sin(t * w + 0.4), (0.55 + 0.12 * cos(t * w * 1.5)) * aspect);
-    float2 b = float2(0.76 + 0.20 * cos(t * w + 1.3), (0.60 + 0.14 * sin(t * w * 1.7 + 0.7)) * aspect);
-    float2 c = float2(0.50 + 0.26 * cos(t * w * 0.8 + 2.1), (0.85 + 0.12 * sin(t * w * 1.2 + 1.9)) * aspect);
-    float2 d = float2(0.58 + 0.28 * sin(t * w * 1.4 + 3.4), (0.45 + 0.18 * cos(t * w * 1.8 + 0.4)) * aspect);
+    float2 a = float2(0.24 + 0.22 * sin(t * w + 0.4), (0.55 + 0.12 * cos(t * w * 2.0)) * aspect);
+    float2 b = float2(0.76 + 0.20 * cos(t * w + 1.3), (0.60 + 0.14 * sin(t * w * 2.0 + 0.7)) * aspect);
+    float2 c = float2(0.50 + 0.26 * cos(t * w + 2.1), (0.85 + 0.12 * sin(t * w * 2.0 + 1.9)) * aspect);
+    float2 d = float2(0.58 + 0.28 * sin(t * w * 2.0 + 3.4), (0.45 + 0.18 * cos(t * w * 3.0 + 0.4)) * aspect);
 
     float wa = pool(p, a, 3.2);
     float wb = pool(p, b, 3.2);
