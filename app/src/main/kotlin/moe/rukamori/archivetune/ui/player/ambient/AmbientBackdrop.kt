@@ -163,8 +163,9 @@ half4 main(float2 fragCoord) {
     float2 pLeft = float2(0.25 + 0.25 * sin(t * w + 0.4), (0.75 + 0.18 * cos(t * w * 2.0)) * aspect);
     col = mix(col, float3(seamLeft.rgb), pool(p, pLeft, 1.6) * 0.85);
 
-    float2 pMain = float2(0.55 + 0.32 * cos(t * w + 1.3), (0.52 + 0.30 * sin(t * w * 2.0 + 0.7)) * aspect);
-    col = mix(col, float3(seamRight.rgb), pool(p, pMain, 1.5) * 0.90);
+    float waveY = 0.50 + 0.24 * sin(t * w + 1.3) + 0.14 * sin(uv.x * 4.0 + t * w * 2.0);
+    float distToRibbon = abs(uv.y - waveY);
+    col = mix(col, float3(seamRight.rgb), exp(-distToRibbon * distToRibbon * 24.0) * 0.88);
 
     float2 pLight = float2(0.48 + 0.36 * sin(t * w * 2.0 + 2.6), (0.50 + 0.34 * cos(t * w + 0.9)) * aspect);
     col = mix(col, float3(accent.rgb), pool(p, pLight, 2.0) * 0.80);
