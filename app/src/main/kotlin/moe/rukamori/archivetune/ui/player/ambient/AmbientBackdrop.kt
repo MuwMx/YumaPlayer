@@ -93,9 +93,9 @@ fun AmbientBackdrop(
                             drawRect(deep)
                             val t = step / StepsPerSecond * (2f * PI.toFloat() / LoopSeconds)
                             val blobs = listOf(
-                                colors.tone(ToneSeamLeft) to (0.24f + 0.22f * sin(t * 4.0f + 0.4f) to 0.55f + 0.12f * cos(t * 8.0f)),
-                                colors.tone(ToneSeamRight) to (0.76f + 0.20f * cos(t * 4.0f + 1.3f) to 0.60f + 0.14f * sin(t * 8.0f + 0.7f)),
-                                colors.tone(ToneAccent) to (0.58f + 0.28f * sin(t * 8.0f + 3.4f) to 0.45f + 0.18f * cos(t * 12.0f + 0.4f)),
+                                colors.tone(ToneSeamLeft) to (0.24f + 0.18f * sin(t * 2.0f + 0.4f) to 0.58f + 0.12f * cos(t * 4.0f)),
+                                colors.tone(ToneSeamRight) to (0.76f + 0.18f * cos(t * 2.0f + 1.3f) to 0.60f + 0.12f * sin(t * 4.0f + 0.7f)),
+                                colors.tone(ToneAccent) to (0.54f + 0.24f * sin(t * 2.0f + 3.4f) to 0.42f + 0.18f * cos(t * 4.0f + 0.4f)),
                             )
                             blobs.forEach { (tone, pos) ->
                                 val (nx, ny) = pos
@@ -155,22 +155,24 @@ half4 main(float2 fragCoord) {
     float2 uv = fragCoord / resolution;
     float aspect = resolution.y / max(resolution.x, 1.0);
     float2 p = float2(uv.x, uv.y * aspect);
-    float w = TAU / 15.0;
+    float w = TAU / 26.0;
     float t = time;
 
-    float2 a = float2(0.24 + 0.22 * sin(t * w + 0.4), (0.55 + 0.12 * cos(t * w * 2.0)) * aspect);
-    float2 b = float2(0.76 + 0.20 * cos(t * w + 1.3), (0.60 + 0.14 * sin(t * w * 2.0 + 0.7)) * aspect);
-    float2 c = float2(0.50 + 0.26 * cos(t * w + 2.1), (0.85 + 0.12 * sin(t * w * 2.0 + 1.9)) * aspect);
-    float2 d = float2(0.58 + 0.28 * sin(t * w * 2.0 + 3.4), (0.45 + 0.18 * cos(t * w * 3.0 + 0.4)) * aspect);
+    float3 col = float3(deep.rgb);
 
-    float wa = pool(p, a, 3.2);
-    float wb = pool(p, b, 3.2);
-    float wc = pool(p, c, 2.8);
-    float wd = pool(p, d, 4.4) * 1.15;
-    float sum = wa + wb + wc + wd + 0.0001;
-    float3 col = (float3(seamLeft.rgb) * wa + float3(seamRight.rgb) * wb + float3(deep.rgb) * wc + float3(accent.rgb) * wd) / sum;
+    float2 pLeft = float2(0.25 + 0.25 * sin(t * w + 0.4), (0.75 + 0.18 * cos(t * w * 2.0)) * aspect);
+    col = mix(col, float3(seamLeft.rgb), pool(p, pLeft, 1.6) * 0.85);
 
-    col *= 1.0 - 0.22 * smoothstep(0.55, 1.0, uv.y);
+    float2 pMain = float2(0.55 + 0.32 * cos(t * w + 1.3), (0.52 + 0.30 * sin(t * w * 2.0 + 0.7)) * aspect);
+    col = mix(col, float3(seamRight.rgb), pool(p, pMain, 1.5) * 0.90);
+
+    float2 pLight = float2(0.48 + 0.36 * sin(t * w * 2.0 + 2.6), (0.50 + 0.34 * cos(t * w + 0.9)) * aspect);
+    col = mix(col, float3(accent.rgb), pool(p, pLight, 2.0) * 0.80);
+
+    float2 c = uv - 0.5;
+    col *= 1.0 - dot(c, c) * 0.22;
+    col *= 1.0 - 0.16 * smoothstep(0.65, 1.0, uv.y);
+
     float grain = fract(sin(dot(fragCoord, float2(12.9898, 78.233))) * 43758.5453);
     col += (grain - 0.5) / 255.0;
     return half4(half3(col), 1.0);

@@ -37,6 +37,40 @@ private const val FadeMs = 1_200
 private const val MinChange = 0.035f
 private const val PublishMs = 33L
 private const val PicturePx = 32
+private const val CacheSize = 48
+
+private const val SeamRegionStartY = 0.60f
+
+// Левый/нижний тёмный подтон
+private const val SeamLeftSatBoost = 1.20f
+private const val SeamLeftMinSat = 0.20f
+private const val SeamLeftMaxSat = 0.85f
+private const val SeamLeftMinLight = 0.08f
+private const val SeamLeftMaxLight = 0.24f
+
+// Правый/центральный основной насыщенный цвет
+private const val SeamRightSatBoost = 1.35f
+private const val SeamRightMinSat = 0.35f
+private const val SeamRightMaxSat = 0.95f
+private const val SeamRightMinLight = 0.28f
+private const val SeamRightMaxLight = 0.48f
+
+// Глубокая тёмная база
+private const val DeepSatBoost = 1.15f
+private const val DeepMaxSat = 0.80f
+private const val DeepMinLight = 0.03f
+private const val DeepMaxLight = 0.11f
+
+// Верхний светлый/акцентный блик
+private const val GrayscaleSatThreshold = 0.08f
+private const val AccentTargetBrightness = 0.82f
+private const val AccentSatWeight = 0.70f
+private const val AccentLumaWeight = 0.60f
+private const val AccentSatBoost = 1.15f
+private const val AccentMinSat = 0.15f
+private const val AccentMaxSat = 0.90f
+private const val AccentMinLight = 0.55f
+private const val AccentMaxLight = 0.86f
 
 internal const val ToneSeamLeft = 0
 internal const val ToneSeamRight = 1
@@ -128,7 +162,7 @@ fun FollowPicture(colors: AmbientColors, url: String?) {
     }
 }
 
-private val pictureCache = LruCache<String, List<Color>>(48)
+private val pictureCache = LruCache<String, List<Color>>(CacheSize)
 
 suspend fun pictureTones(context: Context, url: String): List<Color>? {
     pictureCache.get(url)?.let { return it }
@@ -159,7 +193,7 @@ internal fun extractAmbientTones(pixels: IntArray, width: Int, height: Int): Lis
     }
 
     val midX = width / 2
-    val seamY = (height * 0.6f).toInt().coerceIn(0, height - 1)
+    val seamY = (height * SeamRegionStartY).toInt().coerceIn(0, height - 1)
 
     fun averageRgb(x0: Int, x1: Int, y0: Int, y1: Int): Color {
         var r = 0L
@@ -177,35 +211,36 @@ internal fun extractAmbientTones(pixels: IntArray, width: Int, height: Int): Lis
             }
         }
         if (count == 0) return Color.Black
-        return Color(red = (r / count).toInt(), green = (g / count).toInt(), blue = (b / count).toInt())
+        return Color(
+            red = (r / count).toInt(),
+            green = (g / count).toInt(),
+            blue = (b / count).toInt()
+        )
     }
 
-    val seamLeftRaw = averageRgb(0, midX, seamY, height)
     val seamLeftHsl = FloatArray(3)
-    ColorUtils.colorToHSL(seamLeftRaw.toArgb(), seamLeftHsl)
-    seamLeftHsl[1] = (seamLeftHsl[1] * 1.25f).coerceIn(0.15f, 0.85f)
-    seamLeftHsl[2] = seamLeftHsl[2].coerceIn(0.22f, 0.58f)
+    ColorUtils.colorToHSL(averageRgb(0, midX, seamY, height).toArgb(), seamLeftHsl)
+    seamLeftHsl[1] = (seamLeftHsl[1] * SeamLeftSatBoost).coerceIn(SeamLeftMinSat, SeamLeftMaxSat)
+    seamLeftHsl[2] = seamLeftHsl[2].coerceIn(SeamLeftMinLight, SeamLeftMaxLight)
     val seamLeft = Color(ColorUtils.HSLToColor(seamLeftHsl))
 
-    val seamRightRaw = averageRgb(midX, width, seamY, height)
     val seamRightHsl = FloatArray(3)
-    ColorUtils.colorToHSL(seamRightRaw.toArgb(), seamRightHsl)
-    seamRightHsl[1] = (seamRightHsl[1] * 1.25f).coerceIn(0.15f, 0.85f)
-    seamRightHsl[2] = seamRightHsl[2].coerceIn(0.22f, 0.58f)
+    ColorUtils.colorToHSL(averageRgb(midX, width, 0, height).toArgb(), seamRightHsl)
+    seamRightHsl[1] =
+        (seamRightHsl[1] * SeamRightSatBoost).coerceIn(SeamRightMinSat, SeamRightMaxSat)
+    seamRightHsl[2] = seamRightHsl[2].coerceIn(SeamRightMinLight, SeamRightMaxLight)
     val seamRight = Color(ColorUtils.HSLToColor(seamRightHsl))
 
-    val deepRaw = averageRgb(0, width, 0, height)
     val deepHsl = FloatArray(3)
-    ColorUtils.colorToHSL(deepRaw.toArgb(), deepHsl)
-    deepHsl[1] = (deepHsl[1] * 1.1f).coerceAtMost(0.75f)
-    deepHsl[2] = deepHsl[2].coerceIn(0.06f, 0.20f)
+    ColorUtils.colorToHSL(averageRgb(0, width, 0, height).toArgb(), deepHsl)
+    deepHsl[1] = (deepHsl[1] * DeepSatBoost).coerceAtMost(DeepMaxSat)
+    deepHsl[2] = deepHsl[2].coerceIn(DeepMinLight, DeepMaxLight)
     val deep = Color(ColorUtils.HSLToColor(deepHsl))
 
     var bestPixel = 0
     var bestScore = -1f
     var maxSat = 0f
     val hslTemp = FloatArray(3)
-
     for (c in pixels) {
         val r = ((c shr 16) and 0xFF) / 255f
         val g = ((c shr 8) and 0xFF) / 255f
@@ -215,24 +250,23 @@ internal fun extractAmbientTones(pixels: IntArray, width: Int, height: Int): Lis
         ColorUtils.colorToHSL(c, hslTemp)
         val sat = hslTemp[1]
         if (sat > maxSat) maxSat = sat
-        val score = sat * sat * (1f - abs(maxChannel - 0.75f))
+        val score = (sat * AccentSatWeight + maxChannel * AccentLumaWeight) *
+                (1f - abs(maxChannel - AccentTargetBrightness))
         if (score > bestScore) {
             bestScore = score
             bestPixel = c
         }
     }
 
-    val accentBase = if (maxSat < 0.08f) {
-        val topThirdY = (height / 3).coerceAtLeast(1)
-        averageRgb(0, width, 0, topThirdY).toArgb()
+    val accentBase = if (maxSat < GrayscaleSatThreshold) {
+        averageRgb(0, width, 0, (height / 3).coerceAtLeast(1)).toArgb()
     } else {
         bestPixel
     }
-
     val accentHsl = FloatArray(3)
     ColorUtils.colorToHSL(accentBase, accentHsl)
-    accentHsl[1] = (accentHsl[1] * 1.35f).coerceIn(0.25f, 0.95f)
-    accentHsl[2] = accentHsl[2].coerceIn(0.35f, 0.72f)
+    accentHsl[1] = (accentHsl[1] * AccentSatBoost).coerceIn(AccentMinSat, AccentMaxSat)
+    accentHsl[2] = accentHsl[2].coerceIn(AccentMinLight, AccentMaxLight)
     val accent = Color(ColorUtils.HSLToColor(accentHsl))
 
     return listOf(seamLeft, seamRight, deep, accent)
