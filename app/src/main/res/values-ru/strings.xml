@@ -1130,6 +1130,8 @@
     <string name="lastfm_custom_endpoint">Свой эндпоинт</string>
     <string name="start_timer">Запустить таймер</string>
     <string name="ambient_glow">Фоновое свечение</string>
+    <string name="live_background">Живой фон</string>
+    <string name="live_background_desc">Мягкий переливающийся градиент обложки</string>
     <string name="onboarding_community_subtitle">Следите за разработкой, сообщайте о проблемах или поддерживайте YumaPlayer.</string>
     <string name="app_icon_default">По умолчанию</string>
     <string name="cast_no_devices_desc">Убедитесь, что устройство в той же сети Wi-Fi.</string>

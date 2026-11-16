@@ -36,4 +36,6 @@ interface SettingsRepository {
     fun setShowCodecInfoEnabled(enabled: Boolean)
     fun isAlbumCoverGlowEnabled(): Boolean
     fun setAlbumCoverGlowEnabled(enabled: Boolean)
+    fun isLiveBackgroundEnabled(): Boolean
+    fun setLiveBackgroundEnabled(enabled: Boolean)
 }

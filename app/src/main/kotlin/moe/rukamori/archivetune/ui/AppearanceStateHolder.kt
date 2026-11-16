@@ -25,6 +25,7 @@ class AppearanceStateHolder(
                 isImmersiveEnabled = settingsRepository.isImmersiveEnabled(),
                 showCodecInfo = settingsRepository.isShowCodecInfoEnabled(),
                 isAlbumCoverGlowEnabled = settingsRepository.isAlbumCoverGlowEnabled(),
+                isLiveBackgroundEnabled = settingsRepository.isLiveBackgroundEnabled(),
                 shouldShowWelcome = settingsRepository.isFirstLaunch(),
             )
         }
@@ -87,6 +88,12 @@ class AppearanceStateHolder(
         val newValue = !uiStateProvider().isAlbumCoverGlowEnabled
         settingsRepository.setAlbumCoverGlowEnabled(newValue)
         updateUiState { it.copy(isAlbumCoverGlowEnabled = newValue) }
+    }
+
+    fun toggleLiveBackground() {
+        val newValue = !uiStateProvider().isLiveBackgroundEnabled
+        settingsRepository.setLiveBackgroundEnabled(newValue)
+        updateUiState { it.copy(isLiveBackgroundEnabled = newValue) }
     }
 
     fun updateColors(vibrant: Int, darkMuted: Int, gradient: Int) {

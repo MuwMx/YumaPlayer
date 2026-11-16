@@ -135,4 +135,11 @@ class SettingsRepositoryImpl @Inject constructor(
     override fun setAlbumCoverGlowEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("album_cover_glow", enabled).apply()
     }
+
+    override fun isLiveBackgroundEnabled(): Boolean =
+        prefs.getBoolean("live_background_enabled", false)
+
+    override fun setLiveBackgroundEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("live_background_enabled", enabled).apply()
+    }
 }

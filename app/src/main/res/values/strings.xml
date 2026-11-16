@@ -1250,6 +1250,8 @@
     <string name="codec_info_desc">Show audio format and sample rate above seekbar</string>
     <string name="ambient_glow">Ambient Glow</string>
     <string name="ambient_glow_desc">Soft neon light around the player card</string>
+    <string name="live_background">Live Background</string>
+    <string name="live_background_desc">Fluid animated gradient backdrop</string>
     <string name="more_visual_effects_coming_soon">More visual effects coming soon...</string>
     <string name="tap_to_delete_offline_cache">Tap to delete offline cache</string>
     <string name="downloading_ellipsis">Downloading...</string>

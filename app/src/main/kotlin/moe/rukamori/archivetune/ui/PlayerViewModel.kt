@@ -258,6 +258,7 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.StartRadio -> playerConnection?.startRadioSeamlessly()
             is PlayerAction.ToggleCodecInfo -> appearanceStateHolder.toggleCodecInfo()
             is PlayerAction.ToggleAlbumCoverGlow -> appearanceStateHolder.toggleAlbumCoverGlow()
+            is PlayerAction.ToggleLiveBackground -> appearanceStateHolder.toggleLiveBackground()
             is PlayerAction.UpdateColors -> {
                 appearanceStateHolder.updateColors(action.vibrant, action.darkMuted, action.gradient)
             }

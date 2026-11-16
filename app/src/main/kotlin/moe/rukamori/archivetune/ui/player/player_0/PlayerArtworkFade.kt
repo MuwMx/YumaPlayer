@@ -63,3 +63,27 @@ internal fun Modifier.playerArtworkFade(
             }
         }
     }
+
+internal fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
+    .graphicsLayer {
+        this.alpha = alpha
+        this.compositingStrategy = if (alpha > 0.01f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    }
+    .drawWithCache {
+        val maskBrush = Brush.verticalGradient(
+            0.0f to Color.Black,
+            0.45f to Color.Black,
+            0.75f to Color.Black.copy(alpha = 0.4f),
+            1.0f to Color.Transparent,
+            startY = 0f,
+            endY = size.height
+        )
+        onDrawWithContent {
+            if (alpha < 0.01f) return@onDrawWithContent
+            drawContent()
+            drawRect(
+                brush = maskBrush,
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }

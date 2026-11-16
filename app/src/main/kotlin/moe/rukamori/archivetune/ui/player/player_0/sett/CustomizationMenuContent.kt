@@ -22,7 +22,7 @@ fun CustomizationMenuContent(
     onImmersiveChanged: (Boolean) -> Unit,
     onAction: (PlayerAction) -> Unit
 ) {
-    val count = 4
+    val count = 5
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -51,6 +51,18 @@ fun CustomizationMenuContent(
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
         SettingsSwitchRow(
+            title = stringResource(R.string.live_background),
+            subtitle = stringResource(R.string.live_background_desc),
+            checked = state.isLiveBackgroundEnabled,
+            onCheckedChange = { onAction(PlayerAction.ToggleLiveBackground) },
+            vibrantColor = Color(state.vibrantColor),
+            index = 1,
+            count = count,
+        )
+
+        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+
+        SettingsSwitchRow(
             title = stringResource(id = R.string.immersive_mode),
             subtitle = if (state.isImmersiveEnabled) {
                 stringResource(R.string.theme_immersive_desc)
@@ -60,7 +72,7 @@ fun CustomizationMenuContent(
             checked = state.isImmersiveEnabled,
             onCheckedChange = onImmersiveChanged,
             vibrantColor = Color(state.vibrantColor),
-            index = 1,
+            index = 2,
             count = count,
         )
 
@@ -72,7 +84,7 @@ fun CustomizationMenuContent(
             checked = state.showCodecInfo,
             onCheckedChange = { onAction(PlayerAction.ToggleCodecInfo) },
             vibrantColor = Color(state.vibrantColor),
-            index = 2,
+            index = 3,
             count = count,
         )
 
@@ -84,7 +96,7 @@ fun CustomizationMenuContent(
             checked = state.isAlbumCoverGlowEnabled,
             onCheckedChange = { onAction(PlayerAction.ToggleAlbumCoverGlow) },
             vibrantColor = Color(state.vibrantColor),
-            index = 3,
+            index = 4,
             count = count,
         )
 

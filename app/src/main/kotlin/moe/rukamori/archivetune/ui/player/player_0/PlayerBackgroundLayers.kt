@@ -12,6 +12,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +43,9 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
+import moe.rukamori.archivetune.ui.player.ambient.AmbientBackdrop
+import moe.rukamori.archivetune.ui.player.ambient.FollowPicture
+import moe.rukamori.archivetune.ui.player.ambient.rememberAmbientColors
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
@@ -115,36 +119,69 @@ fun PlayerBackgroundLayers(
         label = "GlowInvertedBackgroundTransition"
     )
 
+    val ambientColors = rememberAmbientColors()
+    FollowPicture(colors = ambientColors, url = targetUrl.takeIf { state.isLiveBackgroundEnabled })
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .drawWithCache {
-                val currentBg = animatedBgColor
-                val currentGlow = glowTransition
+                if (state.isLiveBackgroundEnabled) {
+                    onDrawBehind { }
+                } else {
+                    val currentBg = animatedBgColor
+                    val currentGlow = glowTransition
 
-                val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
-                val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
-                val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
+                    val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
+                    val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
+                    val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
 
-                val stop0 = lerp(currentBg, charcoalTone, currentGlow)
-                val stop35 = lerp(currentBg, charcoalTone, currentGlow)
-                val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
-                val stop100 = lerp(deepTone, charcoalTone, currentGlow)
+                    val stop0 = lerp(currentBg, charcoalTone, currentGlow)
+                    val stop35 = lerp(currentBg, charcoalTone, currentGlow)
+                    val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
+                    val stop100 = lerp(deepTone, charcoalTone, currentGlow)
 
-                val brush = Brush.verticalGradient(
-                    0.0f to stop0,
-                    0.35f to stop35,
-                    0.70f to stop70,
-                    1.0f to stop100,
-                    startY = 0f,
-                    endY = size.height
-                )
+                    val brush = Brush.verticalGradient(
+                        0.0f to stop0,
+                        0.35f to stop35,
+                        0.70f to stop70,
+                        1.0f to stop100,
+                        startY = 0f,
+                        endY = size.height
+                    )
 
-                onDrawBehind {
-                    drawRect(brush = brush)
+                    onDrawBehind {
+                        drawRect(brush = brush)
+                    }
                 }
             }
     ) {
+        if (state.isLiveBackgroundEnabled) {
+            AmbientBackdrop(
+                colors = ambientColors,
+                modifier = Modifier.fillMaxSize(),
+                running = isLayerOnScreen,
+            )
+            if (glowTransition > 0.01f) {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .drawWithCache {
+                            val currentGlow = glowTransition
+                            val glowScrim = Brush.verticalGradient(
+                                0.0f to Color(0xFF080808).copy(alpha = 0.85f * currentGlow),
+                                0.45f to Color(0xFF080808).copy(alpha = 0.65f * currentGlow),
+                                0.85f to Color.Transparent,
+                                startY = 0f,
+                                endY = size.height,
+                            )
+                            onDrawBehind {
+                                drawRect(brush = glowScrim)
+                            }
+                        }
+                )
+            }
+        }
         val shouldRenderHeavyBackground by remember {
             derivedStateOf { currentExpansionProvider() > 0.05f }
         }
@@ -247,27 +284,3 @@ fun PlayerBackgroundLayers(
         }
     }
 }
-
-internal fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
-    .graphicsLayer {
-        this.alpha = alpha
-        this.compositingStrategy = if (alpha > 0.01f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
-    }
-    .drawWithCache {
-        val maskBrush = Brush.verticalGradient(
-            0.0f to Color.Black,
-            0.45f to Color.Black,
-            0.75f to Color.Black.copy(alpha = 0.4f),
-            1.0f to Color.Transparent,
-            startY = 0f,
-            endY = size.height
-        )
-        onDrawWithContent {
-            if (alpha < 0.01f) return@onDrawWithContent
-            drawContent()
-            drawRect(
-                brush = maskBrush,
-                blendMode = BlendMode.DstIn
-            )
-        }
-    }
