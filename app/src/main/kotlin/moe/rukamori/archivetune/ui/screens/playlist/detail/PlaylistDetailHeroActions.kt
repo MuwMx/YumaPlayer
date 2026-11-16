@@ -44,16 +44,12 @@ import moe.rukamori.archivetune.ui.utils.HeaderDownloadProgressIndicator
 import moe.rukamori.archivetune.ui.utils.HeaderDownloadState
 
 /**
- * The unified hero action row, faithful to each origin screen's legacy order:
- *  - Local (editable: delete / else: like, play, shuffle, download)
- *  - Online (like/radio, play, shuffle, download)
- *  - Auto (download, play, shuffle, add-to-queue)
- *  - Top   (download, play, shuffle, add-to-queue)
- *  - Cache (play, shuffle, add-to-queue)
- * Download/queue visibility: download ⇔ supportsDownload; queue ⇔ auto, top
- * or cache sources (Local/Online legacy heroes have no queue button).
- * LOCAL EDIT SLOT: the Edit/Delete and pick-cover buttons join here with the
- * local flip via [leadingAction]; ONLINE like/radio joins via the same slot.
+ * The unified hero action row, faithful to each origin screen's legacy order
+ * (Local: delete-or-like, play, shuffle, download; Online: like/radio, play,
+ * shuffle, download; Auto/Top: download, play, shuffle, queue; Cache: play,
+ * shuffle, queue). Download ⇔ supportsDownload; queue ⇔ non-editable,
+ * non-paginated sources. LOCAL EDIT + ONLINE like/radio slots ride
+ * [leadingAction].
  */
 @Composable
 internal fun PlaylistDetailHeroActions(
@@ -65,6 +61,16 @@ internal fun PlaylistDetailHeroActions(
     onAddToQueue: () -> Unit = {},
     modifier: Modifier = Modifier,
     leadingAction: (@Composable () -> Unit)? = null,
+    /**
+     * Empty-list gating, faithful to the legacy heroes: Spotify disabled
+     * Play/Shuffle on an empty playlist (SpotifyPlaylistControls.kt:97,139)
+     * and Cache also dimmed the disabled buttons at 0.38 alpha
+     * (CachePlaylistScreen.kt:716,773,806); every other legacy hero never
+     * gated. True = enabled.
+     */
+    playbackEnabled: Boolean = true,
+    /** Cache-style 0.38f alpha dimming on disabled buttons. */
+    dimDisabled: Boolean = false,
 ) {
     val showsDownloadButton = capabilities.supportsDownload
     // Queue tail: auto/top/cache legacy heroes add to queue; Local/Online/
@@ -127,9 +133,10 @@ internal fun PlaylistDetailHeroActions(
                     .height(48.dp)
                     .yumaClickable(
                         pressedScale = SettingsAnimations.PressScale,
+                        enabled = playbackEnabled,
                         onClick = onPlay,
                     ).background(
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (dimDisabled && !playbackEnabled) dimmedColor(MaterialTheme.colorScheme.primary) else MaterialTheme.colorScheme.primary,
                         shape = CircleShape,
                     ).clip(CircleShape)
                     .semantics(mergeDescendants = true) { role = Role.Button },
@@ -143,7 +150,7 @@ internal fun PlaylistDetailHeroActions(
                 Icon(
                     painter = painterResource(R.drawable.play),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = if (dimDisabled && !playbackEnabled) dimmedColor(MaterialTheme.colorScheme.onPrimary) else MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -151,7 +158,7 @@ internal fun PlaylistDetailHeroActions(
                     text = playLabel,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = if (dimDisabled && !playbackEnabled) dimmedColor(MaterialTheme.colorScheme.onPrimary) else MaterialTheme.colorScheme.onPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -161,11 +168,12 @@ internal fun PlaylistDetailHeroActions(
         HeroGlassButton(
             label = shuffleLabel,
             onClick = onShuffle,
+            enabled = playbackEnabled,
         ) {
             Icon(
                 painter = painterResource(R.drawable.shuffle),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (dimDisabled && !playbackEnabled) dimmedColor(MaterialTheme.colorScheme.onSurface) else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
             )
         }
@@ -175,11 +183,12 @@ internal fun PlaylistDetailHeroActions(
             HeroGlassButton(
                 label = queueLabel,
                 onClick = onAddToQueue,
+                enabled = playbackEnabled,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.queue_music),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (dimDisabled && !playbackEnabled) dimmedColor(MaterialTheme.colorScheme.onSurfaceVariant) else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
@@ -187,11 +196,15 @@ internal fun PlaylistDetailHeroActions(
     }
 }
 
+/** Cache-style disabled tint: the color at the legacy 0.38 alpha. */
+private fun dimmedColor(color: androidx.compose.ui.graphics.Color): androidx.compose.ui.graphics.Color = color.copy(alpha = 0.38f)
+
 /** The 48dp glass-circle button every legacy hero used. */
 @Composable
 private fun HeroGlassButton(
     label: String,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Box(
@@ -200,6 +213,7 @@ private fun HeroGlassButton(
                 .size(48.dp)
                 .yumaClickable(
                     pressedScale = SettingsAnimations.PressScale,
+                    enabled = enabled,
                     onClick = onClick,
                 ).yumaGlassCard(
                     shape = CircleShape,

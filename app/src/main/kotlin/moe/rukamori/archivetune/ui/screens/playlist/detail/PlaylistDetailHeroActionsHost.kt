@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.playlist.source.CachePlaylistSource
+import moe.rukamori.archivetune.playlist.source.InnerTubePlaylistSource
 import moe.rukamori.archivetune.playlist.source.PlaylistCapabilities
 import moe.rukamori.archivetune.playlist.source.PlaylistTracksSource
 import moe.rukamori.archivetune.playlist.source.PlaylistTrack
@@ -53,6 +55,10 @@ import moe.rukamori.archivetune.ui.utils.sendAddMissingDownloads
  * SPOTIFY PLAYLIST SLOT: the legacy hero's sync/reload button
  * (SpotifyPlaylistControls.kt:63-88) renders as the leading action on
  * Spotify routes; other routes pass [leadingAction] through untouched.
+ * ONLINE PLAYLIST SLOT: the legacy hero's leading BOOKMARK heart
+ * (saves the playlist into the Room library via
+ * InnerTubePlaylistMutations.togglePlaylistBookmark) or, for LM playlists
+ * with no like, the radio button (OnlinePlaylistHeroSection.kt:181-254).
  * LOCAL PLAYLIST SLOT: the delete-or-like circle rides [leadingAction],
  * and [localOnRemoveDownloads] overrides the Completed-download confirm's
  * onConfirm (a non-editable local playlist also clears its songs — legacy
@@ -92,9 +98,30 @@ internal fun PlaylistDetailHeroActionsHost(
             null
         }
 
+    // ONLINE PLAYLIST SLOT — the legacy hero's leading bookmark heart (LM
+    // playlists have no like; they fall back to the radio button,
+    // OnlinePlaylistHeroSection.kt:181-254). The bookmark state reads the
+    // live Room row keyed by browseId; the toggle ports
+    // toggleOnlinePlaylistLike (InnerTubePlaylistMutations).
+    val onlineLeadingAction: (@Composable () -> Unit)? =
+        if (source is InnerTubePlaylistSource) {
+            onlinePlaylistLeadingAction(
+                source = source,
+                playerConnection = playerConnection,
+            )
+        } else {
+            null
+        }
+
     PlaylistDetailHeroActions(
         capabilities = capabilities,
         downloadState = downloadHolder.downloadState,
+        // Empty-list gating, legacy parity: Spotify disables Play/Shuffle on
+        // an empty playlist (SpotifyPlaylistControls.kt:97,139); Cache also
+        // DIMS the disabled buttons (CachePlaylistScreen.kt:716,773,806);
+        // Local/Online/Top/Auto legacy heroes never gated (stays enabled).
+        playbackEnabled = tracks.isNotEmpty() || !(source is SpotifyPlaylistSource || source is CachePlaylistSource),
+        dimDisabled = source is CachePlaylistSource,
         onPlay = {
             onPlaylistDetailPlay(
                 source = source,
@@ -138,7 +165,7 @@ internal fun PlaylistDetailHeroActionsHost(
                 tracks = tracks,
             )
         },
-        leadingAction = spotifyLeadingAction ?: leadingAction,
+        leadingAction = spotifyLeadingAction ?: onlineLeadingAction ?: leadingAction,
     )
 }
 

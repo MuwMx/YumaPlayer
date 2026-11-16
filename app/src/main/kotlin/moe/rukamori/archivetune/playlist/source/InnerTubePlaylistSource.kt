@@ -32,7 +32,7 @@ import javax.inject.Singleton
 class InnerTubePlaylistSource
     @Inject
     constructor(
-        private val browseId: String,
+        internal val browseId: String,
         private val database: MusicDatabase,
     ) : PlaylistTracksSource {
     override val id: String = "yt:$browseId"
@@ -58,6 +58,15 @@ class InnerTubePlaylistSource
         private set
 
     var radioEndpoint: WatchEndpoint? = null
+        private set
+
+    /**
+     * The loaded playlist's model — null until the first load succeeds.
+     * The hero's ONLINE PLAYLIST SLOT (bookmark heart / LM-radio fallback)
+     * and the top bar's YouTubePlaylistMenu read this exactly like the legacy
+     * screen read its `playlist` state.
+     */
+    var playlistItem: PlaylistItem? = null
         private set
 
     override suspend fun refresh(): Result<Unit> =
@@ -112,6 +121,7 @@ class InnerTubePlaylistSource
                     playEndpoint = playlist.playEndpoint
                     shuffleEndpoint = playlist.shuffleEndpoint
                     radioEndpoint = playlist.radioEndpoint
+                    playlistItem = playlist
                     state.value =
                         PlaylistTracksResult(
                             header =
@@ -119,6 +129,7 @@ class InnerTubePlaylistSource
                                     id = playlist.id,
                                     title = playlist.title,
                                     author = playlist.author?.name,
+                                    authorId = playlist.author?.id,
                                     thumbnailUrl = playlist.thumbnail,
                                     songCount = playlist.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
                                     description = playlist.description,
@@ -138,5 +149,5 @@ class InnerTubePlaylistSource
             Result.success(Unit)
         }
 
-    private fun currentSongItems(): List<SongItem> = state.value.tracks.mapNotNull { it.origin as? SongItem }
+    fun currentSongItems(): List<SongItem> = state.value.tracks.mapNotNull { it.origin as? SongItem }
 }

@@ -22,7 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -50,6 +54,7 @@ internal fun PlaylistDetailHeroSection(
     modifier: Modifier = Modifier,
     actions: (@Composable () -> Unit)? = null,
     artworkOverlay: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    onAuthorClick: ((authorId: String) -> Unit)? = null,
 ) {
     val hasArtwork = !header.thumbnailUrl.isNullOrBlank()
 
@@ -108,8 +113,31 @@ internal fun PlaylistDetailHeroSection(
 
             header.author?.let { author ->
                 Spacer(modifier = Modifier.height(8.dp))
+                // Author line — clickable into the artist page when the
+                // source carries an author id (verbatim the legacy Online
+                // hero's LinkAnnotation, OnlinePlaylistHeroSection.kt:120-142);
+                // plain text otherwise (Spotify owner names have no page).
+                val authorId = header.authorId
                 Text(
-                    text = author,
+                    text =
+                        if (authorId != null && onAuthorClick != null) {
+                            buildAnnotatedString {
+                                withStyle(
+                                    style =
+                                        MaterialTheme.typography.titleMedium
+                                            .copy(color = MaterialTheme.colorScheme.primary)
+                                            .toSpanStyle(),
+                                ) {
+                                    withLink(
+                                        LinkAnnotation.Clickable(authorId) {
+                                            onAuthorClick(authorId)
+                                        },
+                                    ) { append(author) }
+                                }
+                            }
+                        } else {
+                            buildAnnotatedString { append(author) }
+                        },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,

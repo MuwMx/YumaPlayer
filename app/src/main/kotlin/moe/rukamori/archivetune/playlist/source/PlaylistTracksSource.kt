@@ -62,8 +62,8 @@ data class PlaylistCapabilities(
         )
 
         /** The bare read-only baseline — the unified UiState's pre-observe
-         *  default; no route uses it directly (cache sorts via [Cache],
-         *  Top's real shape is [Top] with downloads + ranks). */
+         *  default; no route uses it directly anymore (cache sorts via
+         *  [Cache], Top's real shape is [Top] with downloads + ranks). */
         val ReadOnly = PlaylistCapabilities()
 
         /** Read-only AND downloadable — the Top playlist's real shape.
@@ -103,6 +103,13 @@ data class PlaylistHeaderInfo(
     val id: String,
     val title: String,
     val author: String? = null,
+    /**
+     * The author's channel id when known — the hero renders the author as a
+     * clickable link into the artist page when set (legacy Online hero,
+     * OnlinePlaylistHeroSection.kt:120-142). Spotify owners have no artist
+     * page, so that source leaves it null.
+     */
+    val authorId: String? = null,
     val thumbnailUrl: String? = null,
     val songCount: Int? = null,
     /** Total playlist length for the hero's duration chip; null = no chip. */

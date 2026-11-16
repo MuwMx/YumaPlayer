@@ -52,6 +52,8 @@ internal fun LazyListScope.playlistDetailSongs(
     badges: PlaylistBadgeStateHolder? = null,
     /** Trailing row like button; OFF only on the Liked Songs auto playlist. */
     showLikeButton: Boolean = true,
+    /** Legacy online rows disable taps on explicit songs when ON (hide-explicit). */
+    hideExplicit: Boolean = false,
     onSongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSongLongClick: (index: Int, track: PlaylistTrack) -> Unit,
     onSwipeDelete: (index: Int) -> Unit,
@@ -106,6 +108,9 @@ internal fun LazyListScope.playlistDetailSongs(
                     inLibrary = badges?.isInLibrary(track.id) == true,
                     downloadState = downloads[track.id]?.state,
                     downloadProgress = downloads[track.id]?.percentDownloaded ?: -1f,
+                    // Legacy rows gate explicit songs behind the hide-explicit
+                    // preference (OnlinePlaylistListSection.kt:259).
+                    tapEnabled = !hideExplicit || !origin.explicit,
                     onClick = { onSongClick(index, track) },
                     onLongClick = { onSongLongClick(index, track) },
                 )

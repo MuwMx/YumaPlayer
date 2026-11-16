@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.ui.screens.playlist.detail
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -145,6 +147,7 @@ internal fun LazyListScope.playlistDetailHeroItem(
     disableBlur: Boolean,
     actions: (@Composable () -> Unit)? = null,
     artworkOverlay: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    onAuthorClick: ((authorId: String) -> Unit)? = null,
 ) {
     if (header == null) return
     item(key = PLAYLIST_DETAIL_KEY_HEADER, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_HEADER) {
@@ -155,6 +158,7 @@ internal fun LazyListScope.playlistDetailHeroItem(
             disableBlur = disableBlur,
             actions = actions,
             artworkOverlay = artworkOverlay,
+            onAuthorClick = onAuthorClick,
         )
     }
 }
@@ -210,28 +214,6 @@ internal fun LazyListScope.playlistDetailLoadingMoreItem() {
     item(key = PLAYLIST_DETAIL_KEY_LOADING_MORE, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_LOADING_MORE) {
         ShimmerHost {
             repeat(2) { ListItemPlaceHolder() }
-        }
-    }
-}
-
-/** Error state with retry; errors from the sources render their message. */
-internal fun LazyListScope.playlistDetailErrorItem(
-    error: String?,
-    onRetry: () -> Unit,
-) {
-    item(key = PLAYLIST_DETAIL_KEY_ERROR, contentType = CONTENT_TYPE_PLAYLIST_DETAIL_ERROR) {
-        Text(
-            text =
-                if (error != null) stringResource(R.string.error_unknown) else "",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(32.dp),
-        )
-        if (error != null) {
-            Button(onClick = onRetry) {
-                Text(stringResource(R.string.retry))
-            }
         }
     }
 }

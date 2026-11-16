@@ -137,6 +137,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.playlistDetailScaffoldT
                 viewModel, menuState, tracks, viewModel.uiState.value.header,
                 localGlue, editable,
                 onClearSelection = { searchState.clearSelection() },
+                onStartSelection = { searchState.selection = true },
             ),
     )
 }
@@ -233,6 +234,7 @@ internal fun localPlaylistTrailingAndDialogsOrUnified(
     localGlue: LocalPlaylistGlue?,
     editable: Boolean?,
     onClearSelection: () -> Unit,
+    onStartSelection: () -> Unit = {},
 ): (@Composable () -> Unit)? {
     if (localGlue != null) {
         // LOCAL PLAYLIST SLOT — edit-chooser + rename + delete dialogs
@@ -252,5 +254,6 @@ internal fun localPlaylistTrailingAndDialogsOrUnified(
         onClearSelection = onClearSelection,
         editable = editable,
         onSync = viewModel::refresh,
+        onStartSelection = onStartSelection,
     )
 }

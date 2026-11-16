@@ -71,12 +71,21 @@ class RoomPlaylistSource
                 PlaylistTracksResult(
                     header =
                         playlist?.let {
+                            // Legacy hero (LocalPlaylistHeroSection.kt:262-268):
+                            // an unsynced remote playlist shows the REMOTE song
+                            // count while the local copy is still empty.
+                            val remoteSongCount = it.playlist.remoteSongCount
                             PlaylistHeaderInfo(
                                 id = it.id,
                                 title = it.playlist.name,
                                 author = null,
                                 thumbnailUrl = it.thumbnails.firstOrNull(),
-                                songCount = it.songCount,
+                                songCount =
+                                    if (it.songCount == 0 && remoteSongCount != null) {
+                                        remoteSongCount
+                                    } else {
+                                        it.songCount
+                                    },
                                 // Legacy hero: the duration chip sums the songs
                                 // the list SHOWS (LocalPlaylistScreen
                                 // playlistLength = fastSumBy over the sorted list).

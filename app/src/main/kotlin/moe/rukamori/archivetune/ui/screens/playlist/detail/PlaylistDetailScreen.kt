@@ -31,9 +31,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.PlaylistEditLockKey
-import moe.rukamori.archivetune.constants.PlaylistSongSortType
 import moe.rukamori.archivetune.constants.SwipeToSongKey
-import moe.rukamori.archivetune.playlist.source.AutoPlaylistSource
 import moe.rukamori.archivetune.playlist.source.RoomPlaylistSource
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.ImmersiveArtworkTokens
@@ -72,6 +70,9 @@ fun PlaylistDetailScreen(
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    // ONLINE rows gate explicit songs' taps behind this preference
+    // (legacy OnlinePlaylistScreen.kt:86 + ListSection.kt:259).
+    val hideExplicit by rememberPreference(moe.rukamori.archivetune.constants.HideExplicitKey, false)
 
     val capabilities = uiState.capabilities
     val tracks = uiState.tracks
@@ -134,6 +135,9 @@ fun PlaylistDetailScreen(
             standardThreshold = 48.dp,
         )
     val artworkBackground = rememberArtworkBackground(header?.thumbnailUrl)
+    // Player-aware + IME content padding — see
+    // rememberPlaylistDetailContentPadding in Wiring.
+    val contentPadding = rememberPlaylistDetailContentPadding(hasArtworkBackdrop)
 
     ExpressivePullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
@@ -144,6 +148,7 @@ fun PlaylistDetailScreen(
             LazyColumn(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+                contentPadding = contentPadding,
             ) {
                 when {
                     uiState.isLoading -> playlistDetailShimmerItem()
@@ -163,69 +168,36 @@ fun PlaylistDetailScreen(
                             },
                             artworkOverlay = localPlaylistPickCoverOverlayOrNull(
                                 localGlue, systemBarsTopPadding, hasArtworkBackdrop),
+                            // ONLINE PLAYLIST SLOT — the author line links into
+                            // the artist page (OnlinePlaylistActions.kt:285-287).
+                            onAuthorClick = { authorId -> navController.navigate("artist/$authorId") },
                         )
 
                         renderPlaylistDetailHeaderSlot(uiState, viewModel, locked, { locked = !locked })
 
-                        // ONE HEART RULE (user spec 2026-11-15): the trailing
-                        // like button is on every playlist's rows EXCEPT the
-                        // Liked Songs auto playlist, where it would duplicate
-                        // the list itself. SongPlaylistOriginRow also falls
-                        // back to its subtitle badge when the button is off.
-                        val showLikeButton =
-                            viewModel.source !is AutoPlaylistSource ||
-                                viewModel.source.playlistName != "liked"
-
-                        if (visibleTracks.isEmpty() && uiState.error == null) {
-                            playlistDetailEmptyItem(
-                                searchState.isSearching,
-                                emptyTexts?.empty,
-                                emptyTexts?.searchEmpty,
-                            )
-                        } else {
-                            playlistDetailSongs(
-                                tracks = visibleTracks,
-                                selectedTracks = selectedTracks,
-                                capabilities = capabilities,
-                                reorderableState = reorderableState,
-                                isScrollInProgress = lazyListState.isScrollInProgress,
-                                mediaMetadataId = mediaMetadataId,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                viewCounts = uiState.viewCounts,
-                                sortType = uiState.sortInfo?.sortType ?: PlaylistSongSortType.CUSTOM,
-                                selection = searchState.selection, isSearching = searchState.isSearching,
-                                locked = locked, swipeToSongEnabled = swipeToSongEnabled,
-                                showTrackNumbers = capabilities.showsTrackNumbers,
-                                downloads = downloadHolder.downloads,
-                                badges = badgeHolder,
-                                showLikeButton = showLikeButton,
-                                navController = navController,
-                                // LOCAL PLAYLIST SLOT — SongMenu remove-from-playlist
-                                // + like-source hint key on the remote browseId.
-                                playlistBrowseId = uiState.browseId,
-                                menuState = menuState,
-                                onSongClick = { index, track ->
-                                    onPlaylistDetailRowClick(
-                                        viewModel, searchState, playerConnection, mediaMetadata,
-                                        tracks, visibleTracks, header?.title.orEmpty(), track, index,
-                                    )
-                                },
-                                onSongLongClick = { _, track ->
-                                    onPlaylistDetailRowLongClick(searchState, track, haptics::longPress)
-                                },
-                                onSwipeDelete = viewModel::removeSong,
-                            )
-                        }
-
-                        if (capabilities.paginated && uiState.hasContinuation && uiState.isLoadingMore) {
-                            playlistDetailLoadingMoreItem()
-                        }
-
-                        // LOCAL PLAYLIST SLOT — "You might like" footer
-                        // (legacy LocalPlaylistScreen.kt:251-257).
-                        localPlaylistSuggestionsItem(
-                            localGlue != null && !searchState.selection && !searchState.isSearching)
+                        playlistDetailListBody(
+                            viewModel = viewModel,
+                            uiState = uiState,
+                            searchState = searchState,
+                            header = header,
+                            emptyTexts = emptyTexts,
+                            visibleTracks = visibleTracks,
+                            selectedTracks = selectedTracks,
+                            lazyListState = lazyListState,
+                            reorderableState = reorderableState,
+                            playerConnection = playerConnection,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            locked = locked,
+                            swipeToSongEnabled = swipeToSongEnabled,
+                            hideExplicit = hideExplicit,
+                            downloadHolder = downloadHolder,
+                            badgeHolder = badgeHolder,
+                            navController = navController,
+                            menuState = menuState,
+                            haptics = haptics,
+                            showLocalSuggestions = localGlue != null,
+                        )
                     }
                 }
             }

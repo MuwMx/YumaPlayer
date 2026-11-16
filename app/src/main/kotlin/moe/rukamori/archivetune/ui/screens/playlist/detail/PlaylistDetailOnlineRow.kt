@@ -53,6 +53,8 @@ internal fun OnlinePlaylistOriginRow(
     inLibrary: Boolean = false,
     downloadState: Int? = null,
     downloadProgress: Float = -1f,
+    /** Legacy gates explicit rows' taps when hide-explicit is ON (ListSection.kt:259). */
+    tapEnabled: Boolean = true,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -113,7 +115,11 @@ internal fun OnlinePlaylistOriginRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+                    .combinedClickable(
+                        enabled = tapEnabled,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    ),
         )
     }
 }

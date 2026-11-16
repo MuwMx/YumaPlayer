@@ -6,7 +6,13 @@
 
 package moe.rukamori.archivetune.ui.screens.playlist.detail
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -130,6 +136,27 @@ internal fun rememberPlaylistDetailRenderState(
 }
 
 /**
+ * The list's content padding, verbatim the legacy screens
+ * (LocalPlaylistScreen.kt:130-138, OnlinePlaylistScreen.kt:156-163):
+ * player-aware insets union the IME inset so the mini-player never
+ * overlaps the last rows and the keyboard never covers the list while
+ * searching; only Horizontal+Bottom ride when an artwork backdrop hosts
+ * the top inset.
+ */
+@Composable
+internal fun rememberPlaylistDetailContentPadding(hasArtworkBackdrop: Boolean): PaddingValues {
+    val playerAwareInsets = LocalPlayerAwareWindowInsets.current
+    val imeInsets = WindowInsets.ime
+    val contentInsets =
+        if (hasArtworkBackdrop) {
+            playerAwareInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+        } else {
+            playerAwareInsets
+        }
+    return contentInsets.union(imeInsets).asPaddingValues()
+}
+
+/**
  * The hero the screen renders: hidden while searching (legacy Top/Auto/Cache
  * gate their heroes on !isSearching), and the Top source's localized
  * "My Top N" title resolved here (sources hold no string resources).
@@ -173,37 +200,6 @@ internal fun rememberPlaylistDetailHeader(
         return header.copy(title = label)
     }
     return header
-}
-
-/**
- * CACHE PLAYLIST SLOT — per-song cache removal for the unified screen's
- * top-bar delete and selection-menu branches (null on other routes). The
- * cache source owns the removal (removeSongResources) exactly like legacy
- * CachePlaylistViewModel.removeSongFromCache.
- */
-internal fun onPlaylistDetailRemoveSongFromCache(
-    viewModel: PlaylistDetailViewModel,
-): ((songId: String) -> Unit)? {
-    val cacheSource = viewModel.source as? moe.rukamori.archivetune.playlist.source.CachePlaylistSource
-    return cacheSource?.let { source -> { songId -> source.removeSongFromCache(songId) } }
-}
-
-/**
- * Long-press behavior: legacy semantics (Local Wiring.kt:565-568, Online
- * Actions.kt:204-211) — enter selection and select exactly the pressed song,
- * clearing any prior selection.
- */
-internal fun onPlaylistDetailRowLongClick(
-    searchState: moe.rukamori.archivetune.ui.screens.playlist.shared.PlaylistSearchStateHolder<PlaylistTrack>,
-    track: PlaylistTrack,
-    onHaptic: () -> Unit,
-) {
-    onHaptic()
-    searchState.wrappedItems.forEach { it.isSelected = false }
-    searchState.filteredItems
-        .firstOrNull { it.item === track }
-        ?.let { it.isSelected = true }
-    searchState.selection = true
 }
 
 /**
