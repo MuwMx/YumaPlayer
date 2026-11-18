@@ -71,6 +71,8 @@ fun ScaffoldSearchBarHost(
             onSearch = searchState.onSearch,
             active = searchState.active,
             onActiveChange = searchState.onActiveChange,
+            searchContentDescription = stringResource(R.string.content_desc_search),
+            suggestionsAvailableDescription = stringResource(R.string.content_desc_suggestions_available),
             placeholder = {
                 Text(
                     text = stringResource(

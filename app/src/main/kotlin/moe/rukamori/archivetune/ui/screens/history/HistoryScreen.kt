@@ -541,6 +541,8 @@ fun HistoryScreen(
                             resetSearch()
                         }
                     },
+                    searchContentDescription = stringResource(R.string.content_desc_search),
+                    suggestionsAvailableDescription = stringResource(R.string.content_desc_suggestions_available),
                     modifier = Modifier.fillMaxSize(),
                     placeholder = {
                         Text(text = stringResource(R.string.search))

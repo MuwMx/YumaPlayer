@@ -73,7 +73,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -92,7 +91,6 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.hazeBlur
 import moe.rukamori.archivetune.constants.AppBarHeight
-import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassStroke
 import kotlin.math.max
@@ -106,6 +104,8 @@ fun TopSearch(
     onSearch: (String) -> Unit,
     active: Boolean,
     onActiveChange: (Boolean) -> Unit,
+    searchContentDescription: String,
+    suggestionsAvailableDescription: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     placeholder: @Composable (() -> Unit)? = null,
@@ -267,6 +267,8 @@ fun TopSearch(
                     onSearch = onSearch,
                     active = active,
                     onActiveChange = onActiveChange,
+                    searchContentDescription = searchContentDescription,
+                    suggestionsAvailableDescription = suggestionsAvailableDescription,
                     modifier = Modifier.padding(animatedInputFieldPadding),
                     enabled = enabled,
                     placeholder = placeholder,
@@ -310,6 +312,8 @@ private fun SearchBarInputField(
     onSearch: (String) -> Unit,
     active: Boolean,
     onActiveChange: (Boolean) -> Unit,
+    searchContentDescription: String,
+    suggestionsAvailableDescription: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     placeholder: @Composable (() -> Unit)? = null,
@@ -322,8 +326,6 @@ private fun SearchBarInputField(
 ) {
     val coercedQuery = remember(query) { query.coerceTextRanges() }
     val focused = interactionSource.collectIsFocusedAsState().value
-    val searchContentDescription = stringResource(R.string.content_desc_search)
-    val suggestionsAvailableDescription = stringResource(R.string.content_desc_suggestions_available)
     val textColor =
         LocalTextStyle.current.color.takeOrElse {
             if (focused) colors.focusedTextColor else colors.unfocusedTextColor

@@ -44,14 +44,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
-import moe.rukamori.archivetune.designsystem.R
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
@@ -82,6 +80,8 @@ private class SpoilerParticleField(
 fun SpoilerVeil(
     revealed: Boolean,
     onRevealChange: () -> Unit,
+    hiddenDescription: String = "",
+    revealedDescription: String = "",
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(SettingsDimensions.GlassCornerRadius),
     content: @Composable () -> Unit,
@@ -198,15 +198,13 @@ fun SpoilerVeil(
         }
     }
 
-    val hiddenDesc = stringResource(R.string.spoiler_hidden)
-    val revealedDesc = stringResource(R.string.spoiler_revealed)
     val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
             .clip(shape)
             .semantics(mergeDescendants = true) {
-                stateDescription = if (revealed) revealedDesc else hiddenDesc
+                stateDescription = if (revealed) revealedDescription else hiddenDescription
             }
             .then(
                 if (!revealed) {
@@ -387,6 +385,8 @@ private fun SpoilerVeilPreview() {
             SpoilerVeil(
                 revealed = revealed,
                 onRevealChange = { revealed = !revealed },
+                hiddenDescription = "Hidden",
+                revealedDescription = "Revealed",
             ) {
                 Text(
                     text = "sp_dc=AQD7...secret_token_12345",
@@ -417,6 +417,8 @@ private fun SpoilerVeilComparisonPreview() {
             SpoilerVeil(
                 revealed = false,
                 onRevealChange = {},
+                hiddenDescription = "Hidden",
+                revealedDescription = "Revealed",
             ) {
                 Text(
                     text = "super_secret_qobuz_token_xyz987",
@@ -434,6 +436,8 @@ private fun SpoilerVeilComparisonPreview() {
             SpoilerVeil(
                 revealed = true,
                 onRevealChange = {},
+                hiddenDescription = "Hidden",
+                revealedDescription = "Revealed",
             ) {
                 Text(
                     text = "super_secret_qobuz_token_xyz987",

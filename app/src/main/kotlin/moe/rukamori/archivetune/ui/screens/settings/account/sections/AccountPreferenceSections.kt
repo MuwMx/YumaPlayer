@@ -211,6 +211,8 @@ internal fun AccountMiscSection(
                         SpoilerVeil(
                             revealed = showToken,
                             onRevealChange = onRevealToken,
+                            hiddenDescription = stringResource(R.string.spoiler_hidden),
+                            revealedDescription = stringResource(R.string.spoiler_revealed),
                             modifier = Modifier.wrapContentWidth(),
                         ) {
                             Text(

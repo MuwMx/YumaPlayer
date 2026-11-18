@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -176,7 +175,7 @@ fun YumaPreferenceRow(
                 Spacer(modifier = Modifier.width(SettingsDimensions.YumaRowArrowSpacing))
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_right),
-                    contentDescription = stringResource(R.string.content_desc_go),
+                    contentDescription = null,
                     tint = Color.White.copy(alpha = SettingsDimensions.YumaRowArrowAlpha),
                     modifier = Modifier.size(SettingsDimensions.YumaRowArrowSize)
                 )
