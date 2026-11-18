@@ -39,6 +39,7 @@ import kotlin.system.exitProcess
 internal fun App.initializeDeferredAsync() {
     applicationScope.launch(Dispatchers.IO) {
         try {
+            SplashGate.awaitSplashDone(3000L)
             syncUtils.trySpotifyAutoSync()
         } catch (e: Exception) {
             Timber.e(e, "Error restoring Spotify auto-sync on app startup")
@@ -86,6 +87,7 @@ internal fun App.initializeDeferredAsync() {
             val initialVisitor = prefs[VisitorDataKey] ?: YouTube.visitorData
             if (!initialVisitor.isNullOrBlank()) {
                 applicationScope.launch(Dispatchers.IO) {
+                    SplashGate.awaitSplashDone(3000L)
                     BotGuardTokenGenerator.preWarm(initialVisitor)
                 }
             }

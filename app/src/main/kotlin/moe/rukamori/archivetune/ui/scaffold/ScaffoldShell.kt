@@ -81,7 +81,9 @@ fun ScaffoldShell(
     homeBackgroundParallaxStrength: Float,
     homeBackgroundBrightness: Float,
     contentAlpha: () -> Float,
+    contentMounted: Boolean,
     contentVisible: Boolean,
+    onPrewarmStart: () -> Unit,
     onBurstStart: () -> Unit,
     splashDone: Boolean,
     onSplashDismiss: () -> Unit,
@@ -130,9 +132,14 @@ fun ScaffoldShell(
                 modifier = Modifier.fillMaxSize(),
             )
             if (splashEnabled) {
-                SplashOverlay(isDark = useDarkTheme, onBurstStart = onBurstStart, onDismiss = onSplashDismiss)
+                SplashOverlay(
+                    isDark = useDarkTheme,
+                    onBurstStart = onBurstStart,
+                    onPrewarmStart = onPrewarmStart,
+                    onDismiss = onSplashDismiss,
+                )
             }
-            if (contentVisible || !splashEnabled) {
+            if (contentMounted || !splashEnabled) {
                 Row(
                     modifier = Modifier
                         .graphicsLayer {

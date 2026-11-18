@@ -42,6 +42,7 @@ fun SplashOverlay(
     contentColor: Color? = null,
     primaryColor: Color? = null,
     onBurstStart: () -> Unit = {},
+    onPrewarmStart: () -> Unit = {},
     onDismiss: () -> Unit = {},
 ) {
     val splashOverlayEnabled by rememberPreference(SplashOverlayEnabledKey, defaultValue = true)
@@ -57,6 +58,7 @@ fun SplashOverlay(
         val animationsDisabled = LocalAnimationsDisabled.current
         var showSplash by remember { mutableStateOf(!animationsDisabled) }
         val currentOnBurstStart by rememberUpdatedState(onBurstStart)
+        val currentOnPrewarmStart by rememberUpdatedState(onPrewarmStart)
         val currentOnDismiss by rememberUpdatedState(onDismiss)
         var isInitialized by remember { mutableStateOf(false) }
         var burstTriggered by remember { mutableStateOf(false) }
@@ -100,28 +102,39 @@ fun SplashOverlay(
         LaunchedEffect(showSplash, isReady) {
             if (!showSplash || !isReady) return@LaunchedEffect
             var lastTime = 0L
+            var prewarmIssued = false
             while (isActive) {
-                withFrameNanos { now ->
-                    if (!isInitialized) return@withFrameNanos
-                    if (lastTime == 0L) {
-                        lastTime = now
-                        return@withFrameNanos
-                    }
-                    val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
+                val now = withFrameNanos { it }
+                if (!isInitialized) continue
+                if (lastTime == 0L) {
                     lastTime = now
-                    engine.update(dt, now / 1_000_000)
-                    frameTick = now
+                    continue
+                }
+                val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
+                lastTime = now
 
-                    val burstLimit = if (engine.isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
-                    if (engine.currentPhase == SplashPhase.Burst && !burstTriggered && engine.phaseElapsedMs >= burstLimit * SplashConfig.Reveal.START_FRACTION) {
-                        burstTriggered = true
-                        currentOnBurstStart()
-                    }
+                if (!prewarmIssued && engine.currentPhase == SplashPhase.Ignite) {
+                    prewarmIssued = true
+                    currentOnPrewarmStart()
+                    // let the first heavy composition of the main tree land before the shockwave
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    lastTime = 0L
+                    continue
+                }
 
-                    if (engine.currentPhase == SplashPhase.Idle && engine.shockwave == null && showSplash) {
-                        showSplash = false
-                        currentOnDismiss()
-                    }
+                engine.update(dt, now / 1_000_000)
+                frameTick = now
+
+                val burstLimit = if (engine.isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
+                if (engine.currentPhase == SplashPhase.Burst && !burstTriggered && engine.phaseElapsedMs >= burstLimit * SplashConfig.Reveal.START_FRACTION) {
+                    burstTriggered = true
+                    currentOnBurstStart()
+                }
+
+                if (engine.currentPhase == SplashPhase.Idle && engine.shockwave == null && showSplash) {
+                    showSplash = false
+                    currentOnDismiss()
                 }
             }
         }

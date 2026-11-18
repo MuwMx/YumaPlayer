@@ -27,9 +27,11 @@ import kotlin.time.Duration.Companion.milliseconds
 data class AppSplashState(
     val splashEnabled: Boolean,
     val coldSplash: Boolean,
+    val contentMounted: Boolean,
     val contentVisible: Boolean,
     val splashDone: Boolean,
     val contentAlpha: () -> Float,
+    val onPrewarmStart: () -> Unit,
     val onBurstStart: () -> Unit,
     val onSplashDismiss: () -> Unit,
     val isReady: Boolean = true,
@@ -63,11 +65,13 @@ fun rememberAppSplashState(
         onReadyChange(true)
     }
     var coldSplash by remember(isReady) { mutableStateOf(splashEnabled) }
+    var contentMounted by remember(isReady) { mutableStateOf(!splashEnabled || disableAnimations) }
     var contentVisible by remember(isReady) { mutableStateOf(!coldSplash || disableAnimations) }
     var splashDone by remember(isReady) { mutableStateOf(!splashEnabled || disableAnimations) }
     LaunchedEffect(contentVisible) {
         if (contentVisible && (!splashEnabled || disableAnimations)) {
             splashDone = true
+            SplashGate.onSplashDone()
         }
     }
     val contentAlphaState = animateFloatAsState(
@@ -79,15 +83,21 @@ fun rememberAppSplashState(
     return AppSplashState(
         splashEnabled = splashEnabled,
         coldSplash = coldSplash,
+        contentMounted = contentMounted,
         contentVisible = contentVisible,
         splashDone = splashDone,
         contentAlpha = { contentAlphaState.value },
+        onPrewarmStart = {
+            contentMounted = true
+        },
         onBurstStart = {
+            contentMounted = true
             contentVisible = true
             coldSplash = false
         },
         onSplashDismiss = {
             splashDone = true
+            SplashGate.onSplashDone()
         },
         isReady = isReady,
     )
