@@ -205,7 +205,9 @@ class SplashRenderer {
         engine: SplashEngine,
         contentColor: Color = Color.White
     ) {
-        if (engine.formStrength <= SplashConfig.Look.Cutoffs.FORM_LINKS || (engine.phase != "gather" && engine.phase != "ignite" && engine.phase != "error" && engine.phase != "transit")) return
+        if (engine.formStrength <= SplashConfig.Look.Cutoffs.FORM_LINKS ||
+            (engine.phase != "gather" && engine.phase != "ignite" && engine.phase != "burst" && engine.phase != "error" && engine.phase != "transit")
+        ) return
 
         val boxSize = SplashSlots.boxSize(engine.shape, engine.width, engine.height, density)
         val maxDist = maxOf(boxSize * 0.65f, linkDistancePx)
@@ -468,14 +470,16 @@ class SplashRenderer {
     ) {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return
-        val progress = (sw.radius / sw.maxRadius).coerceIn(0f, 1f)
-        val effectiveAlpha = (sw.alpha * (1f - progress)).coerceIn(0f, 1f)
+        val fadeLimit = (sw.maxRadius * SplashConfig.Wave.FADE_END_RATIO).coerceAtLeast(1f)
+        val progress = (sw.radius / fadeLimit).coerceIn(0f, 1f)
+        val fade = (1f - progress).pow(SplashConfig.Wave.FADE_POWER)
+        val effectiveAlpha = (sw.alpha * fade).coerceIn(0f, 1f)
+        if (effectiveAlpha <= SplashConfig.Look.Cutoffs.PARTICLE_ALPHA) return
         drawCircle(
             color = color.copy(alpha = effectiveAlpha),
             radius = sw.radius,
             center = Offset(sw.x, sw.y),
             style = shockwaveStroke,
-            blendMode = if (isDark) BlendMode.Screen else BlendMode.SrcOver
         )
     }
 

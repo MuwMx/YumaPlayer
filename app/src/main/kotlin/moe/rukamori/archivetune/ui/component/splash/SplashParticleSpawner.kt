@@ -26,8 +26,10 @@ fun SplashEngine.spawnParticles(w: Float, h: Float, d: Float) {
         val startY = center.y + sinA * r
 
         val speed = SplashConfig.Spawn.SPEED_BASE + Random.nextFloat() * SplashConfig.Spawn.SPEED_VAR
-        val startVx = cosA * speed
-        val startVy = sinA * speed
+        val tangentSign = if (Random.nextBoolean()) 1f else -1f
+        val swirlSpeed = (SplashConfig.Spawn.SWIRL_BASE + Random.nextFloat() * SplashConfig.Spawn.SWIRL_VAR) * tangentSign
+        val startVx = cosA * speed - sinA * swirlSpeed
+        val startVy = sinA * speed + cosA * swirlSpeed
 
         val depth = Random.nextFloat()
         val seed = Random.nextFloat()

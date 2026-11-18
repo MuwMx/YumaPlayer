@@ -19,7 +19,7 @@ object SplashConfig {
         var GATHER_CROSS_MS: Float = 700f
         var GATHER_SHORT_MS: Float = 400f
         var ERROR_HOLD_MS: Float = 350f
-        var IGNITE_FULL_MS: Float = 200f
+        var IGNITE_FULL_MS: Float = 280f
         var IGNITE_SHORT_MS: Float = 120f
         var BURST_FULL_MS: Float = 420f
         var BURST_SHORT_MS: Float = 280f
@@ -31,6 +31,8 @@ object SplashConfig {
         var RING_WIDTH: Float = 180f
         var SPEED_BASE: Float = 0.25f
         var SPEED_VAR: Float = 0.35f
+        var SWIRL_BASE: Float = 1.4f
+        var SWIRL_VAR: Float = 1.2f
     }
 
     object Settle {
@@ -40,6 +42,8 @@ object SplashConfig {
     object Wave {
         var FRAMES_TO_CROSS: Float = 65f
         var STROKE_WIDTH_DP: Float = 2.0f
+        var FADE_END_RATIO: Float = 0.55f
+        var FADE_POWER: Float = 2.0f
     }
 
     object Physics {
@@ -59,6 +63,9 @@ object SplashConfig {
         var FORM_GATHER: Float = 0.15f
         var DAMP_ON_RESHAPE: Float = 0.65f
         var DAMP_ON_REGATHER: Float = 0.5f
+        var SWIRL_FACTOR: Float = 0.14f
+        var SWIRL_MIN_DIST: Float = 8f
+        var BURST_DEPTH_DAMP_FACTOR: Float = 0.018f
 
         var wD: Float = 0.055f
         var gD: Float = 0.05f
@@ -73,9 +80,11 @@ object SplashConfig {
     }
 
     object Burst {
-        var EXPLODE_POWER: Float = 6.0f
+        var EXPLODE_POWER: Float = 13.5f
         var MEMBER_BOOST: Float = 1.6f
         var FLOATER_BOOST: Float = 0.85f
+        var SCALE_GROWTH: Float = 0.25f
+        var LINK_FADE_MULT: Float = 2.5f
         var POST_BURST_FRAMES: Int = 130
 
         var SHOCKWAVE_SPEED: Float = 20f
@@ -97,7 +106,7 @@ object SplashConfig {
         var STAR_STAGGER_MS: Float = 60f
         var STAR_STAGGER_SHORT_MS: Float = 34f
         var STAR_SIZE_DP: Float = 24f
-        var PINCH_FACTOR: Float = 0.06f
+        var PINCH_FACTOR: Float = 0.14f
 
         var SWING_ANGLE_DEG: Float = 3.6f
         var SWING_SPEED: Float = 1.6f

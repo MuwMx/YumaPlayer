@@ -102,8 +102,17 @@ object SplashPhysics {
             val springForce = formationK(isTransit, formStrength)
             val friction = if (dampMember >= 0f) dampMember else damping(isFormingOrProcessing = true, isBursting = isBursting, step = step)
 
-            p.vx = (p.vx + dx * springForce) * friction
-            p.vy = (p.vy + dy * springForce) * friction
+            val dist = sqrt(distSq)
+            val swirlFactor = if (isForming && dist > SplashConfig.Physics.SWIRL_MIN_DIST) {
+                (1f - formStrength).coerceIn(0f, 1f) * SplashConfig.Physics.SWIRL_FACTOR
+            } else {
+                0f
+            }
+            val pullX = dx * springForce - dy * swirlFactor
+            val pullY = dy * springForce + dx * swirlFactor
+
+            p.vx = (p.vx + pullX) * friction
+            p.vy = (p.vy + pullY) * friction
 
             val m = speedClamp(isBursting, isTransit, isForming, isProcessing, p.depth)
             val speedSq = p.vx * p.vx + p.vy * p.vy
@@ -122,7 +131,14 @@ object SplashPhysics {
             val noiseAx = cos(angle) * drift
             val noiseAy = sin(angle) * drift
 
-            val damp = if (isBursting) SplashConfig.Physics.DAMPING_BURST.pow(step) else (if (dampFloater >= 0f) dampFloater else damping(isFormingOrProcessing = false, isBursting = false, step = step))
+            val burstDamp = (SplashConfig.Physics.DAMPING_BURST - (1f - p.depth) * SplashConfig.Physics.BURST_DEPTH_DAMP_FACTOR).pow(step)
+            val damp = if (isBursting) {
+                burstDamp
+            } else if (dampFloater >= 0f) {
+                dampFloater
+            } else {
+                damping(isFormingOrProcessing = false, isBursting = false, step = step)
+            }
             p.vx = (p.vx + noiseAx * step) * damp
             p.vy = (p.vy + noiseAy * step) * damp
 
