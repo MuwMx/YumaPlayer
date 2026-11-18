@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -155,7 +156,7 @@ fun LazyListScope.playlistsRowSection(
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
                             Text(
-                                text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+                                text = pluralStringResource(R.plurals.n_track, playlist.songCount, playlist.songCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -222,7 +223,7 @@ fun LazyListScope.playlistsRowSection(
                                     color = MaterialTheme.colorScheme.onBackground,
                                 )
                                 Text(
-                                    text = "$likedSongsTotal ${stringResource(R.string.tracks_label)}",
+                                    text = pluralStringResource(R.plurals.n_track, likedSongsTotal, likedSongsTotal),
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,

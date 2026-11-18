@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -249,7 +250,7 @@ fun SongsSpotlightCard(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    val songsCountText = "$songCount ${stringResource(if (songCount == 1) R.string.song_singular else R.string.songs)}"
+                    val songsCountText = pluralStringResource(R.plurals.n_song, songCount, songCount)
                     Text(
                         text = if (totalDurationText.isNotEmpty()) {
                             "$songsCountText • $totalDurationText"

@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -629,7 +630,7 @@ fun PlaylistListCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+                    text = pluralStringResource(R.plurals.n_track, playlist.songCount, playlist.songCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -816,7 +817,7 @@ fun PlaylistGridCard(
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+            text = pluralStringResource(R.plurals.n_track, playlist.songCount, playlist.songCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

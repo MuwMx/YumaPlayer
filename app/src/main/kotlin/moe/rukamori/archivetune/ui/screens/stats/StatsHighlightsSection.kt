@@ -58,9 +58,11 @@ internal fun StatsHighlightsSection(
             StatsHighlightCard(
                 title = stringResource(R.string.stats_favourite_artist),
                 mainText = topArtist.artist.name,
-                subText = "${topArtist.songCount} ${stringResource(
-                    R.string.songs,
-                ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
+                subText = "${pluralStringResource(
+                    R.plurals.n_song,
+                    topArtist.songCount,
+                    topArtist.songCount,
+                )} • ${makeTimeString(topArtist.timeListened?.toLong())}",
                 imageUrl = topArtist.artist.thumbnailUrl,
                 useCircleShape = true,
                 onClick = { navController.navigate("artist/${topArtist.id}") },

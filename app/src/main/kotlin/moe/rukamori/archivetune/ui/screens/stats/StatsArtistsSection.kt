@@ -41,7 +41,7 @@ internal fun LazyListScope.statsArtistsSection(
 ) {
     item(key = "mostPlayedArtists", contentType = "sectionHeader") {
         NavigationTitle(
-            title = "${mostPlayedArtists.size} ${stringResource(id = R.string.artists)}",
+            title = pluralStringResource(R.plurals.n_artist, mostPlayedArtists.size, mostPlayedArtists.size),
             modifier = Modifier.animateItem(),
         )
     }

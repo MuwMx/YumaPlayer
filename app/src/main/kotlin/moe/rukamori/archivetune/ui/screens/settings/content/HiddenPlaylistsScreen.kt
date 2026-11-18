@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -177,7 +178,7 @@ private fun HiddenPlaylistCard(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${playlist.songCount} ${stringResource(R.string.tracks_label)}",
+                text = pluralStringResource(R.plurals.n_track, playlist.songCount, playlist.songCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             )
