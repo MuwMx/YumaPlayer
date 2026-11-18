@@ -80,7 +80,7 @@ fun ScaffoldShell(
     homeBackgroundParallaxEnabled: Boolean,
     homeBackgroundParallaxStrength: Float,
     homeBackgroundBrightness: Float,
-    contentAlpha: Float,
+    contentAlpha: () -> Float,
     contentVisible: Boolean,
     onBurstStart: () -> Unit,
     splashDone: Boolean,
@@ -126,102 +126,105 @@ fun ScaffoldShell(
             LocalPlayerIsExpanded provides appState.playerBottomSheetState.isExpanded,
         ) {
             ScreenBackground(
-                isVisible = LocalGlobalVisibility.current,
+                isVisible = LocalGlobalVisibility.current && contentVisible,
                 modifier = Modifier.fillMaxSize(),
             )
             if (splashEnabled) {
                 SplashOverlay(isDark = useDarkTheme, onBurstStart = onBurstStart, onDismiss = onSplashDismiss)
             }
-            Row(
-                modifier = Modifier
-                    .graphicsLayer {
-                        alpha = contentAlpha
-                        translationY = (1f - contentAlpha) * SplashConfig.Reveal.RISE_DP.dp.toPx()
-                        compositingStrategy = CompositingStrategy.ModulateAlpha
-                    }
-                    .pointerInput(contentVisible) {
-                        if (!contentVisible) {
-                            awaitPointerEventScope {
-                                while (true) awaitPointerEvent().changes.forEach { it.consume() }
+            if (contentVisible || !splashEnabled) {
+                Row(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            val alphaValue = contentAlpha()
+                            alpha = alphaValue
+                            translationY = (1f - alphaValue) * SplashConfig.Reveal.RISE_DP.dp.toPx()
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
+                        }
+                        .pointerInput(contentVisible) {
+                            if (!contentVisible) {
+                                awaitPointerEventScope {
+                                    while (true) awaitPointerEvent().changes.forEach { it.consume() }
+                                }
+                            }
+                        },
+                ) {
+                    ScaffoldNavigationRailChrome(
+                        appState = appState,
+                        disableAnimations = disableAnimations,
+                        pureBlack = pureBlack,
+                    )
+
+                    val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = appState.blurNavBar)
+                    val barScrollVisibility = rememberBarScrollVisibility()
+
+                    Box(
+                        modifier = Modifier.fillMaxSize().nestedScroll(barScrollVisibility.nestedScrollConnection),
+                    ) {
+                        ScaffoldChrome(
+                            appState = appState,
+                            navController = navController,
+                            scaffoldHazeState = scaffoldHazeState,
+                            pureBlack = pureBlack,
+                            splashDone = splashDone,
+                            disableAnimations = disableAnimations,
+                        ) {
+                            CompositionLocalProvider(LocalScaffoldHazeState provides scaffoldHazeState.effectiveHazeState) {
+                                ScaffoldBody(
+                                    navController = navController,
+                                    appState = appState,
+                                    scaffoldHazeState = scaffoldHazeState,
+                                    updateChannel = updateChannel,
+                                    playerExpansionFraction = playerExpansionFraction,
+                                )
                             }
                         }
-                    },
-            ) {
-                ScaffoldNavigationRailChrome(
-                    appState = appState,
-                    disableAnimations = disableAnimations,
-                    pureBlack = pureBlack,
-                )
 
-                val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = appState.blurNavBar)
-                val barScrollVisibility = rememberBarScrollVisibility()
+                        PlayerOverlayHost(
+                            modifier = Modifier.fillMaxSize(),
+                            navController = navController,
+                            sheetState = appState.playerBottomSheetState,
+                            shouldShowNav = appState.shouldShowNavigationBar,
+                            isYearInMusic = appState.isYearInMusicScreen,
+                            useRail = appState.useRail,
+                            hazeState = scaffoldHazeState.effectiveHazeState,
+                            blurRadius = appState.blurRadius,
+                            pureBlack = pureBlack,
+                            playerViewModel = playerViewModel,
+                            blurNavBar = appState.blurNavBar,
+                            homeViewModel = appState.homeViewModel,
+                            systemBarController = systemBarController,
+                            window = activity.window,
+                            aodModeLaunchRequestCount = aodModeLaunchRequestCount,
+                            onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
+                            useDarkTheme = useDarkTheme,
+                            shouldShowHomeShuffleButton = appState.shouldShowHomeShuffleButton,
+                            navigationItems = appState.navigationItems,
+                            navBackStackEntry = appState.navBackStackEntry,
+                            handlePrimaryNavigationClick = appState.handlePrimaryNavigationClick,
+                            onSearchItemDoubleClick = {
+                                appState.searchState.onSearchSourceChange(SearchSource.ONLINE)
+                                appState.searchState.openSearch()
+                            },
+                            disableAnimations = disableAnimations,
+                            navVisibleHeight = appState.navVisibleHeight,
+                            floatingToolbarBottomPadding = appState.floatingToolbarBottomPadding,
+                            onExpansionFraction = onExpansionFraction,
+                            scrollVisibilityFactor = barScrollVisibility.scrollVisibilityFactor,
+                        )
 
-                Box(
-                    modifier = Modifier.fillMaxSize().nestedScroll(barScrollVisibility.nestedScrollConnection),
-                ) {
-                    ScaffoldChrome(
-                        appState = appState,
-                        navController = navController,
-                        scaffoldHazeState = scaffoldHazeState,
-                        pureBlack = pureBlack,
-                        splashDone = splashDone,
-                        disableAnimations = disableAnimations,
-                    ) {
-                        CompositionLocalProvider(LocalScaffoldHazeState provides scaffoldHazeState.effectiveHazeState) {
-                            ScaffoldBody(
-                                navController = navController,
-                                appState = appState,
-                                scaffoldHazeState = scaffoldHazeState,
-                                updateChannel = updateChannel,
-                                playerExpansionFraction = playerExpansionFraction,
-                            )
-                        }
+                        GlobalDialogsHost(
+                            navController = navController,
+                            networkBannerState = appState.networkBannerState,
+                            pendingBackupRestoreUri = pendingBackupRestoreUri,
+                            onDismissBackupRestore = onClearPendingBackupRestoreUri,
+                            splashDone = splashDone,
+                            shouldShowTopBar = appState.shouldShowTopBar,
+                            topInset = appState.topInset,
+                            updateChannel = updateChannel,
+                            coroutineScope = appState.coroutineScope,
+                        )
                     }
-
-                    PlayerOverlayHost(
-                        modifier = Modifier.fillMaxSize(),
-                        navController = navController,
-                        sheetState = appState.playerBottomSheetState,
-                        shouldShowNav = appState.shouldShowNavigationBar,
-                        isYearInMusic = appState.isYearInMusicScreen,
-                        useRail = appState.useRail,
-                        hazeState = scaffoldHazeState.effectiveHazeState,
-                        blurRadius = appState.blurRadius,
-                        pureBlack = pureBlack,
-                        playerViewModel = playerViewModel,
-                        blurNavBar = appState.blurNavBar,
-                        homeViewModel = appState.homeViewModel,
-                        systemBarController = systemBarController,
-                        window = activity.window,
-                        aodModeLaunchRequestCount = aodModeLaunchRequestCount,
-                        onResetAodLaunchRequestCount = onResetAodLaunchRequestCount,
-                        useDarkTheme = useDarkTheme,
-                        shouldShowHomeShuffleButton = appState.shouldShowHomeShuffleButton,
-                        navigationItems = appState.navigationItems,
-                        navBackStackEntry = appState.navBackStackEntry,
-                        handlePrimaryNavigationClick = appState.handlePrimaryNavigationClick,
-                        onSearchItemDoubleClick = {
-                            appState.searchState.onSearchSourceChange(SearchSource.ONLINE)
-                            appState.searchState.openSearch()
-                        },
-                        disableAnimations = disableAnimations,
-                        navVisibleHeight = appState.navVisibleHeight,
-                        floatingToolbarBottomPadding = appState.floatingToolbarBottomPadding,
-                        onExpansionFraction = onExpansionFraction,
-                        scrollVisibilityFactor = barScrollVisibility.scrollVisibilityFactor,
-                    )
-
-                    GlobalDialogsHost(
-                        navController = navController,
-                        networkBannerState = appState.networkBannerState,
-                        pendingBackupRestoreUri = pendingBackupRestoreUri,
-                        onDismissBackupRestore = onClearPendingBackupRestoreUri,
-                        splashDone = splashDone,
-                        shouldShowTopBar = appState.shouldShowTopBar,
-                        topInset = appState.topInset,
-                        updateChannel = updateChannel,
-                        coroutineScope = appState.coroutineScope,
-                    )
                 }
             }
         }

@@ -147,8 +147,8 @@ object SplashSlots {
                 }
             }
         }
-        val pts = SplashPathSampler.ndResample(contour(shape, c.x, c.y, size), totalSlots)
         val raw = contour(shape, c.x, c.y, size)
+        val pts = SplashPathSampler.ndResample(raw, totalSlots)
         val outline = android.graphics.Path().apply {
             if (raw.isNotEmpty()) {
                 moveTo(raw[0].x, raw[0].y)

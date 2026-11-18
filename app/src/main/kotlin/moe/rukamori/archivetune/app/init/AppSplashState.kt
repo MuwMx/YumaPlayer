@@ -29,7 +29,7 @@ data class AppSplashState(
     val coldSplash: Boolean,
     val contentVisible: Boolean,
     val splashDone: Boolean,
-    val contentAlpha: Float,
+    val contentAlpha: () -> Float,
     val onBurstStart: () -> Unit,
     val onSplashDismiss: () -> Unit,
     val isReady: Boolean = true,
@@ -70,7 +70,7 @@ fun rememberAppSplashState(
             splashDone = true
         }
     }
-    val contentAlpha by animateFloatAsState(
+    val contentAlphaState = animateFloatAsState(
         targetValue = if (contentVisible) 1f else 0f,
         animationSpec = tween(durationMillis = if (disableAnimations) 0 else SplashConfig.Reveal.DURATION_MS, easing = EaseOut),
         label = "splashContentAlpha",
@@ -81,7 +81,7 @@ fun rememberAppSplashState(
         coldSplash = coldSplash,
         contentVisible = contentVisible,
         splashDone = splashDone,
-        contentAlpha = contentAlpha,
+        contentAlpha = { contentAlphaState.value },
         onBurstStart = {
             contentVisible = true
             coldSplash = false

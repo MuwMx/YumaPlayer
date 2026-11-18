@@ -51,6 +51,8 @@ class SplashEngine {
     internal var slots: List<Offset> = emptyList()
     var phaseElapsedMs: Float = 0f
         private set
+    var currentTimeMs: Long = 0L
+        private set
 
     var memberCount: Int = 0
         private set
@@ -105,6 +107,7 @@ class SplashEngine {
     }
 
     fun update(dt: Float, currentTimeMs: Long) {
+        this.currentTimeMs = currentTimeMs
         val step = (dt * 60f).coerceIn(0.5f, SplashPhysics.MAX_STEP)
         phaseElapsedMs += dt * 1000f
 

@@ -4,9 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -91,7 +92,7 @@ fun SplashOverlay(
             if (isReady && engine.width > 0f && engine.height > 0f && !isInitialized) {
                 engine.density = density
                 engine.shape = initialShape
-                engine.startGather(initialShape)
+                engine.init(engine.width, engine.height, density)
                 isInitialized = true
             }
         }
@@ -138,7 +139,7 @@ fun SplashOverlay(
                     onClick = {},
                 ),
         ) {
-            Canvas(
+            Spacer(
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { size ->
@@ -149,22 +150,22 @@ fun SplashOverlay(
                             engine.shape = initialShape
                             engine.init(w, h, density)
                             if (isReady && !isInitialized) {
-                                engine.startGather(initialShape)
                                 isInitialized = true
                             }
                         }
+                    }
+                    .drawWithContent {
+                        frameTick
+                        with(renderer) {
+                            render(
+                                engine = engine,
+                                isDark = isDark,
+                                contentColor = resolvedContentColor,
+                                primaryColor = resolvedPrimaryColor,
+                            )
+                        }
                     },
-            ) {
-                frameTick
-                with(renderer) {
-                    render(
-                        engine = engine,
-                        isDark = isDark,
-                        contentColor = resolvedContentColor,
-                        primaryColor = resolvedPrimaryColor,
-                    )
-                }
-            }
+            )
         }
     }
 }
