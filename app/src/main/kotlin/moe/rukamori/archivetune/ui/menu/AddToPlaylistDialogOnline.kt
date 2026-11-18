@@ -28,6 +28,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -60,6 +61,8 @@ fun AddToPlaylistDialogOnline(
     onStatusChange: (String) -> Unit = {},
 ) {
     val database = LocalDatabase.current
+    val context = LocalContext.current
+    val preparingMessage = stringResource(R.string.import_preparing)
     val syncUtils = LocalSyncUtils.current
     val coroutineScope = rememberCoroutineScope()
     var allPlaylists by remember { mutableStateOf(emptyList<Playlist>()) }
@@ -98,6 +101,10 @@ fun AddToPlaylistDialogOnline(
             onProgressStart = onProgressStart,
             onPercentageChange = onPercentageChange,
             onStatusChange = onStatusChange,
+            preparingMessage = preparingMessage,
+            progressMessage = { processed, total, failed ->
+                context.getString(R.string.import_progress_status, processed, total, failed)
+            },
             onDismiss = onDismiss,
             onResult = {
                 processingSummary = it

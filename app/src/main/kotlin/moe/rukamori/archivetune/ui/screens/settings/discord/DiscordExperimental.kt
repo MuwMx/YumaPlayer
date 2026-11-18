@@ -59,7 +59,7 @@ fun DiscordExperimental(navController: NavController) {
     val (button1Label, onButton1LabelChange) =
         rememberPreference(
             key = DiscordActivityButton1LabelKey,
-            defaultValue = "Listen on YouTube Music",
+            defaultValue = stringResource(R.string.discord_button_default_listen_youtube_music),
         )
     val (button1Enabled, onButton1EnabledChange) =
         rememberPreference(
@@ -69,7 +69,7 @@ fun DiscordExperimental(navController: NavController) {
     val (button2Label, onButton2LabelChange) =
         rememberPreference(
             key = DiscordActivityButton2LabelKey,
-            defaultValue = "Go to Yuma",
+            defaultValue = stringResource(R.string.discord_button_default_go_to_yuma),
         )
     val (button2Enabled, onButton2EnabledChange) =
         rememberPreference(

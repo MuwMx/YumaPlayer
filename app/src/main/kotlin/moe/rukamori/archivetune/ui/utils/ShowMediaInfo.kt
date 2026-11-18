@@ -187,7 +187,7 @@ fun ShowMediaInfo(videoId: String) {
 
     val technicalDetails =
         buildList {
-            currentFormat?.itag?.toString()?.let { add(MediaInfoDetail(label = "Itag", value = it)) }
+            currentFormat?.itag?.toString()?.let { add(MediaInfoDetail(label = stringResource(R.string.media_info_itag), value = it)) }
             currentFormat
                 ?.mimeType
                 ?.takeIf { it.isNotBlank() }

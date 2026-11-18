@@ -81,7 +81,7 @@ internal fun LoginChoiceDialog(
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                text = "YouTube Browser",
+                                text = stringResource(R.string.login_provider_youtube_browser),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
                             )

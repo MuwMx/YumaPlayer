@@ -184,7 +184,7 @@ internal fun AboutIdentityCard(
             )
 
             Text(
-                text = AboutContract.GPL_LICENSE_NOTICE,
+                text = stringResource(R.string.about_license_notice),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

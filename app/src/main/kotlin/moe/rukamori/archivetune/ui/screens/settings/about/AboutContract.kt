@@ -11,8 +11,6 @@ import moe.rukamori.archivetune.about.AboutScreenState
 
 internal object AboutContract {
     const val SOLANA_ADDRESS = "DT3ckdbNuiQMR1mrCpBXCMrhLB19GckVv3YfxsLLiF8z"
-    const val SOLANA_LABEL = "Solana (SOL)"
-    const val GPL_LICENSE_NOTICE = "Based on ArchiveTune by Rukamori.\nSource code available under GPL-3.0."
 }
 
 typealias AboutUiState = AboutScreenState

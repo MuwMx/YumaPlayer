@@ -311,7 +311,7 @@ fun DiscordSettings(navController: NavController) {
     val (button1Label) =
         rememberPreference(
             key = DiscordActivityButton1LabelKey,
-            defaultValue = "Listen on YouTube Music",
+            defaultValue = stringResource(R.string.discord_button_default_listen_youtube_music),
         )
     val (button1Enabled) =
         rememberPreference(
@@ -321,7 +321,7 @@ fun DiscordSettings(navController: NavController) {
     val (button2Label) =
         rememberPreference(
             key = DiscordActivityButton2LabelKey,
-            defaultValue = "Go to Yuma",
+            defaultValue = stringResource(R.string.discord_button_default_go_to_yuma),
         )
     val (button2Enabled) =
         rememberPreference(

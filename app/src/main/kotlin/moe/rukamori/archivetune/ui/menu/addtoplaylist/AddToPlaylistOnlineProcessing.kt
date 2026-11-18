@@ -65,6 +65,8 @@ internal fun CoroutineScope.launchOnlineImport(
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
     onStatusChange: (String) -> Unit,
+    preparingMessage: String,
+    progressMessage: (processed: Int, total: Int, failed: Int) -> String,
     onDismiss: () -> Unit,
     onResult: (ProcessingSummary) -> Unit,
 ) {
@@ -84,7 +86,7 @@ internal fun CoroutineScope.launchOnlineImport(
             withContext(Dispatchers.Main) {
                 onProgressStart(true)
                 onPercentageChange(0)
-                onStatusChange("Preparing import...")
+                onStatusChange(preparingMessage)
                 onDismiss()
             }
 
@@ -167,7 +169,7 @@ internal fun CoroutineScope.launchOnlineImport(
 
                             withContext(Dispatchers.Main) {
                                 onPercentageChange(percent)
-                                onStatusChange("Importing: $currentProcessed/$total\nFailed: ${failCount.get()}")
+                                onStatusChange(progressMessage(currentProcessed, total, failCount.get()))
                             }
                         }
                     }

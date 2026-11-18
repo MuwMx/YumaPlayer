@@ -212,7 +212,7 @@ private fun CrashReportScaffold(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Crash Report",
+                        text = stringResource(R.string.crash_report_title),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -273,7 +273,7 @@ private fun CrashReportScaffold(
                             modifier = Modifier.size(22.dp),
                         )
                         Text(
-                            text = "Application crashed",
+                            text = stringResource(R.string.crash_report_app_crashed),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
@@ -309,7 +309,7 @@ private fun CrashReportScaffold(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        text = "Device info",
+                        text = stringResource(R.string.crash_report_device_info),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     )
                     deviceInfo.forEachIndexed { index, (k, v) ->
@@ -338,7 +338,7 @@ private fun CrashReportScaffold(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        text = "Stack trace",
+                        text = stringResource(R.string.crash_report_stack_trace),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     )
                     SelectionContainer {

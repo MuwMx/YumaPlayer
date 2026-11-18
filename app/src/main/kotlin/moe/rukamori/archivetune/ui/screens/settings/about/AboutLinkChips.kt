@@ -66,7 +66,7 @@ internal fun LinkChipRow(
         val solanaCopiedMessage = stringResource(R.string.solana_address_copied)
 
         InteractiveLinkChip(
-            label = AboutContract.SOLANA_LABEL,
+            label = stringResource(R.string.about_solana_label),
             iconResId = R.drawable.ic_solana,
             onClick = {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

@@ -69,7 +69,7 @@ fun PalettePickerScreen(navController: NavController) {
                 .padding(horizontal = 24.dp)
         ) {
             Text(
-                text = "Выберите базовый цвет приложения (используется, когда нет обложки трека):",
+                text = stringResource(R.string.palette_picker_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 16.dp)
@@ -125,8 +125,9 @@ fun PalettePickerScreen(navController: NavController) {
 @Composable
 fun ThemeCreatorScreen(navController: NavController) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val monetEngineToast = stringResource(R.string.monet_engine_active_toast)
     LaunchedEffect(Unit) {
-        Toast.makeText(context, "Используется автоматический Monet-движок Юмы", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, monetEngineToast, Toast.LENGTH_SHORT).show()
         navController.navigateUp()
     }
     Box(modifier = Modifier.fillMaxSize())

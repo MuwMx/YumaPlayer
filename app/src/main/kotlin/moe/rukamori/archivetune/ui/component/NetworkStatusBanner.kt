@@ -35,8 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.network.NetworkBannerUiState
 
 private data class NetworkBannerVisuals(
@@ -63,7 +65,7 @@ fun NetworkStatusBanner(
             NetworkBannerUiState.Offline,
             -> {
                 NetworkBannerVisuals(
-                    message = "No internet connection",
+                    message = stringResource(R.string.network_banner_offline),
                     icon = Icons.Default.CloudOff,
                     containerColor = Color(0xFF7F1D1D),
                     contentColor = Color.White,
@@ -72,7 +74,7 @@ fun NetworkStatusBanner(
 
             NetworkBannerUiState.BackOnline -> {
                 NetworkBannerVisuals(
-                    message = "Back online",
+                    message = stringResource(R.string.network_banner_online),
                     icon = Icons.Default.CloudDone,
                     containerColor = Color(0xFF1E8E3E),
                     contentColor = Color.White,

@@ -88,7 +88,7 @@ fun UpdateScreen(
     }
 
     val installUpdate: (String) -> Unit = { url ->
-        if (url.isBlank()) { updateSheetError = "Update download URL unavailable"; showErrorDialog.value = true }
+        if (url.isBlank()) { updateSheetError = context.getString(R.string.update_download_url_unavailable); showErrorDialog.value = true }
         else if (!useInAppUpdateInstaller) openUpdateUrl(url)
         else if (updateDownloadJob?.isActive != true) {
             updateDownloadProgress = null; updateSheetError = null; showErrorDialog.value = false; showDownloadDialog.value = true

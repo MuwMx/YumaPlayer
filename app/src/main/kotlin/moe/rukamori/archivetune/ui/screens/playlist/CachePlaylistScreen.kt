@@ -139,6 +139,7 @@ fun CachePlaylistScreen(
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptics = rememberYumaHaptics()
+    val cacheQueueTitle = stringResource(R.string.cache_songs_queue_title)
     val focusManager = LocalFocusManager.current
 
     val isPlaying by playerConnection.isPlaying.collectAsState()
@@ -393,7 +394,7 @@ fun CachePlaylistScreen(
                                             } else {
                                                 playerConnection.playQueue(
                                                     ListQueue(
-                                                        title = "Cache Songs",
+                                                        title = cacheQueueTitle,
                                                         items = cachedSongs.map { it.toMediaItem() },
                                                         startIndex = cachedSongs.indexOfFirst { it.id == cachedSong.id },
                                                     ),
