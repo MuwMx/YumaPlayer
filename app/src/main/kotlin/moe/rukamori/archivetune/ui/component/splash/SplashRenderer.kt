@@ -47,7 +47,6 @@ class SplashRenderer {
         var center: Offset = Offset.Unspecified
     }
 
-    private val tipGlowCaches = Array(8) { CachedRadialGradient() }
     private val flashGlowCache = CachedRadialGradient()
 
     private var cachedGlowBrush: Brush? = null
@@ -147,7 +146,6 @@ class SplashRenderer {
         drawShockwave(
             shockwave = engine.shockwave,
             color = if (engine.shape == SplashSlots.SHAPE_CROSS) Fu.fail.color else contentColor,
-            isDark = isDark
         )
         drawScreenFlash(engine, isDark, primaryColor)
     }
@@ -413,38 +411,19 @@ class SplashRenderer {
             if (p <= 0f || p >= 1f) continue
             val flare = sin(p * Math.PI.toFloat())
             val tip = tips[d]
-            val center = Offset(tip.x, tip.y)
             if (haloRadius > 0f) {
                 val rawAlpha = (flare * SplashConfig.Look.Halo.STAR_FLARE_ALPHA).coerceIn(0f, 1f)
-                val alphaBin = (rawAlpha * 20f).toInt()
-                if (alphaBin > 0) {
-                    val cache = if (d in tipGlowCaches.indices) tipGlowCaches[d] else null
-                    val haloBrush = if (cache != null) {
-                        if (cache.brush == null || cache.radius != haloRadius || cache.color != haloColor || cache.alphaBin != alphaBin || cache.center != center) {
-                            cache.radius = haloRadius
-                            cache.color = haloColor
-                            cache.alphaBin = alphaBin
-                            cache.center = center
-                            cache.brush = Brush.radialGradient(
-                                0.0f to haloColor.copy(alpha = alphaBin / 20f),
-                                1.0f to Color.Transparent,
-                                center = center,
-                                radius = haloRadius
-                            )
-                        }
-                        cache.brush!!
-                    } else {
-                        Brush.radialGradient(
-                            0.0f to haloColor.copy(alpha = rawAlpha),
-                            1.0f to Color.Transparent,
-                            center = center,
-                            radius = haloRadius
-                        )
-                    }
-                    drawCircle(
-                        brush = haloBrush,
-                        radius = haloRadius,
-                        center = center
+                if (rawAlpha > SplashConfig.Look.Cutoffs.STAR_ALPHA) {
+                    val isFail = engine.shape == SplashSlots.SHAPE_CROSS
+                    val sprite = spriteFor(isFail, if (isFail) Fu.fail.color else haloColor)
+                    val vHalo = (haloRadius * 2f).roundToInt()
+                    drawImage(
+                        image = sprite,
+                        srcOffset = IntOffset.Zero,
+                        srcSize = IntSize(128, 128),
+                        dstOffset = IntOffset((tip.x - vHalo / 2f).roundToInt(), (tip.y - vHalo / 2f).roundToInt()),
+                        dstSize = IntSize(vHalo, vHalo),
+                        alpha = rawAlpha,
                     )
                 }
             }
@@ -462,7 +441,6 @@ class SplashRenderer {
     fun DrawScope.drawShockwave(
         shockwave: SplashShockwave?,
         color: Color = Color.White,
-        isDark: Boolean = true
     ) {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return

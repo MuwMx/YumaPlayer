@@ -91,18 +91,20 @@ fun SplashOverlay(
         }
 
         LaunchedEffect(isReady) {
-            if (isReady && engine.width > 0f && engine.height > 0f && !isInitialized) {
-                engine.density = density
-                engine.shape = initialShape
-                engine.init(engine.width, engine.height, density)
-                isInitialized = true
+            if (isReady) {
+                currentOnPrewarmStart()
+                if (engine.width > 0f && engine.height > 0f && !isInitialized) {
+                    engine.density = density
+                    engine.shape = initialShape
+                    engine.init(engine.width, engine.height, density)
+                    isInitialized = true
+                }
             }
         }
 
         LaunchedEffect(showSplash, isReady) {
             if (!showSplash || !isReady) return@LaunchedEffect
             var lastTime = 0L
-            var prewarmIssued = false
             while (isActive) {
                 val now = withFrameNanos { it }
                 if (!isInitialized) continue
@@ -112,16 +114,6 @@ fun SplashOverlay(
                 }
                 val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0f, 0.033f)
                 lastTime = now
-
-                if (!prewarmIssued && engine.currentPhase == SplashPhase.Ignite) {
-                    prewarmIssued = true
-                    currentOnPrewarmStart()
-                    // let the first heavy composition of the main tree land before the shockwave
-                    withFrameNanos { }
-                    withFrameNanos { }
-                    lastTime = 0L
-                    continue
-                }
 
                 engine.update(dt, now / 1_000_000)
                 frameTick = now
