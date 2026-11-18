@@ -332,6 +332,10 @@
         <item quantity="one">%d playlist</item>
         <item quantity="other">%d playlists</item>
     </plurals>
+    <plurals name="n_track">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
     <plurals name="n_week">
         <item quantity="one">%d week</item>
         <item quantity="other">%d weeks</item>
@@ -1955,4 +1959,29 @@
     <string name="about_content_desc_donate">Donate</string>
     <string name="spotify_recently_played">Recently played</string>
     <string name="spotify_frequently_listened">Frequently listened</string>
+    <string name="content_desc_search">Search</string>
+    <string name="content_desc_suggestions_available">Suggestions available</string>
+    <string name="spoiler_hidden">Hidden</string>
+    <string name="spoiler_revealed">Revealed</string>
+    <string name="network_banner_offline">No internet connection</string>
+    <string name="network_banner_online">Back online</string>
+    <string name="new_releases_unavailable_title">New releases are temporarily unavailable</string>
+    <string name="new_releases_unavailable_desc">Yuma could not load this YouTube Music section. Try again later.</string>
+    <string name="palette_picker_description">Choose the app base color (used when there is no track artwork):</string>
+    <string name="monet_engine_active_toast">Yuma’s automatic Monet engine is in use</string>
+    <string name="login_provider_youtube_browser">YouTube Browser</string>
+    <string name="about_solana_label">Solana (SOL)</string>
+    <string name="about_license_notice">Based on ArchiveTune by Rukamori.\nSource code available under GPL-3.0.</string>
+    <string name="update_download_url_unavailable">Update download URL unavailable</string>
+    <string name="import_preparing">Preparing import…</string>
+    <string name="import_progress_status">Importing: %1$d/%2$d\nFailed: %3$d</string>
+    <string name="cache_songs_queue_title">Cache Songs</string>
+    <string name="media_info_itag">Itag</string>
+    <string name="crash_report_title">Crash Report</string>
+    <string name="crash_report_app_crashed">Application crashed</string>
+    <string name="crash_report_device_info">Device info</string>
+    <string name="crash_report_stack_trace">Stack trace</string>
+    <string name="discord_button_default_listen_youtube_music">Listen on YouTube Music</string>
+    <string name="discord_button_default_go_to_yuma">Go to Yuma</string>
+    <string name="search_section_other">Other</string>
 </resources>
