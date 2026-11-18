@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.innertube.utils.parseTime
 data class SearchSummary(
     val title: String,
     val items: List<YTItem>,
+    val isTopResults: Boolean = false,
 )
 
 data class SearchSummaryPage(

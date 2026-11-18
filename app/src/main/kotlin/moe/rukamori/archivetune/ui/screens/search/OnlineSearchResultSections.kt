@@ -48,7 +48,12 @@ internal fun OnlineSearchSectionHeader(
         )
         Spacer(Modifier.width(10.dp))
         Text(
-            text = summary.title,
+            text =
+                when {
+                    summary.isTopResults -> stringResource(R.string.top_results)
+                    summary.title.isBlank() -> stringResource(R.string.search_section_other)
+                    else -> summary.title
+                },
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
