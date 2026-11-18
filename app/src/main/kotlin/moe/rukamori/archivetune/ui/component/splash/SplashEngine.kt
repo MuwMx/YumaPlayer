@@ -211,23 +211,7 @@ class SplashEngine {
         SplashPhysics.updateParticles(this, dt, currentTimeMs, step)
     }
 
-    fun triggerBurst() {
-        setPhase(SplashPhase.Burst)
-    }
-
-    fun startGather(newShape: String = SplashSlots.SHAPE_LOGO) {
-        shape = newShape
-        for (i in particles.indices) {
-            val p = particles[i]
-            p.vx *= SplashConfig.Physics.DAMP_ON_REGATHER
-            p.vy *= SplashConfig.Physics.DAMP_ON_REGATHER
-        }
-        rebuildSlots()
-        setPhase(SplashPhase.Gather)
-    }
-
     companion object {
         const val MAX_MEMBERS: Int = 64
-        const val MEMBER_COUNT: Int = 24
     }
 }

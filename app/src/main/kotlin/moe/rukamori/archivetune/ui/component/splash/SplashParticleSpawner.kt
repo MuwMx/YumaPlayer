@@ -1,7 +1,6 @@
 package moe.rukamori.archivetune.ui.component.splash
 
 import androidx.compose.ui.geometry.Offset
-import androidx.core.graphics.PathParser
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -98,31 +97,3 @@ fun SplashEngine.bindSlots() {
     }
 }
 
-fun SplashEngine.setShapeFromPathData(pathData: String) {
-    if (pathData.isBlank() || width <= 0f || height <= 0f) return
-    val size = SplashSlots.boxSize(shape, width, height)
-    val center = SplashSlots.center(width, height)
-    val svgSlots = SplashSlots.fromSvgPath(pathData, SplashSlots.SLOT_COUNT, center.x, center.y, size)
-    if (svgSlots.isEmpty()) return
-
-    val path = try {
-        PathParser.createPathFromPathData(pathData)
-    } catch (_: Exception) {
-        android.graphics.Path()
-    }
-
-    currentShapeData = SplashSlots.ShapeSlots(
-        slots = svgSlots,
-        loops = listOf(0 until SplashSlots.SLOT_COUNT),
-        tips = emptyList(),
-        outlinePath = path
-    )
-
-    for (i in particles.indices) {
-        val p = particles[i]
-        p.vx *= SplashConfig.Physics.DAMP_ON_RESHAPE
-        p.vy *= SplashConfig.Physics.DAMP_ON_RESHAPE
-    }
-    bindSlots()
-    setPhase(SplashPhase.Gather)
-}
