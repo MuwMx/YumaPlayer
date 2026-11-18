@@ -219,7 +219,7 @@ fun ContentSettings(navController: NavController) {
                         title = { Text(stringResource(R.string.app_language)) },
                         icon = { Icon(painterResource(R.drawable.language), null) },
                         selectedValue = appLanguage,
-                        values = listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList(),
+                        values = listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.filter { it in LanguageCodesWithUiResources },
                         valueText = {
                             LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
                         },

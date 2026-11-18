@@ -771,6 +771,21 @@ val LanguageCodeToName =
         "et" to "Eesti",
     )
 
+// Languages that ship a values-*/strings.xml in app/src/main/res. The in-app UI language
+// picker is limited to these; LanguageCodeToName stays complete for YouTube content locale.
+val LanguageCodesWithUiResources =
+    setOf(
+        "en", "en-GB", "en-NG",
+        "ja", "ko", "vi",
+        "zh", "zh-CN", "zh-TW",
+        "fr", "de", "es",
+        "pt", "pt-BR", "ru",
+        "it", "nl", "pl",
+        "tr", "ar", "hi", "th",
+        "id", "ms", "uk",
+        "he", "ro", "sk", "et",
+    )
+
 val CountryCodeToName =
     mapOf(
         "JP" to "Japan",
