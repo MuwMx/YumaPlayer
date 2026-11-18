@@ -65,9 +65,11 @@ class PlayerConnection(
     val service = binder.service
     val player = service.player
     val localPlayer = service.localPlayer
-    private val mainExecutor = ContextCompat.getMainExecutor(context)
+
+    private val appContext = context.applicationContext
+    private val mainExecutor = ContextCompat.getMainExecutor(appContext)
     private val controllerFuture =
-        service.serviceSessionHolder.sessionToken?.let { token -> MediaController.Builder(context, token).buildAsync() }
+        service.serviceSessionHolder.sessionToken?.let { token -> MediaController.Builder(appContext, token).buildAsync() }
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
