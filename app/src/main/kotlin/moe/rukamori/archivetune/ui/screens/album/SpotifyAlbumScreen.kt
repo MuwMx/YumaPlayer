@@ -77,7 +77,7 @@ import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
-import moe.rukamori.archivetune.ui.screens.playlist.isResolvedAs
+import moe.rukamori.archivetune.playlist.spotify.isResolvedAs
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.spotify.SpotifyAlbumUiState

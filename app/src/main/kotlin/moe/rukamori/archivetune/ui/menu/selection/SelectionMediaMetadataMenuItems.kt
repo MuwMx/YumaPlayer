@@ -171,7 +171,11 @@ internal fun SelectionMediaMetadataPrimaryMenuItems(
 
                 coroutineScope.launch(Dispatchers.IO) {
                     database.withTransaction {
-                        updatedSongs.forEach(::update)
+                        // Upsert, not plain update: a never-played track has
+                        // no song row yet and @Update would silently no-op,
+                        // losing the like (AddToPlaylistOnlineProcessing
+                        // insert-then-updates for the same reason).
+                        updatedSongs.forEach(::upsert)
                     }
                     syncUtils.likeSongs(updatedSongs, likeSourceHint)
                 }
