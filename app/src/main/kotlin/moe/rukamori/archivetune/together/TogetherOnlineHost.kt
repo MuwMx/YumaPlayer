@@ -96,6 +96,9 @@ class TogetherOnlineHost(
     private var lastParticipants: List<TogetherParticipant> = emptyList()
 
     var onEvent: ((TogetherServerEvent) -> Unit)? = null
+    private val chat = TogetherChatTranscript(sessionId = sessionId)
+
+    fun chatHistory(): List<ChatMessage> = chat.history()
 
     suspend fun connect(wsUrl: String) {
         disconnect()
@@ -103,6 +106,7 @@ class TogetherOnlineHost(
         authorityParticipantId = null
         guests.clear()
         lastParticipants = emptyList()
+        chat.clear()
 
         val trimmed = wsUrl.trim()
         val urls = listOfNotNull(trimmed, alternateWebSocketSchemeOrNull(trimmed)).distinct()
@@ -205,6 +209,77 @@ class TogetherOnlineHost(
     }
 
     fun currentParticipants(): List<TogetherParticipant> = lastParticipants
+
+    /**
+     * Publishes a host message to the relay and to the local transcript. Guests that already saw the
+     * frame when the relay fanned it out merge it by message id, so nothing is duplicated.
+     */
+    suspend fun postHostChat(
+        text: String,
+        track: TogetherTrack?,
+    ): ChatMessage {
+        val message =
+            chat.acceptLocal(
+                text = text,
+                senderName = hostDisplayName,
+                participantId = hostId,
+                track = track,
+            )
+        sendFrame(message)
+        onEvent?.invoke(TogetherServerEvent.ChatReceived(message))
+        return message
+    }
+
+    suspend fun postHostTyping(isTyping: Boolean) {
+        sendFrame(
+            ChatTyping(
+                sessionId = sessionId,
+                participantId = hostId,
+                displayName = hostDisplayName,
+                isTyping = isTyping,
+            ),
+        )
+    }
+
+    private suspend fun sendFrame(message: TogetherMessage) {
+        val current = session ?: return
+        runCatching {
+            current.send(TogetherJson.json.encodeToString(TogetherMessage.serializer(), message))
+        }
+    }
+
+    private suspend fun handleGuestChat(candidate: ChatMessage) {
+        val guest = guests[candidate.participantId] ?: return
+        if (guest.pending) return
+        if (!currentSettings().allowChat) return
+        when (
+            val result =
+                chat.acceptIncoming(
+                    candidate = candidate,
+                    senderName = guest.name,
+                    participantId = guest.participantId,
+                )
+        ) {
+            is TogetherChatResult.Accepted -> {
+                sendFrame(result.message)
+                onEvent?.invoke(TogetherServerEvent.ChatReceived(result.message))
+            }
+
+            else -> {
+                Unit
+            }
+        }
+    }
+
+    private suspend fun announceSystemChat(
+        event: ChatSystemEvent,
+        participantName: String,
+    ) {
+        if (!currentSettings().allowChat) return
+        val message = chat.recordSystem(event = event, participantName = participantName)
+        sendFrame(message)
+        onEvent?.invoke(TogetherServerEvent.ChatReceived(message))
+    }
 
     suspend fun currentSettings(): TogetherRoomSettings = mutex.withLock { settings }
 
@@ -415,18 +490,23 @@ class TogetherOnlineHost(
                                             name = participant.name,
                                             pending = false,
                                         )
-                                    rebuildParticipantsSnapshot()
+                                   rebuildParticipantsSnapshot()
+                                    announceSystemChat(ChatSystemEvent.PARTICIPANT_JOINED, participant.name)
+                                    sendFrame(ChatHistory(sessionId = sessionId, messages = chat.history()))
                                     onEvent?.invoke(TogetherServerEvent.ParticipantJoined(participant))
                                 }
                             }
 
                             is ParticipantLeft -> {
                                 if (message.sessionId == sessionId) {
-                                    guests.remove(message.participantId)
+                                    val removed = guests.remove(message.participantId)
                                     if (authorityParticipantId == message.participantId) {
                                         authorityParticipantId = hostId
                                     }
                                     rebuildParticipantsSnapshot()
+                                    if (removed != null) {
+                                        announceSystemChat(ChatSystemEvent.PARTICIPANT_LEFT, removed.name)
+                                    }
                                     onEvent?.invoke(TogetherServerEvent.ParticipantLeft(message.participantId, message.reason))
                                 }
                             }
@@ -453,6 +533,29 @@ class TogetherOnlineHost(
                                 if (message.sessionId == sessionId) onEvent?.invoke(TogetherServerEvent.AddTrackRequested(message))
                             }
 
+                            is ChatMessage -> {
+                                if (message.sessionId == sessionId) {
+                                    handleGuestChat(message)
+                                }
+                            }
+
+                            is ChatTyping -> {
+                                if (message.sessionId == sessionId && currentSettings().allowChat) {
+                                    val normalized =
+                                        message.copy(
+                                            displayName =
+                                                guests[message.participantId]?.name
+                                                    ?: message.displayName,
+                                        )
+                                    sendFrame(normalized)
+                                    onEvent?.invoke(TogetherServerEvent.ChatTypingReceived(normalized))
+                                }
+                            }
+
+                            is ChatHistory -> {
+                                Unit
+                            }
+
                             is ServerError -> {
                                 onEvent?.invoke(TogetherServerEvent.Error(message.message, null))
                             }
@@ -469,6 +572,7 @@ class TogetherOnlineHost(
                     authorityParticipantId = null
                     guests.clear()
                     lastParticipants = emptyList()
+                    chat.clear()
                     runCatching { session.close(CloseReason(CloseReason.Codes.NORMAL, "Disconnected")) }
                     onEvent?.invoke(TogetherServerEvent.Error("Disconnected", null))
                 }

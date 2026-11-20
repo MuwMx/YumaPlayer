@@ -19,6 +19,9 @@ import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
+import moe.rukamori.archivetune.together.TogetherChatDisabledCode
+import moe.rukamori.archivetune.together.TogetherChatInvalidCode
+import moe.rukamori.archivetune.together.TogetherChatRateLimitedCode
 import moe.rukamori.archivetune.together.TogetherPlaybackSync
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
@@ -452,6 +455,18 @@ internal fun MusicService.joinTogether(
                             }
                         }
 
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatReceived -> {
+                            appendTogetherChat(event.message)
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatHistoryReceived -> {
+                            appendTogetherChatHistory(event.messages)
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatTypingReceived -> {
+                            handleTogetherChatTyping(event.typing)
+                        }
+
                         is moe.rukamori.archivetune.together.TogetherClientEvent.ServerIssue -> {
                             Timber.tag("Together").w("server issue (lan) code=${event.code.orEmpty()} message=${event.message}")
                             when (event.code) {
@@ -472,6 +487,12 @@ internal fun MusicService.joinTogether(
 
                                 "HOST_OFFLINE" -> {
                                     showTogetherNotice(event.message, key = "HOST_OFFLINE")
+                                }
+
+                                TogetherChatRateLimitedCode,
+                                TogetherChatDisabledCode,
+                                TogetherChatInvalidCode -> {
+                                    showTogetherChatIssue(code = event.code.orEmpty(), fallback = event.message)
                                 }
 
                                 else -> {
@@ -709,6 +730,18 @@ internal fun MusicService.joinTogetherOnline(
                             }
                         }
 
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatReceived -> {
+                            appendTogetherChat(event.message)
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatHistoryReceived -> {
+                            appendTogetherChatHistory(event.messages)
+                        }
+
+                        is moe.rukamori.archivetune.together.TogetherClientEvent.ChatTypingReceived -> {
+                            handleTogetherChatTyping(event.typing)
+                        }
+
                         is moe.rukamori.archivetune.together.TogetherClientEvent.ServerIssue -> {
                             Timber.tag("Together").w("server issue (online) code=${event.code.orEmpty()} message=${event.message}")
                             when (event.code) {
@@ -729,6 +762,12 @@ internal fun MusicService.joinTogetherOnline(
 
                                 "HOST_OFFLINE" -> {
                                     showTogetherNotice(event.message, key = "HOST_OFFLINE")
+                                }
+
+                                TogetherChatRateLimitedCode,
+                                TogetherChatDisabledCode,
+                                TogetherChatInvalidCode -> {
+                                    showTogetherChatIssue(code = event.code.orEmpty(), fallback = event.message)
                                 }
 
                                 else -> {
@@ -1002,6 +1041,14 @@ internal suspend fun MusicService.handleTogetherHostEvent(
             }
         }
 
+        is moe.rukamori.archivetune.together.TogetherServerEvent.ChatReceived -> {
+            appendTogetherChat(event.message)
+        }
+
+        is moe.rukamori.archivetune.together.TogetherServerEvent.ChatTypingReceived -> {
+            handleTogetherChatTyping(event.typing)
+        }
+
         is moe.rukamori.archivetune.together.TogetherServerEvent.Error -> {
             val current = togetherSessionState.value
             if (current is moe.rukamori.archivetune.together.TogetherSessionState.Idle) return
@@ -1159,6 +1206,7 @@ internal suspend fun MusicService.stopTogetherInternal() {
     togetherParticipantNames.clear()
     togetherLastAppliedQueueHash = null
     togetherIsOnlineSession = false
+    resetTogetherChatState()
     togetherApplyingRemote = false
     togetherSuppressEchoUntilElapsedMs = 0L
     togetherLastAppliedRoomStateSentAtElapsedMs = 0L

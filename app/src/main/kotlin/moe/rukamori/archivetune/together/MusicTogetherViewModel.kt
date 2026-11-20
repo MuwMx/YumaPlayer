@@ -73,6 +73,7 @@ data class MusicTogetherUiModel(
     val join: MusicTogetherJoinUiModel,
     val participants: MusicTogetherParticipantUiModels,
     val activityLog: MusicTogetherActivityLogUiModels,
+    val chat: MusicTogetherChatUiModel,
 )
 
 @Immutable
@@ -147,10 +148,12 @@ data class MusicTogetherHostUiModel(
     val allowGuestsToAddTracks: Boolean,
     val allowGuestsToControlPlayback: Boolean,
     val requireHostApprovalToJoin: Boolean,
+    val allowChat: Boolean,
     val visible: Boolean,
     val startEnabled: Boolean,
     val loading: Boolean,
 )
+
 
 @Immutable
 data class MusicTogetherJoinUiModel(
@@ -205,6 +208,51 @@ data class MusicTogetherActivityLogItemUiModel(
     val timestamp: String,
 )
 
+@Immutable
+data class MusicTogetherChatUiModel(
+    val visible: Boolean,
+    val enabled: Boolean,
+    val canSend: Boolean,
+    val draft: String,
+    val messages: MusicTogetherChatMessageUiModels,
+    @StringRes val typingResId: Int?,
+    val typingArgs: List<String>,
+)
+
+@Immutable
+data class MusicTogetherChatMessageUiModels(
+    private val values: List<MusicTogetherChatMessageUiModel>,
+) {
+    val size: Int get() = values.size
+
+    val isEmpty: Boolean get() = values.isEmpty()
+
+    operator fun get(index: Int): MusicTogetherChatMessageUiModel = values[index]
+}
+
+@Immutable
+data class MusicTogetherChatMessageUiModel(
+    val id: String,
+    val authorName: String,
+    val showAuthor: Boolean,
+    val mine: Boolean,
+    val system: Boolean,
+    @StringRes val textResId: Int?,
+    val text: String?,
+    val args: List<String>,
+    val timestamp: String,
+    val track: MusicTogetherChatTrackUiModel?,
+)
+
+@Immutable
+data class MusicTogetherChatTrackUiModel(
+    val trackId: String,
+    val title: String,
+    val artists: String,
+    val durationLabel: String?,
+    val thumbnailUrl: String?,
+)
+
 sealed interface MusicTogetherEffect {
     data class CopyText(
         @StringRes val labelResId: Int,
@@ -226,6 +274,7 @@ class MusicTogetherViewModel
     constructor(
         @ApplicationContext private val context: Context,
         observeMusicTogetherState: ObserveMusicTogetherStateUseCase,
+        observeMusicTogetherChat: ObserveMusicTogetherChatUseCase,
         private val attachMusicTogetherService: AttachMusicTogetherServiceUseCase,
         private val updatePreferences: UpdateMusicTogetherPreferencesUseCase,
         private val sessionActions: MusicTogetherSessionActionsUseCase,
@@ -238,8 +287,10 @@ class MusicTogetherViewModel
         private val activityLog = MutableStateFlow(MusicTogetherActivityLogUiModels(emptyList()))
         private val effectsFlow = MutableSharedFlow<MusicTogetherEffect>(extraBufferCapacity = 8)
         val effects = effectsFlow.asSharedFlow()
+        private val chatDraft = MutableStateFlow("")
 
         private val logItems = ArrayDeque<MusicTogetherActivityLogItemUiModel>()
+        private var lastTypingSignalAtMs = 0L
         private var nextLogId = 0L
         private var lastSessionId: String? = null
         private var lastRoomState: TogetherRoomState? = null
@@ -266,6 +317,7 @@ class MusicTogetherViewModel
                                     allowGuestsToAddTracks = true,
                                     allowGuestsToControlPlayback = false,
                                     requireHostApprovalToJoin = false,
+                                    allowChat = true,
                                     lastJoinLink = "",
                                     welcomeShown = false,
                                 ),
@@ -273,6 +325,19 @@ class MusicTogetherViewModel
                         ),
                     )
                 }
+
+        private val emptyChatSnapshot = MusicTogetherChatSnapshot(messages = emptyList(), typingParticipants = emptyList())
+
+        private val chatSnapshot =
+            observeMusicTogetherChat()
+                .catch { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    emit(emptyChatSnapshot)
+                }.stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.Eagerly,
+                    initialValue = emptyChatSnapshot,
+                )
 
         val state: StateFlow<MusicTogetherScreenState> =
             combine(
@@ -290,7 +355,7 @@ class MusicTogetherViewModel
                     welcomeDismissed = welcomeDismissed,
                 )
             }.let { inputs ->
-                combine(inputs, welcomeDontShowAgain, activityLog) { stateInputs, dontShowAgain, log ->
+                combine(inputs, welcomeDontShowAgain, activityLog, chatSnapshot, chatDraft) { stateInputs, dontShowAgain, log, chat, draft ->
                     val screenState: MusicTogetherScreenState =
                         MusicTogetherScreenState.Success(
                             stateInputs.snapshot.toUiModel(
@@ -300,6 +365,8 @@ class MusicTogetherViewModel
                                 welcomeDismissed = stateInputs.welcomeDismissed,
                                 dontShowAgain = dontShowAgain,
                                 log = log,
+                                chat = chat,
+                                chatDraft = draft,
                             ),
                         )
                     screenState
@@ -431,6 +498,13 @@ class MusicTogetherViewModel
             pushSettingsToActiveSession(approval = value)
         }
 
+        fun setAllowChat(value: Boolean) {
+            viewModelScope.launch(Dispatchers.IO) {
+                updatePreferences.setAllowChat(value)
+            }
+            pushSettingsToActiveSession(chat = value)
+        }
+
         fun startSession() {
             val model = successModel() ?: return
             if (!model.host.startEnabled) return
@@ -443,6 +517,7 @@ class MusicTogetherViewModel
                         allowGuestsToAddTracks = model.host.allowGuestsToAddTracks,
                         allowGuestsToControlPlayback = model.host.allowGuestsToControlPlayback,
                         requireHostApprovalToJoin = model.host.requireHostApprovalToJoin,
+                        allowChat = model.host.allowChat,
                     ),
             )
         }
@@ -507,12 +582,68 @@ class MusicTogetherViewModel
             sessionActions.banParticipant(participantId)
         }
 
+        fun onChatDraftChange(value: String) {
+            chatDraft.value = value
+            emitTypingSignal(active = value.isNotBlank())
+        }
+
+        fun sendChatMessage() {
+            val model = successModel() ?: return
+            if (!model.chat.canSend) return
+            val text = chatDraft.value.trim()
+            if (text.isEmpty()) return
+            sessionActions.sendChat(text = text, track = null)
+            chatDraft.value = ""
+            emitTypingSignal(active = false, force = true)
+        }
+
+        fun shareCurrentlyPlayingSong() {
+            val model = successModel() ?: return
+            if (!model.chat.canSend) return
+            if (!sessionActions.shareCurrentlyPlayingTrack()) {
+                effectsFlow.tryEmit(MusicTogetherEffect.ToastMessage(R.string.together_chat_nothing_to_share))
+                return
+            }
+            chatDraft.value = ""
+            emitTypingSignal(active = false, force = true)
+        }
+
+        fun playSongFromChat(messageId: String) {
+            val track = chatTrackOf(messageId) ?: return
+            sessionActions.playSharedTrack(track = track, mode = AddTrackMode.PLAY_NEXT)
+            effectsFlow.tryEmit(MusicTogetherEffect.ToastMessage(R.string.together_chat_song_played))
+        }
+
+        fun addSongFromChatToQueue(messageId: String) {
+            val track = chatTrackOf(messageId) ?: return
+            sessionActions.playSharedTrack(track = track, mode = AddTrackMode.ADD_TO_QUEUE)
+            effectsFlow.tryEmit(MusicTogetherEffect.ToastMessage(R.string.together_chat_song_queued))
+        }
+
         private fun successModel(): MusicTogetherUiModel? = (state.value as? MusicTogetherScreenState.Success)?.model
+
+        private fun chatTrackOf(messageId: String): TogetherTrack? =
+            chatSnapshot.value.messages.firstOrNull { it.messageId == messageId }?.track
+
+        /** Typing indicators are cheap signals: throttle them and only announce state changes. */
+        private fun emitTypingSignal(
+            active: Boolean,
+            force: Boolean = false,
+        ) {
+            val model = successModel() ?: return
+            if (!model.chat.canSend) return
+            val now = System.currentTimeMillis()
+            if (!force && active && now - lastTypingSignalAtMs < TogetherTypingSignalIntervalMs) return
+            if (!force && !active && now - lastTypingSignalAtMs < TogetherTypingSignalIntervalMs) return
+            lastTypingSignalAtMs = now
+            sessionActions.sendTyping(displayName = model.host.displayName, isTyping = active)
+        }
 
         private fun pushSettingsToActiveSession(
             addTracks: Boolean? = null,
             controlPlayback: Boolean? = null,
             approval: Boolean? = null,
+            chat: Boolean? = null,
         ) {
             val model = successModel() ?: return
             if (!model.status.active || !model.host.visible) return
@@ -521,6 +652,7 @@ class MusicTogetherViewModel
                     allowGuestsToAddTracks = addTracks ?: model.host.allowGuestsToAddTracks,
                     allowGuestsToControlPlayback = controlPlayback ?: model.host.allowGuestsToControlPlayback,
                     requireHostApprovalToJoin = approval ?: model.host.requireHostApprovalToJoin,
+                    allowChat = chat ?: model.host.allowChat,
                 ),
             )
         }
@@ -532,6 +664,8 @@ class MusicTogetherViewModel
             welcomeDismissed: Boolean,
             dontShowAgain: Boolean,
             log: MusicTogetherActivityLogUiModels,
+            chat: MusicTogetherChatSnapshot,
+            chatDraft: String,
         ): MusicTogetherUiModel {
             val state = sessionState
             val roomState = state.roomStateOrNull()
@@ -630,6 +764,7 @@ class MusicTogetherViewModel
                     allowGuestsToAddTracks = preferences.allowGuestsToAddTracks,
                     allowGuestsToControlPlayback = preferences.allowGuestsToControlPlayback,
                     requireHostApprovalToJoin = preferences.requireHostApprovalToJoin,
+                    allowChat = preferences.allowChat,
                     visible = !isJoinedAsGuest,
                     startEnabled = !isCreatingSessionLoading && !isJoining && !isHosting && state !is TogetherSessionState.Joined,
                     loading = isCreatingSessionLoading,
@@ -684,6 +819,7 @@ class MusicTogetherViewModel
                 join = join,
                 participants = participantModels,
                 activityLog = log,
+                chat = chat.toChatUiModel(state = state, draft = chatDraft),
             )
         }
 
@@ -714,9 +850,88 @@ class MusicTogetherViewModel
             )
         }
 
+        private fun MusicTogetherChatSnapshot.toChatUiModel(
+            state: TogetherSessionState,
+            draft: String,
+        ): MusicTogetherChatUiModel {
+            val roomState = state.roomStateOrNull()
+            val active = state.isConnectedToSession
+            val allowChat = roomState?.settings?.allowChat ?: true
+            val selfParticipantId =
+                when (state) {
+                    is TogetherSessionState.Joined -> state.selfParticipantId
+                    is TogetherSessionState.Hosting -> state.roomState?.hostId
+                    is TogetherSessionState.HostingOnline -> state.roomState?.hostId
+                    else -> null
+                }
+            val items =
+                messages.mapIndexed { index, message ->
+                    val previous = messages.getOrNull(index - 1)
+                    MusicTogetherChatMessageUiModel(
+                        id = message.messageId,
+                        authorName = message.senderName,
+                        showAuthor =
+                            !message.isSystemChat() &&
+                                (previous == null || previous.participantId != message.participantId),
+                        mine = !message.isSystemChat() && message.participantId == selfParticipantId,
+                        system = message.isSystemChat(),
+                        textResId = message.systemChatResId(),
+                        text = if (message.isSystemChat()) null else message.text,
+                        args = if (message.isSystemChat()) listOf(message.text) else emptyList(),
+                        timestamp = chatTimeFormat.format(Date(message.sentAtEpochMs)),
+                        track =
+                            message.sharedTrackOrNull()?.let { track ->
+                                MusicTogetherChatTrackUiModel(
+                                    trackId = track.id,
+                                    title = track.title,
+                                    artists = track.artists.joinToString().takeIf { it.isNotBlank() } ?: "",
+                                    durationLabel = track.chatDurationLabel(),
+                                    thumbnailUrl = track.thumbnailUrl,
+                                )
+                            },
+                    )
+                }
+            val typingNames = typingParticipants.filter { it.expiresAtEpochMs > System.currentTimeMillis() }.map { it.displayName }
+            val typingResId: Int? =
+                when {
+                    !active || !allowChat -> null
+                    typingNames.isEmpty() -> null
+                    typingNames.size == 1 -> R.string.together_chat_typing_one
+                    typingNames.size == 2 -> R.string.together_chat_typing_two
+                    else -> R.string.together_chat_typing_many
+                }
+            val typingArgs = if (typingResId == R.string.together_chat_typing_many) emptyList() else typingNames
+            return MusicTogetherChatUiModel(
+                visible = active,
+                enabled = allowChat,
+                canSend = active && allowChat,
+                draft = draft,
+                messages = MusicTogetherChatMessageUiModels(items),
+                typingResId = typingResId,
+                typingArgs = typingArgs,
+            )
+        }
+
+        /** System lines (join/leave) render through string resources instead of raw text. */
+        private fun ChatMessage.isSystemChat(): Boolean = kind == ChatMessageKind.SYSTEM
+
+        @StringRes
+        private fun ChatMessage.systemChatResId(): Int? =
+            when (systemEvent) {
+                ChatSystemEvent.PARTICIPANT_JOINED -> R.string.together_participant_joined_notification
+                ChatSystemEvent.PARTICIPANT_LEFT -> R.string.together_participant_left_notification
+                null -> null
+            }
+
+        private fun TogetherTrack.chatDurationLabel(): String? {
+            if (durationSec <= 0) return null
+            return "%d:%02d".format(durationSec / 60, durationSec % 60)
+        }
+
         private suspend fun updateActivityLog(sessionState: TogetherSessionState) {
             withContext(Dispatchers.Default) {
                 val sessionId = sessionState.sessionIdOrNull() ?: lastSessionId
+
                 val currentRoomState = sessionState.roomStateOrNull()
 
                 if (sessionState == TogetherSessionState.Idle) {
@@ -915,5 +1130,8 @@ class MusicTogetherViewModel
 
         private companion object {
             const val MaxActivityLogSize = 80
+            const val TogetherTypingSignalIntervalMs = 1500L
+
+            private val chatTimeFormat: DateFormat = DateFormat.getTimeInstance(DateFormat.SHORT)
         }
     }
