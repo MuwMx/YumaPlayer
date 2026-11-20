@@ -997,4 +997,27 @@
     <string name="local_songs_no_matches_desc">Спробуйте ввести іншу назву пісні, виконавця або альбому.</string>
     <string name="sort_by_album">Альбом</string>
     <string name="lyrics_line_blur">Розмиті рядки тексту пісні</string>
+    <string name="offline_shortcut">Офлайн</string>
+    <string name="play_all">Відтворити все</string>
+    <string name="library_title">Твоя бібліотека</string>
+    <string name="local_files">Локальні файли</string>
+    <string name="downloaded_desc">Завантажено</string>
+    <string name="instant_playback">Миттєве відтворення</string>
+    <string name="on_device">На пристрої</string>
+    <string name="recently_played">Нещодавно відтворені</string>
+    <string name="top_mixes">Найкращі підбірки для тебе</string>
+    <string name="library_top_mixes_loading">Готуємо ваші AI-підбірки…</string>
+    <string name="library_top_mixes_refresh">Оновити підбірки</string>
+    <string name="library_top_mixes_configure_ai">Налаштувати ШІ</string>
+    <string name="library_top_mixes_ai_not_configured_title">Налаштувати ШІ для створення підбірок</string>
+    <string name="library_top_mixes_ai_not_configured_desc">Щоб Yuma могла створювати індивідуальні топ-підбірки, спочатку потрібно інтегрувати ШІ.</string>
+    <string name="library_top_mixes_no_recent_history">Прослухайте ще кілька пісень, а потім оновіть сторінку, щоб створити ШІ-плейлисти на основі вашої недавньої історії прослуховування.</string>
+    <string name="your_playlists">Ваші плейлисти</string>
+    <string name="see_all">Усі</string>
+    <string name="your_artists">Ваші виконавці</string>
+    <string name="all_songs">Усі пісні</string>
+    <string name="newest_first">Спочатку найновіші</string>
+    <string name="oldest_first">Спочатку найстаріші</string>
+    <string name="sort_a_to_z">А → Я</string>
+    <string name="sort_z_to_a">Я → А</string>
 </resources>
