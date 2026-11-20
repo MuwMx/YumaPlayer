@@ -116,6 +116,7 @@ fun FullPlayer(
                         queueFractionProvider = queueFractionProvider,
                         lyricsFractionProvider = lyricsFractionProvider,
                         onAction = onAction,
+                        likeBurst = likeBurst,
                     )
                 },
                 controls = {

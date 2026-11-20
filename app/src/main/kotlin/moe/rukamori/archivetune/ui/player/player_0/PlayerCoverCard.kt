@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +26,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -63,6 +68,7 @@ fun PlayerCoverCard(
     onCoverLoaded: () -> Unit = {}, // <-- Новый колбэк
     onNext: () -> Unit = {},
     onPrevious: () -> Unit = {},
+    onDoubleTap: ((Offset) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val shadowColor = MaterialTheme.colorScheme.scrim
@@ -79,6 +85,7 @@ fun PlayerCoverCard(
     val snapThresholdPx = with(density) { 80.dp.toPx() }
 
     var currentPainter by remember { mutableStateOf<Painter?>(null) }
+    var rootBounds by remember { mutableStateOf(Rect.Zero) }
     var activeVibrantColor by remember { mutableStateOf(Color.Transparent) }
 
     val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
@@ -203,6 +210,19 @@ fun PlayerCoverCard(
                             }
                         )
                     }
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onDoubleTap != null) {
+                    Modifier
+                        .onGloballyPositioned { rootBounds = it.boundsInRoot() }
+                        .pointerInput(onDoubleTap) {
+                            detectTapGestures(
+                                onDoubleTap = { pos -> onDoubleTap(rootBounds.topLeft + pos) }
+                            )
+                        }
                 } else {
                     Modifier
                 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.player.player_0.FullPlayerMotionState
 import moe.rukamori.archivetune.ui.player.player_0.PlayerCanvasState
 import moe.rukamori.archivetune.ui.player.player_0.PlayerCoverCard
+import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.player_0.PlayerCoverGlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.playerArtworkFade
@@ -54,6 +55,7 @@ internal fun FullPlayerCoverSlot(
     queueFractionProvider: () -> Float,
     lyricsFractionProvider: () -> Float = { 0f },
     onAction: (PlayerAction) -> Unit,
+    likeBurst: LikeBurstState? = null,
     modifier: Modifier = Modifier,
 ) {
     val globalDisableAnimations = LocalAnimationsDisabled.current
@@ -167,7 +169,14 @@ internal fun FullPlayerCoverSlot(
                         }
                     },
                     onNext = { onAction(PlayerAction.Next) },
-                    onPrevious = { onAction(PlayerAction.Previous) }
+                    onPrevious = { onAction(PlayerAction.Previous) },
+                    onDoubleTap = likeBurst?.let { burst ->
+                        { position ->
+                            burst.likeFromDoubleTap(position, state.isLiked) {
+                                onAction(PlayerAction.Like)
+                            }
+                        }
+                    }
                 )
             }
         }
