@@ -423,6 +423,10 @@ class MusicService :
     internal var togetherOnlineConnectJob: Job? get() = configCollector.togetherOnlineConnectJob; set(v) { configCollector.togetherOnlineConnectJob = v }
     internal var togetherClientEventsJob: Job? get() = configCollector.togetherClientEventsJob; set(v) { configCollector.togetherClientEventsJob = v }
     internal var togetherHeartbeatJob: Job? get() = configCollector.togetherHeartbeatJob; set(v) { configCollector.togetherHeartbeatJob = v }
+    internal var togetherChatTypingJob: Job? get() = configCollector.togetherChatTypingJob; set(v) { configCollector.togetherChatTypingJob = v }
+    internal var togetherLastTypingSentAtElapsedMs: Long get() = configCollector.togetherLastTypingSentAtElapsedMs; set(v) { configCollector.togetherLastTypingSentAtElapsedMs = v }
+    internal val togetherChatMessages: MutableStateFlow<List<moe.rukamori.archivetune.together.ChatMessage>> get() = configCollector.togetherChatMessages
+    internal val togetherTypingParticipants: MutableStateFlow<List<moe.rukamori.archivetune.together.TogetherTypingParticipant>> get() = configCollector.togetherTypingParticipants
     internal var togetherClock: moe.rukamori.archivetune.together.TogetherClock? get() = configCollector.togetherClock; set(v) { configCollector.togetherClock = v }
     internal var togetherSelfParticipantId: String? get() = configCollector.togetherSelfParticipantId; set(v) { configCollector.togetherSelfParticipantId = v }
     internal var togetherAuthorityParticipantId: String? get() = configCollector.togetherAuthorityParticipantId; set(v) { configCollector.togetherAuthorityParticipantId = v }
@@ -438,6 +442,8 @@ class MusicService :
 
     internal fun isTogetherApplyingRemote(): Boolean = configCollector.isTogetherApplyingRemote()
     internal val togetherHostId: String get() = configCollector.togetherHostId
+
+    internal fun resetTogetherChat() = configCollector.resetTogetherChat()
 
     internal fun showTogetherParticipantNotification(participantName: String, joined: Boolean) =
         serviceSessionHolder.showTogetherParticipantNotification(this, participantName, joined)

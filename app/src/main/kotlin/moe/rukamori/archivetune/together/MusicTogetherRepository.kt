@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.TogetherAllowGuestsToAddTracksKey
 import moe.rukamori.archivetune.constants.TogetherAllowGuestsToControlPlaybackKey
+import moe.rukamori.archivetune.constants.TogetherAllowChatKey
 import moe.rukamori.archivetune.constants.TogetherDefaultPortKey
 import moe.rukamori.archivetune.constants.TogetherDisplayNameKey
 import moe.rukamori.archivetune.constants.TogetherLastJoinLinkKey
@@ -53,6 +55,7 @@ data class MusicTogetherPreferences(
     val allowGuestsToAddTracks: Boolean,
     val allowGuestsToControlPlayback: Boolean,
     val requireHostApprovalToJoin: Boolean,
+    val allowChat: Boolean,
     val lastJoinLink: String,
     val welcomeShown: Boolean,
 )
@@ -60,6 +63,12 @@ data class MusicTogetherPreferences(
 data class MusicTogetherSnapshot(
     val preferences: MusicTogetherPreferences,
     val sessionState: TogetherSessionState,
+)
+
+/** Live chat snapshot of the current session, rendered by the Together screen. */
+data class MusicTogetherChatSnapshot(
+    val messages: List<ChatMessage>,
+    val typingParticipants: List<TogetherTypingParticipant>,
 )
 
 @Singleton
@@ -82,6 +91,7 @@ class MusicTogetherRepository
                         allowGuestsToAddTracks = preferences[TogetherAllowGuestsToAddTracksKey] ?: true,
                         allowGuestsToControlPlayback = preferences[TogetherAllowGuestsToControlPlaybackKey] ?: false,
                         requireHostApprovalToJoin = preferences[TogetherRequireHostApprovalToJoinKey] ?: false,
+                        allowChat = preferences[TogetherAllowChatKey] ?: true,
                         lastJoinLink = preferences[TogetherLastJoinLinkKey] ?: "",
                         welcomeShown = preferences[TogetherWelcomeShownKey] ?: false,
                     )
@@ -91,6 +101,21 @@ class MusicTogetherRepository
         val sessionState: Flow<TogetherSessionState> =
             serviceFlow.flatMapLatest { service ->
                 service?.togetherSessionState ?: flowOf(TogetherSessionState.Idle)
+            }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val chat: Flow<MusicTogetherChatSnapshot> =
+            serviceFlow.flatMapLatest { service ->
+                if (service == null) {
+                    flowOf(MusicTogetherChatSnapshot(emptyList(), emptyList()))
+                } else {
+                    combine(
+                        service.togetherChatMessages,
+                        service.togetherTypingParticipants,
+                    ) { messages, typing ->
+                        MusicTogetherChatSnapshot(messages = messages, typingParticipants = typing)
+                    }
+                }
             }
 
         fun attachService(service: MusicService?) {
@@ -124,6 +149,12 @@ class MusicTogetherRepository
         suspend fun setRequireHostApprovalToJoin(value: Boolean) {
             context.dataStore.edit { preferences ->
                 preferences[TogetherRequireHostApprovalToJoinKey] = value
+            }
+        }
+
+        suspend fun setAllowChat(value: Boolean) {
+            context.dataStore.edit { preferences ->
+                preferences[TogetherAllowChatKey] = value
             }
         }
 
@@ -201,5 +232,29 @@ class MusicTogetherRepository
 
         fun transferHostOwnership(participantId: String) {
             serviceFlow.value?.transferTogetherHostOwnership(participantId)
+        }
+
+        fun sendChat(
+            text: String,
+            track: TogetherTrack?,
+        ) {
+            serviceFlow.value?.sendTogetherChat(text = text, track = track)
+        }
+
+        fun sendTyping(
+            displayName: String,
+            isTyping: Boolean,
+        ) {
+            serviceFlow.value?.sendTogetherChatTyping(displayName = displayName, isTyping = isTyping)
+        }
+
+        fun shareCurrentlyPlayingTrack(): Boolean =
+            serviceFlow.value?.shareCurrentTrackToChat() ?: false
+
+        fun playSharedTrack(
+            track: TogetherTrack,
+            mode: AddTrackMode,
+        ) {
+            serviceFlow.value?.playTogetherSharedTrack(track = track, mode = mode)
         }
     }

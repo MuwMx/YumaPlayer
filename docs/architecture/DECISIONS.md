@@ -21,6 +21,7 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **[ADR-012](#adr-012-room-persistence-extracted-into-database-module)** — Room Persistence Extracted into `:database` Module
 - **[ADR-013](#adr-013-dual-player-crossfade-engine)** — Dual-Player Crossfade Engine
 - **[ADR-014](#adr-014-playback-monolith-decomposition--subsystem-coordinator-architecture)** — Playback Monolith Decomposition & Subsystem Coordinator Architecture
+- **[ADR-015](#adr-015-together-chat-on-the-session-websocket)** — Together Chat On The Session WebSocket
 
 ---
 
@@ -216,4 +217,16 @@ Each record captures the context, decision, rationale, and consequences of a key
 - **Consequences:**
   - *Positive:* Strict SRP compliance, isolation of mutable state into explicit owners, elimination of recursion risks, clear boundaries between service lifecycle and playback engine, significantly reduced cognitive load.
   - *Negative:* Increased file count under `playback/`, requiring disciplined usage of holder interfaces.
-
+---
+## ADR-015: Together Chat On The Session WebSocket
+- **Status:** Accepted
+- **Context:** Together sessions already run an authoritative WebSocket channel (embedded Ktor server for LAN, relay bridge for online rooms) that carries playback state. Chat could either open a second socket/service or reuse the session channel.
+- **Decision:** Extend the existing `TogetherMessage` protocol with `chat_message`, `chat_typing` and `chat_history` frames. The host (LAN server or online bridge) owns a bounded `TogetherChatTranscript`, re-authorises every incoming message (sender name, participant id, timestamp, message id) and replays the tail of the log when a participant joins. Playback control stays in its own message family; a shared song is a chat message that carries a `TogetherTrack`, and the receiver decides locally whether to play it next or queue it.
+- **Rationale:**
+  - One socket per session means one authentication path, one ordering source and no extra ports, permissions or background services.
+  - Additive message types with `ignoreUnknownKeys` keep the protocol version at 1: older clients ignore chat frames, newer clients still join older rooms (chat is simply absent).
+  - A host-authoritative transcript gives every participant the same order, timestamps and sender names without a central server.
+- **Consequences:**
+  - *Positive:* LAN and online rooms share identical chat behaviour; history survives reconnects within a session; no new dependency or network permission surface.
+  - *Negative:* The host is a single point of truth for chat (log is dropped with the session), and the transcript is intentionally capped (200 entries, 60 replayed) so very long rooms lose the oldest lines.
+  - *Mitigation:* Per-participant rate limiting (350 ms), message length cap (1000 chars) and de-duplication by message id keep hostile or duplicated traffic bounded.

@@ -149,6 +149,12 @@ https://github.com/user-attachments/assets/d363db0c-522b-4694-bd19-0dd9155ca240
 
 ---
 
+### 🫂 Listen Together & Room Chat
+- **Synchronized Sessions:** Host a room over the local network or online and keep every participant on the same track, queue, shuffle and repeat state.
+- **Real-Time Chat Over WebSocket:** Text chat rides the same socket as playback state, with typing indicators, join/leave notices and history replay for latecomers.
+- **Song Sharing Inside Chat:** Share the track that is playing as a rich card; anyone in the room can play it next or add it to the queue in one tap.
+- **Host Guardrails:** Chat can be switched off per room, messages are rate limited and re-authorised by the host, so nobody can spoof another participant.
+
 ## 📥 Download & Installation
 
 <div align="center">

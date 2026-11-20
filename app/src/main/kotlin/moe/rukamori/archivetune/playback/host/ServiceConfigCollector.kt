@@ -47,12 +47,14 @@ import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.playback.EqSettings
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.together.ControlAction
+import moe.rukamori.archivetune.together.ChatMessage
 import moe.rukamori.archivetune.together.TogetherClient
 import moe.rukamori.archivetune.together.TogetherClock
 import moe.rukamori.archivetune.together.TogetherOnlineHost
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherServer
 import moe.rukamori.archivetune.together.TogetherSessionState
+import moe.rukamori.archivetune.together.TogetherTypingParticipant
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.preference
@@ -166,6 +168,16 @@ internal class ServiceConfigCollector(
         MutableStateFlow<TogetherSessionState>(
             TogetherSessionState.Idle,
         )
+
+    val togetherChatMessages =
+        MutableStateFlow<List<ChatMessage>>(
+            emptyList(),
+        )
+
+    val togetherTypingParticipants =
+        MutableStateFlow<List<TogetherTypingParticipant>>(
+            emptyList(),
+        )
     var togetherServer: TogetherServer? = null
     var togetherOnlineHost: TogetherOnlineHost? = null
     var togetherClient: TogetherClient? = null
@@ -173,6 +185,8 @@ internal class ServiceConfigCollector(
     var togetherOnlineConnectJob: Job? = null
     var togetherClientEventsJob: Job? = null
     var togetherHeartbeatJob: Job? = null
+    var togetherChatTypingJob: Job? = null
+    var togetherLastTypingSentAtElapsedMs: Long = 0L
     var togetherClock: TogetherClock? = null
     var togetherSelfParticipantId: String? = null
     var togetherAuthorityParticipantId: String? = null
@@ -219,6 +233,12 @@ internal class ServiceConfigCollector(
 
     fun resetTogetherSessionState() {
         togetherSessionState.value = TogetherSessionState.Idle
+    }
+
+    fun resetTogetherChat() {
+        togetherChatMessages.value = emptyList()
+        togetherTypingParticipants.value = emptyList()
+        togetherLastTypingSentAtElapsedMs = 0L
     }
 
     suspend fun getOrCreateTogetherClientId(): String {
