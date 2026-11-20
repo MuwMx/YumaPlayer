@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
+import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerBottomBar
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
@@ -122,6 +123,7 @@ internal fun FullPlayerControlsGroup(
     onOpenSettingsMenu: (PlayerMenuScreen) -> Unit,
     onOpenQueue: () -> Unit,
     isVisible: Boolean,
+    likeBurst: LikeBurstState? = null,
     modifier: Modifier = Modifier,
     rootHeightPx: Float = 0f,
     capsuleHeaderHeightPx: Float = 0f,
@@ -230,6 +232,7 @@ internal fun FullPlayerControlsGroup(
                         enabled = isMainControlsInteractive,
                         likeFractionProvider = queueFractionProvider,
                         likeEnabled = isLikeInteractive,
+                        likeBurst = likeBurst,
                     )
                 }
 

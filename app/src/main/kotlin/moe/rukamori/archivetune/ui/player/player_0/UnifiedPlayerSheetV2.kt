@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.ui.component.LikeBurstOverlay
+import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.host.MiniPlayerDropState
 import moe.rukamori.archivetune.ui.player.host.PlayerDockGeometry
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -72,6 +74,7 @@ fun UnifiedPlayerSheetV2(
     var isQueueMenuVisible by remember { mutableStateOf(false) }
     var showSettingsMenu by remember { mutableStateOf(false) }
     var menuInitialScreen by remember { mutableStateOf(PlayerMenuScreen.SETTINGS) }
+    val likeBurstState = remember { LikeBurstState() }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val collapsedHorizontalInset = remember(maxWidth, useRail) {
@@ -149,6 +152,7 @@ fun UnifiedPlayerSheetV2(
                         state = state,
                         queueState = queueState,
                         updateState = updateState,
+                        likeBurst = likeBurstState,
                         miniHorizontalInset = collapsedHorizontalInset,
                         expansionFractionProvider = { motionScope.expansionFraction.value },
                         lyricsFractionProvider = motionScope.lyricsFractionProvider,
@@ -174,6 +178,8 @@ fun UnifiedPlayerSheetV2(
                         },
                         dragHandler = gestures.dragHandler,
                     )
+
+                    LikeBurstOverlay(state = likeBurstState)
                 }
             }
         )

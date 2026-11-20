@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
+import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
 import moe.rukamori.archivetune.ui.player.player_0.scoped.SheetVerticalDragGestureHandler
@@ -32,6 +33,7 @@ internal fun UnifiedPlayerSheetLayers(
     state: PlayerUiState,
     queueState: QueueUiState,
     updateState: UpdateState,
+    likeBurst: LikeBurstState? = null,
     miniHorizontalInset: Dp = FloatingToolbarHorizontalPadding,
     expansionFractionProvider: () -> Float,
     lyricsFractionProvider: () -> Float,
@@ -155,7 +157,8 @@ internal fun UnifiedPlayerSheetLayers(
                         onSeekStarted = onSeekStarted,
                         lyricsFractionProvider = lyricsFractionProvider,
                         queueFractionProvider = queueFractionProvider,
-                        isVisible = isFullPlayerVisible
+                        isVisible = isFullPlayerVisible,
+                        likeBurst = likeBurst,
                     )
                 }
 

@@ -24,6 +24,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.flow.StateFlow
+import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.full.FullPlayerCoverSlot
 import moe.rukamori.archivetune.ui.player.player_0.full.FullPlayerToolbarSlot
@@ -49,6 +50,7 @@ fun FullPlayer(
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
     queueFractionProvider: () -> Float = { 0f },
     isVisible: Boolean = true,
+    likeBurst: LikeBurstState? = null,
 ) {
     val motionState = rememberFullPlayerMotionState(
         state = state,
@@ -129,6 +131,7 @@ fun FullPlayer(
                         onOpenSettingsMenu = onOpenSettingsMenu,
                         onOpenQueue = onOpenQueue,
                         isVisible = isVisible,
+                        likeBurst = likeBurst,
                         rootHeightPx = rootHeightPx,
                         capsuleHeaderHeightPx = capsuleHeaderHeightPx,
                         toolbarBottomInRootPx = toolbarBottomInRoot,

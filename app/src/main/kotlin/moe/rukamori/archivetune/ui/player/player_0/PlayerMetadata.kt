@@ -35,6 +35,9 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 
+import moe.rukamori.archivetune.ui.component.LikeBurstState
+import moe.rukamori.archivetune.ui.component.LikeSlot
+import moe.rukamori.archivetune.ui.component.likeButtonTarget
 import moe.rukamori.archivetune.ui.component.MarqueeText
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
@@ -52,6 +55,7 @@ fun PlayerMetadata(
     enabled: Boolean = true,
     likeFractionProvider: (() -> Float)? = null,
     likeEnabled: Boolean = true,
+    likeBurst: LikeBurstState? = null,
 ) {
     val haptics = rememberYumaHaptics()
     val gradientEdgeColor = Color.Black
@@ -190,6 +194,7 @@ fun PlayerMetadata(
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(48.dp)
+                    .likeButtonTarget(likeBurst, LikeSlot.PLAYER)
                     .graphicsLayer {
                         scaleX = if (resolvedLikeEnabled) scale else 1f
                         scaleY = if (resolvedLikeEnabled) scale else 1f
@@ -208,7 +213,13 @@ fun PlayerMetadata(
                         val now = System.currentTimeMillis()
                         if (now - lastLikeClickTime > 450L) {
                             lastLikeClickTime = now
-                            onAction(PlayerAction.Like)
+                            if (likeBurst != null) {
+                                likeBurst.likeFromButton(LikeSlot.PLAYER, state.isLiked) {
+                                    onAction(PlayerAction.Like)
+                                }
+                            } else {
+                                onAction(PlayerAction.Like)
+                            }
                         }
                     }
                 } else Modifier
