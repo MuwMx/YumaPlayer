@@ -20,13 +20,10 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistItemsScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.browse.YouTubeBrowseScreen
+import moe.rukamori.archivetune.ui.screens.downloads.DownloadLibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.SpotifyLikedSongsScreen
-import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.OnlinePlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
-import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
+import moe.rukamori.archivetune.ui.screens.playlist.detail.PLAYLIST_DETAIL_ROUTE_KEY
+import moe.rukamori.archivetune.ui.screens.playlist.detail.PlaylistDetailScreen
 
 private val ArtworkDetailPrefixes = listOf(
     "album/",
@@ -132,9 +129,19 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlistId") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (online): the route string is UNCHANGED (deep
+                // links, Android Auto prefix matching, NavigationTabOwnership
+                // all key on it). The route key rides a nav-argument default
+                // into the unified screen's SavedStateHandle — the SAME
+                // mechanism as playlistId (the savedStateHandle write below
+                // does not reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "online_playlist"
+                },
             ),
     ) {
-        OnlinePlaylistScreen(navController)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
@@ -144,9 +151,19 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlistId") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (local): route string UNCHANGED (Library.kt
+                // fork, deep links, NavigationTabOwnership prefix matching
+                // all key on it). Route key rides the nav-argument default
+                // into the unified screen's SavedStateHandle — the SAME
+                // mechanism as playlistId (an entry.savedStateHandle write
+                // does not reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "local_playlist"
+                },
             ),
     ) {
-        LocalPlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
@@ -156,9 +173,17 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlistId") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (spotify): route string UNCHANGED (deep links,
+                // Android Auto prefix matching, NavigationTabOwnership all
+                // key on it). Route key rides the nav-argument default into
+                // the unified screen's SavedStateHandle.
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "spotify_playlist"
+                },
             ),
     ) {
-        SpotifyPlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
@@ -189,9 +214,27 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                     nullable = true
                     defaultValue = null
                 },
+                // PHASE E FLIP (auto): route string UNCHANGED (NavigationTabOwnership
+                // prefix matching keys on it). Route key rides the nav-argument
+                // default into the unified screen's SavedStateHandle.
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "auto_playlist"
+                },
             ),
-    ) {
-        AutoPlaylistScreen(navController, scrollBehavior)
+    ) { entry ->
+        // Upstream replaced the "downloaded" auto playlist with the tabbed
+        // DownloadLibraryScreen (tabbed Downloaded/Progress manager); the
+        // ?tab=progress deep link into it still arrives here — adopt theirs
+        // rather than forking. Everything else (liked) uses the unified
+        // screen, with the route key on the same nav-argument bundle as
+        // playlistId (an entry.savedStateHandle write never reaches the Hilt
+        // VM's own handle on this dep set).
+        if (entry.arguments?.getString("playlist") == "downloaded") {
+            DownloadLibraryScreen(navController = navController)
+        } else {
+            PlaylistDetailScreen(navController, entry, scrollBehavior)
+        }
     }
 
     composable(
@@ -201,9 +244,18 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("playlist") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (cache): route string unchanged. The route key
+                // rides the nav-argument default into the unified screen's
+                // SavedStateHandle — the same bundle mechanism as the id
+                // (an entry.savedStateHandle write never reaches the Hilt
+                // VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "cache_playlist"
+                },
             ),
     ) {
-        CachePlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
@@ -213,9 +265,20 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
                 navArgument("top") {
                     type = NavType.StringType
                 },
+                // PHASE E FLIP (top): dead route today (registered, no
+                // navigate() call sites) — the cheapest validation of the
+                // flip mechanics. The route string is unchanged; the route
+                // key rides the nav-argument default into the unified
+                // screen's SavedStateHandle, the same mechanism as the id
+                // argument (an entry.savedStateHandle write would never
+                // reach the Hilt VM's own handle on this dep set).
+                navArgument(PLAYLIST_DETAIL_ROUTE_KEY) {
+                    type = NavType.StringType
+                    defaultValue = "top_playlist"
+                },
             ),
     ) {
-        TopPlaylistScreen(navController, scrollBehavior)
+        PlaylistDetailScreen(navController, it, scrollBehavior)
     }
 
     composable(
