@@ -339,7 +339,7 @@ fun rememberSongCarousel(
 
     SideEffect {
         carousel.swipeSkip = { forward ->
-            onAction(if (forward) PlayerAction.Next else PlayerAction.Previous)
+            onAction(if (forward) PlayerAction.Next else PlayerAction.SkipPrevious)
         }
     }
 

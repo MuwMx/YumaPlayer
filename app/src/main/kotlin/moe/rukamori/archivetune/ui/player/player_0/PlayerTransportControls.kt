@@ -160,7 +160,7 @@ fun PlayerTransportControls(
                     modifier = Modifier
                         .bounceClick(pressedScale = 0.90f, enabled = enabled) {
                             haptics.click()
-                            onAction(PlayerAction.Previous)
+                            onAction(PlayerAction.Previous())
                         }
                         .size(SkipButtonSize)
                         .clip(CircleShape),

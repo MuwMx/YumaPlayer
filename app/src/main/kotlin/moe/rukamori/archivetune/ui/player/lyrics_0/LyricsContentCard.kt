@@ -162,7 +162,7 @@ fun LyricsContentCard(
                         Box(
                             modifier = Modifier
                                 .bounceClick(pressedScale = 0.90f) {
-                                    onAction(PlayerAction.Previous)
+                                    onAction(PlayerAction.Previous())
                                 }
                                 .size(48.dp)
                                 .transparentIconShadow(alpha = 0.1f, shadowRadius = 15.dp)

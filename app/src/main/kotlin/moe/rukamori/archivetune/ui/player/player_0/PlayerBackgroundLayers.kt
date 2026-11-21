@@ -62,6 +62,17 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
+import moe.rukamori.archivetune.ui.component.LikeBurstState
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 
 private const val ImmersiveSwipeParallax = 0.35f
 
@@ -76,6 +87,8 @@ fun PlayerBackgroundLayers(
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
     queueFractionProvider: () -> Float = { 0f },
     onColorsExtracted: (vibrant: Int, darkMuted: Int, gradient: Int) -> Unit = { _, _, _ -> },
+    likeBurst: LikeBurstState? = null,
+    onAction: (PlayerAction) -> Unit = {},
 ) {
 
     val currentState by rememberUpdatedState(state)
@@ -445,6 +458,7 @@ fun PlayerBackgroundLayers(
                     )
                 }
 
+                var rootBounds by remember { mutableStateOf(Rect.Zero) }
                 Spacer(
                     modifier = Modifier
                         .fillMaxSize()
@@ -459,6 +473,21 @@ fun PlayerBackgroundLayers(
                             flingThresholdPx = with(density) { 400.dp.toPx() },
                             onNext = { carousel.swipeSkip?.invoke(true) },
                             onPrevious = { carousel.swipeSkip?.invoke(false) },
+                        )
+                        .then(
+                            if (isImmersiveSwipeEnabled && likeBurst != null) {
+                                Modifier
+                                    .onGloballyPositioned { rootBounds = it.boundsInRoot() }
+                                    .pointerInput(likeBurst) {
+                                        detectTapGestures(
+                                            onDoubleTap = { pos ->
+                                                likeBurst.likeFromDoubleTap(rootBounds.topLeft + pos, state.isLiked) {
+                                                    onAction(PlayerAction.Like)
+                                                }
+                                            }
+                                        )
+                                    }
+                            } else Modifier
                         )
                 )
             }

@@ -75,7 +75,7 @@ fun MiniPlayerButtons(
                 .border(1.dp, Color.White.copy(alpha = SideBorderAlpha), CircleShape)
                 .clip(CircleShape)
                 .bounceClick(pressedScale = PressedScale) {
-                    onAction(PlayerAction.Previous)
+                    onAction(PlayerAction.Previous())
                 },
             contentAlignment = Alignment.Center,
         ) {
