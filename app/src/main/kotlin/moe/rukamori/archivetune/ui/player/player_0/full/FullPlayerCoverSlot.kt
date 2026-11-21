@@ -169,7 +169,7 @@ internal fun FullPlayerCoverSlot(
                         }
                     },
                     onNext = { onAction(PlayerAction.Next) },
-                    onPrevious = { onAction(PlayerAction.Previous()) },
+                    onPrevious = { onAction(PlayerAction.SkipPrevious) },
                     onDoubleTap = likeBurst?.let { burst ->
                         { position ->
                             burst.likeFromDoubleTap(position, state.isLiked) {

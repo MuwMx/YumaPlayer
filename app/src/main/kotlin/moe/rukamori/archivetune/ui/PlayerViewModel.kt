@@ -212,7 +212,7 @@ class PlayerViewModel @Inject constructor(
         when (action) {
             is PlayerAction.PlayPause -> playbackStateHolder.togglePlayPause()
             is PlayerAction.Next, is PlayerAction.SkipNext -> playbackStateHolder.playNext()
-            is PlayerAction.Previous -> playbackStateHolder.playPrevious()
+            is PlayerAction.Previous -> if (action.forceSkip) playbackStateHolder.forceSkipPrevious() else playbackStateHolder.playPrevious()
             is PlayerAction.SkipPrevious -> playbackStateHolder.forceSkipPrevious()
             is PlayerAction.PlayQueueItem -> queueStateHolder.playQueueItem(action.windowUid)
             is PlayerAction.RemoveQueueItem -> queueStateHolder.removeQueueItem(action.windowUid)
