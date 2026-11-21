@@ -155,7 +155,7 @@ fun PlayerCoverCard(
 
     val shape24 = remember { RoundedCornerShape(24.dp) }
     val carousel = LocalSongCarousel.current
-    val cardGapPx = with(density) { 16.dp.toPx() }
+    val cardGapPx = 0f
 
     Box(
         modifier = modifier

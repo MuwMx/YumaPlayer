@@ -110,7 +110,10 @@ fun PlayerBackgroundLayers(
         label = "ImmersiveThemeTransition"
     )
 
-    val targetUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
+    val carousel = LocalSongCarousel.current
+    val closestSlot = carousel?.slots?.minByOrNull { abs(carousel.offsetOf(it)) }
+    val targetUrl = closestSlot?.artworkUri?.trim()?.takeIf(String::isNotBlank)
+        ?: state.coverUrl.trim().takeIf(String::isNotBlank)
 
     key(state.trackUrl) {
         PlayerPaletteExtractor(
@@ -135,7 +138,6 @@ fun PlayerBackgroundLayers(
     val ambientColors = rememberAmbientColors()
     FollowPicture(colors = ambientColors, url = targetUrl.takeIf { state.isLiveBackgroundEnabled })
 
-    val carousel = LocalSongCarousel.current
     val density = LocalDensity.current
     val context = LocalContext.current
     val cardGapPx = with(density) { 16.dp.toPx() }
