@@ -260,7 +260,11 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipPrevious)
             return
         }
-        player.seekToPreviousMediaItem()
+        if (player.hasPreviousMediaItem()) {
+            player.seekToDefaultPosition(player.previousMediaItemIndex)
+        } else {
+            player.seekTo(0L)
+        }
         player.prepare()
         player.playWhenReady = true
     }
@@ -271,7 +275,11 @@ class PlayerConnection(
             return
         }
         if (forceSkip) {
-            player.seekToPreviousMediaItem()
+            if (player.hasPreviousMediaItem()) {
+                player.seekToDefaultPosition(player.previousMediaItemIndex)
+            } else {
+                player.seekTo(0L)
+            }
         } else {
             player.seekToPrevious()
         }

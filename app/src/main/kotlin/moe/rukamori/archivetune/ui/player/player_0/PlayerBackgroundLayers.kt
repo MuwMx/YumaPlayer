@@ -70,8 +70,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.component.LikeBurstState
 
-private const val ImmersiveSwipeParallax = 0.35f
-
 @OptIn(ExperimentalHazeApi::class)
 @Composable
 fun PlayerBackgroundLayers(
@@ -152,7 +150,6 @@ fun PlayerBackgroundLayers(
 
     val density = LocalDensity.current
     val context = LocalContext.current
-    val cardGapPx = 0f
     var slotTones by remember { mutableStateOf<Map<String, List<Color>>>(emptyMap()) }
 
     LaunchedEffect(carousel?.slots) {
@@ -185,7 +182,47 @@ fun PlayerBackgroundLayers(
     ) {
         if (!state.isLiveBackgroundEnabled) {
             if (carousel != null && carousel.slots.isNotEmpty()) {
-                for (slot in carousel.slots) {
+                val currentSlot = carousel.slots.find { it.step == carousel.step } ?: carousel.slots.firstOrNull()
+                val otherSlots = carousel.slots.filter { it != currentSlot }
+
+                if (currentSlot != null) {
+                    key(currentSlot.uid) {
+                        val slotUrl = currentSlot.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                        val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawWithCache {
+                                    val currentBg = slotBgColor
+                                    val currentGlow = glowTransition
+
+                                    val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
+                                    val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
+                                    val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
+
+                                    val stop0 = lerp(currentBg, charcoalTone, currentGlow)
+                                    val stop35 = lerp(currentBg, charcoalTone, currentGlow)
+                                    val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
+                                    val stop100 = lerp(deepTone, charcoalTone, currentGlow)
+
+                                    val brush = Brush.verticalGradient(
+                                        0.0f to stop0,
+                                        0.35f to stop35,
+                                        0.70f to stop70,
+                                        1.0f to stop100,
+                                        startY = 0f,
+                                        endY = size.height
+                                    )
+
+                                    onDrawBehind {
+                                        drawRect(brush = brush)
+                                    }
+                                }
+                        )
+                    }
+                }
+
+                for (slot in otherSlots) {
                     key(slot.uid) {
                         val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
                         val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
@@ -194,8 +231,6 @@ fun PlayerBackgroundLayers(
                                 .fillMaxSize()
                                 .graphicsLayer {
                                     val o = carousel.offsetOf(slot)
-                                    val parallax = if (state.isImmersiveEnabled) ImmersiveSwipeParallax else 1f
-                                    translationX = o * (size.width + if (!state.isImmersiveEnabled) cardGapPx else 0f) * parallax
                                     alpha = (1f - abs(o)).coerceIn(0f, 1f)
                                 }
                                 .drawWithCache {
@@ -314,7 +349,29 @@ fun PlayerBackgroundLayers(
                         .hazeSource(playerHazeState)
                 ) {
                     if (carousel != null && carousel.slots.isNotEmpty()) {
-                        for (slot in carousel.slots) {
+                        val currentSlot = carousel.slots.find { it.step == carousel.step } ?: carousel.slots.firstOrNull()
+                        val otherSlots = carousel.slots.filter { it != currentSlot }
+
+                        if (currentSlot != null) {
+                            key(currentSlot.uid) {
+                                val slotUrl = currentSlot.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                                val slotPainters = rememberPlayerBackgroundPainters(
+                                    targetUrl = slotUrl,
+                                    needsBlur = needsBlur
+                                )
+                                val blurPainter = slotPainters.currentBlurPainter
+                                if (blurPainter != null) {
+                                    Image(
+                                        painter = blurPainter,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+
+                        for (slot in otherSlots) {
                             key(slot.uid) {
                                 val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
                                 val slotPainters = rememberPlayerBackgroundPainters(
@@ -330,8 +387,6 @@ fun PlayerBackgroundLayers(
                                             .fillMaxSize()
                                             .graphicsLayer {
                                                 val o = carousel.offsetOf(slot)
-                                                val parallax = if (state.isImmersiveEnabled) ImmersiveSwipeParallax else 1f
-                                                translationX = o * (size.width + if (!state.isImmersiveEnabled) cardGapPx else 0f) * parallax
                                                 alpha = (1f - abs(o)).coerceIn(0f, 1f)
                                             },
                                         contentScale = ContentScale.Crop
@@ -425,8 +480,8 @@ fun PlayerBackgroundLayers(
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         val o = carousel.offsetOf(slot)
-                                        translationX = o * size.width * ImmersiveSwipeParallax
-                                        alpha = (1f - abs(o)).coerceIn(0f, 1f) * immersiveTransitionAlpha * queueArtworkFade
+                                        translationX = o * size.width
+                                        alpha = immersiveTransitionAlpha * queueArtworkFade
                                     }
                                     .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
                                 contentScale = ContentScale.Crop,
@@ -447,7 +502,7 @@ fun PlayerBackgroundLayers(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                translationX = carousel.playingOffset * size.width * ImmersiveSwipeParallax
+                                translationX = carousel.playingOffset * size.width
                                 alpha = (1f - abs(carousel.playingOffset)).coerceIn(0f, 1f)
                             }
                             .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
@@ -462,8 +517,7 @@ fun PlayerBackgroundLayers(
                             carousel = carousel,
                             enabled = isImmersiveSwipeEnabled,
                             spacingPxProvider = {
-                                (artworkWidthPx * ImmersiveSwipeParallax)
-                                    .takeIf { it > 0f }
+                                artworkWidthPx.takeIf { it > 0f }
                                     ?: with(density) { 360.dp.toPx() }
                             },
                             flingThresholdPx = with(density) { 400.dp.toPx() },
