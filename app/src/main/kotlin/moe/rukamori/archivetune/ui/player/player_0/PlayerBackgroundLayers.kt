@@ -59,6 +59,9 @@ import moe.rukamori.archivetune.ui.player.ambient.pictureTones
 import moe.rukamori.archivetune.ui.player.ambient.rememberAmbientColors
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val ImmersiveSwipeParallax = 0.35f
 
@@ -140,7 +143,7 @@ fun PlayerBackgroundLayers(
 
     val density = LocalDensity.current
     val context = LocalContext.current
-    val cardGapPx = with(density) { 16.dp.toPx() }
+    val cardGapPx = 0f
     var slotTones by remember { mutableStateOf<Map<String, List<Color>>>(emptyMap()) }
 
     LaunchedEffect(carousel?.slots) {
@@ -149,16 +152,21 @@ fun PlayerBackgroundLayers(
             return@LaunchedEffect
         }
         val activeUrls = slots.mapNotNull { it.artworkUri?.trim()?.takeIf(String::isNotBlank) }.toSet()
-        val nextTones = slotTones.filterKeys { it in activeUrls }.toMutableMap()
+
+        slotTones = slotTones.filterKeys { it in activeUrls }
+
         for (url in activeUrls) {
-            if (!nextTones.containsKey(url)) {
-                val tones = pictureTones(context, url)
-                if (tones != null) {
-                    nextTones[url] = tones
+            if (!slotTones.containsKey(url)) {
+                launch(Dispatchers.IO) {
+                    val tones = pictureTones(context, url)
+                    if (tones != null) {
+                        withContext(Dispatchers.Main) {
+                            slotTones = slotTones + (url to tones)
+                        }
+                    }
                 }
             }
         }
-        slotTones = nextTones
     }
 
     Box(
