@@ -34,7 +34,12 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import kotlin.math.abs
 import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazePerformanceMode
@@ -252,35 +257,113 @@ fun PlayerBackgroundLayers(
             }
         }
 
-        val painter = painters.currentClearPainter
-        if (painter != null && !(isCanvasActive && isCanvasReady)) {
-            Image(
-                painter = painter,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter
-            )
-        }
+        val carousel = LocalSongCarousel.current
+        val density = LocalDensity.current
+        val context = LocalContext.current
+        val isImmersiveSwipeEnabled = state.isImmersiveEnabled &&
+            !currentState.isLyricsVisible &&
+            currentLyricsProvider() < 0.05f &&
+            currentQueueProvider() < 0.05f
 
-        if (isCanvasActive) {
-            PlayerCanvasArtworkHost(
-                state = state,
-                canvasState = canvasState,
-                immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
-                lyricsFractionProvider = lyricsFractionProvider,
-                queueFractionProvider = queueFractionProvider,
-                onReadyChange = { isCanvasReady = it },
+        if (carousel != null && carousel.slots.isNotEmpty()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
-            )
+                    .carouselDragGesture(
+                        carousel = carousel,
+                        enabled = isImmersiveSwipeEnabled,
+                        spacingPxProvider = { with(density) { 360.dp.toPx() } },
+                        flingThresholdPx = with(density) { 400.dp.toPx() },
+                        onNext = { carousel.swipeSkip?.invoke(true) },
+                        onPrevious = { carousel.swipeSkip?.invoke(false) },
+                    )
+            ) {
+                for (slot in carousel.slots) {
+                    key(slot.uid) {
+                        val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                        val slotRequest = remember(slotUrl) {
+                            ImageRequest.Builder(context)
+                                .data(slotUrl)
+                                .apply {
+                                    if (slotUrl != null) {
+                                        memoryCacheKey(slotUrl)
+                                        diskCacheKey(slotUrl)
+                                    }
+                                }
+                                .build()
+                        }
+                        val slotPainter = rememberAsyncImagePainter(model = slotRequest)
+                        val isCurrent = slot.step == carousel.step
+                        if (!(isCurrent && isCanvasActive && isCanvasReady)) {
+                            Image(
+                                painter = slotPainter,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        val o = carousel.offsetOf(slot)
+                                        translationX = o * size.width * 0.35f
+                                        alpha = (1f - abs(o)).coerceIn(0f, 1f) * immersiveTransitionAlpha * queueArtworkFade
+                                    }
+                                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.TopCenter
+                            )
+                        }
+                    }
+                }
+
+                if (isCanvasActive) {
+                    PlayerCanvasArtworkHost(
+                        state = state,
+                        canvasState = canvasState,
+                        immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
+                        lyricsFractionProvider = lyricsFractionProvider,
+                        queueFractionProvider = queueFractionProvider,
+                        onReadyChange = { isCanvasReady = it },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                translationX = carousel.playingOffset * size.width * 0.35f
+                                alpha = (1f - abs(carousel.playingOffset)).coerceIn(0f, 1f)
+                            }
+                            .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
+                    )
+                }
+            }
+        } else {
+            val painter = painters.currentClearPainter
+            if (painter != null && !(isCanvasActive && isCanvasReady)) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.75f)
+                        .align(Alignment.TopCenter)
+                        .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
+                )
+            }
+
+            if (isCanvasActive) {
+                PlayerCanvasArtworkHost(
+                    state = state,
+                    canvasState = canvasState,
+                    immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
+                    lyricsFractionProvider = lyricsFractionProvider,
+                    queueFractionProvider = queueFractionProvider,
+                    onReadyChange = { isCanvasReady = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.75f)
+                        .align(Alignment.TopCenter)
+                        .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
+                )
+            }
         }
     }
 }

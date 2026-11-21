@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +76,11 @@ fun UnifiedPlayerSheetV2(
     var showSettingsMenu by remember { mutableStateOf(false) }
     var menuInitialScreen by remember { mutableStateOf(PlayerMenuScreen.SETTINGS) }
     val likeBurstState = remember { LikeBurstState() }
+    val carousel = rememberSongCarousel(
+        queueState = queueState,
+        playerUiState = state,
+        onAction = onAction,
+    )
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val collapsedHorizontalInset = remember(maxWidth, useRail) {
@@ -148,36 +154,38 @@ fun UnifiedPlayerSheetV2(
                             density = density
                         )
                 ) {
-                    UnifiedPlayerSheetLayers(
-                        state = state,
-                        queueState = queueState,
-                        updateState = updateState,
-                        likeBurst = likeBurstState,
-                        miniHorizontalInset = collapsedHorizontalInset,
-                        expansionFractionProvider = { motionScope.expansionFraction.value },
-                        lyricsFractionProvider = motionScope.lyricsFractionProvider,
-                        queueFractionProvider = motionScope.queueFractionProvider,
-                        playbackProgress = playbackProgress,
-                        fullPlayerVisualState = motionScope.fullPlayerVisualState,
-                        onAction = onAction,
-                        onCloseLyricsClick = onCloseLyricsClick,
-                        onCloseQueueClick = motionScope.handleCloseQueue,
-                        onMoreQueueClick = { isQueueMenuVisible = true },
-                        onOpenQueue = motionScope.handleOpenQueue,
-                        onMoreLyricsClick = { isLyricsMenuVisible = true },
-                        onSearchLyricsClick = onSearchLyricsClick,
-                        onCollapseClick = { motionScope.collapse() },
-                        onExpandClick = { motionScope.expand() },
-                        onSeek = onSeek,
-                        onSeekStarted = onSeekStarted,
-                        onBackgroundStyleChanged = onBackgroundStyleChanged,
-                        onImmersiveChanged = onImmersiveChanged,
-                        onOpenSettingsMenu = { screen ->
-                            menuInitialScreen = screen
-                            showSettingsMenu = true
-                        },
-                        dragHandler = gestures.dragHandler,
-                    )
+                    CompositionLocalProvider(LocalSongCarousel provides carousel) {
+                        UnifiedPlayerSheetLayers(
+                            state = state,
+                            queueState = queueState,
+                            updateState = updateState,
+                            likeBurst = likeBurstState,
+                            miniHorizontalInset = collapsedHorizontalInset,
+                            expansionFractionProvider = { motionScope.expansionFraction.value },
+                            lyricsFractionProvider = motionScope.lyricsFractionProvider,
+                            queueFractionProvider = motionScope.queueFractionProvider,
+                            playbackProgress = playbackProgress,
+                            fullPlayerVisualState = motionScope.fullPlayerVisualState,
+                            onAction = onAction,
+                            onCloseLyricsClick = onCloseLyricsClick,
+                            onCloseQueueClick = motionScope.handleCloseQueue,
+                            onMoreQueueClick = { isQueueMenuVisible = true },
+                            onOpenQueue = motionScope.handleOpenQueue,
+                            onMoreLyricsClick = { isLyricsMenuVisible = true },
+                            onSearchLyricsClick = onSearchLyricsClick,
+                            onCollapseClick = { motionScope.collapse() },
+                            onExpandClick = { motionScope.expand() },
+                            onSeek = onSeek,
+                            onSeekStarted = onSeekStarted,
+                            onBackgroundStyleChanged = onBackgroundStyleChanged,
+                            onImmersiveChanged = onImmersiveChanged,
+                            onOpenSettingsMenu = { screen ->
+                                menuInitialScreen = screen
+                                showSettingsMenu = true
+                            },
+                            dragHandler = gestures.dragHandler,
+                        )
+                    }
 
                     LikeBurstOverlay(state = likeBurstState)
                 }
