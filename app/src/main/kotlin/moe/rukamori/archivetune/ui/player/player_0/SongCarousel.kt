@@ -34,7 +34,6 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.floor
 
 @Immutable
 data class CarouselSong(
@@ -73,24 +72,12 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
     var dragging by mutableStateOf(false)
         private set
 
-    val away: Float get() = abs(position - step)
-
     val hasPrevious: Boolean get() = slots.any { it.step < step }
     val hasNext: Boolean get() = slots.any { it.step > step }
 
     fun offsetOf(slot: CarouselSong): Float = slot.step - position
 
     val playingOffset: Float get() = step - position
-
-    fun crossfadeAlpha(slot: CarouselSong): Float {
-        val lower = floor(position).toInt()
-        val fraction = position - lower
-        return when (slot.step) {
-            lower -> 1f
-            lower + 1 -> if (slots.any { it.step == lower }) fraction else 1f
-            else -> 0f
-        }
-    }
 
     private var playing: CarouselSong? = null
     private var previousUid: Any? = null

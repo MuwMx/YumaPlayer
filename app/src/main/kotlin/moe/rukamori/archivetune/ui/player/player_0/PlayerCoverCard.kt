@@ -46,6 +46,8 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.request.error
+import coil3.request.placeholder
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.haptics.LocalYumaHaptics
@@ -159,7 +161,6 @@ fun PlayerCoverCard(
         modifier = modifier
             .aspectRatio(1f, matchHeightConstraintsFirst = true)
             .graphicsLayer {
-                val currentOffset = if (carousel != null) -carousel.away * 0.1f else offsetX.value
                 val isDraggingCover = if (carousel != null) carousel.dragging else abs(offsetX.value) > 1f
                 shadowElevation = if (isDraggingCover) 6.dp.toPx() else 14.dp.toPx()
                 shape = shape24
@@ -256,6 +257,8 @@ fun PlayerCoverCard(
                     val slotRequest = remember(slotUrl) {
                         ImageRequest.Builder(context)
                             .data(slotUrl)
+                            .placeholder(placeholderResId)
+                            .error(placeholderResId)
                             .apply {
                                 if (slotUrl != null) {
                                     memoryCacheKey(slotUrl)

@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,8 @@ import moe.rukamori.archivetune.ui.player.ambient.FollowPicture
 import moe.rukamori.archivetune.ui.player.ambient.rememberAmbientColors
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
+
+private const val ImmersiveSwipeParallax = 0.35f
 
 @OptIn(ExperimentalHazeApi::class)
 @Composable
@@ -260,6 +264,7 @@ fun PlayerBackgroundLayers(
         val carousel = LocalSongCarousel.current
         val density = LocalDensity.current
         val context = LocalContext.current
+        var artworkWidthPx by remember { mutableFloatStateOf(0f) }
         val isImmersiveSwipeEnabled = state.isImmersiveEnabled &&
             !currentState.isLyricsVisible &&
             currentLyricsProvider() < 0.05f &&
@@ -271,10 +276,15 @@ fun PlayerBackgroundLayers(
                     .fillMaxWidth()
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
+                    .onSizeChanged { artworkWidthPx = it.width.toFloat() }
                     .carouselDragGesture(
                         carousel = carousel,
                         enabled = isImmersiveSwipeEnabled,
-                        spacingPxProvider = { with(density) { 360.dp.toPx() } },
+                        spacingPxProvider = {
+                            (artworkWidthPx * ImmersiveSwipeParallax)
+                                .takeIf { it > 0f }
+                                ?: with(density) { 360.dp.toPx() }
+                        },
                         flingThresholdPx = with(density) { 400.dp.toPx() },
                         onNext = { carousel.swipeSkip?.invoke(true) },
                         onPrevious = { carousel.swipeSkip?.invoke(false) },
@@ -304,7 +314,7 @@ fun PlayerBackgroundLayers(
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         val o = carousel.offsetOf(slot)
-                                        translationX = o * size.width * 0.35f
+                                        translationX = o * size.width * ImmersiveSwipeParallax
                                         alpha = (1f - abs(o)).coerceIn(0f, 1f) * immersiveTransitionAlpha * queueArtworkFade
                                     }
                                     .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
@@ -326,7 +336,7 @@ fun PlayerBackgroundLayers(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                translationX = carousel.playingOffset * size.width * 0.35f
+                                translationX = carousel.playingOffset * size.width * ImmersiveSwipeParallax
                                 alpha = (1f - abs(carousel.playingOffset)).coerceIn(0f, 1f)
                             }
                             .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
