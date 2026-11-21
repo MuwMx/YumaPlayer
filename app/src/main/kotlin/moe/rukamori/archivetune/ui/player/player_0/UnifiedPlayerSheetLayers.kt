@@ -77,6 +77,8 @@ internal fun UnifiedPlayerSheetLayers(
                 onColorsExtracted = { vibrant, darkMuted, gradient ->
                     onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
                 },
+                likeBurst = likeBurst,
+                onAction = onAction,
             )
         }
 

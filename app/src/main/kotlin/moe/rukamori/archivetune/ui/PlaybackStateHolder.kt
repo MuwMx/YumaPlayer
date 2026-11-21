@@ -258,6 +258,10 @@ class PlaybackStateHolder(
         playerConnectionProvider()?.seekToPrevious()
     }
 
+    fun forceSkipPrevious() {
+        playerConnectionProvider()?.forceSkipPrevious()
+    }
+
     fun toggleShuffle() {
         val player = audioPlayerProvider() ?: return
         player.shuffleModeEnabled = !player.shuffleModeEnabled
