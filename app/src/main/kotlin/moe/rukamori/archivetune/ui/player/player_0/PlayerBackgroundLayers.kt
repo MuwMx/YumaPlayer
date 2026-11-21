@@ -11,12 +11,14 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -52,6 +54,8 @@ import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import moe.rukamori.archivetune.ui.player.ambient.AmbientBackdrop
 import moe.rukamori.archivetune.ui.player.ambient.FollowPicture
+import moe.rukamori.archivetune.ui.player.ambient.ToneSeamRight
+import moe.rukamori.archivetune.ui.player.ambient.pictureTones
 import moe.rukamori.archivetune.ui.player.ambient.rememberAmbientColors
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -131,40 +135,112 @@ fun PlayerBackgroundLayers(
     val ambientColors = rememberAmbientColors()
     FollowPicture(colors = ambientColors, url = targetUrl.takeIf { state.isLiveBackgroundEnabled })
 
+    val carousel = LocalSongCarousel.current
+    val density = LocalDensity.current
+    val context = LocalContext.current
+    val cardGapPx = with(density) { 16.dp.toPx() }
+    var slotTones by remember { mutableStateOf<Map<String, List<Color>>>(emptyMap()) }
+
+    LaunchedEffect(carousel?.slots) {
+        val slots = carousel?.slots ?: run {
+            if (slotTones.isNotEmpty()) slotTones = emptyMap()
+            return@LaunchedEffect
+        }
+        val activeUrls = slots.mapNotNull { it.artworkUri?.trim()?.takeIf(String::isNotBlank) }.toSet()
+        val nextTones = slotTones.filterKeys { it in activeUrls }.toMutableMap()
+        for (url in activeUrls) {
+            if (!nextTones.containsKey(url)) {
+                val tones = pictureTones(context, url)
+                if (tones != null) {
+                    nextTones[url] = tones
+                }
+            }
+        }
+        slotTones = nextTones
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .drawWithCache {
-                if (state.isLiveBackgroundEnabled) {
-                    onDrawBehind { }
-                } else {
-                    val currentBg = animatedBgColor
-                    val currentGlow = glowTransition
+            .background(Color(0xFF080808))
+    ) {
+        if (!state.isLiveBackgroundEnabled) {
+            if (carousel != null && carousel.slots.isNotEmpty()) {
+                for (slot in carousel.slots) {
+                    key(slot.uid) {
+                        val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                        val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val o = carousel.offsetOf(slot)
+                                    val parallax = if (state.isImmersiveEnabled) ImmersiveSwipeParallax else 1f
+                                    translationX = o * (size.width + if (!state.isImmersiveEnabled) cardGapPx else 0f) * parallax
+                                    alpha = (1f - abs(o)).coerceIn(0f, 1f)
+                                }
+                                .drawWithCache {
+                                    val currentBg = slotBgColor
+                                    val currentGlow = glowTransition
 
-                    val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
-                    val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
-                    val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
+                                    val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
+                                    val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
+                                    val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
 
-                    val stop0 = lerp(currentBg, charcoalTone, currentGlow)
-                    val stop35 = lerp(currentBg, charcoalTone, currentGlow)
-                    val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
-                    val stop100 = lerp(deepTone, charcoalTone, currentGlow)
+                                    val stop0 = lerp(currentBg, charcoalTone, currentGlow)
+                                    val stop35 = lerp(currentBg, charcoalTone, currentGlow)
+                                    val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
+                                    val stop100 = lerp(deepTone, charcoalTone, currentGlow)
 
-                    val brush = Brush.verticalGradient(
-                        0.0f to stop0,
-                        0.35f to stop35,
-                        0.70f to stop70,
-                        1.0f to stop100,
-                        startY = 0f,
-                        endY = size.height
-                    )
+                                    val brush = Brush.verticalGradient(
+                                        0.0f to stop0,
+                                        0.35f to stop35,
+                                        0.70f to stop70,
+                                        1.0f to stop100,
+                                        startY = 0f,
+                                        endY = size.height
+                                    )
 
-                    onDrawBehind {
-                        drawRect(brush = brush)
+                                    onDrawBehind {
+                                        drawRect(brush = brush)
+                                    }
+                                }
+                        )
                     }
                 }
+            } else {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .drawWithCache {
+                            val currentBg = animatedBgColor
+                            val currentGlow = glowTransition
+
+                            val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
+                            val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
+                            val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
+
+                            val stop0 = lerp(currentBg, charcoalTone, currentGlow)
+                            val stop35 = lerp(currentBg, charcoalTone, currentGlow)
+                            val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
+                            val stop100 = lerp(deepTone, charcoalTone, currentGlow)
+
+                            val brush = Brush.verticalGradient(
+                                0.0f to stop0,
+                                0.35f to stop35,
+                                0.70f to stop70,
+                                1.0f to stop100,
+                                startY = 0f,
+                                endY = size.height
+                            )
+
+                            onDrawBehind {
+                                drawRect(brush = brush)
+                            }
+                        }
+                )
             }
-    ) {
+        }
         if (state.isLiveBackgroundEnabled) {
             AmbientBackdrop(
                 colors = ambientColors,
@@ -205,7 +281,7 @@ fun PlayerBackgroundLayers(
         )
 
 
-        if (needsBlur && painters.currentBlurPainter != null) {
+        if (needsBlur) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -218,12 +294,43 @@ fun PlayerBackgroundLayers(
                         .fillMaxSize()
                         .hazeSource(playerHazeState)
                 ) {
-                    Image(
-                        painter = painters.currentBlurPainter,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    if (carousel != null && carousel.slots.isNotEmpty()) {
+                        for (slot in carousel.slots) {
+                            key(slot.uid) {
+                                val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                                val slotPainters = rememberPlayerBackgroundPainters(
+                                    targetUrl = slotUrl,
+                                    needsBlur = needsBlur
+                                )
+                                val blurPainter = slotPainters.currentBlurPainter
+                                if (blurPainter != null) {
+                                    Image(
+                                        painter = blurPainter,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer {
+                                                val o = carousel.offsetOf(slot)
+                                                val parallax = if (state.isImmersiveEnabled) ImmersiveSwipeParallax else 1f
+                                                translationX = o * (size.width + if (!state.isImmersiveEnabled) cardGapPx else 0f) * parallax
+                                                alpha = (1f - abs(o)).coerceIn(0f, 1f)
+                                            },
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        val blurPainter = painters.currentBlurPainter
+                        if (blurPainter != null) {
+                            Image(
+                                painter = blurPainter,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
                 }
 
                 Box(
@@ -261,9 +368,6 @@ fun PlayerBackgroundLayers(
             }
         }
 
-        val carousel = LocalSongCarousel.current
-        val density = LocalDensity.current
-        val context = LocalContext.current
         var artworkWidthPx by remember { mutableFloatStateOf(0f) }
         val isImmersiveSwipeEnabled = state.isImmersiveEnabled &&
             !currentState.isLyricsVisible &&
@@ -277,18 +381,6 @@ fun PlayerBackgroundLayers(
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
                     .onSizeChanged { artworkWidthPx = it.width.toFloat() }
-                    .carouselDragGesture(
-                        carousel = carousel,
-                        enabled = isImmersiveSwipeEnabled,
-                        spacingPxProvider = {
-                            (artworkWidthPx * ImmersiveSwipeParallax)
-                                .takeIf { it > 0f }
-                                ?: with(density) { 360.dp.toPx() }
-                        },
-                        flingThresholdPx = with(density) { 400.dp.toPx() },
-                        onNext = { carousel.swipeSkip?.invoke(true) },
-                        onPrevious = { carousel.swipeSkip?.invoke(false) },
-                    )
             ) {
                 for (slot in carousel.slots) {
                     key(slot.uid) {
@@ -342,6 +434,23 @@ fun PlayerBackgroundLayers(
                             .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
                     )
                 }
+
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .carouselDragGesture(
+                            carousel = carousel,
+                            enabled = isImmersiveSwipeEnabled,
+                            spacingPxProvider = {
+                                (artworkWidthPx * ImmersiveSwipeParallax)
+                                    .takeIf { it > 0f }
+                                    ?: with(density) { 360.dp.toPx() }
+                            },
+                            flingThresholdPx = with(density) { 400.dp.toPx() },
+                            onNext = { carousel.swipeSkip?.invoke(true) },
+                            onPrevious = { carousel.swipeSkip?.invoke(false) },
+                        )
+                )
             }
         } else {
             val painter = painters.currentClearPainter

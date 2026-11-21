@@ -232,7 +232,7 @@ fun PlayerCoverCard(
                 }
             )
             .then(
-                if (onDoubleTap != null) {
+                if (gestureEnabled && onDoubleTap != null) {
                     Modifier
                         .onGloballyPositioned { rootBounds = it.boundsInRoot() }
                         .pointerInput(onDoubleTap) {
