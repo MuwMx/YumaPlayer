@@ -37,9 +37,19 @@ data class LoudnessParams(
     val compression: Float = 0.3f,
 )
 
+data class EightDParams(
+    val enabled: Boolean = false,
+    val rotationSpeedHz: Float = 0.15f,
+    val depth: Float = 0.85f,
+    val reverbLevel: Float = 0.4f,
+)
+
 interface AudioFxConfigProvider {
     val reverb: ReverbParams
     val loudness: LoudnessParams
     val spatial: SpatialParams
+    val eightD: EightDParams
+    val stage: StageParams
+    val stageLevels: FloatArray
     var loudnessReductionDb: Float
 }
