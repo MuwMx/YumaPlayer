@@ -70,6 +70,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.component.LikeBurstState
 
+private const val CoverParallax = 0.3f
+
 @OptIn(ExperimentalHazeApi::class)
 @Composable
 fun PlayerBackgroundLayers(
@@ -182,47 +184,7 @@ fun PlayerBackgroundLayers(
     ) {
         if (!state.isLiveBackgroundEnabled) {
             if (carousel != null && carousel.slots.isNotEmpty()) {
-                val currentSlot = carousel.slots.find { it.step == carousel.step } ?: carousel.slots.firstOrNull()
-                val otherSlots = carousel.slots.filter { it != currentSlot }
-
-                if (currentSlot != null) {
-                    key(currentSlot.uid) {
-                        val slotUrl = currentSlot.artworkUri?.trim()?.takeIf(String::isNotBlank)
-                        val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
-                        Spacer(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .drawWithCache {
-                                    val currentBg = slotBgColor
-                                    val currentGlow = glowTransition
-
-                                    val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)
-                                    val midTone = lerp(currentBg, Color(0xFF101010), 0.50f)
-                                    val deepTone = lerp(currentBg, Color(0xFF060606), 0.90f)
-
-                                    val stop0 = lerp(currentBg, charcoalTone, currentGlow)
-                                    val stop35 = lerp(currentBg, charcoalTone, currentGlow)
-                                    val stop70 = lerp(midTone, currentBg.copy(alpha = 0.70f), currentGlow)
-                                    val stop100 = lerp(deepTone, charcoalTone, currentGlow)
-
-                                    val brush = Brush.verticalGradient(
-                                        0.0f to stop0,
-                                        0.35f to stop35,
-                                        0.70f to stop70,
-                                        1.0f to stop100,
-                                        startY = 0f,
-                                        endY = size.height
-                                    )
-
-                                    onDrawBehind {
-                                        drawRect(brush = brush)
-                                    }
-                                }
-                        )
-                    }
-                }
-
-                for (slot in otherSlots) {
+                for (slot in carousel.slots) {
                     key(slot.uid) {
                         val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
                         val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
@@ -230,8 +192,7 @@ fun PlayerBackgroundLayers(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    val o = carousel.offsetOf(slot)
-                                    alpha = (1f - abs(o)).coerceIn(0f, 1f)
+                                    alpha = carousel.crossfadeAlpha(slot)
                                 }
                                 .drawWithCache {
                                     val currentBg = slotBgColor
@@ -349,29 +310,7 @@ fun PlayerBackgroundLayers(
                         .hazeSource(playerHazeState)
                 ) {
                     if (carousel != null && carousel.slots.isNotEmpty()) {
-                        val currentSlot = carousel.slots.find { it.step == carousel.step } ?: carousel.slots.firstOrNull()
-                        val otherSlots = carousel.slots.filter { it != currentSlot }
-
-                        if (currentSlot != null) {
-                            key(currentSlot.uid) {
-                                val slotUrl = currentSlot.artworkUri?.trim()?.takeIf(String::isNotBlank)
-                                val slotPainters = rememberPlayerBackgroundPainters(
-                                    targetUrl = slotUrl,
-                                    needsBlur = needsBlur
-                                )
-                                val blurPainter = slotPainters.currentBlurPainter
-                                if (blurPainter != null) {
-                                    Image(
-                                        painter = blurPainter,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                            }
-                        }
-
-                        for (slot in otherSlots) {
+                        for (slot in carousel.slots) {
                             key(slot.uid) {
                                 val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
                                 val slotPainters = rememberPlayerBackgroundPainters(
@@ -386,8 +325,7 @@ fun PlayerBackgroundLayers(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .graphicsLayer {
-                                                val o = carousel.offsetOf(slot)
-                                                alpha = (1f - abs(o)).coerceIn(0f, 1f)
+                                                alpha = carousel.crossfadeAlpha(slot)
                                             },
                                         contentScale = ContentScale.Crop
                                     )
@@ -473,40 +411,61 @@ fun PlayerBackgroundLayers(
                         val slotPainter = rememberAsyncImagePainter(model = slotRequest)
                         val isCurrent = slot.step == carousel.step
                         if (!(isCurrent && isCanvasActive && isCanvasReady)) {
-                            Image(
-                                painter = slotPainter,
-                                contentDescription = null,
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         val o = carousel.offsetOf(slot)
+                                        alpha = if (abs(o) >= 1f) 0f else immersiveTransitionAlpha * queueArtworkFade
                                         translationX = o * size.width
-                                        alpha = immersiveTransitionAlpha * queueArtworkFade
+                                        clip = true
                                     }
-                                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
-                                contentScale = ContentScale.Crop,
-                                alignment = Alignment.TopCenter
-                            )
+                                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
+                            ) {
+                                Image(
+                                    painter = slotPainter,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            val o = carousel.offsetOf(slot)
+                                            translationX = -o * size.width * CoverParallax
+                                        },
+                                    contentScale = ContentScale.Crop,
+                                    alignment = Alignment.TopCenter
+                                )
+                            }
                         }
                     }
                 }
 
                 if (isCanvasActive) {
-                    PlayerCanvasArtworkHost(
-                        state = state,
-                        canvasState = canvasState,
-                        immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
-                        lyricsFractionProvider = lyricsFractionProvider,
-                        queueFractionProvider = queueFractionProvider,
-                        onReadyChange = { isCanvasReady = it },
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                translationX = carousel.playingOffset * size.width
-                                alpha = (1f - abs(carousel.playingOffset)).coerceIn(0f, 1f)
+                                val o = carousel.playingOffset
+                                alpha = if (abs(o) >= 1f) 0f else (1f - abs(o)).coerceIn(0f, 1f)
+                                translationX = o * size.width
+                                clip = true
                             }
                             .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
-                    )
+                    ) {
+                        PlayerCanvasArtworkHost(
+                            state = state,
+                            canvasState = canvasState,
+                            immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
+                            lyricsFractionProvider = lyricsFractionProvider,
+                            queueFractionProvider = queueFractionProvider,
+                            onReadyChange = { isCanvasReady = it },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val o = carousel.playingOffset
+                                    translationX = -o * size.width * CoverParallax
+                                }
+                        )
+                    }
                 }
 
                 var rootBounds by remember { mutableStateOf(Rect.Zero) }
