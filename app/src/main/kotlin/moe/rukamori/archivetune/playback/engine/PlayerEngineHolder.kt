@@ -21,10 +21,14 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.CrossfadeTarget
+import moe.rukamori.archivetune.audiodsp.CustomEqualizerAudioProcessor
 import moe.rukamori.archivetune.audiodsp.DeckController
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.DualForwardingPlayer
 import moe.rukamori.archivetune.audiodsp.DualPlayerRoleHolder
+import moe.rukamori.archivetune.audiodsp.LoudnessAudioProcessor
+import moe.rukamori.archivetune.audiodsp.ReverbAudioProcessor
+import moe.rukamori.archivetune.audiodsp.SpatialAudioProcessor
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.PlaybackConstants
@@ -215,7 +219,14 @@ class PlayerEngineHolder {
             ).setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-    fun createRenderersFactory(context: Context, djFilter: DjFilterAudioProcessor) =
+    fun createRenderersFactory(
+        context: Context,
+        djFilter: DjFilterAudioProcessor,
+        customEq: CustomEqualizerAudioProcessor? = null,
+        spatial: SpatialAudioProcessor? = null,
+        reverb: ReverbAudioProcessor? = null,
+        loudness: LoudnessAudioProcessor? = null,
+    ) =
         object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
                 context: Context,
@@ -226,7 +237,15 @@ class PlayerEngineHolder {
                 .setEnableFloatOutput(false)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                 .setAudioProcessorChain(
-                    DefaultAudioSink.DefaultAudioProcessorChain(djFilter),
+                    DefaultAudioSink.DefaultAudioProcessorChain(
+                        *listOfNotNull(
+                            djFilter,
+                            customEq,
+                            spatial,
+                            reverb,
+                            loudness,
+                        ).toTypedArray(),
+                    ),
                 ).build()
         }
 

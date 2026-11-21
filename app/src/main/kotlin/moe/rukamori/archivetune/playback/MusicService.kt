@@ -8,6 +8,10 @@
 
 package moe.rukamori.archivetune.playback
 
+import moe.rukamori.archivetune.audiodsp.CustomEqualizerAudioProcessor
+import moe.rukamori.archivetune.audiodsp.LoudnessAudioProcessor
+import moe.rukamori.archivetune.audiodsp.ReverbAudioProcessor
+import moe.rukamori.archivetune.audiodsp.SpatialAudioProcessor
 import moe.rukamori.archivetune.playback.engine.ExoDeck
 import moe.rukamori.archivetune.playback.engine.ExoDeckController
 import moe.rukamori.archivetune.playback.engine.SafeTrackSelectionFactory
@@ -157,6 +161,19 @@ class MusicService :
 
     @Inject
     lateinit var sponsorBlockPlaybackController: moe.rukamori.archivetune.sponsorblock.SponsorBlockPlaybackController
+
+    @Inject
+    lateinit var equalizerService: EqualizerService
+
+    @Inject
+    lateinit var audioFxService: AudioFxService
+
+    val isEqualizerServiceActive: Boolean
+        get() = runCatching { equalizerService.isEnabled() }.getOrDefault(false)
+
+    fun releaseEqualizerService() {
+        runCatching { equalizerService.release() }
+    }
 
     internal var scopeJob = Job()
     internal var scope = CoroutineScope(Dispatchers.Main + scopeJob)
@@ -730,8 +747,23 @@ class MusicService :
 
     internal fun createCrossfadeLoadControl(): DefaultLoadControl = playerEngineHolder.createCrossfadeLoadControl()
 
-    internal fun createRenderersFactory(djFilter: DjFilterAudioProcessor) =
-        playerEngineHolder.createRenderersFactory(this, djFilter)
+    internal fun createRenderersFactory(djFilter: DjFilterAudioProcessor): androidx.media3.exoplayer.DefaultRenderersFactory {
+        val eq = CustomEqualizerAudioProcessor()
+        if (::equalizerService.isInitialized) {
+            equalizerService.addAudioProcessor(eq)
+        }
+        val spatial = if (::audioFxService.isInitialized) SpatialAudioProcessor(audioFxService) else null
+        val reverb = if (::audioFxService.isInitialized) ReverbAudioProcessor(audioFxService) else null
+        val loudness = if (::audioFxService.isInitialized) LoudnessAudioProcessor(audioFxService) else null
+        return playerEngineHolder.createRenderersFactory(
+            context = this,
+            djFilter = djFilter,
+            customEq = eq,
+            spatial = spatial,
+            reverb = reverb,
+            loudness = loudness,
+        )
+    }
 
     internal fun djFilterFor(player: ExoPlayer?): DjFilterAudioProcessor? = playerEngineHolder.djFilterFor(player)
 
