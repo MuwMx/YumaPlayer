@@ -14,6 +14,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.defaultUpdateChannel
+import moe.rukamori.archivetune.ui.screens.audiolab.AudioFxScreen
+import moe.rukamori.archivetune.ui.screens.audiolab.AudioLabEqualizerScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.AudioLabScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.stage.StageScreen
 import moe.rukamori.archivetune.ui.screens.login.LOGIN_ROUTE
@@ -82,6 +84,12 @@ internal fun NavGraphBuilder.settingsNavigationRoutes(
     }
     composable("settings/audio_lab") {
         AudioLabScreen(navController = navController)
+    }
+    composable("settings/audio_lab/equalizer") {
+        AudioLabEqualizerScreen(navController = navController)
+    }
+    composable("settings/audio_lab/fx") {
+        AudioFxScreen(navController = navController)
     }
     composable("settings/audio_lab/stage") {
         StageScreen(navController = navController)

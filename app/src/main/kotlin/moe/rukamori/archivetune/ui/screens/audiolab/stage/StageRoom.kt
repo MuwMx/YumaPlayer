@@ -16,9 +16,8 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -124,14 +123,13 @@ internal fun StageRoom(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 260.dp)
+            .aspectRatio(1.05f)
             .yumaGlassCard(shape = shape)
             .clip(shape),
     ) {
         Canvas(
             modifier = Modifier
-                .fillMaxSize()
-                .heightIn(min = 260.dp)
+                .matchParentSize()
                 .pointerInput(Unit) {
                     var lastEmptyTapMs = 0L
                     awaitEachGesture {

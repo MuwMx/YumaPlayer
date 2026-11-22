@@ -61,7 +61,7 @@ fun AudioLabScreen(
     val isPlaying = playerConnection?.isPlaying?.collectAsStateWithLifecycle()?.value ?: false
     var showResetDialog by remember { mutableStateOf(false) }
 
-    ListenToAudioTap(active = isPlaying && state.eq.enabled)
+    ListenToAudioTap(active = isPlaying)
 
     if (showResetDialog) {
         ActionPromptDialog(
@@ -125,7 +125,7 @@ fun AudioLabScreen(
                     title = stringResource(R.string.audio_lab_eq_title),
                     subtitle = if (state.eq.enabled) eqPresetName else stringResource(R.string.disabled),
                     active = state.eq.enabled,
-                    onClick = { viewModel.setEqEnabled(!state.eq.enabled) },
+                    onClick = { navController.navigate("settings/audio_lab/equalizer") },
                     modifier = Modifier.weight(1f),
                     sketch = {
                         EqualizerSketch(
@@ -138,24 +138,21 @@ fun AudioLabScreen(
                     },
                 )
 
+                val fxNames = listOfNotNull(
+                    if (state.reverb.enabled) stringResource(R.string.audio_lab_reverb_title) else null,
+                    if (state.eightD.enabled) stringResource(R.string.audio_lab_eight_d_title) else null,
+                    if (state.loudness.enabled) stringResource(R.string.audio_lab_loudness_title) else null,
+                    if (state.spatial.enabled) stringResource(R.string.audio_lab_spatial_title) else null,
+                )
                 SummarySketchCard(
-                    title = stringResource(R.string.audio_lab_title),
-                    subtitle = if (activeFxCount > 0) {
-                        "$activeFxCount · ${stringResource(R.string.enabled)}"
+                    title = stringResource(R.string.audio_lab_fx_title),
+                    subtitle = if (fxNames.isNotEmpty()) {
+                        "${fxNames.size} · ${fxNames.joinToString(", ")}"
                     } else {
                         stringResource(R.string.disabled)
                     },
                     active = activeFxCount > 0,
-                    onClick = {
-                        if (activeFxCount > 0) {
-                            viewModel.updateSpatial { it.copy(enabled = false) }
-                            viewModel.updateReverb { it.copy(enabled = false) }
-                            viewModel.updateLoudness { it.copy(enabled = false) }
-                            viewModel.updateEightD { it.copy(enabled = false) }
-                        } else {
-                            viewModel.updateSpatial { it.copy(enabled = true) }
-                        }
-                    },
+                    onClick = { navController.navigate("settings/audio_lab/fx") },
                     modifier = Modifier.weight(1f),
                     sketch = {
                         FxSketch(
@@ -169,45 +166,6 @@ fun AudioLabScreen(
                 )
             }
         }
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
-        AudioLabEqSection(
-            eq = state.eq,
-            onEnabledChange = viewModel::setEqEnabled,
-            onPresetSelected = viewModel::applyEqPreset,
-            onPreampChange = viewModel::setEqPreamp,
-            onBandGainChange = viewModel::setEqBandGain,
-            onReset = viewModel::resetEq,
-        )
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
-        AudioLabSpatialSection(
-            spatial = state.spatial,
-            onUpdate = viewModel::updateSpatial,
-        )
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
-        AudioLabReverbSection(
-            reverb = state.reverb,
-            onUpdate = viewModel::updateReverb,
-        )
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
-        AudioLabLoudnessSection(
-            loudness = state.loudness,
-            onUpdate = viewModel::updateLoudness,
-        )
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
-        AudioLabEightDSection(
-            eightD = state.eightD,
-            onUpdate = viewModel::updateEightD,
-        )
     }
 }
 

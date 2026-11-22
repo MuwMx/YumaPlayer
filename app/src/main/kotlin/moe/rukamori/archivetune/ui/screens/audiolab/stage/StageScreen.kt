@@ -79,13 +79,6 @@ fun StageScreen(
 
         Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
 
-        StagePresetsPanel(
-            selectedPresetId = stage.presetId,
-            onPresetSelected = viewModel::applyStagePreset,
-        )
-
-        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
-
         StageControlsPanel(
             stage = stage,
             selectedKey = selectedKey,
@@ -98,6 +91,13 @@ fun StageScreen(
                     selectedKey = ListenerKey
                 }
             },
+        )
+
+        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
+
+        StagePresetsPanel(
+            selectedPresetId = stage.presetId,
+            onPresetSelected = viewModel::applyStagePreset,
         )
 
         Spacer(Modifier.height(SettingsDimensions.SectionSpacing))

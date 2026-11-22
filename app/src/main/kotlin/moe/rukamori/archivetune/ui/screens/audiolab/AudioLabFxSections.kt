@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -113,6 +114,7 @@ internal fun AudioLabEqSection(
 @Composable
 internal fun AudioLabSpatialSection(
     spatial: SpatialParams,
+    isPlaying: Boolean,
     onUpdate: ((SpatialParams) -> SpatialParams) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -120,6 +122,11 @@ internal fun AudioLabSpatialSection(
         title = stringResource(R.string.audio_lab_spatial_title),
         modifier = modifier.animateContentSize(SettingsAnimations.resizeSpring()),
     ) {
+        item {
+            FxPictureSegment {
+                SpatialPicture(spatial = spatial, isPlaying = isPlaying)
+            }
+        }
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.audio_lab_spatial_enabled)) },
@@ -199,6 +206,7 @@ internal fun AudioLabSpatialSection(
 @Composable
 internal fun AudioLabReverbSection(
     reverb: ReverbParams,
+    isPlaying: Boolean,
     onUpdate: ((ReverbParams) -> ReverbParams) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -206,6 +214,11 @@ internal fun AudioLabReverbSection(
         title = stringResource(R.string.audio_lab_reverb_title),
         modifier = modifier.animateContentSize(SettingsAnimations.resizeSpring()),
     ) {
+        item {
+            FxPictureSegment {
+                ReverbPicture(reverb = reverb, isPlaying = isPlaying)
+            }
+        }
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.audio_lab_reverb_enabled)) },
@@ -275,6 +288,8 @@ internal fun AudioLabReverbSection(
 @Composable
 internal fun AudioLabLoudnessSection(
     loudness: LoudnessParams,
+    reductionDbProvider: () -> Float,
+    isPlaying: Boolean,
     onUpdate: ((LoudnessParams) -> LoudnessParams) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -282,6 +297,15 @@ internal fun AudioLabLoudnessSection(
         title = stringResource(R.string.audio_lab_loudness_title),
         modifier = modifier.animateContentSize(SettingsAnimations.resizeSpring()),
     ) {
+        item {
+            FxPictureSegment {
+                LoudnessPicture(
+                    loudness = loudness,
+                    reductionDbProvider = reductionDbProvider,
+                    isPlaying = isPlaying,
+                )
+            }
+        }
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.audio_lab_loudness_enabled)) },
@@ -315,6 +339,7 @@ internal fun AudioLabLoudnessSection(
 @Composable
 internal fun AudioLabEightDSection(
     eightD: EightDParams,
+    isPlaying: Boolean,
     onUpdate: ((EightDParams) -> EightDParams) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -322,6 +347,11 @@ internal fun AudioLabEightDSection(
         title = stringResource(R.string.audio_lab_eight_d_title),
         modifier = modifier.animateContentSize(SettingsAnimations.resizeSpring()),
     ) {
+        item {
+            FxPictureSegment {
+                EightDPicture(eightD = eightD, isPlaying = isPlaying)
+            }
+        }
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.audio_lab_eight_d_enabled)) },
@@ -359,6 +389,23 @@ internal fun AudioLabEightDSection(
             )
         }
     }
+}
+
+@Composable
+private fun FxPictureSegment(
+    content: @Composable () -> Unit,
+) {
+    PreferenceEntry(
+        title = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(132.dp),
+            ) {
+                content()
+            }
+        },
+    )
 }
 
 @Composable

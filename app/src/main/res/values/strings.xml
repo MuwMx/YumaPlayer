@@ -1988,6 +1988,7 @@
     <!-- AudioLab & Stage DSP -->
     <string name="audio_lab_title">Audio Lab</string>
     <string name="audio_lab_subtitle">Equalizer, spatial audio &amp; DSP effects</string>
+    <string name="audio_lab_fx_title">Audio FX</string>
     <string name="audio_lab_reset_all">Reset all effects</string>
     <string name="audio_lab_reset_all_confirm">Reset all Audio Lab effects and Stage settings to defaults?</string>
 
