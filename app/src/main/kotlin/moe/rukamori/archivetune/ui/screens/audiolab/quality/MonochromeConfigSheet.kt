@@ -95,6 +95,7 @@ internal fun MonochromeConfigSheet(
 
     QualityConfigSheetShell(
         title = stringResource(R.string.monochrome_config_title),
+        subtitle = stringResource(R.string.monochrome_config_subtitle),
         onDismiss = onDismiss,
     ) {
         PreferenceGroup(horizontalPadding = 0.dp) {

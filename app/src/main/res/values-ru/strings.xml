@@ -1674,4 +1674,6 @@
     <string name="quick_picks_hero_rolling">Выбираем…</string>
     <string name="quick_picks_hero_roll_again">Ещё раз</string>
     <string name="quick_picks_hero_roll_result">Твой трек</string>
+    <string name="monochrome_config_subtitle">Поддерживает только стриминг FLAC. Скачивание файлов FLAC требует Qobuz.</string>
+    <string name="monochrome_streaming_notice">Monochrome поддерживает только стриминг FLAC. Для скачивания файлов FLAC необходимо настроить Qobuz.</string>
 </resources>

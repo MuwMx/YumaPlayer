@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import kotlinx.coroutines.CoroutineScope
-import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.PlaylistSong
@@ -30,6 +29,7 @@ import moe.rukamori.archivetune.ui.component.BottomSheetPageState
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistViewModel
+import moe.rukamori.archivetune.utils.rememberCanDownloadFlac
 
 @Composable
 internal fun SongMenuContent(
@@ -43,7 +43,7 @@ internal fun SongMenuContent(
     songPin: SpeedDialPin,
     speedDialPins: List<SpeedDialPin>,
     download: Download?,
-    playbackSource: PlaybackSource,
+    canDownloadFlac: Boolean = rememberCanDownloadFlac(),
     externalDownloaderEnabled: Boolean,
     externalDownloaderPackage: String,
     rotationAnimation: Float,
@@ -117,7 +117,7 @@ internal fun SongMenuContent(
                         (if (playlistSong != null) 1 else 0) +
                         (if (isFromCache) 1 else 0) +
                         (if (!isLocalSong) {
-                            1 + (if (playbackSource == PlaybackSource.FLAC) 1 else 0) + (if (externalDownloaderEnabled) 1 else 0)
+                            1 + (if (canDownloadFlac) 1 else 0) + (if (externalDownloaderEnabled) 1 else 0)
                         } else 0)
 
                 val eventIndex = 0
@@ -125,7 +125,7 @@ internal fun SongMenuContent(
                 val cacheIndex = (if (event != null) 1 else 0) + (if (playlistSong != null) 1 else 0)
                 val downloadIndex = cacheIndex + (if (isFromCache) 1 else 0)
                 val flacIndex = downloadIndex + 1
-                val externalDownloaderIndex = flacIndex + (if (playbackSource == PlaybackSource.FLAC) 1 else 0)
+                val externalDownloaderIndex = flacIndex + (if (canDownloadFlac) 1 else 0)
 
                 MenuSurfaceSection {
                     if (event != null) {
@@ -165,7 +165,7 @@ internal fun SongMenuContent(
                         SongMenuDownloadItems(
                             song = song,
                             download = download,
-                            playbackSource = playbackSource,
+                            canDownloadFlac = canDownloadFlac,
                             externalDownloaderEnabled = externalDownloaderEnabled,
                             externalDownloaderPackage = externalDownloaderPackage,
                             downloadIndex = downloadIndex,

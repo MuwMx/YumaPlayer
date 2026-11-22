@@ -26,6 +26,7 @@ import moe.rukamori.archivetune.playback.ExoDownloadService
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
+import moe.rukamori.archivetune.utils.rememberCanDownloadFlac
 
 @Composable
 fun DownloadMenuContent(
@@ -37,10 +38,6 @@ fun DownloadMenuContent(
         .getDownload(state.trackUrl)
         .collectAsState(initial = null)
 
-    val (playbackSource) = moe.rukamori.archivetune.utils.rememberEnumPreference(
-        moe.rukamori.archivetune.constants.PlaybackSourceKey,
-        defaultValue = moe.rukamori.archivetune.constants.PlaybackSource.YT_MUSIC
-    )
     val (externalDownloaderEnabled) = moe.rukamori.archivetune.utils.rememberPreference(
         moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey,
         defaultValue = false
@@ -50,7 +47,7 @@ fun DownloadMenuContent(
         defaultValue = ""
     )
 
-    val hasFlac = playbackSource == moe.rukamori.archivetune.constants.PlaybackSource.FLAC
+    val hasFlac = rememberCanDownloadFlac()
     val totalRows = 1 + (if (hasFlac) 1 else 0) + (if (externalDownloaderEnabled) 1 else 0)
     var currentRow = 0
 

@@ -2122,6 +2122,8 @@
     <string name="provider_status_qobuz_unconfigured">Not configured</string>
     <string name="provider_status_yt_fallback">Opus / AAC · Fallback</string>
     <string name="monochrome_config_title">Monochrome</string>
+    <string name="monochrome_config_subtitle">Supports FLAC streaming only. FLAC file downloads require Qobuz.</string>
+    <string name="monochrome_streaming_notice">Monochrome supports FLAC streaming only. Downloading FLAC files requires configuring Qobuz.</string>
     <string name="monochrome_enable">Enable Monochrome</string>
     <string name="monochrome_server_test">Test</string>
     <string name="server_status_checking">Checking…</string>

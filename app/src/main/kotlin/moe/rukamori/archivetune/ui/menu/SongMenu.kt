@@ -38,8 +38,6 @@ import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
 import moe.rukamori.archivetune.constants.LikeSource
-import moe.rukamori.archivetune.constants.PlaybackSource
-import moe.rukamori.archivetune.constants.PlaybackSourceKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
@@ -57,7 +55,7 @@ import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
-import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.utils.rememberCanDownloadFlac
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistViewModel
 
@@ -94,7 +92,7 @@ fun SongMenu(
     val (artistSeparators) = rememberPreference(ArtistSeparatorsKey, defaultValue = ",;/&")
     val (externalDownloaderEnabled) = rememberPreference(ExternalDownloaderEnabledKey, defaultValue = false)
     val (externalDownloaderPackage) = rememberPreference(ExternalDownloaderPackageKey, defaultValue = "")
-    val (playbackSource) = rememberEnumPreference(PlaybackSourceKey, defaultValue = PlaybackSource.YT_MUSIC)
+    val canDownloadFlac = rememberCanDownloadFlac()
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
     val speedDialPins = remember(speedDialSongIds) { parseSpeedDialPins(speedDialSongIds) }
     val songPin = remember(song.id) { SpeedDialPin(type = SpeedDialPinType.SONG, id = song.id) }
@@ -197,7 +195,7 @@ fun SongMenu(
         songPin = songPin,
         speedDialPins = speedDialPins,
         download = download,
-        playbackSource = playbackSource,
+        canDownloadFlac = canDownloadFlac,
         externalDownloaderEnabled = externalDownloaderEnabled,
         externalDownloaderPackage = externalDownloaderPackage,
         rotationAnimation = rotationAnimation,

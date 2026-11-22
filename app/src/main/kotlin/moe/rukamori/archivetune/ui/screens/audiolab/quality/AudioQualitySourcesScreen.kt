@@ -178,16 +178,6 @@ fun AudioQualitySourcesScreen(
                 vertical = SettingsDimensions.SectionHeaderBottomPadding,
             ),
         )
-        PreferenceGroup {
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.addon_add_title)) },
-                    description = stringResource(R.string.addon_add_subtitle),
-                    icon = { Icon(painterResource(R.drawable.add), null) },
-                    onClick = { activeSheet = SHEET_ADD_ADDON },
-                )
-            }
-        }
         Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
 
         PreferenceGroup(title = stringResource(R.string.quality_settings_section)) {
@@ -247,6 +237,17 @@ fun AudioQualitySourcesScreen(
                     )
                 }
             }
+        }
+        if (losslessEnabled && !(enableQobuz && qobuzReady)) {
+            Text(
+                text = stringResource(R.string.monochrome_streaming_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    horizontal = SettingsDimensions.SectionHeaderHorizontalPadding,
+                    vertical = SettingsDimensions.SectionHeaderBottomPadding,
+                ),
+            )
         }
     }
 }

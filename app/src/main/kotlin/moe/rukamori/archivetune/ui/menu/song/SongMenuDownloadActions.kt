@@ -31,7 +31,6 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.download.FlacDownloader
 import moe.rukamori.archivetune.playback.ExoDownloadService
@@ -42,7 +41,7 @@ import moe.rukamori.archivetune.ui.component.NewMenuItem
 internal fun SongMenuDownloadItems(
     song: Song,
     download: Download?,
-    playbackSource: PlaybackSource,
+    canDownloadFlac: Boolean,
     externalDownloaderEnabled: Boolean,
     externalDownloaderPackage: String,
     downloadIndex: Int,
@@ -131,7 +130,7 @@ internal fun SongMenuDownloadItems(
         }
     }
 
-    if (playbackSource == PlaybackSource.FLAC) {
+    if (canDownloadFlac) {
         val flacWorkInfos by WorkManager.getInstance(context)
             .getWorkInfosForUniqueWorkFlow("flac_download_${song.id}")
             .collectAsState(emptyList())
