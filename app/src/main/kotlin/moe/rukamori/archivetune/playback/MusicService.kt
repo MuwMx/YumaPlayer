@@ -9,9 +9,11 @@
 package moe.rukamori.archivetune.playback
 
 import moe.rukamori.archivetune.audiodsp.CustomEqualizerAudioProcessor
+import moe.rukamori.archivetune.audiodsp.EightDAudioProcessor
 import moe.rukamori.archivetune.audiodsp.LoudnessAudioProcessor
 import moe.rukamori.archivetune.audiodsp.ReverbAudioProcessor
 import moe.rukamori.archivetune.audiodsp.SpatialAudioProcessor
+import moe.rukamori.archivetune.audiodsp.StageAudioProcessor
 import moe.rukamori.archivetune.playback.engine.ExoDeck
 import moe.rukamori.archivetune.playback.engine.ExoDeckController
 import moe.rukamori.archivetune.playback.engine.SafeTrackSelectionFactory
@@ -167,6 +169,9 @@ class MusicService :
 
     @Inject
     lateinit var audioFxService: AudioFxService
+
+    @Inject
+    lateinit var audioLabStore: AudioLabStore
 
     val isEqualizerServiceActive: Boolean
         get() = runCatching { equalizerService.isEnabled() }.getOrDefault(false)
@@ -636,6 +641,12 @@ class MusicService :
             isBecomingNoisyRegistered = true
         }
 
+        scope.launch {
+            equalizerService.isActiveFlow.collect {
+                applyEqSettings(desiredEqSettings.value)
+            }
+        }
+
         serviceLifecycle.onCreate()
     }
     internal fun ensureScopesActive() {
@@ -752,16 +763,20 @@ class MusicService :
         if (::equalizerService.isInitialized) {
             equalizerService.addAudioProcessor(eq)
         }
+        val stage = if (::audioFxService.isInitialized) StageAudioProcessor(audioFxService) else null
         val spatial = if (::audioFxService.isInitialized) SpatialAudioProcessor(audioFxService) else null
         val reverb = if (::audioFxService.isInitialized) ReverbAudioProcessor(audioFxService) else null
         val loudness = if (::audioFxService.isInitialized) LoudnessAudioProcessor(audioFxService) else null
+        val eightD = if (::audioFxService.isInitialized) EightDAudioProcessor(audioFxService) else null
         return playerEngineHolder.createRenderersFactory(
             context = this,
             djFilter = djFilter,
             customEq = eq,
+            stage = stage,
             spatial = spatial,
             reverb = reverb,
             loudness = loudness,
+            eightD = eightD,
         )
     }
 

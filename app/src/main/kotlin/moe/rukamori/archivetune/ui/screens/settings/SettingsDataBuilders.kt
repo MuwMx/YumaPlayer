@@ -103,6 +103,14 @@ fun buildSettingsGroups(
                             onClick = { navController.navigate("settings/player") },
                         ),
                         SettingsItem(
+                            key = "audio_lab",
+                            icon = painterResource(R.drawable.equalizer),
+                            title = stringResource(R.string.audio_lab_title),
+                            subtitle = stringResource(R.string.audio_lab_subtitle),
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            onClick = { navController.navigate("settings/audio_lab") },
+                        ),
+                        SettingsItem(
                             key = "content",
                             icon = painterResource(R.drawable.language),
                             title = stringResource(R.string.content),

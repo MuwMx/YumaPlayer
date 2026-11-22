@@ -1984,4 +1984,111 @@
     <string name="discord_button_default_listen_youtube_music">Listen on YouTube Music</string>
     <string name="discord_button_default_go_to_yuma">Go to Yuma</string>
     <string name="search_section_other">Other</string>
+
+    <!-- AudioLab & Stage DSP -->
+    <string name="audio_lab_title">Audio Lab</string>
+    <string name="audio_lab_subtitle">Equalizer, spatial audio &amp; DSP effects</string>
+    <string name="audio_lab_reset_all">Reset all effects</string>
+    <string name="audio_lab_reset_all_confirm">Reset all Audio Lab effects and Stage settings to defaults?</string>
+
+    <string name="audio_lab_eq_title">Equalizer</string>
+    <string name="audio_lab_eq_subtitle">10-band parametric DSP equalizer</string>
+    <string name="audio_lab_eq_enabled">Enable Equalizer</string>
+    <string name="audio_lab_eq_preamp">Preamp</string>
+    <string name="audio_lab_eq_preset">Preset</string>
+    <string name="audio_lab_eq_reset">Reset EQ</string>
+    <string name="audio_lab_eq_status_dsp_active">DSP Equalizer is active (system EQ bypassed)</string>
+    <string name="audio_lab_eq_status_system_active">System Equalizer is active</string>
+
+    <string name="audio_lab_preset_flat">Flat</string>
+    <string name="audio_lab_preset_bass_boost">Bass Boost</string>
+    <string name="audio_lab_preset_vocal">Vocal</string>
+    <string name="audio_lab_preset_treble_boost">Treble Boost</string>
+    <string name="audio_lab_preset_warm">Warm</string>
+    <string name="audio_lab_preset_studio">Studio</string>
+    <string name="audio_lab_preset_club">Club</string>
+    <string name="audio_lab_preset_acoustic">Acoustic</string>
+
+    <string name="audio_lab_reverb_title">Reverb</string>
+    <string name="audio_lab_reverb_subtitle">Acoustic space simulation</string>
+    <string name="audio_lab_reverb_enabled">Enable Reverb</string>
+    <string name="audio_lab_reverb_mix">Mix</string>
+    <string name="audio_lab_reverb_room_size">Room size</string>
+    <string name="audio_lab_reverb_damping">Damping</string>
+    <string name="audio_lab_reverb_wet">Wet</string>
+    <string name="audio_lab_reverb_dry">Dry</string>
+    <string name="audio_lab_reverb_width">Stereo width</string>
+    <string name="audio_lab_reverb_predelay">Pre-delay</string>
+    <string name="audio_lab_reverb_low_cut">Low cut</string>
+
+    <string name="audio_lab_loudness_title">Loudness &amp; Dynamics</string>
+    <string name="audio_lab_loudness_subtitle">Adaptive gain &amp; dynamic range compression</string>
+    <string name="audio_lab_loudness_enabled">Enable Loudness</string>
+    <string name="audio_lab_loudness_boost">Boost</string>
+    <string name="audio_lab_loudness_compression">Compression</string>
+    <string name="audio_lab_loudness_reduction">Gain reduction</string>
+
+    <string name="audio_lab_spatial_title">Spatial Audio</string>
+    <string name="audio_lab_spatial_subtitle">Crossfeed and speaker virtualizer</string>
+    <string name="audio_lab_spatial_enabled">Enable Spatial Audio</string>
+    <string name="audio_lab_spatial_mode">Mode</string>
+    <string name="audio_lab_spatial_mode_crossfeed">Crossfeed</string>
+    <string name="audio_lab_spatial_mode_speakers">Speakers</string>
+    <string name="audio_lab_spatial_cutoff">Cutoff frequency</string>
+    <string name="audio_lab_spatial_feed">Feed level</string>
+    <string name="audio_lab_spatial_speaker_angle">Speaker angle</string>
+    <string name="audio_lab_spatial_amount">Amount</string>
+    <string name="audio_lab_spatial_surround">Virtual surround</string>
+    <string name="audio_lab_spatial_mono">Mono downmix</string>
+
+    <string name="audio_lab_eight_d_title">8D Audio</string>
+    <string name="audio_lab_eight_d_subtitle">Binaural orbital rotation effect</string>
+    <string name="audio_lab_eight_d_enabled">Enable 8D Audio</string>
+    <string name="audio_lab_eight_d_speed">Rotation speed</string>
+    <string name="audio_lab_eight_d_depth">Orbit depth</string>
+    <string name="audio_lab_eight_d_reverb">Reverb level</string>
+
+    <string name="stage_title">Stage</string>
+    <string name="stage_subtitle">3D spatial audio &amp; room acoustic engine</string>
+    <string name="stage_enabled">Enable Stage Engine</string>
+    <string name="stage_preset">Preset</string>
+    <string name="stage_room_size">Room size</string>
+    <string name="stage_walls">Wall material</string>
+    <string name="stage_walls_soft">Soft</string>
+    <string name="stage_walls_wood">Wood</string>
+    <string name="stage_walls_concrete">Concrete</string>
+    <string name="stage_room_amount">Room reflections</string>
+    <string name="stage_master_level">Master output</string>
+    <string name="stage_speakers_mode">Speaker output</string>
+    <string name="stage_speakers_off">Headphones only</string>
+    <string name="stage_speakers_stereo">Stereo blend</string>
+    <string name="stage_speakers_keep_3d">Full 3D Stage</string>
+
+    <string name="stage_source_vocal">Vocal</string>
+    <string name="stage_source_center">Center</string>
+    <string name="stage_source_left">Left</string>
+    <string name="stage_source_right">Right</string>
+    <string name="stage_source_ambience">Ambience</string>
+    <string name="stage_source_sub">Subwoofer</string>
+
+    <string name="stage_preset_studio">Studio</string>
+    <string name="stage_preset_living">Living Room</string>
+    <string name="stage_preset_front_row">Front Row</string>
+    <string name="stage_preset_on_stage">On Stage</string>
+    <string name="stage_preset_around">Surround Orbit</string>
+    <string name="stage_preset_hall">Concert Hall</string>
+
+    <string name="stage_label_you">You</string>
+    <string name="stage_action_mute">Mute</string>
+    <string name="stage_action_unmute">Unmute</string>
+    <string name="stage_action_solo">Solo</string>
+    <string name="stage_action_unsolo">Unsolo</string>
+    <string name="stage_action_remove">Remove</string>
+    <string name="stage_action_add">Add source</string>
+    <string name="stage_action_reset">Reset stage</string>
+    <string name="stage_max_copies_reached">Maximum number of copies reached</string>
+    <string name="stage_min_copies_reached">At least one source must remain</string>
+    <string name="stage_gesture_hint">Drag sources to move in 3D space · Pinch to zoom · Rotate listener</string>
+    <string name="stage_object_level">Level</string>
+    <string name="stage_object_width">Width</string>
 </resources>

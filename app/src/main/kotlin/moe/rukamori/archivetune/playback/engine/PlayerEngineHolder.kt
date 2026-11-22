@@ -26,9 +26,11 @@ import moe.rukamori.archivetune.audiodsp.DeckController
 import moe.rukamori.archivetune.audiodsp.DjFilterAudioProcessor
 import moe.rukamori.archivetune.audiodsp.DualForwardingPlayer
 import moe.rukamori.archivetune.audiodsp.DualPlayerRoleHolder
+import moe.rukamori.archivetune.audiodsp.EightDAudioProcessor
 import moe.rukamori.archivetune.audiodsp.LoudnessAudioProcessor
 import moe.rukamori.archivetune.audiodsp.ReverbAudioProcessor
 import moe.rukamori.archivetune.audiodsp.SpatialAudioProcessor
+import moe.rukamori.archivetune.audiodsp.StageAudioProcessor
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.playback.PlaybackConstants
@@ -223,9 +225,11 @@ class PlayerEngineHolder {
         context: Context,
         djFilter: DjFilterAudioProcessor,
         customEq: CustomEqualizerAudioProcessor? = null,
+        stage: StageAudioProcessor? = null,
         spatial: SpatialAudioProcessor? = null,
         reverb: ReverbAudioProcessor? = null,
         loudness: LoudnessAudioProcessor? = null,
+        eightD: EightDAudioProcessor? = null,
     ) =
         object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
@@ -241,9 +245,11 @@ class PlayerEngineHolder {
                         *listOfNotNull(
                             djFilter,
                             customEq,
+                            stage,
                             spatial,
                             reverb,
                             loudness,
+                            eightD,
                         ).toTypedArray(),
                     ),
                 ).build()

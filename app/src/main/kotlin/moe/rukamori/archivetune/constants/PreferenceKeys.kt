@@ -320,6 +320,7 @@ val EqualizerVirtualizerEnabledKey = booleanPreferencesKey("equalizerVirtualizer
 val EqualizerVirtualizerStrengthKey = intPreferencesKey("equalizerVirtualizerStrength")
 val EqualizerSelectedProfileIdKey = stringPreferencesKey("equalizerSelectedProfileId")
 val EqualizerCustomProfilesJsonKey = stringPreferencesKey("equalizerCustomProfilesJson")
+val AudioLabStateJsonKey = stringPreferencesKey("audioLabStateJson")
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
