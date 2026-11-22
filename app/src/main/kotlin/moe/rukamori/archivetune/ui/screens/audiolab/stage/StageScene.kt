@@ -6,13 +6,16 @@
 
 package moe.rukamori.archivetune.ui.screens.audiolab.stage
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
 import moe.rukamori.archivetune.audiodsp.StageBox
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
-import kotlin.math.tan
+import kotlin.math.sqrt
 
 const val DefaultCameraYaw = -28f
 const val DefaultCameraPitch = 24f
@@ -24,7 +27,9 @@ data class ProjectedPoint(
     val y: Float,
     val depth: Float,
     val scale: Float,
-)
+) {
+    val point: Offset get() = Offset(x, y)
+}
 
 class StageView(
     val size: IntSize,
@@ -32,106 +37,76 @@ class StageView(
     yawDeg: Float,
     pitchDeg: Float,
 ) {
+    private val unit = 1f / maxOf(box.width, box.depth, box.height).coerceAtLeast(1f) * 2f
+    private val halfX = box.width * 0.5f * unit
+    private val halfY = box.height * 0.5f * unit
+    private val halfZ = box.depth * 0.5f * unit
+
     private val yaw = yawDeg * (PI.toFloat() / 180f)
     private val pitch = pitchDeg * (PI.toFloat() / 180f)
 
-    private val sinY = sin(yaw)
-    private val cosY = cos(yaw)
-    private val sinP = sin(pitch)
-    private val cosP = cos(pitch)
+    private val yawCos = cos(yaw)
+    private val yawSin = sin(yaw)
+    private val pitchCos = cos(pitch)
+    private val pitchSin = sin(pitch)
 
-    private val halfW = box.width * 0.5f
-    private val halfD = box.depth * 0.5f
-    private val centerY = box.height * 0.38f
+    private val center = Offset(size.width * 0.5f, size.height * 0.5f)
 
-    private val maxSpan = maxOf(box.width, box.depth, box.height * 1.4f).coerceAtLeast(1f)
-    private val camDist = maxSpan * CameraDistance * 0.45f
-    private val fovRad = 46f * (PI.toFloat() / 180f)
-    private val focal = (minOf(size.width, size.height).coerceAtLeast(1) * 0.5f) / tan(fovRad * 0.5f)
-
-    private val camX = camDist * cosP * sinY
-    private val camY = centerY + camDist * sinP
-    private val camZ = -camDist * cosP * cosY
-
-    private val fwdX: Float
-    private val fwdY: Float
-    private val fwdZ: Float
-
-    private val rightX: Float
-    private val rightZ: Float
-
-    private val upX: Float
-    private val upY: Float
-    private val upZ: Float
-
-    init {
-        val dx = -camX
-        val dy = centerY - camY
-        val dz = -camZ
-        val len = hypot(hypot(dx, dy), dz).coerceAtLeast(1e-5f)
-        fwdX = dx / len
-        fwdY = dy / len
-        fwdZ = dz / len
-
-        val rx = -fwdZ
-        val rz = fwdX
-        val rLen = hypot(rx, rz).coerceAtLeast(1e-5f)
-        rightX = rx / rLen
-        rightZ = rz / rLen
-
-        upX = rightZ * fwdY
-        upY = rightZ * fwdX - rightX * fwdZ
-        upZ = -rightX * fwdY
+    private val focal: Float = run {
+        val radius = sqrt(halfX * halfX + halfY * halfY + halfZ * halfZ).coerceAtLeast(0.1f)
+        val minDim = min(size.width, size.height).coerceAtLeast(1)
+        val distSq = (CameraDistance * CameraDistance - radius * radius).coerceAtLeast(0.25f)
+        minDim * 0.5f * 1.08f * sqrt(distSq) / radius
     }
 
-    fun worldX(nx: Float): Float = nx * halfW
-    fun worldY(ny: Float): Float = ny * box.height
-    fun worldZ(nz: Float): Float = nz * halfD
+    val floorSquash: Float = abs(pitchSin)
+
+    fun worldX(nx: Float): Float = nx * halfX
+    fun worldY(ny: Float): Float = (ny - 0.5f) * 2f * halfY
+    fun worldZ(nz: Float): Float = nz * halfZ
 
     fun projectWorld(wx: Float, wy: Float, wz: Float): ProjectedPoint {
-        val vx = wx - camX
-        val vy = wy - camY
-        val vz = wz - camZ
-
-        val cx = vx * rightX + vz * rightZ
-        val cy = vx * upX + vy * upY + vz * upZ
-        val cz = (vx * fwdX + vy * fwdY + vz * fwdZ).coerceAtLeast(0.15f)
-
-        val scale = focal / cz
+        val x1 = wx * yawCos + wz * yawSin
+        val z1 = -wx * yawSin + wz * yawCos
+        val y2 = wy * pitchCos + z1 * pitchSin
+        val z2 = -wy * pitchSin + z1 * pitchCos
+        val depth = (z2 + CameraDistance).coerceAtLeast(0.15f)
+        val k = focal / depth
         return ProjectedPoint(
-            x = size.width * 0.5f + cx * scale,
-            y = size.height * 0.5f - cy * scale,
-            depth = cz,
-            scale = scale,
+            x = center.x + x1 * k,
+            y = center.y - y2 * k,
+            depth = depth,
+            scale = CameraDistance / depth,
         )
     }
 
     fun projectNormalized(nx: Float, ny: Float, nz: Float): ProjectedPoint =
         projectWorld(worldX(nx), worldY(ny), worldZ(nz))
 
-    fun pixels(meters: Float, depth: Float): Float =
-        meters * (focal / depth.coerceAtLeast(0.15f))
+    fun pixels(at: ProjectedPoint, worldSize: Float): Float =
+        focal * worldSize / at.depth
 
-    fun heightPixels(depth: Float): Float =
-        pixels(box.height, depth)
+    fun heightPixels(nx: Float, ny: Float, nz: Float): Float {
+        val a = projectNormalized(nx, ny, nz).point
+        val b = projectNormalized(nx, ny + 0.5f, nz).point
+        return max(1f, (a - b).getDistance() * 2f)
+    }
 
-    fun onLevel(px: Float, py: Float, fixedNy: Float): Pair<Float, Float> {
-        val sx = (px - size.width * 0.5f) / focal
-        val sy = -(py - size.height * 0.5f) / focal
+    fun onLevel(px: Float, py: Float, fixedNy: Float): Pair<Float, Float>? {
+        val planeY = worldY(fixedNy)
+        val eye = toWorld(0f, 0f, -CameraDistance)
+        val dir = toWorld((px - center.x) / focal, -(py - center.y) / focal, 1f)
+        if (abs(dir[1]) < 1e-4f) return null
+        val t = (planeY - eye[1]) / dir[1]
+        if (t <= 0f) return null
+        return (eye[0] + dir[0] * t) / halfX to (eye[2] + dir[2] * t) / halfZ
+    }
 
-        val dirX = fwdX + sx * rightX + sy * upX
-        val dirY = fwdY + sy * upY
-        val dirZ = fwdZ + sx * rightZ + sy * upZ
-
-        val targetY = worldY(fixedNy)
-        val t = if (kotlin.math.abs(dirY) > 1e-4f) {
-            ((targetY - camY) / dirY).coerceIn(0.2f, camDist * 4f)
-        } else {
-            camDist
-        }
-
-        val wx = camX + dirX * t
-        val wz = camZ + dirZ * t
-        return (wx / halfW).coerceIn(-1f, 1f) to (wz / halfD).coerceIn(-1f, 1f)
+    fun toWorld(cx: Float, cy: Float, cz: Float): FloatArray {
+        val y1 = cy * pitchCos - cz * pitchSin
+        val z1 = cy * pitchSin + cz * pitchCos
+        val wx = cx * yawCos - z1 * yawSin
+        val wz = cx * yawSin + z1 * yawCos
+        return floatArrayOf(wx, y1, wz)
     }
 }

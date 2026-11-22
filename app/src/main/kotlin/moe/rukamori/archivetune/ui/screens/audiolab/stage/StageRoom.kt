@@ -6,6 +6,9 @@
 
 package moe.rukamori.archivetune.ui.screens.audiolab.stage
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -35,19 +38,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.audiodsp.StageSettings
+import moe.rukamori.archivetune.audiodsp.StageSource
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import kotlin.math.hypot
+import kotlin.math.sqrt
+
+private class LastStageFrame {
+    var view: StageView? = null
+}
 
 @Composable
 internal fun StageRoom(
@@ -65,12 +78,19 @@ internal fun StageRoom(
     val palette = rememberStageCanvasPalette()
     val density = LocalDensity.current
     val hitThresholdPx = remember(density) { with(density) { 28.dp.toPx() } }
-    val tapSlopPx = remember(density) { with(density) { 8.dp.toPx() } }
 
     val yawState = remember { mutableFloatStateOf(DefaultCameraYaw) }
     val pitchState = remember { mutableFloatStateOf(DefaultCameraPitch) }
     val frameTick = remember { mutableFloatStateOf(0f) }
     val smoothedLevels = remember { FloatArray(6) }
+    val lastFrame = remember { LastStageFrame() }
+
+    val on by animateFloatAsState(
+        targetValue = if (stage.enabled) 1f else 0f,
+        animationSpec = if (animationsDisabled) snap() else tween(400),
+        label = "stageOn",
+    )
+    val labels = rememberStageLabels(stage)
 
     val currentStage by rememberUpdatedState(stage)
     val currentSelected by rememberUpdatedState(selectedKey)
@@ -90,13 +110,9 @@ internal fun StageRoom(
             withFrameNanos { now ->
                 val raw = stageLevelsProvider()
                 for (i in smoothedLevels.indices) {
-                    val target = raw.getOrElse(i) { 0f }.coerceIn(0f, 1f)
+                    val target = sqrt(raw.getOrElse(i) { 0f }.coerceIn(0f, 1f))
                     val cur = smoothedLevels[i]
-                    smoothedLevels[i] = if (target > cur) {
-                        cur + (target - cur) * 0.45f
-                    } else {
-                        (cur * 0.88f).coerceAtLeast(target)
-                    }
+                    smoothedLevels[i] += (target - cur) * if (target > cur) 0.45f else 0.12f
                 }
                 frameTick.floatValue = (now - startNanos) / 1_000_000_000f
             }
@@ -120,97 +136,97 @@ internal fun StageRoom(
                     var lastEmptyTapMs = 0L
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        if (size.width <= 0 || size.height <= 0) return@awaitEachGesture
-
+                        val view = lastFrame.view ?: return@awaitEachGesture
                         val st = currentStage
-                        val view = StageView(
-                            size = IntSize(size.width, size.height),
-                            box = st.box,
-                            yawDeg = yawState.floatValue,
-                            pitchDeg = pitchState.floatValue,
-                        )
-
                         val hit = hitTest(view, st, down.position, hitThresholdPx)
-                        if (hit != null) {
-                            currentOnSelect(hit)
-                            var curX = if (hit == ListenerKey) st.listener.x else st.objects.firstOrNull { it.id == hit }?.x ?: 0f
-                            var curY = if (hit == ListenerKey) st.listener.y else st.objects.firstOrNull { it.id == hit }?.y ?: 0.4f
-                            var curZ = if (hit == ListenerKey) st.listener.z else st.objects.firstOrNull { it.id == hit }?.z ?: 0f
-                            val depth = view.projectNormalized(curX, curY, curZ).depth
-                            val (startPlaneX, startPlaneZ) = view.onLevel(down.position.x, down.position.y, curY)
-                            val offsetX = curX - startPlaneX
-                            val offsetZ = curZ - startPlaneZ
+                        if (hit != null) currentOnSelect(hit)
 
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val pressed = event.changes.filter { it.pressed }
-                                if (pressed.isEmpty()) break
+                        val lifted = hit ?: currentSelected
+                        var dragging = false
+                        var lifting = false
+                        var grab: Pair<Float, Float>? = null
+                        var lastCentroid = Offset.Zero
+                        var liftX = 0f
+                        var liftY = 0f
+                        var liftZ = 0f
+                        var liftInit = false
 
-                                if (pressed.size >= 2) {
-                                    val avgDy = pressed.sumOf { (it.position.y - it.previousPosition.y).toDouble() }.toFloat() / pressed.size
-                                    val pxPerUnit = view.heightPixels(depth).coerceAtLeast(1f)
-                                    curY = (curY - avgDy / pxPerUnit).coerceIn(0f, 1f)
-                                } else {
-                                    val p = pressed.first()
-                                    val (nx, nz) = view.onLevel(p.position.x, p.position.y, curY)
-                                    curX = (nx + offsetX).coerceIn(-1f, 1f)
-                                    curZ = (nz + offsetZ).coerceIn(-1f, 1f)
-                                }
-                                pressed.forEach { it.consume() }
-                                if (hit == ListenerKey) {
-                                    currentOnMoveListener(curX, curY, curZ)
-                                } else {
-                                    currentOnMoveObject(hit, curX, curY, curZ)
-                                }
-                            }
-                        } else {
-                            var totalDrag = 0f
-                            var liftY = if (currentSelected == ListenerKey) {
-                                st.listener.y
-                            } else {
-                                st.objects.firstOrNull { it.id == currentSelected }?.y ?: 0.4f
-                            }
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val pressed = event.changes.filter { it.pressed }
-                                if (pressed.isEmpty()) break
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.isEmpty()) break
 
-                                if (pressed.size >= 2) {
-                                    val avgDy = pressed.sumOf { (it.position.y - it.previousPosition.y).toDouble() }.toFloat() / pressed.size
-                                    totalDrag += kotlin.math.abs(avgDy)
-                                    val targetId = currentSelected
-                                    if (targetId == ListenerKey) {
-                                        val pxPerUnit = view.heightPixels(view.projectNormalized(st.listener.x, liftY, st.listener.z).depth).coerceAtLeast(1f)
-                                        liftY = (liftY - avgDy / pxPerUnit).coerceIn(0f, 1f)
-                                        currentOnMoveListener(st.listener.x, liftY, st.listener.z)
-                                    } else {
-                                        val obj = st.objects.firstOrNull { it.id == targetId }
-                                        if (obj != null) {
-                                            val pxPerUnit = view.heightPixels(view.projectNormalized(obj.x, liftY, obj.z).depth).coerceAtLeast(1f)
-                                            liftY = (liftY - avgDy / pxPerUnit).coerceIn(0f, 1f)
-                                            currentOnMoveObject(obj.id, obj.x, liftY, obj.z)
-                                        }
+                            if (pressed.size >= 2) {
+                                val centroid = pressed.fold(Offset.Zero) { sum, c -> sum + c.position } / pressed.size.toFloat()
+                                if (!lifting) {
+                                    lifting = true
+                                    lastCentroid = centroid
+                                    val spot = spotOf(currentStage, lifted)
+                                    if (spot != null) {
+                                        liftX = spot.first
+                                        liftY = spot.second
+                                        liftZ = spot.third
+                                        liftInit = true
                                     }
-                                    pressed.forEach { it.consume() }
-                                } else {
-                                    val p = pressed.first()
-                                    val dx = p.position.x - p.previousPosition.x
-                                    val dy = p.position.y - p.previousPosition.y
-                                    totalDrag += hypot(dx, dy)
-                                    yawState.floatValue += dx * 0.45f
-                                    pitchState.floatValue = (pitchState.floatValue + dy * 0.35f).coerceIn(4f, 88f)
-                                    p.consume()
                                 }
+                                if (liftInit) {
+                                    val pxPerUnit = view.heightPixels(liftX, liftY, liftZ)
+                                    liftY = (liftY - (centroid.y - lastCentroid.y) / pxPerUnit).coerceIn(0f, 1f)
+                                    if (lifted == ListenerKey) {
+                                        currentOnMoveListener(liftX, liftY, liftZ)
+                                    } else {
+                                        currentOnMoveObject(lifted, liftX, liftY, liftZ)
+                                    }
+                                }
+                                lastCentroid = centroid
+                                event.changes.forEach { it.consume() }
+                                continue
                             }
-                            if (totalDrag < tapSlopPx) {
-                                val now = System.currentTimeMillis()
-                                if (now - lastEmptyTapMs < 320L) {
-                                    yawState.floatValue = DefaultCameraYaw
-                                    pitchState.floatValue = DefaultCameraPitch
-                                    lastEmptyTapMs = 0L
-                                } else {
-                                    lastEmptyTapMs = now
+
+                            if (lifting) {
+                                event.changes.forEach { it.consume() }
+                                continue
+                            }
+
+                            val change = pressed.first()
+                            if (!dragging && (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                dragging = true
+                            }
+                            if (!dragging) continue
+
+                            val spot = hit?.let { spotOf(currentStage, it) }
+                            if (hit != null && spot != null) {
+                                val now = view.onLevel(change.position.x, change.position.y, spot.second)
+                                if (now != null) {
+                                    val offset = grab
+                                        ?: (view.onLevel(down.position.x, down.position.y, spot.second)
+                                            ?.let { (spot.first - it.first) to (spot.third - it.second) }
+                                            ?: (0f to 0f)).also { grab = it }
+                                    val nx = (now.first + offset.first).coerceIn(-1f, 1f)
+                                    val nz = (now.second + offset.second).coerceIn(-1f, 1f)
+                                    if (hit == ListenerKey) {
+                                        currentOnMoveListener(nx, spot.second, nz)
+                                    } else {
+                                        currentOnMoveObject(hit, nx, spot.second, nz)
+                                    }
                                 }
+                            } else {
+                                val delta = change.positionChange()
+                                yawState.floatValue = (yawState.floatValue - delta.x * 0.35f).let {
+                                    if (it > 180f) it - 360f else if (it < -180f) it + 360f else it
+                                }
+                                pitchState.floatValue = (pitchState.floatValue + delta.y * 0.3f).coerceIn(4f, 88f)
+                            }
+                            change.consume()
+                        }
+
+                        if (!dragging && !lifting && hit == null) {
+                            if (down.uptimeMillis - lastEmptyTapMs < 320L) {
+                                yawState.floatValue = DefaultCameraYaw
+                                pitchState.floatValue = DefaultCameraPitch
+                                lastEmptyTapMs = 0L
+                            } else {
+                                lastEmptyTapMs = down.uptimeMillis
                             }
                         }
                     }
@@ -224,12 +240,16 @@ internal fun StageRoom(
                 yawDeg = yawState.floatValue,
                 pitchDeg = pitchState.floatValue,
             )
+            lastFrame.view = view
             drawStageRoom(
                 view = view,
                 stage = stage,
                 selectedKey = selectedKey,
                 levels = smoothedLevels,
                 palette = palette,
+                on = on,
+                labels = labels,
+                compact = false,
             )
         }
 
@@ -292,6 +312,43 @@ private fun StageOverlayButton(
         )
     }
 }
+
+internal fun labelsOf(
+    objects: List<Pair<Int, StageSource>>,
+    names: Map<StageSource, String>,
+): Map<Int, String> {
+    val seen = IntArray(StageSource.entries.size)
+    return objects.associate { (id, source) ->
+        val n = ++seen[source.ordinal]
+        val base = names.getValue(source)
+        id to if (n == 1) base else "$base $n"
+    }
+}
+
+@Composable
+private fun rememberStageLabels(stage: StageSettings): Map<Int, TextLayoutResult> {
+    val names = mapOf(
+        StageSource.Vocal to stringResource(R.string.stage_source_vocal),
+        StageSource.Center to stringResource(R.string.stage_source_center),
+        StageSource.Left to stringResource(R.string.stage_source_left),
+        StageSource.Right to stringResource(R.string.stage_source_right),
+        StageSource.Ambience to stringResource(R.string.stage_source_ambience),
+        StageSource.Sub to stringResource(R.string.stage_source_sub),
+    )
+    val measurer = rememberTextMeasurer()
+    val keys = remember(stage.objects) { stage.objects.map { it.id to it.source } }
+    val style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+    return remember(keys, names, style) {
+        labelsOf(keys, names).mapValues { (_, text) -> measurer.measure(text, style) }
+    }
+}
+
+private fun spotOf(settings: StageSettings, key: Int): Triple<Float, Float, Float>? =
+    if (key == ListenerKey) {
+        settings.listener.let { Triple(it.x, it.y, it.z) }
+    } else {
+        settings.objects.firstOrNull { it.id == key }?.let { Triple(it.x, it.y, it.z) }
+    }
 
 private fun hitTest(
     view: StageView,

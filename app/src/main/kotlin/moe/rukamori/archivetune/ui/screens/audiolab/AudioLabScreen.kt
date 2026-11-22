@@ -110,6 +110,7 @@ fun AudioLabScreen(
                     StageSketch(
                         stage = state.stage,
                         isPlaying = isPlaying,
+                        stageLevelsProvider = { viewModel.stageLevels },
                         modifier = Modifier.size(width = 88.dp, height = 64.dp),
                     )
                 },

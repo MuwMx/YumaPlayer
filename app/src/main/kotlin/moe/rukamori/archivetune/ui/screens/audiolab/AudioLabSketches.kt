@@ -6,29 +6,45 @@
 
 package moe.rukamori.archivetune.ui.screens.audiolab
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.audiodsp.AudioLabEqSettings
 import moe.rukamori.archivetune.audiodsp.AudioTap
 import moe.rukamori.archivetune.audiodsp.StageSettings
 import moe.rukamori.archivetune.audiodsp.lowMidHighAverages
-import kotlin.math.cos
+import moe.rukamori.archivetune.ui.screens.audiolab.stage.DefaultCameraPitch
+import moe.rukamori.archivetune.ui.screens.audiolab.stage.DefaultCameraYaw
+import moe.rukamori.archivetune.ui.screens.audiolab.stage.StageView
+import moe.rukamori.archivetune.ui.screens.audiolab.stage.drawStageRoom
+import moe.rukamori.archivetune.ui.screens.audiolab.stage.rememberStageCanvasPalette
+import moe.rukamori.archivetune.ui.settings.SettingsAnimations
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 fun ListenToAudioTap(active: Boolean) {
@@ -49,84 +65,72 @@ fun EqualizerSketch(
     val animationsDisabled = LocalAnimationsDisabled.current
     val primary = MaterialTheme.colorScheme.primary
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val surface = MaterialTheme.colorScheme.surface
+    val thumbFill = LocalYumaColors.current.cardBackgroundOpaque
     val scratch = remember { FloatArray(512) }
     val pulseTick = remember { mutableFloatStateOf(0f) }
+    val punchState = remember { floatArrayOf(0f, -1f) }
 
     val shouldAnimate = eq.enabled && isPlaying && !animationsDisabled
     LaunchedEffect(shouldAnimate) {
         if (!shouldAnimate) {
             pulseTick.floatValue = 0f
+            punchState[0] = 0f
+            punchState[1] = -1f
             return@LaunchedEffect
         }
         val startNanos = withFrameNanos { it }
         while (true) {
             withFrameNanos { now ->
-                pulseTick.floatValue = ((now - startNanos) / 1_000_000_000f)
+                pulseTick.floatValue = (now - startNanos) / 1_000_000_000f
             }
         }
     }
 
-    val (low, mid, high) = eq.lowMidHighAverages()
-    val bands = remember(low, mid, high) { floatArrayOf(low, mid, high) }
+    val (lowTarget, midTarget, highTarget) = remember(eq) {
+        if (eq.enabled) eq.lowMidHighAverages() else Triple(0f, 0f, 0f)
+    }
+    val low by animateFloatAsState(lowTarget, SettingsAnimations.pressSpring(), label = "eqLow")
+    val mid by animateFloatAsState(midTarget, SettingsAnimations.pressSpring(), label = "eqMid")
+    val high by animateFloatAsState(highTarget, SettingsAnimations.pressSpring(), label = "eqHigh")
 
     Canvas(modifier = modifier) {
-        val tick = pulseTick.floatValue
-        val liveLevel = if (shouldAnimate) AudioTap.level(scratch) else 0f
+        val t = pulseTick.floatValue
+        if (shouldAnimate && t != punchState[1]) {
+            val raw = AudioTap.level(scratch)
+            val rate = if (raw > punchState[0]) 0.5f else 0.12f
+            punchState[0] += (raw - punchState[0]) * rate
+            punchState[1] = t
+        }
+        val punch = if (shouldAnimate) punchState[0] else 0f
+
+        val panel = size.height * 0.92f
+        val origin = Offset((size.width - panel) * 0.5f, (size.height - panel) * 0.5f)
+        val panelStroke = 2.dp.toPx()
+        val trackStroke = 2.4.dp.toPx()
+        val thumbRadius = 5.dp.toPx()
+        val frameColor = onSurfaceVariant.copy(alpha = 0.28f)
         val activeColor = if (eq.enabled) primary else onSurfaceVariant.copy(alpha = 0.55f)
-        val trackColor = onSurfaceVariant.copy(alpha = 0.25f)
-        val strokeWidth = 2.5.dp.toPx()
-        val thumbRadius = 4.dp.toPx()
 
-        val w = size.width
-        val h = size.height
-        val stepX = w / 4f
-        val topY = h * 0.16f
-        val bottomY = h * 0.84f
-        val tiltX = w * 0.06f
-
-        for (i in 0..2) {
-            val cx = stepX * (i + 1)
-            val start = Offset(cx - tiltX, bottomY)
-            val end = Offset(cx + tiltX, topY)
-
-            drawLine(
-                color = trackColor,
-                start = start,
-                end = end,
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round,
+        rotate(-14f, pivot = Offset(origin.x + panel * 0.5f, origin.y + panel * 0.5f)) {
+            drawRoundRect(
+                color = frameColor,
+                topLeft = origin,
+                size = Size(panel, panel),
+                cornerRadius = CornerRadius(panel * 0.2f),
+                style = Stroke(panelStroke),
             )
-
-            val modulation = if (shouldAnimate) {
-                val wave = sin(tick * 5f + i * 1.4f) * 0.18f
-                (liveLevel * 0.65f + wave).coerceIn(-0.35f, 0.35f)
-            } else {
-                0f
+            val gains = floatArrayOf(low, mid, high)
+            for (i in 0..2) {
+                val x = origin.x + panel * (0.26f + i * 0.24f)
+                val top = origin.y + panel * 0.18f
+                val bottom = origin.y + panel * 0.82f
+                drawLine(frameColor, Offset(x, top), Offset(x, bottom), trackStroke, StrokeCap.Round)
+                val bob = punch * 3.5.dp.toPx() * sin(t * 9f + i * 2f)
+                val y = ((top + bottom) * 0.5f - gains[i] * (bottom - top) * 0.5f + bob)
+                    .coerceIn(top, bottom)
+                drawCircle(thumbFill, thumbRadius, Offset(x, y))
+                drawCircle(activeColor, thumbRadius, Offset(x, y), style = Stroke(trackStroke))
             }
-            val norm = ((bands[i] + modulation) * 0.5f + 0.5f).coerceIn(0.08f, 0.92f)
-            val thumb = Offset(
-                x = start.x + (end.x - start.x) * norm,
-                y = start.y + (end.y - start.y) * norm,
-            )
-
-            drawLine(
-                color = activeColor,
-                start = start,
-                end = thumb,
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round,
-            )
-            drawCircle(
-                color = surface,
-                radius = thumbRadius + 1.dp.toPx(),
-                center = thumb,
-            )
-            drawCircle(
-                color = activeColor,
-                radius = thumbRadius,
-                center = thumb,
-            )
         }
     }
 }
@@ -142,7 +146,14 @@ fun FxSketch(
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val sweepState = remember { mutableFloatStateOf(0f) }
 
-    val shouldAnimate = activeCount > 0 && isPlaying && !animationsDisabled
+    val isActive = activeCount > 0
+    val glow by animateFloatAsState(
+        targetValue = if (isActive) 1f else 0f,
+        animationSpec = if (animationsDisabled) snap() else tween(500),
+        label = "fxGlow",
+    )
+
+    val shouldAnimate = isActive && isPlaying && !animationsDisabled
     LaunchedEffect(shouldAnimate) {
         if (!shouldAnimate) {
             sweepState.floatValue = 0f
@@ -151,49 +162,48 @@ fun FxSketch(
         val startNanos = withFrameNanos { it }
         while (true) {
             withFrameNanos { now ->
-                sweepState.floatValue = ((now - startNanos) / 1_600_000_000f) % 1f
+                sweepState.floatValue = ((now - startNanos) / 1_800_000_000f) % 1f
             }
         }
     }
 
     Canvas(modifier = modifier) {
         val phase = sweepState.floatValue
-        val isActive = activeCount > 0
-        val strokeColor = if (isActive) primary else onSurfaceVariant.copy(alpha = 0.55f)
+        val baseColor = if (isActive) primary.copy(alpha = 0.55f) else onSurfaceVariant.copy(alpha = 0.45f)
         val stroke = Stroke(width = 2.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
 
         val w = size.width
         val h = size.height
-        val top = h * 0.24f
-        val bottom = h * 0.76f
+        val top = h * 0.22f
+        val bottom = h * 0.78f
         val midY = (top + bottom) * 0.5f
 
         val fPath = Path().apply {
-            moveTo(w * 0.22f, bottom)
-            lineTo(w * 0.22f, top)
-            lineTo(w * 0.44f, top)
-            moveTo(w * 0.22f, midY)
-            lineTo(w * 0.40f, midY)
+            moveTo(w * 0.26f, bottom)
+            lineTo(w * 0.26f, top)
+            lineTo(w * 0.46f, top)
+            moveTo(w * 0.26f, midY)
+            lineTo(w * 0.42f, midY)
         }
-        drawPath(path = fPath, color = strokeColor, style = stroke)
-
         val xPath = Path().apply {
             moveTo(w * 0.54f, top)
-            lineTo(w * 0.78f, bottom)
-            moveTo(w * 0.78f, top)
+            lineTo(w * 0.76f, bottom)
+            moveTo(w * 0.76f, top)
             lineTo(w * 0.54f, bottom)
         }
-        drawPath(path = xPath, color = strokeColor, style = stroke)
 
-        if (shouldAnimate) {
-            val sweepX = w * (0.12f + phase * 0.76f)
-            drawLine(
-                color = primary.copy(alpha = 0.35f),
-                start = Offset(sweepX, h * 0.14f),
-                end = Offset(sweepX - w * 0.08f, h * 0.86f),
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round,
+        drawPath(path = fPath, color = baseColor, style = stroke)
+        drawPath(path = xPath, color = baseColor, style = stroke)
+
+        if (shouldAnimate && glow > 0.01f) {
+            val sweepX = w * (-0.1f + phase * 1.2f)
+            val sheen = Brush.linearGradient(
+                colors = listOf(Color.Transparent, primary.copy(alpha = 0.95f * glow), Color.Transparent),
+                start = Offset(sweepX - w * 0.26f, 0f),
+                end = Offset(sweepX + w * 0.26f, h),
             )
+            drawPath(path = fPath, brush = sheen, style = stroke)
+            drawPath(path = xPath, brush = sheen, style = stroke)
         }
     }
 }
@@ -203,86 +213,60 @@ fun StageSketch(
     stage: StageSettings,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+    stageLevelsProvider: (() -> FloatArray)? = null,
 ) {
-    val primary = MaterialTheme.colorScheme.primary
-    val tertiary = MaterialTheme.colorScheme.tertiary
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val palette = rememberStageCanvasPalette()
+    val timeState = remember { mutableFloatStateOf(0f) }
+    val smoothedLevels = remember { FloatArray(6) }
 
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val lineColor = if (stage.enabled) onSurfaceVariant.copy(alpha = 0.5f) else onSurfaceVariant.copy(alpha = 0.28f)
-        val backInsetX = w * 0.22f
-        val backTopY = h * 0.22f
-        val backBottomY = h * 0.66f
-        val frontInsetX = w * 0.08f
-        val frontTopY = h * 0.08f
-        val frontBottomY = h * 0.90f
+    val on by animateFloatAsState(
+        targetValue = if (stage.enabled) 1f else 0f,
+        animationSpec = if (animationsDisabled) snap() else tween(400),
+        label = "stageSketchOn",
+    )
 
-        val btl = Offset(backInsetX, backTopY)
-        val btr = Offset(w - backInsetX, backTopY)
-        val bbl = Offset(backInsetX, backBottomY)
-        val bbr = Offset(w - backInsetX, backBottomY)
-
-        val ftl = Offset(frontInsetX, frontTopY)
-        val ftr = Offset(w - frontInsetX, frontTopY)
-        val fbl = Offset(frontInsetX, frontBottomY)
-        val fbr = Offset(w - frontInsetX, frontBottomY)
-
-        val strokeW = 1.2.dp.toPx()
-        val edges = listOf(
-            btl to btr, btr to bbr, bbr to bbl, bbl to btl,
-            ftl to ftr, ftr to fbr, fbr to fbl, fbl to ftl,
-            btl to ftl, btr to ftr, bbl to fbl, bbr to fbr,
-        )
-        for ((a, b) in edges) {
-            drawLine(color = lineColor, start = a, end = b, strokeWidth = strokeW)
+    val shouldAnimate = stage.enabled && isPlaying && !animationsDisabled
+    LaunchedEffect(shouldAnimate) {
+        if (!shouldAnimate) {
+            smoothedLevels.fill(0f)
+            timeState.floatValue = 0f
+            return@LaunchedEffect
         }
-
-        fun projectDot(nx: Float, ny: Float, nz: Float): Offset {
-            val depthT = ((nz + 1f) * 0.5f).coerceIn(0f, 1f)
-            val leftX = frontInsetX + (backInsetX - frontInsetX) * depthT
-            val rightX = w - leftX
-            val topY = frontTopY + (backTopY - frontTopY) * depthT
-            val bottomY = frontBottomY + (backBottomY - frontBottomY) * depthT
-            val px = leftX + ((nx + 1f) * 0.5f).coerceIn(0f, 1f) * (rightX - leftX)
-            val py = bottomY - ny.coerceIn(0f, 1f) * (bottomY - topY)
-            return Offset(px, py)
-        }
-
-        val dotColor = if (stage.enabled) primary else onSurfaceVariant.copy(alpha = 0.55f)
-        val dotRadius = if (stage.enabled && isPlaying) 3.dp.toPx() else 2.5.dp.toPx()
-        stage.objects.forEach { obj ->
-            val p = projectDot(obj.x, obj.y, obj.z)
-            drawCircle(
-                color = if (obj.muted) Color.Transparent else dotColor,
-                radius = dotRadius,
-                center = p,
-            )
-            if (obj.muted) {
-                drawCircle(
-                    color = onSurfaceVariant.copy(alpha = 0.45f),
-                    radius = dotRadius,
-                    center = p,
-                    style = Stroke(width = 1.dp.toPx()),
-                )
+        val startNanos = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                val raw = stageLevelsProvider?.invoke()
+                if (raw != null) {
+                    for (i in smoothedLevels.indices) {
+                        val target = sqrt(raw.getOrElse(i) { 0f }.coerceIn(0f, 1f))
+                        val cur = smoothedLevels[i]
+                        smoothedLevels[i] += (target - cur) * if (target > cur) 0.45f else 0.12f
+                    }
+                }
+                timeState.floatValue = (now - startNanos) / 1_000_000_000f
             }
         }
+    }
 
-        val listenerPos = projectDot(stage.listener.x, stage.listener.y, stage.listener.z)
-        val rad = Math.toRadians(stage.listener.yaw.toDouble())
-        val dir = Offset(sin(rad).toFloat() * 7.dp.toPx(), -cos(rad).toFloat() * 5.dp.toPx())
-        drawLine(
-            color = if (stage.enabled) tertiary else onSurfaceVariant.copy(alpha = 0.5f),
-            start = listenerPos,
-            end = listenerPos + dir,
-            strokeWidth = 1.5.dp.toPx(),
-            cap = StrokeCap.Round,
+    Canvas(modifier = modifier) {
+        val t = timeState.floatValue
+        val yaw = DefaultCameraYaw + if (shouldAnimate) sin(t * 0.45f) * 14f else 0f
+        val intSize = IntSize(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
+        val view = StageView(
+            size = intSize,
+            box = stage.box,
+            yawDeg = yaw,
+            pitchDeg = DefaultCameraPitch + 6f,
         )
-        drawCircle(
-            color = if (stage.enabled) tertiary else onSurfaceVariant.copy(alpha = 0.65f),
-            radius = 3.2.dp.toPx(),
-            center = listenerPos,
+        drawStageRoom(
+            view = view,
+            stage = stage,
+            selectedKey = null,
+            levels = smoothedLevels,
+            palette = palette,
+            on = on,
+            compact = true,
         )
     }
 }
