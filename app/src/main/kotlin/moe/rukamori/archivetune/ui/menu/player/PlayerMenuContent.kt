@@ -95,6 +95,8 @@ internal fun PlayerMenuContent(
                 PlayerMenuArtistAndAlbumSection(
                     splitArtists = splitArtists,
                     album = mediaMetadata.album,
+                    songId = mediaMetadata.id,
+                    database = database,
                     navController = navController,
                     playerBottomSheetState = playerBottomSheetState,
                     onDismiss = onDismiss,

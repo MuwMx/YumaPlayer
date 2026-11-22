@@ -123,6 +123,8 @@ fun PlayerMenu(
     PlayerMenuSelectArtistDialog(
         isVisible = showSelectArtistDialog,
         splitArtists = splitArtists,
+        songId = mediaMetadata.id,
+        database = database,
         navController = navController,
         playerBottomSheetState = playerBottomSheetState,
         onDismiss = { showSelectArtistDialog = false },

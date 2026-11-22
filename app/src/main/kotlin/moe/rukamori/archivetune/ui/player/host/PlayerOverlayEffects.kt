@@ -3,6 +3,7 @@ package moe.rukamori.archivetune.ui.player.host
 import android.content.Intent
 import android.view.Window
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +62,9 @@ internal fun PlayerOverlayEffects(
                     navController.navigate(event.route) {
                         launchSingleTop = true
                     }
+                }
+                is PlayerEvent.ShowToast -> {
+                    Toast.makeText(context, event.messageRes, Toast.LENGTH_SHORT).show()
                 }
             }
         }

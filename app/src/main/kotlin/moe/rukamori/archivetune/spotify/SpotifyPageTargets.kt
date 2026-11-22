@@ -23,7 +23,8 @@ object SpotifyPageTargets {
 
     fun isYouTubeArtistId(id: String?): Boolean = id != null && id.startsWith("UC") && ':' !in id
 
-    fun isYouTubeAlbumId(id: String?): Boolean = id != null && id.startsWith("MPREb")
+    fun isYouTubeAlbumId(id: String?): Boolean =
+        id != null && (id.startsWith("MPREb") || id.startsWith("OLAK5uy")) && ':' !in id
 
     suspend fun artistId(
         songId: String,
@@ -36,13 +37,13 @@ object SpotifyPageTargets {
         return withContext(Dispatchers.IO) {
             matchedSong(songId, database)
                 ?.artists
-                ?.firstOrNull { isYouTubeArtistId(it.id) && it.name.equals(artistName, ignoreCase = true) }
+                ?.firstOrNull { isYouTubeArtistId(it.id) && sameArtist(it.name, artistName) }
                 ?.id
                 ?: database.artistByName(artistName)?.id?.takeIf(::isYouTubeArtistId)
                 ?: search {
                     YouTube.search(artistName, YouTube.SearchFilter.FILTER_ARTIST).getOrThrow().items
                         .filterIsInstance<ArtistItem>()
-                        .firstOrNull { sameName(it.title, artistName) }
+                        .firstOrNull { sameArtist(it.title, artistName) }
                         ?.id
                 }
         }.also { Timber.tag("SpotifyPageTargets").d("Artist '%s' (%s) -> %s", artistName, artistId, it) }
@@ -60,22 +61,28 @@ object SpotifyPageTargets {
         albums[albumId]?.let { return it }
         return withContext(Dispatchers.IO) {
             val matched = matchedSong(songId, database)
+            val ytSongId = matched?.id ?: songId.takeIf { !SpotifyPlaceholders.isPlaceholder(it) }
             matched?.song?.albumId?.takeIf(::isYouTubeAlbumId)
-                ?: matched?.let { song ->
+                ?: ytSongId?.let { queueId ->
                     search {
-                        YouTube.queue(listOf(song.id)).getOrThrow().firstOrNull()?.album?.id?.takeIf(::isYouTubeAlbumId)
+                        YouTube.queue(listOf(queueId)).getOrThrow().firstOrNull()?.album?.id?.takeIf(::isYouTubeAlbumId)
                     }
                 }
                 ?: albumTitle?.takeIf { it.isNotBlank() }?.let { title ->
                     search {
                         val query = listOfNotNull(title, artistName).joinToString(" ")
-                        val found =
+                        val candidates =
                             YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM).getOrThrow().items
                                 .filterIsInstance<AlbumItem>()
-                                .filter { sameName(it.title, title) }
                         (
-                            found.firstOrNull { album -> artistName != null && album.artists.orEmpty().any { sameName(it.name, artistName) } }
-                                ?: found.firstOrNull()
+                            candidates.firstOrNull { album ->
+                                sameAlbum(album.title, title) && artistName != null && album.artists.orEmpty().any { sameArtist(it.name, artistName) }
+                            }
+                                ?: candidates.firstOrNull { sameAlbum(it.title, title) }
+                                ?: candidates.firstOrNull { album ->
+                                    artistName != null && isCleanTitleMatch(album.title, title) && album.artists.orEmpty().any { sameArtist(it.name, artistName) }
+                                }
+                                ?: candidates.firstOrNull { isCleanTitleMatch(it.title, title) }
                         )?.browseId
                     }
                 }
@@ -83,35 +90,76 @@ object SpotifyPageTargets {
             ?.also { albums[albumId] = it }
     }
 
-    private fun sameName(
+    fun sameArtist(
         a: String,
         b: String,
-    ): Boolean = normalized(a) == normalized(b)
+    ): Boolean = normalizeArtistName(a) == normalizeArtistName(b)
 
-    private fun normalized(name: String): String =
-        name
-            .lowercase()
-            .replace(EDITION_SUFFIX, "")
-            .filter { it.isLetterOrDigit() }
+    fun sameAlbum(
+        a: String,
+        b: String,
+    ): Boolean = normalizeAlbumName(a) == normalizeAlbumName(b)
 
-    private val EDITION_SUFFIX = Regex("""\s*(-\s*(single|ep)|[(\[][^)\]]*(deluxe|edition|remaster|expanded|version)[^)\]]*[)\]])\s*$""")
+    internal fun normalizeArtistName(name: String): String {
+        val stripped = name.replace(ARTIST_SUFFIX, "").trim()
+        val target = if (stripped.isNotBlank()) stripped else name
+        return target.lowercase().filter { it.isLetterOrDigit() }
+    }
+
+    internal fun normalizeAlbumName(name: String): String {
+        var cleaned = name
+        while (true) {
+            val next = cleaned.replace(EDITION_SUFFIX, "").trim()
+            if (next == cleaned || next.isBlank()) break
+            cleaned = next
+        }
+        return cleaned.lowercase().filter { it.isLetterOrDigit() }
+    }
+
+    internal fun isCleanTitleMatch(a: String, b: String): Boolean {
+        val normA = normalizeAlbumName(a)
+        val normB = normalizeAlbumName(b)
+        if (normA == normB) return true
+        val minLen = minOf(normA.length, normB.length)
+        if (minLen < 3) return false
+        return normA.startsWith(normB) || normB.startsWith(normA)
+    }
+
+    private val ARTIST_SUFFIX = Regex(
+        """(?i)\s*(-?\s*topic|official(?:\s*artist)?(?:\s*channel)?|vevo|music)\s*$"""
+    )
+
+    private val EDITION_SUFFIX = Regex(
+        """(?i)\s*(-\s*(single|ep|remaster(?:ed)?(?:\s*\d{4})?|deluxe|bonus(?:\s*track)?(?:\s*version)?)|[(\[][^)\]]*(deluxe|edition|remaster(?:ed)?|expanded|version|single|ep|explicit|bonus|anniversary|special|reissue|mix|remix|original(?:\s*motion\s*picture)?(?:\s*soundtrack)?|soundtrack|ost)[^)\]]*[)\]])\s*$"""
+    )
 
     private fun matchedSong(
         songId: String,
         database: MusicDatabase,
     ): Song? {
-        if (!SpotifyPlaceholders.isPlaceholder(songId)) return null
-        val match = database.getSpotifyMatch(songId.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)) ?: return null
-        return database.getSongByIdBlocking(match.youtubeId)
+        if (SpotifyPlaceholders.isPlaceholder(songId)) {
+            val match = database.getSpotifyMatch(songId.removePrefix(SPOTIFY_PLACEHOLDER_PREFIX)) ?: return null
+            return database.getSongByIdBlocking(match.youtubeId)
+        }
+        return database.getSongByIdBlocking(songId)
     }
 
-    private suspend fun search(block: suspend () -> String?): String? =
+    private suspend fun search(block: suspend () -> String?): String? {
         try {
+            return block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("SpotifyPageTargets").w(e, "YouTube search attempt 1 failed, retrying...")
+        }
+
+        return try {
             block()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag("SpotifyPageTargets").w(e, "YouTube search failed")
+            Timber.tag("SpotifyPageTargets").w(e, "YouTube search retry failed")
             null
         }
+    }
 }

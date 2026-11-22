@@ -25,20 +25,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.spotify.SpotifyPageTargets
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.ui.menu.AddToPlaylistDialog
@@ -108,12 +112,16 @@ internal fun PlayerMenuAddToPlaylistDialog(
 internal fun PlayerMenuSelectArtistDialog(
     isVisible: Boolean,
     splitArtists: List<PlayerMenuSplitArtist>,
+    songId: String,
+    database: MusicDatabase,
     navController: NavController,
     playerBottomSheetState: BottomSheetState,
     onDismiss: () -> Unit,
     onDismissMenu: () -> Unit,
 ) {
     if (!isVisible) return
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val artistChoices = remember(splitArtists) { splitArtists.distinctBy { it.name } }
     ListDialog(
         onDismiss = onDismiss,
@@ -166,10 +174,31 @@ internal fun PlayerMenuSelectArtistDialog(
                         .fillMaxWidth()
                         .clickable {
                             splitArtist.originalArtist?.let { artist ->
-                                navController.navigate("artist/${artist.id}")
-                                onDismiss()
-                                playerBottomSheetState.collapseSoft()
-                                onDismissMenu()
+                                val artistId = artist.id
+                                if (SpotifyPageTargets.isYouTubeArtistId(artistId)) {
+                                    navController.navigate("artist/$artistId")
+                                    onDismiss()
+                                    playerBottomSheetState.collapseSoft()
+                                    onDismissMenu()
+                                } else {
+                                    coroutineScope.launch {
+                                        val target =
+                                            SpotifyPageTargets.artistId(
+                                                songId = songId,
+                                                artistId = artistId.orEmpty(),
+                                                artistName = splitArtist.name,
+                                                database = database,
+                                            )
+                                        if (target == null) {
+                                            Toast.makeText(context, R.string.page_not_found_on_youtube, Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            navController.navigate("artist/$target")
+                                            onDismiss()
+                                            playerBottomSheetState.collapseSoft()
+                                            onDismissMenu()
+                                        }
+                                    }
+                                }
                             }
                         },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),

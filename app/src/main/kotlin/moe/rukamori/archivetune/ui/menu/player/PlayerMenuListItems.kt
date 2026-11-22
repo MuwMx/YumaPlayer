@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.ui.menu.player
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -17,17 +18,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.spotify.SpotifyPageTargets
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.menu.tempo.formatMultiplier
@@ -36,11 +42,15 @@ import moe.rukamori.archivetune.ui.menu.tempo.formatMultiplier
 internal fun PlayerMenuArtistAndAlbumSection(
     splitArtists: List<PlayerMenuSplitArtist>,
     album: MediaMetadata.Album?,
+    songId: String,
+    database: MusicDatabase,
     navController: NavController,
     playerBottomSheetState: BottomSheetState,
     onDismiss: () -> Unit,
     onShowSelectArtistDialog: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
         Column {
             if (splitArtists.isNotEmpty()) {
@@ -54,10 +64,31 @@ internal fun PlayerMenuArtistAndAlbumSection(
                     },
                     modifier =
                         Modifier.clickable {
-                            if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                                onDismiss()
-                                playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                                navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                            val singleArtist = splitArtists.singleOrNull()?.originalArtist
+                            if (singleArtist != null) {
+                                val artistId = singleArtist.id
+                                if (SpotifyPageTargets.isYouTubeArtistId(artistId)) {
+                                    onDismiss()
+                                    playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                    navController.navigate("artist/$artistId")
+                                } else {
+                                    coroutineScope.launch {
+                                        val target =
+                                            SpotifyPageTargets.artistId(
+                                                songId = songId,
+                                                artistId = artistId.orEmpty(),
+                                                artistName = singleArtist.name,
+                                                database = database,
+                                            )
+                                        if (target == null) {
+                                            Toast.makeText(context, R.string.page_not_found_on_youtube, Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            onDismiss()
+                                            playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                            navController.navigate("artist/$target")
+                                        }
+                                    }
+                                }
                             } else {
                                 onShowSelectArtistDialog()
                             }
@@ -84,9 +115,29 @@ internal fun PlayerMenuArtistAndAlbumSection(
                     },
                     modifier =
                         Modifier.clickable {
-                            onDismiss()
-                            playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                            navController.navigate("album/${album.id}")
+                            if (SpotifyPageTargets.isYouTubeAlbumId(album.id)) {
+                                onDismiss()
+                                playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                navController.navigate("album/${album.id}")
+                            } else {
+                                coroutineScope.launch {
+                                    val target =
+                                        SpotifyPageTargets.albumId(
+                                            songId = songId,
+                                            albumId = album.id,
+                                            albumTitle = album.title,
+                                            artistName = splitArtists.firstOrNull()?.name,
+                                            database = database,
+                                        )
+                                    if (target == null) {
+                                        Toast.makeText(context, R.string.page_not_found_on_youtube, Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        onDismiss()
+                                        playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                        navController.navigate("album/$target")
+                                    }
+                                }
+                            }
                         },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )

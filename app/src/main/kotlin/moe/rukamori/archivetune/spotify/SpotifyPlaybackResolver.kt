@@ -107,13 +107,22 @@ object SpotifyPlaybackResolver {
                     }
                     if (needsExplicitRecheck(match, source.explicit)) return@forEach
                     val matched = song?.toMediaMetadata()
+                    val resolvedArtists =
+                        matched?.artists?.takeIf { it.any { a -> SpotifyPageTargets.isYouTubeArtistId(a.id) } }
+                            ?: matched?.artists?.takeIf { it.isNotEmpty() }
+                            ?: source.artists
+                    val resolvedAlbum =
+                        matched?.album?.takeIf { SpotifyPageTargets.isYouTubeAlbumId(it.id) }
+                            ?: source.album
+                            ?: matched?.album
                     put(
                         source.id,
                         (matched ?: source.copy(id = match.youtubeId)).copy(
                             title = song?.song?.title ?: source.title,
+                            artists = resolvedArtists,
                             thumbnailUrl = source.thumbnailUrl ?: song?.song?.thumbnailUrl,
                             duration = if (source.duration > 0) source.duration else song?.song?.duration ?: -1,
-                            album = source.album ?: matched?.album,
+                            album = resolvedAlbum,
                             spotifyTrackId = match.spotifyId,
                         ),
                     )
@@ -200,12 +209,19 @@ object SpotifyPlaybackResolver {
                 if (match != null && !implausible) {
                     val metadata =
                         if (dbSong != null) {
-                            dbSong.toMediaMetadata().copy(
+                            val dbMetadata = dbSong.toMediaMetadata()
+                            val dbAlbum = dbMetadata.album?.takeIf { SpotifyPageTargets.isYouTubeAlbumId(it.id) }
+                            val dbArtists =
+                                dbMetadata.artists.takeIf { it.any { a -> SpotifyPageTargets.isYouTubeArtistId(a.id) } }
+                                    ?: dbMetadata.artists.takeIf { it.isNotEmpty() }
+                            dbMetadata.copy(
                                 thumbnailUrl = SpotifyEntityMapper.getTrackThumbnail(track) ?: dbSong.song.thumbnailUrl,
                                 duration = if (track.durationMs > 0) track.durationMs / 1000 else dbSong.song.duration,
+                                artists = dbArtists ?: track.artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
                                 album =
-                                    track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
-                                        ?: dbSong.album?.let { MediaMetadata.Album(id = it.id, title = it.title) },
+                                    dbAlbum
+                                        ?: track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
+                                        ?: dbMetadata.album,
                                 explicit = track.explicit || dbSong.song.explicit,
                                 spotifyTrackId = track.id.takeIf(String::isNotBlank),
                                 isrc = track.externalIds?.isrc?.takeIf { it.isNotBlank() } ?: match.isrc ?: dbSong.song.isrc,
@@ -404,13 +420,19 @@ object SpotifyPlaybackResolver {
             )
 
             val bestMetadata = best.toMediaMetadata()
+            val bestAlbum = bestMetadata.album?.takeIf { SpotifyPageTargets.isYouTubeAlbumId(it.id) }
+            val bestArtists =
+                bestMetadata.artists.takeIf { it.any { a -> SpotifyPageTargets.isYouTubeArtistId(a.id) } }
+                    ?: bestMetadata.artists.takeIf { it.isNotEmpty() }
             val metadata =
                 bestMetadata.copy(
+                    artists = bestArtists ?: track.artists.map { MediaMetadata.Artist(id = it.id, name = it.name) },
                     thumbnailUrl = SpotifyEntityMapper.getTrackThumbnail(track) ?: best.thumbnail,
                     duration = if (track.durationMs > 0) track.durationMs / 1000 else best.duration ?: -1,
                     explicit = track.explicit || best.explicit,
                     album =
-                        track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
+                        bestAlbum
+                            ?: track.album?.let { MediaMetadata.Album(id = it.id, title = it.name) }
                             ?: bestMetadata.album,
                     spotifyTrackId = track.id.takeIf(String::isNotBlank),
                     isrc = track.externalIds?.isrc?.takeIf(String::isNotBlank) ?: bestMetadata.isrc,

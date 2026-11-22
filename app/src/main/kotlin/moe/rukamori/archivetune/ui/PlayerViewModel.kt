@@ -45,6 +45,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.spotify.SpotifyPageTargets
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
@@ -272,21 +274,66 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.DeleteLyrics -> deleteLyricsCache()
             is PlayerAction.OpenAlbum -> {
                 val metadata = playerConnection?.mediaMetadata?.value
-                val albumId = metadata?.album?.id
+                val album = metadata?.album
+                val albumId = album?.id
                 if (albumId != null) {
                     viewModelScope.launch {
-                        requestSheetCollapse()
-                        _event.send(PlayerEvent.Navigate("album/$albumId"))
+                        if (SpotifyPageTargets.isYouTubeAlbumId(albumId)) {
+                            requestSheetCollapse()
+                            _event.send(PlayerEvent.Navigate("album/$albumId"))
+                        } else {
+                            val db = playerConnection?.database
+                            val target =
+                                if (db != null) {
+                                    SpotifyPageTargets.albumId(
+                                        songId = metadata.id,
+                                        albumId = albumId,
+                                        albumTitle = album.title,
+                                        artistName = metadata.artists.firstOrNull()?.name,
+                                        database = db,
+                                    )
+                                } else {
+                                    null
+                                }
+                            if (target != null) {
+                                requestSheetCollapse()
+                                _event.send(PlayerEvent.Navigate("album/$target"))
+                            } else {
+                                _event.send(PlayerEvent.ShowToast(R.string.page_not_found_on_youtube))
+                            }
+                        }
                     }
                 }
             }
             is PlayerAction.OpenArtist -> {
                 val metadata = playerConnection?.mediaMetadata?.value
-                val artistId = metadata?.artists?.firstOrNull()?.id
+                val artist = metadata?.artists?.firstOrNull()
+                val artistId = artist?.id
                 if (artistId != null) {
                     viewModelScope.launch {
-                        requestSheetCollapse()
-                        _event.send(PlayerEvent.Navigate("artist/$artistId"))
+                        if (SpotifyPageTargets.isYouTubeArtistId(artistId)) {
+                            requestSheetCollapse()
+                            _event.send(PlayerEvent.Navigate("artist/$artistId"))
+                        } else {
+                            val db = playerConnection?.database
+                            val target =
+                                if (db != null) {
+                                    SpotifyPageTargets.artistId(
+                                        songId = metadata.id,
+                                        artistId = artistId,
+                                        artistName = artist.name,
+                                        database = db,
+                                    )
+                                } else {
+                                    null
+                                }
+                            if (target != null) {
+                                requestSheetCollapse()
+                                _event.send(PlayerEvent.Navigate("artist/$target"))
+                            } else {
+                                _event.send(PlayerEvent.ShowToast(R.string.page_not_found_on_youtube))
+                            }
+                        }
                     }
                 }
             }

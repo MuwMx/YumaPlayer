@@ -22,6 +22,7 @@ import moe.rukamori.archivetune.models.SpotifyRecentItem
 import moe.rukamori.archivetune.spotify.models.SpotifyArtist
 import moe.rukamori.archivetune.spotify.models.SpotifyHomeFeedItem
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -54,12 +55,17 @@ class SpotifyHomeViewModel @Inject constructor(
 
     private fun resolveArtist(artist: SpotifyArtist) {
         viewModelScope.launch(Dispatchers.IO) {
-            val artistItem = YouTube.search(artist.name, YouTube.SearchFilter.FILTER_ARTIST)
-                .getOrNull()
-                ?.items
-                ?.firstOrNull() as? ArtistItem
+            val searchResult = YouTube.search(artist.name, YouTube.SearchFilter.FILTER_ARTIST)
+            searchResult.onFailure { error ->
+                Timber.tag("SpotifyHomeViewModel").w(error, "Failed to search artist '%s' on YouTube", artist.name)
+            }
+            val artistItems = searchResult.getOrNull()?.items?.filterIsInstance<ArtistItem>().orEmpty()
+            val artistItem = artistItems.firstOrNull { SpotifyPageTargets.sameArtist(it.title, artist.name) }
+                ?: artistItems.firstOrNull()
             if (artistItem != null) {
                 _navigationEvents.emit(SpotifyHomeNavigationEvent.OpenArtist(artistItem.id))
+            } else {
+                Timber.tag("SpotifyHomeViewModel").w("No matching YouTube artist found for '%s'", artist.name)
             }
         }
     }
