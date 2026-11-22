@@ -1991,6 +1991,19 @@
     <string name="audio_lab_fx_title">Audio FX</string>
     <string name="audio_lab_reset_all">Reset all effects</string>
     <string name="audio_lab_reset_all_confirm">Reset all Audio Lab effects and Stage settings to defaults?</string>
+    <string name="audio_lab_dsp_engine">DSP Engine</string>
+    <string name="audio_lab_bypass">A/B Bypass</string>
+    <string name="audio_lab_bypass_active">Bypassed</string>
+    <string name="audio_lab_chain_idle">Direct output</string>
+    <string name="audio_lab_profile_pure">Pure</string>
+    <string name="audio_lab_profile_studio_3d">Studio 3D</string>
+    <string name="audio_lab_profile_concert_hall">Concert Hall</string>
+    <string name="audio_lab_profile_late_night">Late Night</string>
+    <string name="audio_lab_profile_club_bass">Club Bass</string>
+    <string name="audio_lab_playback_section">Playback</string>
+    <string name="audio_lab_quality_title">Audio Quality</string>
+    <string name="audio_lab_transitions_title">Transitions &amp; Automix</string>
+    <string name="audio_lab_stage_sources_count">%1$d sources</string>
 
     <string name="audio_lab_eq_title">Equalizer</string>
     <string name="audio_lab_eq_subtitle">10-band parametric DSP equalizer</string>

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.audiodsp.AudioLabEqPreset
 import moe.rukamori.archivetune.audiodsp.AudioLabEqSettings
+import moe.rukamori.archivetune.audiodsp.AudioLabSoundProfiles
 import moe.rukamori.archivetune.audiodsp.AudioLabState
 import moe.rukamori.archivetune.audiodsp.EightDParams
 import moe.rukamori.archivetune.audiodsp.LoudnessParams
@@ -56,6 +57,9 @@ class AudioLabStore @Inject constructor(
     private val _state = MutableStateFlow(AudioLabState())
     val state: StateFlow<AudioLabState> = _state.asStateFlow()
 
+    private val _bypassed = MutableStateFlow(false)
+    val bypassed: StateFlow<Boolean> = _bypassed.asStateFlow()
+
     val isDspEqActive: StateFlow<Boolean> = equalizerService.isActiveFlow
 
     init {
@@ -80,6 +84,15 @@ class AudioLabStore @Inject constructor(
     }
 
     fun pushToDsp(state: AudioLabState) {
+        if (_bypassed.value) {
+            equalizerService.disable()
+            audioFxService.reverb = ReverbParams(enabled = false)
+            audioFxService.loudness = LoudnessParams(enabled = false)
+            audioFxService.spatial = SpatialParams(enabled = false)
+            audioFxService.eightD = EightDParams(enabled = false)
+            audioFxService.stage = StageParams.Off
+            return
+        }
         if (state.eq.enabled) {
             equalizerService.apply(state.eq.toParametricEq())
         } else {
@@ -90,6 +103,23 @@ class AudioLabStore @Inject constructor(
         audioFxService.spatial = state.spatial
         audioFxService.eightD = state.eightD
         audioFxService.stage = state.stage.toParams(speaker = false)
+    }
+
+    fun setBypassed(bypassed: Boolean) {
+        _bypassed.value = bypassed
+        pushToDsp(_state.value)
+    }
+
+    fun toggleBypass() {
+        setBypassed(!_bypassed.value)
+    }
+
+    fun applySoundProfile(profileId: String) {
+        _bypassed.value = false
+        _state.update { current ->
+            AudioLabSoundProfiles.apply(current, profileId)
+        }
+        pushToDsp(_state.value)
     }
 
     fun setEqEnabled(enabled: Boolean) {

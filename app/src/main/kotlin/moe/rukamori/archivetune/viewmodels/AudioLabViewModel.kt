@@ -32,6 +32,7 @@ class AudioLabViewModel @Inject constructor(
 ) : ViewModel() {
 
     val state: StateFlow<AudioLabState> = store.state
+    val bypassed: StateFlow<Boolean> = store.bypassed
 
     val stageLevels: FloatArray
         get() = audioFxService.stageLevels
@@ -106,4 +107,10 @@ class AudioLabViewModel @Inject constructor(
     fun resetAllFx() {
         store.resetAllFx()
     }
+
+    fun toggleBypass() = store.toggleBypass()
+
+    fun setBypassed(bypassed: Boolean) = store.setBypassed(bypassed)
+
+    fun applySoundProfile(profileId: String) = store.applySoundProfile(profileId)
 }

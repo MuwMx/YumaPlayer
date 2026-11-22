@@ -130,3 +130,121 @@ data class AudioLabState(
     val eightD: EightDParams = EightDParams(),
     val stage: StageSettings = StageSettings(),
 )
+
+data class AudioLabSoundProfile(
+    val id: String,
+    val name: String,
+)
+
+object AudioLabSoundProfiles {
+    val Pure = AudioLabSoundProfile("pure", "Pure")
+    val Studio3D = AudioLabSoundProfile("studio_3d", "Studio 3D")
+    val ConcertHall = AudioLabSoundProfile("concert_hall", "Concert Hall")
+    val LateNight = AudioLabSoundProfile("late_night", "Late Night")
+    val ClubBass = AudioLabSoundProfile("club_bass", "Club Bass")
+
+    val All = listOf(Pure, Studio3D, ConcertHall, LateNight, ClubBass)
+
+    fun apply(current: AudioLabState, profileId: String): AudioLabState {
+        return when (profileId) {
+            Pure.id -> current.copy(
+                eq = current.eq.copy(enabled = false),
+                stage = current.stage.copy(enabled = false),
+                reverb = current.reverb.copy(enabled = false),
+                loudness = current.loudness.copy(enabled = false),
+                spatial = current.spatial.copy(enabled = false),
+                eightD = current.eightD.copy(enabled = false),
+            )
+            Studio3D.id -> {
+                val eqPreset = AudioLabEqPresets.Studio
+                val stagePreset = StagePresets.Default
+                current.copy(
+                    eq = current.eq.copy(
+                        enabled = true,
+                        presetId = eqPreset.id,
+                        preampDb = eqPreset.preampDb,
+                        bandGainsDb = eqPreset.gainsDb,
+                    ),
+                    stage = StagePresets.apply(current.stage, stagePreset).copy(enabled = true),
+                    reverb = current.reverb.copy(enabled = false),
+                    loudness = current.loudness.copy(enabled = false),
+                    spatial = current.spatial.copy(enabled = false),
+                    eightD = current.eightD.copy(enabled = false),
+                )
+            }
+            ConcertHall.id -> {
+                val hallPreset = StagePresets.All.firstOrNull { it.id == "hall" } ?: StagePresets.Default
+                current.copy(
+                    eq = current.eq.copy(enabled = false),
+                    stage = StagePresets.apply(current.stage, hallPreset).copy(enabled = true),
+                    reverb = current.reverb.copy(enabled = true),
+                    loudness = current.loudness.copy(enabled = false),
+                    spatial = current.spatial.copy(enabled = false),
+                    eightD = current.eightD.copy(enabled = false),
+                )
+            }
+            LateNight.id -> {
+                val warmPreset = AudioLabEqPresets.Warm
+                current.copy(
+                    eq = current.eq.copy(
+                        enabled = true,
+                        presetId = warmPreset.id,
+                        preampDb = warmPreset.preampDb,
+                        bandGainsDb = warmPreset.gainsDb,
+                    ),
+                    stage = current.stage.copy(enabled = false),
+                    reverb = current.reverb.copy(enabled = false),
+                    loudness = current.loudness.copy(enabled = true),
+                    spatial = current.spatial.copy(enabled = false),
+                    eightD = current.eightD.copy(enabled = false),
+                )
+            }
+            ClubBass.id -> {
+                val clubPreset = AudioLabEqPresets.Club
+                current.copy(
+                    eq = current.eq.copy(
+                        enabled = true,
+                        presetId = clubPreset.id,
+                        preampDb = clubPreset.preampDb,
+                        bandGainsDb = clubPreset.gainsDb,
+                    ),
+                    stage = current.stage.copy(enabled = false),
+                    reverb = current.reverb.copy(enabled = false),
+                    loudness = current.loudness.copy(enabled = true),
+                    spatial = current.spatial.copy(enabled = false),
+                    eightD = current.eightD.copy(enabled = false),
+                )
+            }
+            else -> current
+        }
+    }
+
+    fun matchingProfileId(state: AudioLabState): String? {
+        val allDisabled = !state.eq.enabled && !state.stage.enabled && !state.reverb.enabled &&
+            !state.loudness.enabled && !state.spatial.enabled && !state.eightD.enabled
+        if (allDisabled) return Pure.id
+
+        val studio3dMatch = state.eq.enabled && state.eq.presetId == AudioLabEqPresets.Studio.id &&
+            state.stage.enabled && state.stage.presetId == StagePresets.DefaultId &&
+            !state.reverb.enabled && !state.loudness.enabled && !state.spatial.enabled && !state.eightD.enabled
+        if (studio3dMatch) return Studio3D.id
+
+        val concertHallMatch = state.stage.enabled && state.stage.presetId == "hall" &&
+            state.reverb.enabled && !state.eq.enabled &&
+            !state.loudness.enabled && !state.spatial.enabled && !state.eightD.enabled
+        if (concertHallMatch) return ConcertHall.id
+
+        val lateNightMatch = state.eq.enabled && state.eq.presetId == AudioLabEqPresets.Warm.id &&
+            state.loudness.enabled && !state.stage.enabled &&
+            !state.reverb.enabled && !state.spatial.enabled && !state.eightD.enabled
+        if (lateNightMatch) return LateNight.id
+
+        val clubBassMatch = state.eq.enabled &&
+            (state.eq.presetId == AudioLabEqPresets.Club.id || state.eq.presetId == AudioLabEqPresets.BassBoost.id) &&
+            state.loudness.enabled && !state.stage.enabled &&
+            !state.reverb.enabled && !state.spatial.enabled && !state.eightD.enabled
+        if (clubBassMatch) return ClubBass.id
+
+        return null
+    }
+}
