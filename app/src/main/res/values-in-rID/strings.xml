@@ -760,7 +760,7 @@
     <string name="see_all">Lihat semua</string>
     <string name="oldest_first">Terlama dahulu</string>
     <string name="font_preference_desc">Pilih sumber font aplikasi</string>
-    <string name="local_files">File Lokal</string>
+    <string name="local_files">File lokal</string>
     <string name="lyrics_synced_badge">Tersinkronisasi</string>
     <string name="your_collection">Koleksi Anda</string>
     <string name="artist_subtitle">Artis</string>
@@ -1619,7 +1619,7 @@
     <string name="token_shown">Ketuk lagi untuk menyalin atau mengedit</string>
     <string name="token_adv_login_description">Ini adalah metode login LANJUTAN. Sebagai alternatif portal web, Anda dapat langsung memasukkan atau memperbarui token login di sini. Misalnya, ini dapat mempercepat proses login di beberapa perangkat. Perlu diketahui bahwa format token tidak valid yang gagal diurai oleh aplikasi tidak akan diterima</string>
     <string name="yt_sync">Sinkronisasi otomatis dengan akun</string>
-    <string name="force_sync_on_switch_account">Paksa Sinkronisasi saat Ganti Akun</string>
+    <string name="force_sync_on_switch_account">Paksa sinkronisasi saat ganti akun</string>
     <string name="force_sync_on_switch_account_desc">Sinkronkan ulang playlist, lagu yang disukai, artis, dan album dari akun yang dipilih setelah berganti akun</string>
     <string name="more_content">Konten lainnya</string>
     <string name="general">Umum</string>
@@ -1862,7 +1862,7 @@
     <string name="spotify_liked_songs">Lagu yang Disukai</string>
     <string name="login_success">Berhasil masuk</string>
     <string name="ai_integration">Integrasi AI</string>
-    <string name="ai_integration_desc">Konfigurasikan terjemahan AI dan otomatisasi pengguna yang dipersonalisasi.</string>
+    <string name="ai_integration_desc">Konfigurasikan terjemahan AI dan otomatisasi pengguna yang dipersonalisasi</string>
     <string name="ai_provider_settings">Penyedia</string>
     <string name="ai_provider">Penyedia AI</string>
     <string name="ai_provider_desc">Pilih layanan AI.</string>
