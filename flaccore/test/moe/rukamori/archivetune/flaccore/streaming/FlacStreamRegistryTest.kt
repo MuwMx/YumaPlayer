@@ -1,3 +1,9 @@
+/*
+ * YumaPlayer (2026) | Modified work by MuwMix
+ * Mochy-Music (2026) | Original work by © Mochy
+ * GPL-3.0 License | Contributors: see git history
+ */
+
 package moe.rukamori.archivetune.flaccore.streaming
 
 import kotlinx.coroutines.CancellationException
@@ -26,9 +32,54 @@ class FlacStreamRegistryTest {
     }
 
     @Test
-    fun `returns null if qbdlx returns null`() = runTest {
+    fun `monochrome prioritized when providerOrder specifies monochrome first`() = runTest {
+        val monoUrl = FlacStreamUrl("mono_url", 0, origin = "monochrome")
+        val qbdlxUrl = FlacStreamUrl("qbdlx_url", 0, origin = "qbdlx")
+
+        val registry = FlacStreamRegistry(
+            qbdlx = { _, _ -> qbdlxUrl },
+            monochrome = { _, _ -> monoUrl },
+            providerOrder = { listOf("monochrome", "qbdlx") },
+        )
+
+        val result = registry.resolve(query, quality)
+        assertEquals("monochrome", result?.origin)
+    }
+
+    @Test
+    fun `qbdlx prioritized when providerOrder specifies qbdlx first`() = runTest {
+        val monoUrl = FlacStreamUrl("mono_url", 0, origin = "monochrome")
+        val qbdlxUrl = FlacStreamUrl("qbdlx_url", 0, origin = "qbdlx")
+
+        val registry = FlacStreamRegistry(
+            qbdlx = { _, _ -> qbdlxUrl },
+            monochrome = { _, _ -> monoUrl },
+            providerOrder = { listOf("qbdlx", "monochrome") },
+        )
+
+        val result = registry.resolve(query, quality)
+        assertEquals("qbdlx", result?.origin)
+    }
+
+    @Test
+    fun `falls back to second provider when first returns null`() = runTest {
+        val qbdlxUrl = FlacStreamUrl("qbdlx_url", 0, origin = "qbdlx")
+
+        val registry = FlacStreamRegistry(
+            qbdlx = { _, _ -> qbdlxUrl },
+            monochrome = { _, _ -> null },
+            providerOrder = { listOf("monochrome", "qbdlx") },
+        )
+
+        val result = registry.resolve(query, quality)
+        assertEquals("qbdlx", result?.origin)
+    }
+
+    @Test
+    fun `returns null if all return null`() = runTest {
         val registry = FlacStreamRegistry(
             qbdlx = { _, _ -> null },
+            monochrome = { _, _ -> null },
         )
 
         val result = registry.resolve(query, quality)

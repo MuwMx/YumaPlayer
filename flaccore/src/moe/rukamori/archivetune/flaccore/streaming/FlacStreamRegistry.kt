@@ -13,14 +13,21 @@ import moe.rukamori.archivetune.flaccore.model.TrackQuery
  */
 class FlacStreamRegistry(
     private val qbdlx: suspend (TrackQuery, Int) -> FlacStreamUrl?,
+    private val monochrome: (suspend (TrackQuery, Int) -> FlacStreamUrl?)? = null,
+    private val providerOrder: suspend () -> List<String> = { listOf("monochrome", "qbdlx") },
 ) {
     private val logger = FlacLogger(TAG)
     var timeoutMs = 35_000L
 
     suspend fun resolve(query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {
-        val resolvers = listOf(
-            "qbdlx" to qbdlx,
-        )
+        val available = buildMap<String, suspend (TrackQuery, Int) -> FlacStreamUrl?> {
+            put("qbdlx", qbdlx)
+            monochrome?.let { put("monochrome", it) }
+        }
+
+        val order = providerOrder()
+        val orderedKeys = (order.filter { it in available } + available.keys).distinct()
+        val resolvers = orderedKeys.mapNotNull { name -> available[name]?.let { fn -> name to fn } }
 
         logger.i("chain for '${query.title}': [${resolvers.joinToString(",") { it.first }}]")
 

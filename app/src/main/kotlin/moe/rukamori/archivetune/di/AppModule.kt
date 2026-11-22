@@ -310,11 +310,67 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun provideMonochromeConfig(@ApplicationContext context: Context): moe.rukamori.archivetune.flaccore.monochrome.MonochromeConfig {
+        return moe.rukamori.archivetune.lossless.MonochromeConfigImpl(context)
+    }
+
+    @Singleton
+    @Provides
+    fun provideMonoHttpClient(): moe.rukamori.archivetune.flaccore.monochrome.MonoHttpClient {
+        val client = okhttp3.OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        return moe.rukamori.archivetune.lossless.MonoHttpClientImpl(client)
+    }
+
+    @Singleton
+    @Provides
+    fun provideMonochromeServers(
+        kvStore: moe.rukamori.archivetune.flaccore.FlacKvStore,
+        config: moe.rukamori.archivetune.flaccore.monochrome.MonochromeConfig,
+    ): moe.rukamori.archivetune.flaccore.monochrome.MonochromeServers {
+        return moe.rukamori.archivetune.flaccore.monochrome.MonochromeServers(
+            kvStore = kvStore,
+            config = config,
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideMonochromeSource(
+        servers: moe.rukamori.archivetune.flaccore.monochrome.MonochromeServers,
+        httpClient: moe.rukamori.archivetune.flaccore.monochrome.MonoHttpClient,
+    ): moe.rukamori.archivetune.flaccore.monochrome.MonochromeSource {
+        return moe.rukamori.archivetune.flaccore.monochrome.MonochromeSource(
+            servers = servers,
+            httpClient = httpClient,
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideMonochromeStreamResolver(
+        source: moe.rukamori.archivetune.flaccore.monochrome.MonochromeSource,
+        config: moe.rukamori.archivetune.flaccore.monochrome.MonochromeConfig,
+    ): moe.rukamori.archivetune.flaccore.streaming.MonochromeStreamResolver {
+        return moe.rukamori.archivetune.flaccore.streaming.MonochromeStreamResolver(
+            source = source,
+            config = config,
+        )
+    }
+
+    @Singleton
+    @Provides
     fun provideFlacStreamRegistry(
         qbdlxResolver: moe.rukamori.archivetune.flaccore.streaming.QbdlxStreamResolver,
+        monochromeResolver: moe.rukamori.archivetune.flaccore.streaming.MonochromeStreamResolver,
+        monochromeConfig: moe.rukamori.archivetune.flaccore.monochrome.MonochromeConfig,
     ): moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry {
         return moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry(
             qbdlx = { q, ql -> qbdlxResolver.resolve(q, ql) },
+            monochrome = { q, ql -> monochromeResolver.resolve(q, ql) },
+            providerOrder = { monochromeConfig.providerOrder() },
         )
     }
 
