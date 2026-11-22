@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.DownloadLocationUriKey
 import moe.rukamori.archivetune.constants.EnableLosslessKey
 import moe.rukamori.archivetune.constants.EnableMonochromeKey
+import moe.rukamori.archivetune.constants.EnableQobuzKey
 import moe.rukamori.archivetune.constants.FlacDownloadQualityKey
 import moe.rukamori.archivetune.constants.FlacQuality
 import moe.rukamori.archivetune.constants.FlacStreamingQualityKey
@@ -65,6 +66,7 @@ fun AudioQualitySourcesScreen(navController: NavController) {
     val (playbackSource, onPlaybackSourceChange) = rememberEnumPreference(PlaybackSourceKey, PlaybackSource.YT_MUSIC)
     val (enableMonochrome, onEnableMonochromeChange) = rememberPreference(EnableMonochromeKey, true)
     val (monochromeServers, onMonochromeServersChange) = rememberPreference(MonochromeServersKey, "")
+    val (enableQobuz, onEnableQobuzChange) = rememberPreference(EnableQobuzKey, true)
     val (providerOrderRaw, onProviderOrderRawChange) = rememberPreference(LosslessProviderOrderKey, "monochrome,qbdlx")
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
     val (flacStreamingQuality, onFlacStreamingQualityChange) = rememberEnumPreference(FlacStreamingQualityKey, FlacQuality.CD)
@@ -109,8 +111,12 @@ fun AudioQualitySourcesScreen(navController: NavController) {
     val qobuzUi = ProviderItemUi(
         id = "qbdlx",
         name = stringResource(R.string.provider_qobuz),
-        status = stringResource(if (qobuzReady) R.string.provider_status_qobuz_ready else R.string.provider_status_qobuz_unconfigured),
-        active = losslessEnabled && qobuzReady,
+        status = when {
+            !enableQobuz -> stringResource(R.string.provider_status_qobuz_disabled)
+            qobuzReady -> stringResource(R.string.provider_status_qobuz_ready)
+            else -> stringResource(R.string.provider_status_qobuz_unconfigured)
+        },
+        active = losslessEnabled && enableQobuz && qobuzReady,
     )
     val ytMusicFallback = ProviderItemUi(
         id = "yt_music",
@@ -120,8 +126,18 @@ fun AudioQualitySourcesScreen(navController: NavController) {
     )
 
     when (activeSheet) {
-        "monochrome" -> MonochromeConfigSheet(enableMonochrome, onEnableMonochromeChange, monochromeServers, onMonochromeServersChange) { activeSheet = null }
-        "qbdlx" -> QobuzConfigSheet(qobuzAppId, onQobuzAppIdChange, qobuzAppSecret, onQobuzAppSecretChange, qobuzUserAuthToken, onQobuzUserAuthTokenChange) { activeSheet = null }
+        "monochrome" -> MonochromeConfigSheet(
+            enabled = enableMonochrome, onEnabledChange = onEnableMonochromeChange,
+            serversRaw = monochromeServers, onServersRawChange = onMonochromeServersChange,
+            onDismiss = { activeSheet = null },
+        )
+        "qbdlx" -> QobuzConfigSheet(
+            enabled = enableQobuz, onEnabledChange = onEnableQobuzChange,
+            appId = qobuzAppId, onAppIdChange = onQobuzAppIdChange,
+            appSecret = qobuzAppSecret, onAppSecretChange = onQobuzAppSecretChange,
+            userAuthToken = qobuzUserAuthToken, onUserAuthTokenChange = onQobuzUserAuthTokenChange,
+            onDismiss = { activeSheet = null },
+        )
     }
 
     YumaSettingsScaffold(
@@ -210,32 +226,20 @@ fun AudioQualitySourcesScreen(navController: NavController) {
 }
 
 @Composable
-private fun audioQualityLabel(quality: AudioQuality): String = when (quality) {
-    AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
-    AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
-    AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
-    AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_highest)
-}
+private fun audioQualityLabel(quality: AudioQuality): String = stringResource(
+    when (quality) {
+        AudioQuality.AUTO -> R.string.audio_quality_auto
+        AudioQuality.HIGH -> R.string.audio_quality_high
+        AudioQuality.LOW -> R.string.audio_quality_low
+        AudioQuality.HIGHEST -> R.string.audio_quality_highest
+    }
+)
 
 @Composable
-private fun flacQualityLabel(quality: FlacQuality): String = when (quality) {
-    FlacQuality.CD -> stringResource(R.string.flac_quality_cd)
-    FlacQuality.HI_RES -> stringResource(R.string.flac_quality_hi_res)
-    FlacQuality.MAX -> stringResource(R.string.flac_quality_max)
-}
-
-private fun normalizeProviderOrder(raw: String): List<String> {
-    val parsed = raw.split(",").map { it.trim() }.filter { it == "monochrome" || it == "qbdlx" }.distinct()
-    return parsed + listOf("monochrome", "qbdlx").filterNot { it in parsed }
-}
-
-private fun resolveFolderPath(context: Context, downloadLocationUri: String): String? {
-    if (downloadLocationUri.isBlank()) return null
-    return runCatching {
-        val uri = Uri.parse(downloadLocationUri)
-        val docFile = DocumentFile.fromTreeUri(context, uri)
-        val name = docFile?.name?.takeIf { it.isNotBlank() }
-        val rawPath = uri.lastPathSegment?.substringAfterLast(":")?.takeIf { it.isNotBlank() }
-        name ?: rawPath ?: downloadLocationUri
-    }.getOrNull() ?: downloadLocationUri
-}
+private fun flacQualityLabel(quality: FlacQuality): String = stringResource(
+    when (quality) {
+        FlacQuality.CD -> R.string.flac_quality_cd
+        FlacQuality.HI_RES -> R.string.flac_quality_hi_res
+        FlacQuality.MAX -> R.string.flac_quality_max
+    }
+)

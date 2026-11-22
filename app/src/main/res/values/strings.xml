@@ -2117,11 +2117,16 @@
     <string name="provider_status_monochrome_default">FLAC · No account</string>
     <string name="provider_status_monochrome_relays">Custom relay · %1$d</string>
     <string name="provider_status_monochrome_disabled">Disabled</string>
+    <string name="provider_status_qobuz_disabled">Disabled</string>
     <string name="provider_status_qobuz_ready">Hi-Res FLAC · Tokens</string>
     <string name="provider_status_qobuz_unconfigured">Not configured</string>
     <string name="provider_status_yt_fallback">Opus / AAC · Fallback</string>
     <string name="monochrome_config_title">Monochrome</string>
     <string name="monochrome_enable">Enable Monochrome</string>
+    <string name="monochrome_server_test">Test</string>
+    <string name="server_status_checking">Checking…</string>
+    <string name="server_status_online">Online · %1$d ms</string>
+    <string name="server_status_unreachable">Unreachable</string>
     <string name="monochrome_builtin_server">Built-in server</string>
     <string name="monochrome_builtin_server_host">tracks.monochrome.st</string>
     <string name="monochrome_custom_relays">Custom relay servers</string>
@@ -2132,5 +2137,6 @@
     <string name="monochrome_no_relays">No custom relays configured</string>
     <string name="qobuz_config_title">Qobuz</string>
     <string name="qobuz_config_subtitle">Configure Qobuz API credentials and user auth token pool.</string>
+    <string name="qobuz_enable">Enable Qobuz</string>
     <string name="audio_quality_lossless_summary">FLAC · %1$s</string>
 </resources>

@@ -48,7 +48,7 @@ class QbdlxQobuzSource(
      * A disabled toggle still blocks streaming.
      */
     suspend fun isEnabledForStreaming(): Boolean =
-        config.qbdlxEnabled() && !credentialStore.allDead()
+        config.qbdlxEnabled() && config.qobuzEnabled() && !credentialStore.allDead()
 
     /**
      * User-initiated immediate resolve for the streaming path. Skips the

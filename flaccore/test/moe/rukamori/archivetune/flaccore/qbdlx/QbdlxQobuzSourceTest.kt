@@ -54,6 +54,7 @@ class QbdlxQobuzSourceTest {
 
     private fun enabledAndAcquired() {
         coEvery { config.qbdlxEnabled() } returns true
+        coEvery { config.qobuzEnabled() } returns true
         coEvery { credentialStore.allDead() } returns false
         coEvery { rateLimiter.stateOf(sid) } returns notBroken
         coEvery { rateLimiter.acquire(sid) } returns true
@@ -131,6 +132,7 @@ class QbdlxQobuzSourceTest {
     @Test
     fun `whole pool dead disables source and resolve returns null`() = runTest {
         coEvery { config.qbdlxEnabled() } returns true
+        coEvery { config.qobuzEnabled() } returns true
         coEvery { credentialStore.allDead() } returns true
         coEvery { rateLimiter.stateOf(sid) } returns notBroken
 
@@ -140,8 +142,20 @@ class QbdlxQobuzSourceTest {
     }
 
     @Test
+    fun `qobuz disabled disables source and resolve returns null`() = runTest {
+        coEvery { config.qbdlxEnabled() } returns true
+        coEvery { config.qobuzEnabled() } returns false
+        coEvery { credentialStore.allDead() } returns false
+
+        assertFalse(source().isEnabledForStreaming())
+        assertNull(source().resolveImmediate(query))
+        coVerify(exactly = 0) { apiClient.search(any(), any()) }
+    }
+
+    @Test
     fun `resolveImmediate succeeds even when circuit broken and bypasses acquire`() = runTest {
         coEvery { config.qbdlxEnabled() } returns true
+        coEvery { config.qobuzEnabled() } returns true
         coEvery { credentialStore.allDead() } returns false
         coEvery { rateLimiter.stateOf(sid) } returns
             RateLimitState(0.0, 0L, isCircuitBroken = true, msUntilUnblock = 60_000L, recentFailures = 5)

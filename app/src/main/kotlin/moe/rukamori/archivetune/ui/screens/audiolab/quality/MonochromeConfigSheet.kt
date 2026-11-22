@@ -6,6 +6,8 @@
 package moe.rukamori.archivetune.ui.screens.audiolab.quality
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +42,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.flaccore.monochrome.MonochromeServers
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -58,6 +64,21 @@ internal fun MonochromeConfigSheet(
     val servers = remember(serversRaw) { parseRelayServers(serversRaw) }
     var draftUrl by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var probeStates by remember { mutableStateOf<Map<String, ServerProbeState>>(emptyMap()) }
+    var isProbing by remember { mutableStateOf(false) }
+
+    val onTestClick = {
+        if (!isProbing) {
+            isProbing = true
+            val allUrls = listOf(MonochromeServers.DefaultServer.url) + servers
+            probeStates = allUrls.associateWith { ServerProbeState.Checking }
+            scope.launch {
+                probeStates = MonochromeServerProbe.probeAll(allUrls)
+                isProbing = false
+            }
+        }
+    }
 
     val submitRelay = {
         val candidate = draftUrl.trim()
@@ -89,7 +110,27 @@ internal fun MonochromeConfigSheet(
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.monochrome_builtin_server)) },
                     description = stringResource(R.string.monochrome_builtin_server_host),
+                    content = {
+                        val status = probeStates[MonochromeServers.DefaultServer.url]
+                        if (status != null) {
+                            Spacer(Modifier.height(2.dp))
+                            ServerStatusText(status)
+                        }
+                    },
                     icon = { Icon(painterResource(R.drawable.cached), null) },
+                    trailingContent = {
+                        FilledTonalButton(
+                            onClick = onTestClick,
+                            enabled = !isProbing,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.monochrome_server_test),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -167,14 +208,20 @@ internal fun MonochromeConfigSheet(
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = url,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = url,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            val status = probeStates[url]
+                            if (status != null) {
+                                Spacer(Modifier.height(2.dp))
+                                ServerStatusText(status)
+                            }
+                        }
                         IconButton(
                             onClick = {
                                 val updated = servers.filterNot { it == url }
@@ -192,19 +239,4 @@ internal fun MonochromeConfigSheet(
             }
         }
     }
-}
-
-internal fun parseRelayServers(raw: String): List<String> {
-    if (raw.isBlank()) return emptyList()
-    return raw.split(",").map { it.trim() }.filter { it.isNotBlank() }
-}
-
-private fun isValidRelayUrl(url: String): Boolean {
-    if (url.contains(",")) return false
-    val afterScheme = when {
-        url.startsWith("https://") -> url.removePrefix("https://")
-        url.startsWith("http://") -> url.removePrefix("http://")
-        else -> return false
-    }
-    return afterScheme.isNotBlank() && !afterScheme.contains(" ")
 }

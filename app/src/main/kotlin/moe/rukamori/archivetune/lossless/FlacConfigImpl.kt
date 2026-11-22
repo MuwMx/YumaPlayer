@@ -2,6 +2,7 @@ package moe.rukamori.archivetune.lossless
 
 import android.content.Context
 import moe.rukamori.archivetune.constants.EnableLosslessKey
+import moe.rukamori.archivetune.constants.EnableQobuzKey
 import moe.rukamori.archivetune.constants.QobuzAppIdKey
 import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
@@ -12,6 +13,10 @@ import moe.rukamori.archivetune.utils.getAsync
 class FlacConfigImpl(private val context: Context) : FlacConfig {
     override suspend fun qbdlxEnabled(): Boolean {
         return context.dataStore.getAsync(EnableLosslessKey, true)
+    }
+
+    override suspend fun qobuzEnabled(): Boolean {
+        return context.dataStore.getAsync(EnableQobuzKey, true)
     }
 
     override suspend fun qbdlxAppId(): String {

@@ -5,6 +5,7 @@ interface FlacConfig {
     suspend fun qbdlxAppId(): String
     suspend fun qbdlxAppSecret(): String
     suspend fun qbdlxTokenPool(): String
+    suspend fun qobuzEnabled(): Boolean = true
 }
 
 interface FlacKvStore {
