@@ -169,8 +169,8 @@ fun FxSketch(
 
     Canvas(modifier = modifier) {
         val phase = sweepState.floatValue
-        val baseColor = if (isActive) primary.copy(alpha = 0.55f) else onSurfaceVariant.copy(alpha = 0.45f)
-        val stroke = Stroke(width = 2.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val baseColor = if (isActive) primary.copy(alpha = 0.85f) else onSurfaceVariant.copy(alpha = 0.55f)
+        val stroke = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
 
         val w = size.width
         val h = size.height

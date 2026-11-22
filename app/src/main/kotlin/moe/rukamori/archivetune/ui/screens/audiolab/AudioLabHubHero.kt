@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -113,57 +115,18 @@ fun AudioLabSpectrumHero(
     val hasActiveChain = activeNodes.isNotEmpty()
 
     val shape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(156.dp)
             .yumaGlassCard(shape = shape)
-            .clip(shape),
+            .clip(shape)
+            .padding(vertical = SettingsDimensions.SegmentedItemPaddingVertical),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val tick = frameTick.floatValue
-            if (shouldAnimate && tick != lastTick[0]) {
-                analyzer.update()
-                lastTick[0] = tick
-            }
-
-            val padH = 12.dp.toPx()
-            val padBottom = 10.dp.toPx()
-            val usableWidth = (size.width - padH * 2f).coerceAtLeast(1f)
-            val maxBarHeight = size.height * 0.62f
-            val slotWidth = usableWidth / SpectrumBandCount
-            val barWidth = (slotWidth * 0.56f).coerceAtLeast(2.dp.toPx())
-            val corner = CornerRadius(barWidth * 0.5f, barWidth * 0.5f)
-            val baseColor = when {
-                bypassed -> onSurfaceVariant.copy(alpha = 0.20f)
-                isPlaying -> primary.copy(alpha = 0.42f)
-                else -> primary.copy(alpha = 0.16f)
-            }
-
-            val levels = analyzer.levels
-            for (i in 0 until SpectrumBandCount) {
-                val normalized = if (shouldAnimate) {
-                    ((levels[i] + 66f) / 60f).coerceIn(0.06f, 1f)
-                } else {
-                    0.08f
-                }
-                val barHeight = (maxBarHeight * normalized).coerceAtLeast(barWidth)
-                val x = padH + i * slotWidth + (slotWidth - barWidth) * 0.5f
-                val y = size.height - padBottom - barHeight
-                drawRoundRect(
-                    color = baseColor,
-                    topLeft = Offset(x, y),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = corner,
-                )
-            }
-        }
-
         Row(
             modifier = Modifier
-                .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(SettingsDimensions.SegmentedItemPaddingHorizontal),
+                .padding(horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -179,7 +142,7 @@ fun AudioLabSpectrumHero(
                 )
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
+                        .size(SettingsDimensions.BadgeSize)
                         .clip(CircleShape)
                         .background(dotColor),
                 )
@@ -225,11 +188,71 @@ fun AudioLabSpectrumHero(
             }
         }
 
-        LazyRow(
+        Canvas(
             modifier = Modifier
-                .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(bottom = 12.dp),
+                .height(72.dp)
+                .padding(horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal),
+        ) {
+            val tick = frameTick.floatValue
+            if (shouldAnimate && tick != lastTick[0]) {
+                analyzer.update()
+                lastTick[0] = tick
+            }
+
+            val usableWidth = size.width.coerceAtLeast(1f)
+            val maxBarHeight = size.height.coerceAtLeast(1f)
+            val slotWidth = usableWidth / SpectrumBandCount
+            val barWidth = (slotWidth * 0.56f).coerceAtLeast(2.dp.toPx())
+            val corner = CornerRadius(barWidth * 0.5f, barWidth * 0.5f)
+            val activeBrush = if (shouldAnimate && !bypassed) {
+                Brush.verticalGradient(
+                    colors = listOf(
+                        primary.copy(alpha = 0.88f),
+                        primary.copy(alpha = 0.22f),
+                    ),
+                    startY = 0f,
+                    endY = size.height,
+                )
+            } else {
+                null
+            }
+            val mutedColor = if (bypassed) {
+                onSurfaceVariant.copy(alpha = 0.20f)
+            } else {
+                primary.copy(alpha = 0.18f)
+            }
+
+            val levels = analyzer.levels
+            for (i in 0 until SpectrumBandCount) {
+                val normalized = if (shouldAnimate && !bypassed) {
+                    ((levels[i] + 66f) / 60f).coerceIn(0.06f, 1f)
+                } else {
+                    0.06f
+                }
+                val barHeight = (maxBarHeight * normalized).coerceAtLeast(barWidth)
+                val x = i * slotWidth + (slotWidth - barWidth) * 0.5f
+                val y = size.height - barHeight
+                if (activeBrush != null) {
+                    drawRoundRect(
+                        brush = activeBrush,
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = corner,
+                    )
+                } else {
+                    drawRoundRect(
+                        color = mutedColor,
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = corner,
+                    )
+                }
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {

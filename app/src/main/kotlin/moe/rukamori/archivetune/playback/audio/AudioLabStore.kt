@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.audiodsp.StageSource
 import moe.rukamori.archivetune.audiodsp.StageSpeakers
 import moe.rukamori.archivetune.audiodsp.StageWalls
 import moe.rukamori.archivetune.constants.AudioLabStateJsonKey
+import moe.rukamori.archivetune.utils.reportException
 import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
@@ -74,11 +75,13 @@ class AudioLabStore @Inject constructor(
                 .drop(1)
                 .debounce(350L)
                 .collect { currentState ->
-                    runCatching {
+                    try {
                         val encoded = encode(currentState)
                         dataStore.edit { prefs ->
                             prefs[AudioLabStateJsonKey] = encoded
                         }
+                    } catch (e: Exception) {
+                        reportException(e)
                     }
                 }
         }

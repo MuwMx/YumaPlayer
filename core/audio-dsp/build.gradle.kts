@@ -30,6 +30,7 @@ dependencies {
     implementation(libs.json)
     implementation(libs.timber)
     implementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

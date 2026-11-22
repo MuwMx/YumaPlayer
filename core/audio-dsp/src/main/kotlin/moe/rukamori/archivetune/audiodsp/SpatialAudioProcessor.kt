@@ -207,19 +207,23 @@ class SpatialAudioProcessor(private val config: AudioFxConfigProvider) : AudioPr
         private val feedDb: Float,
         previous: Crossfeed? = null,
     ) {
-        private val a1: Float
         private val b0: Float
         private val b1: Float
+        private val b2: Float
+        private val a1: Float
+        private val a2: Float
         private val gain: Float
         private val delayLineL = FloatArray(CrossfeedDelay)
         private val delayLineR = FloatArray(CrossfeedDelay)
         private var delayPos = 0
-        private var loL = 0f
-        private var loR = 0f
-        private var hiL = 0f
-        private var hiR = 0f
-        private var asisL = 0f
-        private var asisR = 0f
+        private var x1L = 0f
+        private var x2L = 0f
+        private var y1L = 0f
+        private var y2L = 0f
+        private var x1R = 0f
+        private var x2R = 0f
+        private var y1R = 0f
+        private var y2R = 0f
         var outLeft = 0f
             private set
         var outRight = 0f
@@ -230,14 +234,19 @@ class SpatialAudioProcessor(private val config: AudioFxConfigProvider) : AudioPr
             val w = 2.0 * PI * fc / sampleRate
             val cosW = cos(w)
             val alpha = sin(w) / (2.0 * 0.707)
-            val norm = (1.0 + alpha).toFloat()
-            a1 = ((-2.0 * cosW) / norm).toFloat()
-            b0 = ((1.0 - cosW) / 2.0 / norm).toFloat()
+            val norm = (1.0 + alpha)
+            b0 = (((1.0 - cosW) / 2.0) / norm).toFloat()
             b1 = ((1.0 - cosW) / norm).toFloat()
+            b2 = b0
+            a1 = ((-2.0 * cosW) / norm).toFloat()
+            a2 = ((1.0 - alpha) / norm).toFloat()
             gain = 10f.pow(-abs(feedDb).coerceIn(1f, 12f) / 20f)
             if (previous != null) {
-                loL = previous.loL; loR = previous.loR
-                hiL = previous.hiL; hiR = previous.hiR
+                System.arraycopy(previous.delayLineL, 0, delayLineL, 0, CrossfeedDelay)
+                System.arraycopy(previous.delayLineR, 0, delayLineR, 0, CrossfeedDelay)
+                delayPos = previous.delayPos
+                x1L = previous.x1L; x2L = previous.x2L; y1L = previous.y1L; y2L = previous.y2L
+                x1R = previous.x1R; x2R = previous.x2R; y1R = previous.y1R; y2R = previous.y2R
             }
         }
 
@@ -251,20 +260,33 @@ class SpatialAudioProcessor(private val config: AudioFxConfigProvider) : AudioPr
             val delayedR = delayLineR[readPos]
             delayPos = if (delayPos + 1 == CrossfeedDelay) 0 else delayPos + 1
 
-            loL = b0 * delayedL + b1 * asisL - a1 * loL
-            loR = b0 * delayedR + b1 * asisR - a1 * loR
-            asisL = delayedL
-            asisR = delayedR
+            val loL = b0 * delayedL + b1 * x1L + b2 * x2L - a1 * y1L - a2 * y2L
+            x2L = x1L
+            x1L = delayedL
+            y2L = y1L
+            y1L = loL
 
-            hiL = inL - loL
-            hiR = inR - loR
+            val loR = b0 * delayedR + b1 * x1R + b2 * x2R - a1 * y1R - a2 * y2R
+            x2R = x1R
+            x1R = delayedR
+            y2R = y1R
+            y1R = loR
+
+            val hiL = inL - loL
+            val hiR = inR - loR
 
             outLeft = (hiL + loR) * gain
             outRight = (hiR + loL) * gain
         }
 
         fun clear() {
-            loL = 0f; loR = 0f; hiL = 0f; hiR = 0f; asisL = 0f; asisR = 0f
+            delayLineL.fill(0f)
+            delayLineR.fill(0f)
+            delayPos = 0
+            x1L = 0f; x2L = 0f; y1L = 0f; y2L = 0f
+            x1R = 0f; x2R = 0f; y1R = 0f; y2R = 0f
+            outLeft = 0f
+            outRight = 0f
         }
     }
 
@@ -379,7 +401,8 @@ class SpatialAudioProcessor(private val config: AudioFxConfigProvider) : AudioPr
             else -> floatArrayOf(-30f, 30f, 0f, Float.NaN, -150f, 150f, -90f, 90f)
         }
 
-        private fun toPcm(sample: Float): Short {
+        internal fun toPcm(sample: Float): Short {
+            if (!sample.isFinite()) return 0
             val a = abs(sample)
             val shaped = if (a <= Knee) sample else {
                 (Knee + (1f - Knee) * tanh((a - Knee) / (1f - Knee))) * if (sample < 0) -1f else 1f
