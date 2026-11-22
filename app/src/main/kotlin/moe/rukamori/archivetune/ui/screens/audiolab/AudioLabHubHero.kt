@@ -12,7 +12,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,12 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.audiodsp.AudioLabSoundProfiles
 import moe.rukamori.archivetune.audiodsp.AudioLabState
 import moe.rukamori.archivetune.audiodsp.SpectrumAnalyzer
-import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import kotlin.math.pow
@@ -301,71 +297,4 @@ fun AudioLabSpectrumHero(
             }
         }
     }
-}
-
-@Composable
-fun AudioLabSoundProfilesRow(
-    activeProfileId: String?,
-    bypassed: Boolean,
-    onSelectProfile: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val animationsDisabled = LocalAnimationsDisabled.current
-    val yumaColors = LocalYumaColors.current
-    val chipShape = RoundedCornerShape(50)
-
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = SettingsDimensions.ScreenHorizontalPadding),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(items = AudioLabSoundProfiles.All, key = { it.id }) { profile ->
-            val selected = !bypassed && profile.id == activeProfileId
-            val bg by animateColorAsState(
-                targetValue = if (selected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    yumaColors.cardBackgroundOpaque
-                },
-                animationSpec = if (animationsDisabled) snap() else tween(200),
-                label = "profileChipBg",
-            )
-            val fg = if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            val borderColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(chipShape)
-                    .yumaClickable { onSelectProfile(profile.id) }
-                    .background(bg)
-                    .border(1.dp, borderColor, chipShape)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = stringResource(soundProfileLabelRes(profile.id)),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = fg,
-                )
-            }
-        }
-    }
-}
-
-@StringRes
-private fun soundProfileLabelRes(profileId: String): Int = when (profileId) {
-    AudioLabSoundProfiles.Pure.id -> R.string.audio_lab_profile_pure
-    AudioLabSoundProfiles.Studio3D.id -> R.string.audio_lab_profile_studio_3d
-    AudioLabSoundProfiles.ConcertHall.id -> R.string.audio_lab_profile_concert_hall
-    AudioLabSoundProfiles.LateNight.id -> R.string.audio_lab_profile_late_night
-    AudioLabSoundProfiles.ClubBass.id -> R.string.audio_lab_profile_club_bass
-    else -> R.string.audio_lab_profile_pure
 }
