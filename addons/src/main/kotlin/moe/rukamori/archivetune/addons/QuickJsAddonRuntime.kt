@@ -13,7 +13,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
-import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -178,7 +177,7 @@ class QuickJsAddonRuntime(
         settings: Map<String, String> = emptyMap(),
     ): Result<List<AddonTrack>> {
         val ctxArg = AddonResponseParser.buildContextArg(settings)
-        val escQuery = JSONObject.quote(query)
+        val escQuery = AddonResponseParser.jsString(query)
         return callExport(addonId, "searchTracks", listOf(escQuery, limit.toString(), ctxArg)).mapCatching { raw ->
             AddonResponseParser.parseTracks(raw)
         }
@@ -191,8 +190,8 @@ class QuickJsAddonRuntime(
         settings: Map<String, String> = emptyMap(),
     ): Result<AddonStream?> {
         val ctxArg = AddonResponseParser.buildContextArg(settings)
-        val escId = JSONObject.quote(trackId)
-        val escQuality = JSONObject.quote(quality)
+        val escId = AddonResponseParser.jsString(trackId)
+        val escQuality = AddonResponseParser.jsString(quality)
         return callExport(addonId, "getTrackStreamUrl", listOf(escId, escQuality, ctxArg)).mapCatching { raw ->
             AddonResponseParser.parseStream(raw, addonId)
         }

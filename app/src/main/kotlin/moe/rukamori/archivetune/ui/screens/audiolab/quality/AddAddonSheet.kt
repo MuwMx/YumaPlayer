@@ -53,7 +53,7 @@ import moe.rukamori.archivetune.viewmodels.AudioAddonsUiState
 @Composable
 internal fun AddAddonSheet(
     state: AudioAddonsUiState,
-    onAddRepository: (String, () -> Unit) -> Unit,
+    onAddRepository: (String, (List<String>) -> Unit) -> Unit,
     onToggleRepository: (String, Boolean) -> Unit,
     onRemoveRepository: (String) -> Unit,
     onClearError: () -> Unit,

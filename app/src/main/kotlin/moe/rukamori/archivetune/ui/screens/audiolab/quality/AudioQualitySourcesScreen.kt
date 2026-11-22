@@ -134,8 +134,14 @@ fun AudioQualitySourcesScreen(
             activeSheet = activeSheet,
             addonsState = addonsState,
             addonsById = addonsById,
-            onAddRepository = { url, onSuccess -> addonsViewModel.addRepository(url, onSuccess) },
+            onAddRepository = { url, onSuccess ->
+                addonsViewModel.addRepository(url) { addedIds ->
+                    onProviderOrderRawChange(normalizeProviderOrder(providerOrderRaw, addonIds + addedIds).joinToString(","))
+                    onSuccess(addedIds)
+                }
+            },
             onToggleRepository = addonsViewModel::setRepositoryEnabled,
+            onSetRepositoryQuality = addonsViewModel::setRepositoryQuality,
             onRemoveRepository = addonsViewModel::removeRepository,
             onTestAddon = addonsViewModel::testAddon,
             onRefresh = addonsViewModel::refresh,

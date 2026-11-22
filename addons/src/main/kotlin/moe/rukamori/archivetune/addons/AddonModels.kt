@@ -4,8 +4,15 @@ import kotlinx.serialization.Serializable
 
 enum class AddonFormat {
     BITCHORD_INDEX,
+    BITCHORD_HTTP,
     ARCHIVETUNE_ARCH,
 }
+
+@Serializable
+data class AddonQualityOption(
+    val value: String,
+    val label: String,
+)
 
 @Serializable
 data class AddonDescriptor(
@@ -21,6 +28,9 @@ data class AddonDescriptor(
     val icon: String? = null,
     val lastUpdated: String = "",
     val format: AddonFormat = AddonFormat.BITCHORD_INDEX,
+    val qualityOptions: List<AddonQualityOption> = emptyList(),
+    val defaultSettings: Map<String, String> = emptyMap(),
+    val repositoryUrl: String = "",
 )
 
 @Serializable
@@ -31,6 +41,7 @@ data class AddonRepository(
     val format: AddonFormat = AddonFormat.BITCHORD_INDEX,
     val enabled: Boolean = true,
     val lastSyncedAtMs: Long = 0L,
+    val pickedQuality: String? = null,
 )
 
 @Serializable
@@ -41,6 +52,7 @@ data class AddonTrack(
     val album: String? = null,
     val durationMs: Long? = null,
     val isrc: String? = null,
+    val streamUrl: String? = null,
 )
 
 @Serializable
@@ -62,6 +74,8 @@ data class AddonCheckResult(
     val tracksFound: Int,
     val message: String,
 )
+
+class AddonFormatException(message: String) : IllegalArgumentException(message)
 
 interface AddonConfigStore {
     suspend fun getRepositories(): List<AddonRepository>

@@ -59,12 +59,12 @@ class AudioAddonsViewModel @Inject constructor(
         }
     }
 
-    fun addRepository(url: String, onSuccess: () -> Unit = {}) {
+    fun addRepository(url: String, onSuccess: (List<String>) -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val res = addonManager.addRepository(url)
             res.fold(
-                onSuccess = {
+                onSuccess = { descriptors ->
                     val repos = addonManager.listRepositories()
                     val addons = addonManager.getActiveAddons()
                     _uiState.update { current ->
@@ -74,7 +74,7 @@ class AudioAddonsViewModel @Inject constructor(
                             isLoading = false,
                         )
                     }
-                    onSuccess()
+                    onSuccess(descriptors.map { it.id })
                 },
                 onFailure = { err ->
                     _uiState.update {
@@ -85,6 +85,26 @@ class AudioAddonsViewModel @Inject constructor(
                     }
                 },
             )
+        }
+    }
+
+    fun setRepositoryQuality(url: String, quality: String?) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            runCatching {
+                addonManager.setRepositoryQuality(url, quality)
+                val repos = addonManager.listRepositories()
+                val addons = addonManager.getActiveAddons()
+                _uiState.update { current ->
+                    current.copy(
+                        repositories = repos,
+                        addons = addons,
+                        isLoading = false,
+                    )
+                }
+            }.onFailure { err ->
+                _uiState.update { it.copy(isLoading = false, errorMessage = err.message) }
+            }
         }
     }
 

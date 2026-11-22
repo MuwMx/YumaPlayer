@@ -2156,4 +2156,10 @@
     <string name="addon_config_refresh">Refresh index</string>
     <string name="addon_config_remove">Remove repository</string>
     <string name="addon_config_version">Version %1$s</string>
+    <string name="addon_type_http">HTTP Addon</string>
+    <string name="addon_quality_title">Preferred audio quality</string>
+    <string name="addon_quality_auto">Auto (Follow app)</string>
+    <string name="addon_quality_flac">FLAC / Lossless</string>
+    <string name="addon_quality_high">High (320 kbps)</string>
+    <string name="addon_quality_low">Low (128 kbps)</string>
 </resources>

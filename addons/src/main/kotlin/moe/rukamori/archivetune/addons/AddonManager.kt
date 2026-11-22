@@ -11,12 +11,15 @@ import moe.rukamori.archivetune.flaccore.model.TrackQuery
 import moe.rukamori.archivetune.flaccore.streaming.FlacStreamUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 
 class AddonManager(
     private val configStore: AddonConfigStore,
-    private val indexLoader: BitChordIndexLoader = BitChordIndexLoader(),
-    private val runtime: QuickJsAddonRuntime = QuickJsAddonRuntime(),
+    private val indexLoader: BitChordIndexLoader = BitChordIndexLoader(defaultOkHttpClient),
+    private val runtime: QuickJsAddonRuntime = QuickJsAddonRuntime(defaultOkHttpClient),
     private val httpClient: OkHttpClient = defaultOkHttpClient,
+    private val urlDetector: AddonUrlDetector = AddonUrlDetector(httpClient, indexLoader),
+    private val httpAddonClient: BitChordHttpAddonClient = BitChordHttpAddonClient(httpClient),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val indexShared = SharedCalls<List<AddonDescriptor>>(SharedCalls.INDEX_TTL_MS, scope)
@@ -25,6 +28,7 @@ class AddonManager(
 
     private val moduleLock = Mutex()
     private val activeAddons = mutableMapOf<String, AddonDescriptor>()
+    private val repoByUrl = mutableMapOf<String, AddonRepository>()
 
     suspend fun listRepositories(): List<AddonRepository> = configStore.getRepositories()
 
@@ -36,16 +40,28 @@ class AddonManager(
         val repos = configStore.getRepositories().filter { it.enabled }
         val loaded = mutableListOf<AddonDescriptor>()
         activeAddons.clear()
+        repoByUrl.clear()
         for (repo in repos) {
+            repoByUrl[repo.url] = repo
             val descriptors = indexShared.get(
                 key = repo.url,
                 describe = { "syncRepo(${repo.url})" },
             ) {
-                indexLoader.loadIndex(repo.url)
+                if (repo.format == AddonFormat.BITCHORD_HTTP) {
+                    urlDetector.identify(repo.url).map { detected ->
+                        when (detected) {
+                            is DetectedAddonSource.HttpAddon -> listOf(detected.descriptor)
+                            is DetectedAddonSource.JsModuleIndex -> detected.descriptors
+                        }
+                    }
+                } else {
+                    indexLoader.loadIndex(repo.url)
+                }
             }.getOrElse { emptyList() }
             for (desc in descriptors) {
-                activeAddons[desc.id] = desc
-                loaded += desc
+                val attached = desc.copy(repositoryUrl = repo.url)
+                activeAddons[attached.id] = attached
+                loaded += attached
             }
         }
         loaded
@@ -59,24 +75,41 @@ class AddonManager(
     suspend fun addRepository(url: String, name: String? = null): Result<List<AddonDescriptor>> {
         val trimmed = url.trim()
         return runCatching {
-            BitChordIndexLoader.validateUrl(trimmed)
-            val descriptors = indexLoader.loadIndex(trimmed).getOrThrow()
-            val current = configStore.getRepositories().toMutableList()
+            val detected = urlDetector.identify(trimmed).getOrThrow()
+            val (repoUrl, format, descriptors) = when (detected) {
+                is DetectedAddonSource.HttpAddon -> Triple(detected.baseUrl, AddonFormat.BITCHORD_HTTP, listOf(detected.descriptor))
+                is DetectedAddonSource.JsModuleIndex -> Triple(detected.indexUrl, AddonFormat.BITCHORD_INDEX, detected.descriptors)
+            }
             val repoName = name?.trim()?.ifEmpty { null }
-                ?: trimmed.substringAfter("://").substringBefore("/").ifEmpty { trimmed }
-            val newRepo = AddonRepository(
-                id = trimmed,
-                name = repoName,
-                url = trimmed,
-                enabled = true,
-                lastSyncedAtMs = System.currentTimeMillis(),
+                ?: descriptors.firstOrNull()?.name?.ifBlank { null }
+                ?: trimmed.substringAfter("://").substringBefore("/").ifEmpty { repoUrl }
+            val current = configStore.getRepositories().toMutableList()
+            current.removeAll { it.url == repoUrl }
+            current.add(
+                AddonRepository(
+                    id = repoUrl,
+                    name = repoName,
+                    url = repoUrl,
+                    format = format,
+                    enabled = true,
+                    lastSyncedAtMs = System.currentTimeMillis(),
+                ),
             )
-            current.removeAll { it.url == trimmed }
-            current.add(newRepo)
             configStore.saveRepositories(current)
             syncRepositories()
             descriptors
         }
+    }
+
+    suspend fun setRepositoryQuality(url: String, quality: String?) {
+        val current = configStore.getRepositories()
+        val updated = current.map { repo ->
+            if (repo.url == url) repo.copy(pickedQuality = quality?.trim()?.ifEmpty { null }) else repo
+        }
+        configStore.saveRepositories(updated)
+        searchShared.clear()
+        streamShared.clear()
+        syncRepositories()
     }
 
     suspend fun setRepositoryEnabled(url: String, enabled: Boolean) {
@@ -112,102 +145,132 @@ class AddonManager(
     suspend fun testAddon(addonId: String): AddonCheckResult {
         val start = System.currentTimeMillis()
         val addon = moduleLock.withLock { activeAddons[addonId] }
-            ?: return AddonCheckResult(
-                ok = false,
-                latencyMs = 0L,
-                tracksFound = 0,
-                message = "Addon $addonId not found",
-            )
-        val loadRes = loadAddon(addon)
-        if (loadRes.isFailure) {
-            val latency = System.currentTimeMillis() - start
-            return AddonCheckResult(
-                ok = false,
-                latencyMs = latency,
-                tracksFound = 0,
-                message = loadRes.exceptionOrNull()?.message ?: "Failed to load addon",
-            )
+            ?: return AddonCheckResult(ok = false, latencyMs = 0L, tracksFound = 0, message = "Addon $addonId not found")
+
+        val searchRes = if (addon.format == AddonFormat.BITCHORD_HTTP) {
+            httpAddonClient.search(addon, "Daft Punk", quality = "LOW")
+        } else {
+            val loadRes = loadAddon(addon)
+            if (loadRes.isFailure) {
+                return AddonCheckResult(
+                    ok = false,
+                    latencyMs = System.currentTimeMillis() - start,
+                    tracksFound = 0,
+                    message = loadRes.exceptionOrNull()?.message ?: "Failed to load addon",
+                )
+            }
+            runtime.searchTracks(addonId, "Daft Punk", limit = 1)
         }
-        val searchRes = runtime.searchTracks(addonId, "Daft Punk", limit = 1)
         val latency = System.currentTimeMillis() - start
         return searchRes.fold(
             onSuccess = { tracks ->
-                AddonCheckResult(
-                    ok = true,
-                    latencyMs = latency,
-                    tracksFound = tracks.size,
-                    message = "OK",
-                )
+                AddonCheckResult(ok = true, latencyMs = latency, tracksFound = tracks.size, message = "OK")
             },
             onFailure = { err ->
-                AddonCheckResult(
-                    ok = false,
-                    latencyMs = latency,
-                    tracksFound = 0,
-                    message = err.message ?: "Search failed",
-                )
+                AddonCheckResult(ok = false, latencyMs = latency, tracksFound = 0, message = err.message ?: "Search failed")
             },
         )
     }
 
     suspend fun resolveTrack(addonId: String, query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {
-        val addon = moduleLock.withLock { activeAddons[addonId] } ?: return null
-        loadAddon(addon).getOrNull() ?: return null
+        val addon = moduleLock.withLock { activeAddons[addonId] } ?: run {
+            Timber.tag(TAG).w("resolveTrack: addon $addonId not found in activeAddons")
+            return null
+        }
+        val repo = moduleLock.withLock { repoByUrl[addon.repositoryUrl] ?: repoByUrl[addon.downloadUrl] }
+        val effectiveQuality = httpAddonClient.resolveQualityParam(addon, repo?.pickedQuality, requestedQuality)
 
-        val searchTerms = query.searchTerms()
-        var candidates: List<AddonTrack> = emptyList()
-
-        for (term in searchTerms) {
-            val key = SharedCalls.keyOf(addonId, term)
-            val tracks = searchShared.get(
-                key = key,
-                describe = { "searchTracks($addonId, $term)" },
-            ) {
-                runtime.searchTracks(addonId, term)
-            }.getOrElse { emptyList() }
-
-            if (tracks.isNotEmpty()) {
-                candidates = tracks
-                break
-            }
+        if (addon.format == AddonFormat.BITCHORD_HTTP) {
+            return resolveHttpTrack(addon, query, effectiveQuality)
         }
 
-        if (candidates.isEmpty()) return null
-
-        val catalogTracks = candidates.map {
-            CatalogTrack(
-                id = it.id,
-                title = it.title,
-                artist = it.artist,
-                album = it.album,
-                durationMs = it.durationMs,
-                isrc = it.isrc,
-            )
+        loadAddon(addon).getOrNull() ?: run {
+            Timber.tag(TAG).w("resolveTrack: failed to load JS addon $addonId")
+            return null
         }
+        val candidates = searchCandidates(addonId, query, effectiveQuality) { term ->
+            runtime.searchTracks(addonId, term, settings = mapOf("quality" to effectiveQuality))
+        } ?: return null
 
-        val best = TrackMatcher.best(query, catalogTracks) ?: return null
-        val qualityStr = mapQuality(requestedQuality)
-
-        val streamKey = SharedCalls.keyOf(addonId, best.track.id, qualityStr)
+        val best = matchBestTrack(query, candidates) ?: return null
+        val streamKey = SharedCalls.keyOf(addonId, best.track.id, effectiveQuality)
         val stream = streamShared.get(
             key = streamKey,
-            describe = { "getTrackStreamUrl($addonId, ${best.track.id}, $qualityStr)" },
+            describe = { "getTrackStreamUrl($addonId, ${best.track.id}, $effectiveQuality)" },
         ) {
-            val res = runtime.getTrackStreamUrl(addonId, best.track.id, qualityStr)
-            res.mapCatching { it ?: throw NoSuchElementException("No stream returned") }
-        }.getOrNull() ?: return null
-
-        return FlacStreamUrl(
-            url = stream.url,
-            expiresAtMs = if (stream.expiresAtMs > 0L) stream.expiresAtMs else System.currentTimeMillis() + 5 * 60 * 1000L,
-            codec = stream.codec,
-            bitsPerSample = stream.bitsPerSample,
-            sampleRateHz = stream.sampleRateHz,
-            bitrateKbps = stream.bitrateKbps,
-            coverArtUrl = stream.coverArtUrl,
-            origin = addonId,
-        )
+            val settings = mapOf(
+                "quality" to effectiveQuality,
+                "fallbackMode" to if (effectiveQuality == "LOSSLESS") "strict" else "flexible",
+            )
+            runtime.getTrackStreamUrl(addonId, best.track.id, effectiveQuality, settings)
+                .mapCatching { it ?: throw NoSuchElementException("No stream returned") }
+        }.getOrNull() ?: run {
+            Timber.tag(TAG).w("resolveTrack: no stream returned for ${best.track.id} from $addonId")
+            return null
+        }
+        return toFlacStreamUrl(stream, addonId)
     }
+
+    private suspend fun resolveHttpTrack(
+        addon: AddonDescriptor,
+        query: TrackQuery,
+        effectiveQuality: String,
+    ): FlacStreamUrl? {
+        val candidates = searchCandidates(addon.id, query, effectiveQuality) { term ->
+            httpAddonClient.search(addon, term, query.title, query.artist, effectiveQuality)
+        } ?: return null
+
+        val best = matchBestTrack(query, candidates) ?: return null
+        val bestTrack = candidates.firstOrNull { it.id == best.track.id }
+        val streamKey = SharedCalls.keyOf(addon.id, best.track.id, effectiveQuality)
+        val stream = streamShared.get(
+            key = streamKey,
+            describe = { "httpStream(${addon.id}, ${best.track.id}, $effectiveQuality)" },
+        ) {
+            val res = httpAddonClient.stream(addon, best.track.id, effectiveQuality)
+            res.mapCatching {
+                it ?: bestTrack?.streamUrl?.let { url -> AddonStream(url = url, origin = addon.id) }
+                ?: throw NoSuchElementException("No stream returned")
+            }
+        }.getOrNull() ?: run {
+            Timber.tag(TAG).w("resolveHttpTrack: no stream for ${best.track.id} from ${addon.id}")
+            return null
+        }
+        return toFlacStreamUrl(stream, addon.id)
+    }
+
+    private suspend fun searchCandidates(
+        addonId: String,
+        query: TrackQuery,
+        quality: String,
+        fetcher: suspend (String) -> Result<List<AddonTrack>>,
+    ): List<AddonTrack>? {
+        for (term in query.searchTerms()) {
+            val tracks = searchShared.get(
+                key = SharedCalls.keyOf(addonId, term, quality),
+                describe = { "searchTracks($addonId, $term, $quality)" },
+            ) { fetcher(term) }.getOrElse { emptyList() }
+            if (tracks.isNotEmpty()) return tracks
+        }
+        Timber.tag(TAG).w("searchCandidates: 0 tracks found in $addonId for $query")
+        return null
+    }
+
+    private fun matchBestTrack(query: TrackQuery, candidates: List<AddonTrack>) =
+        TrackMatcher.best(query, candidates.map {
+            CatalogTrack(it.id, it.title, it.artist, it.album, it.durationMs, it.isrc)
+        })
+
+    private fun toFlacStreamUrl(stream: AddonStream, addonId: String) = FlacStreamUrl(
+        url = stream.url,
+        expiresAtMs = if (stream.expiresAtMs > 0L) stream.expiresAtMs else System.currentTimeMillis() + 300_000L,
+        codec = stream.codec,
+        bitsPerSample = stream.bitsPerSample,
+        sampleRateHz = stream.sampleRateHz,
+        bitrateKbps = stream.bitrateKbps,
+        coverArtUrl = stream.coverArtUrl,
+        origin = addonId,
+    )
 
     suspend fun getResolvers(): Map<String, suspend (TrackQuery, Int) -> FlacStreamUrl?> {
         syncRepositories()
@@ -226,13 +289,8 @@ class AddonManager(
         streamShared.clear()
     }
 
-    private fun mapQuality(qualityInt: Int): String = when {
-        qualityInt >= 3 -> "LOSSLESS"
-        qualityInt == 2 -> "HIGH"
-        else -> "LOW"
-    }
-
     companion object {
+        private const val TAG = "AddonManager"
         private val defaultOkHttpClient: OkHttpClient by lazy {
             OkHttpClient.Builder().build()
         }

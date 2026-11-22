@@ -13,13 +13,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.addons.AddonDescriptor
+import moe.rukamori.archivetune.addons.AddonFormat
 import moe.rukamori.archivetune.addons.AddonRepository
+import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -35,19 +38,16 @@ internal fun rememberAddonProviderItems(
 ): Map<String, ProviderItemUi> {
     val checkingLabel = stringResource(R.string.server_status_checking)
     val jsLabel = stringResource(R.string.addon_type_js)
+    val httpLabel = stringResource(R.string.addon_type_http)
     return addons.associate { addon ->
+        val typeLabel = if (addon.format == AddonFormat.BITCHORD_HTTP) httpLabel else jsLabel
         val status = when (val probe = probeStates[addon.id]) {
             is AddonProbeUiState.Checking -> checkingLabel
             is AddonProbeUiState.Online -> stringResource(R.string.server_status_online, probe.latencyMs)
             is AddonProbeUiState.Error -> probe.message
-            null, AddonProbeUiState.Idle -> jsLabel
+            null, AddonProbeUiState.Idle -> typeLabel
         }
-        addon.id to ProviderItemUi(
-            id = addon.id,
-            name = addon.name,
-            status = status,
-            active = losslessEnabled,
-        )
+        addon.id to ProviderItemUi(id = addon.id, name = addon.name, status = status, active = losslessEnabled)
     }
 }
 
@@ -56,8 +56,9 @@ internal fun AddonSheetHost(
     activeSheet: String?,
     addonsState: AudioAddonsUiState,
     addonsById: Map<String, AddonDescriptor>,
-    onAddRepository: (String, () -> Unit) -> Unit,
+    onAddRepository: (String, (List<String>) -> Unit) -> Unit,
     onToggleRepository: (String, Boolean) -> Unit,
+    onSetRepositoryQuality: (String, String?) -> Unit,
     onRemoveRepository: (String) -> Unit,
     onTestAddon: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -81,14 +82,10 @@ internal fun AddonSheetHost(
                 repository = repo,
                 probeState = addonsState.probeStates[addon.id] ?: AddonProbeUiState.Idle,
                 onToggleRepository = { enabled -> repo?.let { onToggleRepository(it.url, enabled) } },
+                onSetQuality = { quality -> repo?.let { onSetRepositoryQuality(it.url, quality) } },
                 onTestAddon = { onTestAddon(addon.id) },
                 onRefresh = onRefresh,
-                onRemoveRepository = {
-                    repo?.let {
-                        onRemoveRepository(it.url)
-                        onDismiss()
-                    }
-                },
+                onRemoveRepository = { repo?.let { onRemoveRepository(it.url); onDismiss() } },
                 onDismiss = onDismiss,
             )
         }
@@ -103,6 +100,7 @@ internal fun AddonConfigSheet(
     repository: AddonRepository?,
     probeState: AddonProbeUiState,
     onToggleRepository: (Boolean) -> Unit,
+    onSetQuality: (String?) -> Unit,
     onTestAddon: () -> Unit,
     onRefresh: () -> Unit,
     onRemoveRepository: () -> Unit,
@@ -115,11 +113,14 @@ internal fun AddonConfigSheet(
     val repoUrl = repository?.url ?: addon.downloadUrl
     val subtitleText = (listOf(repoUrl) + metaParts).filter { it.isNotBlank() }.joinToString("\n")
 
-    QualityConfigSheetShell(
-        title = addon.name,
-        subtitle = subtitleText.ifBlank { null },
-        onDismiss = onDismiss,
-    ) {
+    val qualityValues = remember(addon.qualityOptions) {
+        listOf("") + if (addon.qualityOptions.isNotEmpty()) addon.qualityOptions.map { it.value } else listOf("LOSSLESS", "HIGH", "LOW")
+    }
+    val qualityLabels = remember(addon.qualityOptions) {
+        addon.qualityOptions.associate { it.value to it.label }
+    }
+
+    QualityConfigSheetShell(title = addon.name, subtitle = subtitleText.ifBlank { null }, onDismiss = onDismiss) {
         PreferenceGroup(horizontalPadding = 0.dp) {
             if (repository != null) {
                 item {
@@ -128,6 +129,24 @@ internal fun AddonConfigSheet(
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = repository.enabled,
                         onCheckedChange = onToggleRepository,
+                    )
+                }
+                item {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.addon_quality_title)) },
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        selectedValue = repository.pickedQuality ?: "",
+                        values = qualityValues,
+                        valueText = { v ->
+                            when (v) {
+                                "" -> stringResource(R.string.addon_quality_auto)
+                                "LOSSLESS" -> qualityLabels[v] ?: stringResource(R.string.addon_quality_flac)
+                                "HIGH" -> qualityLabels[v] ?: stringResource(R.string.addon_quality_high)
+                                "LOW" -> qualityLabels[v] ?: stringResource(R.string.addon_quality_low)
+                                else -> qualityLabels[v] ?: v
+                            }
+                        },
+                        onValueSelected = { v -> onSetQuality(v.ifEmpty { null }) },
                     )
                 }
             }
@@ -148,10 +167,7 @@ internal fun AddonConfigSheet(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp),
                         ) {
-                            Text(
-                                text = stringResource(R.string.addon_config_test_button),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
+                            Text(text = stringResource(R.string.addon_config_test_button), style = MaterialTheme.typography.labelMedium)
                         }
                     },
                 )
@@ -166,19 +182,8 @@ internal fun AddonConfigSheet(
             if (repository != null) {
                 item {
                     PreferenceEntry(
-                        title = {
-                            Text(
-                                text = stringResource(R.string.addon_config_remove),
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.delete),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        },
+                        title = { Text(stringResource(R.string.addon_config_remove), color = MaterialTheme.colorScheme.error) },
+                        icon = { Icon(painterResource(R.drawable.delete), null, tint = MaterialTheme.colorScheme.error) },
                         onClick = onRemoveRepository,
                     )
                 }
@@ -189,37 +194,24 @@ internal fun AddonConfigSheet(
 }
 
 @Composable
-private fun AddonProbeStatusText(
-    state: AddonProbeUiState,
-    modifier: Modifier = Modifier,
-) {
-    when (state) {
-        is AddonProbeUiState.Idle -> Unit
-        is AddonProbeUiState.Checking -> Text(
-            text = stringResource(R.string.server_status_checking),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier,
-        )
-        is AddonProbeUiState.Online -> Text(
-            text = stringResource(R.string.addon_probe_online_tracks, state.latencyMs, state.tracksFound),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = modifier,
-        )
-        is AddonProbeUiState.Error -> Text(
-            text = state.message,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-            modifier = modifier,
-        )
+private fun AddonProbeStatusText(state: AddonProbeUiState, modifier: Modifier = Modifier) {
+    val (text, color) = when (state) {
+        is AddonProbeUiState.Idle -> return
+        is AddonProbeUiState.Checking -> stringResource(R.string.server_status_checking) to MaterialTheme.colorScheme.onSurfaceVariant
+        is AddonProbeUiState.Online -> stringResource(R.string.addon_probe_online_tracks, state.latencyMs, state.tracksFound) to MaterialTheme.colorScheme.primary
+        is AddonProbeUiState.Error -> state.message to MaterialTheme.colorScheme.error
     }
+    Text(text = text, style = MaterialTheme.typography.bodySmall, color = color, modifier = modifier)
 }
 
 internal fun findRepositoryForAddon(
     addon: AddonDescriptor,
     repositories: List<AddonRepository>,
 ): AddonRepository? {
+    if (addon.repositoryUrl.isNotBlank()) {
+        val byExactUrl = repositories.firstOrNull { it.url == addon.repositoryUrl }
+        if (byExactUrl != null) return byExactUrl
+    }
     val byPrefix = repositories.firstOrNull { repo ->
         val base = repo.url.substringBeforeLast("/")
         base.isNotBlank() && addon.downloadUrl.startsWith(base)
