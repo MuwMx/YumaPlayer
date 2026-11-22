@@ -41,6 +41,14 @@ import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutomixEnabledKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
+import moe.rukamori.archivetune.constants.EnableLosslessKey
+import moe.rukamori.archivetune.constants.EnableMonochromeKey
+import moe.rukamori.archivetune.constants.LosslessProviderOrderKey
+import moe.rukamori.archivetune.constants.PlaybackSource
+import moe.rukamori.archivetune.constants.PlaybackSourceKey
+import moe.rukamori.archivetune.constants.QobuzAppIdKey
+import moe.rukamori.archivetune.constants.QobuzAppSecretKey
+import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -64,6 +72,13 @@ fun AudioLabScreen(
     var showResetDialog by remember { mutableStateOf(false) }
 
     val (audioQuality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
+    val (enableLossless) = rememberPreference(EnableLosslessKey, defaultValue = false)
+    val (playbackSource) = rememberEnumPreference(PlaybackSourceKey, defaultValue = PlaybackSource.YT_MUSIC)
+    val (enableMonochrome) = rememberPreference(EnableMonochromeKey, defaultValue = true)
+    val (providerOrderRaw) = rememberPreference(LosslessProviderOrderKey, defaultValue = "monochrome,qbdlx")
+    val (qobuzAppId) = rememberPreference(QobuzAppIdKey, defaultValue = "")
+    val (qobuzAppSecret) = rememberPreference(QobuzAppSecretKey, defaultValue = "")
+    val (qobuzUserAuthToken) = rememberPreference(QobuzUserAuthTokenKey, defaultValue = "")
     val (crossfadeEnabled) = rememberPreference(CrossfadeEnabledKey, defaultValue = false)
     val (crossfadeDurationSeconds) = rememberPreference(CrossfadeDurationKey, defaultValue = 5f)
     val (automixEnabled) = rememberPreference(AutomixEnabledKey, defaultValue = false)
@@ -203,11 +218,36 @@ fun AudioLabScreen(
 
         Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
 
-        val qualityDescription = when (audioQuality) {
-            AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
-            AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_highest)
-            AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
-            AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+        val losslessEnabled = enableLossless || playbackSource == PlaybackSource.FLAC
+        val qobuzReady = qobuzAppId.isNotBlank() && qobuzAppSecret.isNotBlank() && qobuzUserAuthToken.isNotBlank()
+        val monochromeLabel = stringResource(R.string.provider_monochrome)
+        val qobuzLabel = stringResource(R.string.provider_qobuz)
+        val ytMusicLabel = stringResource(R.string.provider_yt_music)
+        val activeLosslessProviders = providerOrderRaw
+            .split(",")
+            .map { it.trim() }
+            .mapNotNull { id ->
+                when (id) {
+                    "monochrome" -> if (enableMonochrome) monochromeLabel else null
+                    "qbdlx" -> if (qobuzReady) qobuzLabel else null
+                    else -> null
+                }
+            }
+            .distinct()
+        val qualityDescription = if (losslessEnabled) {
+            val sourcesSummary = if (activeLosslessProviders.isNotEmpty()) {
+                activeLosslessProviders.joinToString(", ")
+            } else {
+                ytMusicLabel
+            }
+            stringResource(R.string.audio_quality_lossless_summary, sourcesSummary)
+        } else {
+            when (audioQuality) {
+                AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
+                AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_highest)
+                AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
+                AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+            }
         }
         val transitionsDescription = when {
             crossfadeEnabled && automixEnabled -> {
@@ -231,7 +271,7 @@ fun AudioLabScreen(
                     title = { Text(stringResource(R.string.audio_lab_quality_title)) },
                     description = qualityDescription,
                     showChevron = true,
-                    onClick = { navController.navigate("settings/player") },
+                    onClick = { navController.navigate("settings/audio_lab/quality") },
                 )
             }
             item {

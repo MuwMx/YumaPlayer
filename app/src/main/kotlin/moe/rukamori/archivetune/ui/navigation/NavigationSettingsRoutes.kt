@@ -17,6 +17,7 @@ import moe.rukamori.archivetune.defaultUpdateChannel
 import moe.rukamori.archivetune.ui.screens.audiolab.AudioFxScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.AudioLabEqualizerScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.AudioLabScreen
+import moe.rukamori.archivetune.ui.screens.audiolab.quality.AudioQualitySourcesScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.stage.StageScreen
 import moe.rukamori.archivetune.ui.screens.login.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.login.LOGIN_URL_ARGUMENT
@@ -93,6 +94,9 @@ internal fun NavGraphBuilder.settingsNavigationRoutes(
     }
     composable("settings/audio_lab/stage") {
         StageScreen(navController = navController)
+    }
+    composable("settings/audio_lab/quality") {
+        AudioQualitySourcesScreen(navController = navController)
     }
     composable("settings/lyrics") {
         LyricsSettings(navController)

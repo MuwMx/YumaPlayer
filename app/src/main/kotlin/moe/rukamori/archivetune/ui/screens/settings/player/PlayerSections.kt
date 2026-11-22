@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.PlaybackSource
+import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.screens.settings.components.playerAwareBottomPadding
@@ -104,7 +106,21 @@ internal fun PlayerSettingsContent(
     Column(
         modifier = modifier,
     ) {
-        PlayerLosslessSection(state = state, actions = actions)
+        PreferenceGroup(title = stringResource(R.string.lossless_integration)) {
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.audio_quality_sources_title)) },
+                    description = if (state.playbackSource == PlaybackSource.FLAC) {
+                        stringResource(R.string.source_flac)
+                    } else {
+                        stringResource(R.string.source_yt_music)
+                    },
+                    icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                    showChevron = true,
+                    onClick = actions.onAudioQualitySourcesClick,
+                )
+            }
+        }
         PlayerAudioSection(state = state, actions = actions)
         PlayerCrossfadeSection(state = state, actions = actions)
         PlayerSponsorBlockSection(

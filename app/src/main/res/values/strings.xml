@@ -2105,4 +2105,32 @@
     <string name="stage_gesture_hint">Drag sources to move in 3D space · Pinch to zoom · Rotate listener</string>
     <string name="stage_object_level">Level</string>
     <string name="stage_object_width">Width</string>
+
+    <string name="audio_quality_sources_title">Audio Quality &amp; Sources</string>
+    <string name="stream_priority_section">Stream Priority</string>
+    <string name="stream_priority_hint">Drag lossless sources to set fallback priority. Tap a source to configure.</string>
+    <string name="quality_settings_section">Quality &amp; Storage</string>
+    <string name="audio_quality_streaming">Streaming Quality</string>
+    <string name="provider_monochrome">Monochrome</string>
+    <string name="provider_qobuz">Qobuz</string>
+    <string name="provider_yt_music">YouTube Music</string>
+    <string name="provider_status_monochrome_default">FLAC · No account</string>
+    <string name="provider_status_monochrome_relays">Custom relay · %1$d</string>
+    <string name="provider_status_monochrome_disabled">Disabled</string>
+    <string name="provider_status_qobuz_ready">Hi-Res FLAC · Tokens</string>
+    <string name="provider_status_qobuz_unconfigured">Not configured</string>
+    <string name="provider_status_yt_fallback">Opus / AAC · Fallback</string>
+    <string name="monochrome_config_title">Monochrome</string>
+    <string name="monochrome_enable">Enable Monochrome</string>
+    <string name="monochrome_builtin_server">Built-in server</string>
+    <string name="monochrome_builtin_server_host">tracks.monochrome.st</string>
+    <string name="monochrome_custom_relays">Custom relay servers</string>
+    <string name="monochrome_relay_hint">https://relay.example.com</string>
+    <string name="monochrome_relay_invalid">Enter a valid http:// or https:// URL</string>
+    <string name="monochrome_relay_add">Add relay</string>
+    <string name="monochrome_relay_remove">Remove relay</string>
+    <string name="monochrome_no_relays">No custom relays configured</string>
+    <string name="qobuz_config_title">Qobuz</string>
+    <string name="qobuz_config_subtitle">Configure Qobuz API credentials and user auth token pool.</string>
+    <string name="audio_quality_lossless_summary">FLAC · %1$s</string>
 </resources>

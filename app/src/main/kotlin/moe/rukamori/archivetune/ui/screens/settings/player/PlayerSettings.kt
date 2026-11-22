@@ -264,6 +264,7 @@ fun PlayerSettings(navController: NavController) {
             onQobuzAppSecretChange = onQobuzAppSecretChange,
             onQobuzUserAuthTokenChange = onQobuzUserAuthTokenChange,
             onEqualizerClick = onEqualizerClick,
+            onAudioQualitySourcesClick = { navController.navigate("settings/audio_lab/quality") },
         )
     }
 
