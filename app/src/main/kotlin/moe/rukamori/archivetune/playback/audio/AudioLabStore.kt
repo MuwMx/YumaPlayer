@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.audiodsp.SpatialParams
 import moe.rukamori.archivetune.audiodsp.StageListener
 import moe.rukamori.archivetune.audiodsp.StageNativeConstants
 import moe.rukamori.archivetune.audiodsp.StageObject
+import moe.rukamori.archivetune.audiodsp.StageParams
 import moe.rukamori.archivetune.audiodsp.StagePreset
 import moe.rukamori.archivetune.audiodsp.StagePresets
 import moe.rukamori.archivetune.audiodsp.StageSettings

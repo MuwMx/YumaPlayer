@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,13 +44,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.audiodsp.AudioLabEqPresets
+import moe.rukamori.archivetune.audiodsp.AudioLabSoundProfiles
+import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.AutomixEnabledKey
+import moe.rukamori.archivetune.constants.CrossfadeDurationKey
+import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
+import moe.rukamori.archivetune.ui.component.PreferenceEntry
+import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.AudioLabViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun AudioLabScreen(
@@ -57,9 +69,15 @@ fun AudioLabScreen(
     viewModel: AudioLabViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val bypassed by viewModel.bypassed.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
     val isPlaying = playerConnection?.isPlaying?.collectAsStateWithLifecycle()?.value ?: false
     var showResetDialog by remember { mutableStateOf(false) }
+
+    val (audioQuality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
+    val (crossfadeEnabled) = rememberPreference(CrossfadeEnabledKey, defaultValue = false)
+    val (crossfadeDurationSeconds) = rememberPreference(CrossfadeDurationKey, defaultValue = 5f)
+    val (automixEnabled) = rememberPreference(AutomixEnabledKey, defaultValue = false)
 
     ListenToAudioTap(active = isPlaying)
 
@@ -85,6 +103,10 @@ fun AudioLabScreen(
         listOf(state.spatial.enabled, state.reverb.enabled, state.loudness.enabled, state.eightD.enabled).count { it }
     }
 
+    val activeProfileId = remember(state, bypassed) {
+        if (bypassed) null else AudioLabSoundProfiles.matchingProfileId(state)
+    }
+
     YumaSettingsScaffold(
         title = { Text(stringResource(R.string.audio_lab_title)) },
         onBackClick = { navController.navigateUp() },
@@ -97,6 +119,27 @@ fun AudioLabScreen(
             }
         },
     ) {
+        AudioLabSpectrumHero(
+            state = state,
+            bypassed = bypassed,
+            isPlaying = isPlaying,
+            onToggleBypass = viewModel::toggleBypass,
+            onNavigateEq = { navController.navigate("settings/audio_lab/equalizer") },
+            onNavigateStage = { navController.navigate("settings/audio_lab/stage") },
+            onNavigateFx = { navController.navigate("settings/audio_lab/fx") },
+            modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+        )
+
+        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
+
+        AudioLabSoundProfilesRow(
+            activeProfileId = activeProfileId,
+            bypassed = bypassed,
+            onSelectProfile = viewModel::applySoundProfile,
+        )
+
+        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -105,13 +148,15 @@ fun AudioLabScreen(
         ) {
             StageHubCard(
                 enabled = state.stage.enabled,
+                presetLabel = stagePresetLabel(state.stage.presetId),
+                sourcesCount = state.stage.objects.size,
                 onClick = { navController.navigate("settings/audio_lab/stage") },
                 sketch = {
                     StageSketch(
                         stage = state.stage,
                         isPlaying = isPlaying,
                         stageLevelsProvider = { viewModel.stageLevels },
-                        modifier = Modifier.size(width = 88.dp, height = 64.dp),
+                        modifier = Modifier.size(width = 116.dp, height = 96.dp),
                     )
                 },
             )
@@ -133,7 +178,7 @@ fun AudioLabScreen(
                             isPlaying = isPlaying,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(64.dp),
                         )
                     },
                 )
@@ -160,9 +205,52 @@ fun AudioLabScreen(
                             isPlaying = isPlaying,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
+                                .height(64.dp),
                         )
                     },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
+
+        val qualityDescription = when (audioQuality) {
+            AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
+            AudioQuality.HIGHEST -> stringResource(R.string.audio_quality_highest)
+            AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
+            AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+        }
+        val transitionsDescription = when {
+            crossfadeEnabled && automixEnabled -> {
+                val crossfadeLabel = stringResource(R.string.audio_crossfade_title)
+                val durationLabel = stringResource(R.string.audio_crossfade_seconds, crossfadeDurationSeconds.roundToInt().toString())
+                val automixLabel = stringResource(R.string.automix_title)
+                "$crossfadeLabel ($durationLabel) · $automixLabel"
+            }
+            crossfadeEnabled -> {
+                val crossfadeLabel = stringResource(R.string.audio_crossfade_title)
+                val durationLabel = stringResource(R.string.audio_crossfade_seconds, crossfadeDurationSeconds.roundToInt().toString())
+                "$crossfadeLabel · $durationLabel"
+            }
+            automixEnabled -> stringResource(R.string.automix_title)
+            else -> stringResource(R.string.disabled)
+        }
+
+        PreferenceGroup(title = stringResource(R.string.audio_lab_playback_section)) {
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.audio_lab_quality_title)) },
+                    description = qualityDescription,
+                    showChevron = true,
+                    onClick = { navController.navigate("settings/player") },
+                )
+            }
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.audio_lab_transitions_title)) },
+                    description = transitionsDescription,
+                    showChevron = true,
+                    onClick = { navController.navigate("settings/player") },
                 )
             }
         }
@@ -172,6 +260,8 @@ fun AudioLabScreen(
 @Composable
 private fun StageHubCard(
     enabled: Boolean,
+    presetLabel: String,
+    sourcesCount: Int,
     onClick: () -> Unit,
     sketch: @Composable () -> Unit,
 ) {
@@ -179,6 +269,7 @@ private fun StageHubCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 128.dp)
             .yumaClickable(onClick = onClick)
             .yumaGlassCard(shape = cardShape)
             .clip(cardShape)
@@ -188,8 +279,6 @@ private fun StageHubCard(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        sketch()
-        Spacer(Modifier.width(SettingsDimensions.SegmentedIconSpacing))
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -205,20 +294,24 @@ private fun StageHubCard(
             }
             Spacer(Modifier.height(SettingsDimensions.RowTextSpacing))
             Text(
-                text = stringResource(R.string.stage_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "$presetLabel · ${stringResource(R.string.audio_lab_stage_sources_count, sourcesCount)}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.stage_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        Spacer(Modifier.width(SettingsDimensions.RowChevronSpacing))
-        Icon(
-            painter = painterResource(R.drawable.ic_arrow_right),
-            contentDescription = null,
-            modifier = Modifier.size(SettingsDimensions.ChevronSize),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = SettingsDimensions.RowChevronAlpha),
-        )
+        Spacer(Modifier.width(SettingsDimensions.SegmentedIconSpacing))
+        sketch()
     }
 }
 
@@ -234,6 +327,7 @@ private fun SummarySketchCard(
     val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
     Column(
         modifier = modifier
+            .heightIn(min = 128.dp)
             .yumaClickable(onClick = onClick)
             .yumaGlassCard(shape = cardShape)
             .clip(cardShape)
@@ -286,4 +380,15 @@ private fun StatusPill(active: Boolean) {
             color = fg,
         )
     }
+}
+
+@Composable
+private fun stagePresetLabel(presetId: String?): String = when (presetId) {
+    "studio" -> stringResource(R.string.stage_preset_studio)
+    "living" -> stringResource(R.string.stage_preset_living)
+    "front_row" -> stringResource(R.string.stage_preset_front_row)
+    "on_stage" -> stringResource(R.string.stage_preset_on_stage)
+    "around" -> stringResource(R.string.stage_preset_around)
+    "hall" -> stringResource(R.string.stage_preset_hall)
+    else -> stringResource(R.string.custom)
 }
