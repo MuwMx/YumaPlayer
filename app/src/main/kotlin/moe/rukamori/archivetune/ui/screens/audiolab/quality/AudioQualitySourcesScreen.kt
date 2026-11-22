@@ -7,9 +7,7 @@
 
 package moe.rukamori.archivetune.ui.screens.audiolab.quality
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,7 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.documentfile.provider.DocumentFile
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioQuality
@@ -58,10 +57,15 @@ import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaff
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.viewmodels.AudioAddonsViewModel
 
 @Composable
-fun AudioQualitySourcesScreen(navController: NavController) {
+fun AudioQualitySourcesScreen(
+    navController: NavController,
+    addonsViewModel: AudioAddonsViewModel = hiltViewModel(),
+) {
     val context = LocalContext.current
+    val addonsState by addonsViewModel.uiState.collectAsStateWithLifecycle()
     val (enableLossless, onEnableLosslessChange) = rememberPreference(EnableLosslessKey, false)
     val (playbackSource, onPlaybackSourceChange) = rememberEnumPreference(PlaybackSourceKey, PlaybackSource.YT_MUSIC)
     val (enableMonochrome, onEnableMonochromeChange) = rememberPreference(EnableMonochromeKey, true)
@@ -93,7 +97,10 @@ fun AudioQualitySourcesScreen(navController: NavController) {
     }
 
     val losslessEnabled = enableLossless || playbackSource == PlaybackSource.FLAC
-    val providerOrder = remember(providerOrderRaw) { normalizeProviderOrder(providerOrderRaw) }
+    val addonsById = remember(addonsState.addons) { addonsState.addons.associateBy { it.id } }
+    val addonIds = remember(addonsState.addons) { addonsState.addons.map { it.id } }
+    val providerOrder = remember(providerOrderRaw, addonIds) { normalizeProviderOrder(providerOrderRaw, addonIds) }
+    val addonItems = rememberAddonProviderItems(addonsState.addons, addonsState.probeStates, losslessEnabled)
     val customRelayCount = remember(monochromeServers) { parseRelayServers(monochromeServers).size }
     val qobuzReady = qobuzAppId.isNotBlank() && qobuzAppSecret.isNotBlank() && qobuzUserAuthToken.isNotBlank()
     val flacFolderPath = remember(downloadLocationUri, context) { resolveFolderPath(context, downloadLocationUri) }
@@ -118,24 +125,21 @@ fun AudioQualitySourcesScreen(navController: NavController) {
         },
         active = losslessEnabled && enableQobuz && qobuzReady,
     )
-    val ytMusicFallback = ProviderItemUi(
-        id = "yt_music",
-        name = stringResource(R.string.provider_yt_music),
-        status = stringResource(R.string.provider_status_yt_fallback),
-        active = true,
-    )
+    val ytMusicFallback = ProviderItemUi("yt_music", stringResource(R.string.provider_yt_music), stringResource(R.string.provider_status_yt_fallback), true)
 
     when (activeSheet) {
-        "monochrome" -> MonochromeConfigSheet(
-            enabled = enableMonochrome, onEnabledChange = onEnableMonochromeChange,
-            serversRaw = monochromeServers, onServersRawChange = onMonochromeServersChange,
-            onDismiss = { activeSheet = null },
-        )
-        "qbdlx" -> QobuzConfigSheet(
-            enabled = enableQobuz, onEnabledChange = onEnableQobuzChange,
-            appId = qobuzAppId, onAppIdChange = onQobuzAppIdChange,
-            appSecret = qobuzAppSecret, onAppSecretChange = onQobuzAppSecretChange,
-            userAuthToken = qobuzUserAuthToken, onUserAuthTokenChange = onQobuzUserAuthTokenChange,
+        "monochrome" -> MonochromeConfigSheet(enableMonochrome, onEnableMonochromeChange, monochromeServers, onMonochromeServersChange) { activeSheet = null }
+        "qbdlx" -> QobuzConfigSheet(enableQobuz, onEnableQobuzChange, qobuzAppId, onQobuzAppIdChange, qobuzAppSecret, onQobuzAppSecretChange, qobuzUserAuthToken, onQobuzUserAuthTokenChange) { activeSheet = null }
+        else -> AddonSheetHost(
+            activeSheet = activeSheet,
+            addonsState = addonsState,
+            addonsById = addonsById,
+            onAddRepository = { url, onSuccess -> addonsViewModel.addRepository(url, onSuccess) },
+            onToggleRepository = addonsViewModel::setRepositoryEnabled,
+            onRemoveRepository = addonsViewModel::removeRepository,
+            onTestAddon = addonsViewModel::testAddon,
+            onRefresh = addonsViewModel::refresh,
+            onClearError = addonsViewModel::clearError,
             onDismiss = { activeSheet = null },
         )
     }
@@ -147,7 +151,13 @@ fun AudioQualitySourcesScreen(navController: NavController) {
         PreferenceGroupTitle(title = stringResource(R.string.stream_priority_section))
         ProviderOrderCard(
             order = providerOrder,
-            providerUi = { id -> if (id == "monochrome") monochromeUi else qobuzUi },
+            providerUi = { id ->
+                when (id) {
+                    "monochrome" -> monochromeUi
+                    "qbdlx" -> qobuzUi
+                    else -> addonItems[id] ?: ProviderItemUi(id, id, "", losslessEnabled)
+                }
+            },
             fallbackItem = ytMusicFallback,
             onReorder = { updated -> onProviderOrderRawChange(updated.joinToString(",")) },
             onTap = { id -> activeSheet = id },
@@ -162,6 +172,16 @@ fun AudioQualitySourcesScreen(navController: NavController) {
                 vertical = SettingsDimensions.SectionHeaderBottomPadding,
             ),
         )
+        PreferenceGroup {
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.addon_add_title)) },
+                    description = stringResource(R.string.addon_add_subtitle),
+                    icon = { Icon(painterResource(R.drawable.add), null) },
+                    onClick = { activeSheet = SHEET_ADD_ADDON },
+                )
+            }
+        }
         Spacer(Modifier.height(SettingsDimensions.SectionSpacing))
 
         PreferenceGroup(title = stringResource(R.string.quality_settings_section)) {
@@ -224,22 +244,3 @@ fun AudioQualitySourcesScreen(navController: NavController) {
         }
     }
 }
-
-@Composable
-private fun audioQualityLabel(quality: AudioQuality): String = stringResource(
-    when (quality) {
-        AudioQuality.AUTO -> R.string.audio_quality_auto
-        AudioQuality.HIGH -> R.string.audio_quality_high
-        AudioQuality.LOW -> R.string.audio_quality_low
-        AudioQuality.HIGHEST -> R.string.audio_quality_highest
-    }
-)
-
-@Composable
-private fun flacQualityLabel(quality: FlacQuality): String = stringResource(
-    when (quality) {
-        FlacQuality.CD -> R.string.flac_quality_cd
-        FlacQuality.HI_RES -> R.string.flac_quality_hi_res
-        FlacQuality.MAX -> R.string.flac_quality_max
-    }
-)

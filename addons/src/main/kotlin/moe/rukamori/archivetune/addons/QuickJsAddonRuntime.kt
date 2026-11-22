@@ -31,6 +31,10 @@ class QuickJsAddonRuntime(
         val made = mutableListOf<QuickJs>()
     }
 
+    fun isLoaded(addonId: String): Boolean = synchronized(engineLock) {
+        pools.containsKey(addonId)
+    }
+
     suspend fun loadModule(addonId: String, jsCode: String, fetchBase: String = ""): Result<Unit> {
         val evicted = synchronized(engineLock) {
             if (pools.containsKey(addonId)) return Result.success(Unit)
@@ -102,7 +106,9 @@ class QuickJsAddonRuntime(
             delay(msStr.toLongOrNull()?.coerceIn(0L, 15_000L) ?: 0L)
         }
         qjs.asyncFunction<String, String>("__yumaFetch") { reqJson: String ->
-            transport.executeFetch(reqJson, fetchBase)
+            withContext(Dispatchers.IO) {
+                transport.executeFetch(reqJson, fetchBase)
+            }
         }
     }
 

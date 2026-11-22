@@ -20,6 +20,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.FlacQuality
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -115,10 +117,15 @@ internal fun isValidRelayUrl(url: String): Boolean {
     return afterScheme.isNotBlank() && !afterScheme.contains(" ")
 }
 
-internal fun normalizeProviderOrder(raw: String): List<String> =
-    raw.split(",").map { it.trim() }.filter { it == "monochrome" || it == "qbdlx" }.distinct().let { p ->
-        p + listOf("monochrome", "qbdlx").filterNot { it in p }
-    }
+internal fun normalizeProviderOrder(
+    raw: String,
+    addonIds: List<String> = emptyList(),
+): List<String> {
+    val allowed = listOf("monochrome", "qbdlx") + addonIds
+    val allowedSet = allowed.toSet()
+    val saved = raw.split(",").map { it.trim() }.filter { it in allowedSet }.distinct()
+    return saved + allowed.filterNot { it in saved }
+}
 
 internal fun resolveFolderPath(context: Context, downloadLocationUri: String): String? =
     downloadLocationUri.takeIf { it.isNotBlank() }?.let { raw ->
@@ -129,3 +136,22 @@ internal fun resolveFolderPath(context: Context, downloadLocationUri: String): S
                 ?: raw
         }.getOrNull() ?: raw
     }
+
+@Composable
+internal fun audioQualityLabel(quality: AudioQuality): String = stringResource(
+    when (quality) {
+        AudioQuality.AUTO -> R.string.audio_quality_auto
+        AudioQuality.HIGH -> R.string.audio_quality_high
+        AudioQuality.LOW -> R.string.audio_quality_low
+        AudioQuality.HIGHEST -> R.string.audio_quality_highest
+    }
+)
+
+@Composable
+internal fun flacQualityLabel(quality: FlacQuality): String = stringResource(
+    when (quality) {
+        FlacQuality.CD -> R.string.flac_quality_cd
+        FlacQuality.HI_RES -> R.string.flac_quality_hi_res
+        FlacQuality.MAX -> R.string.flac_quality_max
+    }
+)

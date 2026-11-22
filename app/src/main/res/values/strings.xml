@@ -2139,4 +2139,21 @@
     <string name="qobuz_config_subtitle">Configure Qobuz API credentials and user auth token pool.</string>
     <string name="qobuz_enable">Enable Qobuz</string>
     <string name="audio_quality_lossless_summary">FLAC · %1$s</string>
+    <string name="addon_type_js">JS Addon</string>
+    <string name="addon_add_title">Add Addon</string>
+    <string name="addon_add_subtitle">Load a stream source from an index URL</string>
+    <string name="addon_add_sheet_title">Add Addon Repository</string>
+    <string name="addon_index_url_hint">https://example.com/index.json</string>
+    <string name="addon_index_url_invalid">Enter a valid http:// or https:// URL</string>
+    <string name="addon_add_button">Add</string>
+    <string name="addon_repositories_section">Repositories</string>
+    <string name="addon_no_repositories">No addon repositories added</string>
+    <string name="addon_repository_remove">Remove repository</string>
+    <string name="addon_config_enable">Enable repository</string>
+    <string name="addon_config_test_title">Health check</string>
+    <string name="addon_config_test_button">Test</string>
+    <string name="addon_probe_online_tracks">Online · %1$d ms (%2$d tracks)</string>
+    <string name="addon_config_refresh">Refresh index</string>
+    <string name="addon_config_remove">Remove repository</string>
+    <string name="addon_config_version">Version %1$s</string>
 </resources>

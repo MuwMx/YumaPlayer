@@ -26,9 +26,16 @@ class AddonManager(
     private val moduleLock = Mutex()
     private val activeAddons = mutableMapOf<String, AddonDescriptor>()
 
+    suspend fun listRepositories(): List<AddonRepository> = configStore.getRepositories()
+
+    suspend fun getActiveAddons(): List<AddonDescriptor> = moduleLock.withLock {
+        activeAddons.values.toList()
+    }
+
     suspend fun syncRepositories(): List<AddonDescriptor> = moduleLock.withLock {
         val repos = configStore.getRepositories().filter { it.enabled }
         val loaded = mutableListOf<AddonDescriptor>()
+        activeAddons.clear()
         for (repo in repos) {
             val descriptors = indexShared.get(
                 key = repo.url,
@@ -44,17 +51,103 @@ class AddonManager(
         loaded
     }
 
+    suspend fun refreshRepositories(): List<AddonDescriptor> {
+        indexShared.clear()
+        return syncRepositories()
+    }
+
+    suspend fun addRepository(url: String, name: String? = null): Result<List<AddonDescriptor>> {
+        val trimmed = url.trim()
+        return runCatching {
+            BitChordIndexLoader.validateUrl(trimmed)
+            val descriptors = indexLoader.loadIndex(trimmed).getOrThrow()
+            val current = configStore.getRepositories().toMutableList()
+            val repoName = name?.trim()?.ifEmpty { null }
+                ?: trimmed.substringAfter("://").substringBefore("/").ifEmpty { trimmed }
+            val newRepo = AddonRepository(
+                id = trimmed,
+                name = repoName,
+                url = trimmed,
+                enabled = true,
+                lastSyncedAtMs = System.currentTimeMillis(),
+            )
+            current.removeAll { it.url == trimmed }
+            current.add(newRepo)
+            configStore.saveRepositories(current)
+            syncRepositories()
+            descriptors
+        }
+    }
+
+    suspend fun setRepositoryEnabled(url: String, enabled: Boolean) {
+        val current = configStore.getRepositories()
+        val updated = current.map { repo ->
+            if (repo.url == url) repo.copy(enabled = enabled) else repo
+        }
+        configStore.saveRepositories(updated)
+        syncRepositories()
+    }
+
+    suspend fun removeRepository(url: String) {
+        val current = configStore.getRepositories()
+        val updated = current.filterNot { it.url == url }
+        configStore.saveRepositories(updated)
+        syncRepositories()
+    }
+
     suspend fun loadAddon(addon: AddonDescriptor): Result<Unit> {
+        if (runtime.isLoaded(addon.id)) return Result.success(Unit)
         val jsCodeResult = runCatching {
             val req = Request.Builder().url(addon.downloadUrl).build()
             httpClient.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code} downloading ${addon.id}")
-                resp.body?.string() ?: throw IllegalStateException("Empty body for ${addon.id}")
+                resp.body.string().ifEmpty { throw IllegalStateException("Empty body for ${addon.id}") }
             }
         }
         val jsCode = jsCodeResult.getOrElse { return Result.failure(it) }
         val base = addon.downloadUrl.substringBeforeLast("/")
         return runtime.loadModule(addon.id, jsCode, base)
+    }
+
+    suspend fun testAddon(addonId: String): AddonCheckResult {
+        val start = System.currentTimeMillis()
+        val addon = moduleLock.withLock { activeAddons[addonId] }
+            ?: return AddonCheckResult(
+                ok = false,
+                latencyMs = 0L,
+                tracksFound = 0,
+                message = "Addon $addonId not found",
+            )
+        val loadRes = loadAddon(addon)
+        if (loadRes.isFailure) {
+            val latency = System.currentTimeMillis() - start
+            return AddonCheckResult(
+                ok = false,
+                latencyMs = latency,
+                tracksFound = 0,
+                message = loadRes.exceptionOrNull()?.message ?: "Failed to load addon",
+            )
+        }
+        val searchRes = runtime.searchTracks(addonId, "Daft Punk", limit = 1)
+        val latency = System.currentTimeMillis() - start
+        return searchRes.fold(
+            onSuccess = { tracks ->
+                AddonCheckResult(
+                    ok = true,
+                    latencyMs = latency,
+                    tracksFound = tracks.size,
+                    message = "OK",
+                )
+            },
+            onFailure = { err ->
+                AddonCheckResult(
+                    ok = false,
+                    latencyMs = latency,
+                    tracksFound = 0,
+                    message = err.message ?: "Search failed",
+                )
+            },
+        )
     }
 
     suspend fun resolveTrack(addonId: String, query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {

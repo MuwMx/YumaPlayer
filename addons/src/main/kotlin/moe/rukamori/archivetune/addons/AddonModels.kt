@@ -55,6 +55,14 @@ data class AddonStream(
     val origin: String = "",
 )
 
+@Serializable
+data class AddonCheckResult(
+    val ok: Boolean,
+    val latencyMs: Long,
+    val tracksFound: Int,
+    val message: String,
+)
+
 interface AddonConfigStore {
     suspend fun getRepositories(): List<AddonRepository>
     suspend fun saveRepositories(repositories: List<AddonRepository>)
