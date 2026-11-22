@@ -362,15 +362,31 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun provideAddonConfigStore(
+        impl: moe.rukamori.archivetune.lossless.AddonConfigStoreImpl,
+    ): moe.rukamori.archivetune.addons.AddonConfigStore = impl
+
+    @Singleton
+    @Provides
+    fun provideAddonManager(
+        store: moe.rukamori.archivetune.addons.AddonConfigStore,
+    ): moe.rukamori.archivetune.addons.AddonManager {
+        return moe.rukamori.archivetune.addons.AddonManager(configStore = store)
+    }
+
+    @Singleton
+    @Provides
     fun provideFlacStreamRegistry(
         qbdlxResolver: moe.rukamori.archivetune.flaccore.streaming.QbdlxStreamResolver,
         monochromeResolver: moe.rukamori.archivetune.flaccore.streaming.MonochromeStreamResolver,
         monochromeConfig: moe.rukamori.archivetune.flaccore.monochrome.MonochromeConfig,
+        addonManager: moe.rukamori.archivetune.addons.AddonManager,
     ): moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry {
         return moe.rukamori.archivetune.flaccore.streaming.FlacStreamRegistry(
             qbdlx = { q, ql -> qbdlxResolver.resolve(q, ql) },
             monochrome = { q, ql -> monochromeResolver.resolve(q, ql) },
             providerOrder = { monochromeConfig.providerOrder() },
+            dynamicResolvers = { addonManager.getResolvers() },
         )
     }
 

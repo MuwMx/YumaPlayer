@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -36,7 +37,7 @@ internal fun QobuzConfigSheet(
         subtitle = stringResource(R.string.qobuz_config_subtitle),
         onDismiss = onDismiss,
     ) {
-        PreferenceGroup {
+        PreferenceGroup(horizontalPadding = 0.dp) {
             item {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.qobuz_enable)) },

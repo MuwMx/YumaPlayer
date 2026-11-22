@@ -15,14 +15,17 @@ class FlacStreamRegistry(
     private val qbdlx: suspend (TrackQuery, Int) -> FlacStreamUrl?,
     private val monochrome: (suspend (TrackQuery, Int) -> FlacStreamUrl?)? = null,
     private val providerOrder: suspend () -> List<String> = { listOf("monochrome", "qbdlx") },
+    private val dynamicResolvers: suspend () -> Map<String, suspend (TrackQuery, Int) -> FlacStreamUrl?> = { emptyMap() },
 ) {
     private val logger = FlacLogger(TAG)
     var timeoutMs = 35_000L
 
     suspend fun resolve(query: TrackQuery, requestedQuality: Int): FlacStreamUrl? {
+        val dynamic = dynamicResolvers()
         val available = buildMap<String, suspend (TrackQuery, Int) -> FlacStreamUrl?> {
             put("qbdlx", qbdlx)
             monochrome?.let { put("monochrome", it) }
+            putAll(dynamic)
         }
 
         val order = providerOrder()

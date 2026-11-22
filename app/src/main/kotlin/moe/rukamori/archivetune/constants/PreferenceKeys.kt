@@ -866,3 +866,5 @@ enum class UpdateChannel {
 val SponsorBlockEnabledKey = booleanPreferencesKey("sponsorBlockEnabled")
 val SponsorBlockCategoriesKey = stringSetPreferencesKey("sponsorBlockCategories")
 val SponsorBlockApiUrlKey = stringPreferencesKey("sponsorBlockApiUrl")
+
+val AddonRepositoriesKey = stringPreferencesKey("addonRepositories")

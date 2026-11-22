@@ -99,6 +99,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1212,6 +1213,7 @@ class PreferenceGroupScope internal constructor() {
 fun PreferenceGroup(
     modifier: Modifier = Modifier,
     title: String? = null,
+    horizontalPadding: Dp = PreferenceGroupHorizontalPadding,
     content: PreferenceGroupScope.() -> Unit,
 ) {
     val scope = PreferenceGroupScope().apply(content)
@@ -1229,7 +1231,7 @@ fun PreferenceGroup(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = PreferenceGroupHorizontalPadding),
+                .padding(horizontal = horizontalPadding),
             verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap)
         ) {
             scope.items.forEachIndexed { index, itemContent ->

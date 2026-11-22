@@ -97,7 +97,7 @@ internal fun MonochromeConfigSheet(
         title = stringResource(R.string.monochrome_config_title),
         onDismiss = onDismiss,
     ) {
-        PreferenceGroup {
+        PreferenceGroup(horizontalPadding = 0.dp) {
             item {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.monochrome_enable)) },

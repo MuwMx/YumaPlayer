@@ -44,6 +44,8 @@ dependencyResolutionManagement {
 //     id("org.gradle.toolchains.foojay-resolver-convention") version("1.0.0")
 // }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 rootProject.name = "YumaPlayer"
 include(":app")
 include(":designsystem")
@@ -62,6 +64,7 @@ include(":canvas")
 include(":shazamkit")
 include(":spotifycore")
 include(":flaccore")
+include(":addons")
 include(":moriextractor")
 include(":morideobfuscator")
 include(":morideobfuscator-quickjs")

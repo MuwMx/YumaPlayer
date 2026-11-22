@@ -16,7 +16,7 @@ This document serves as the official reference for the modular structure of Yuma
 
 ## 2. Architecture & Category Hierarchy
 
-YumaPlayer consists of **20 Gradle modules** (verified against `settings.gradle.kts`: `:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, `:lyrics:*` ×6, `:spotifycore`, `:shazamkit`, `:canvas`, `:lastfm`, `:flaccore`, `:moriextractor`, `:morideobfuscator`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
+YumaPlayer consists of **21 Gradle modules** (verified against `settings.gradle.kts`: `:app`, `:designsystem`, `:database`, `:core`, `:core:innertube`, `:core:audio-dsp`, `:lyrics:*` ×6, `:spotifycore`, `:shazamkit`, `:canvas`, `:lastfm`, `:flaccore`, `:addons`, `:moriextractor`, `:morideobfuscator`). Dependencies point inward toward shared core abstractions. There are no `:feature:*`, `:service:*`, `:core:model`, `:core:domain`, `:core:data`, or `:data` modules — those names are reserved for a possible future split (see §6).
 
 ```
                  ┌──────────────┐
@@ -71,6 +71,7 @@ YumaPlayer consists of **20 Gradle modules** (verified against `settings.gradle.
   - Canvas rendering in `:app` is organized under `ui/player/canvas/`: `network/` owns HTTP transport, cache access and media-source construction; `playback/` owns the player, source preparation, lifecycle synchronization and stall detection; `ui/` owns the Compose rendering entry point. Metadata providers remain in `:canvas`; disk-cache persistence remains outside these playback components.
 - **`:lastfm`** — Scrobbling integration and metadata synchronization.
 - **`:flaccore`** — Lossless FLAC domain (`FlacConfig`, `FlacKvStore`, `qbdlx/`: `QbdlxSigner`, `QbdlxCredentialStore`, `QbdlxPoolProvider`, `QbdlxQobuzSource`, `streaming/` resolvers). Implemented via `FlacConfigImpl` / `FlacKvStoreImpl` in `:app` (`lossless/`).
+- **`:addons`** — JS streaming addon runtime and repository manager (`AddonModels`, `BitChordIndexLoader`, `SharedCalls`, `QuickJsAddonRuntime`, `AddonManager`). Executes external streaming modules in a sandboxed QuickJS runtime with bounded TTL caching, integrating dynamic resolvers into `FlacStreamRegistry`.
 
 ### ⚙️ Core Infrastructure
 - **`:core`** — Shared pure-Kotlin logic: `core/common/math/` (`lerp3`, palette/color/image math), `core/model/packed/` models.
