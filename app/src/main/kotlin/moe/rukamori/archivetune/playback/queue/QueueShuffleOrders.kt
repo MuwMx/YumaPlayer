@@ -14,6 +14,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import java.util.ArrayDeque
+import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 internal interface ReadOnlyTimelineDelegate {
@@ -65,6 +66,7 @@ internal fun songsLeftInPlayOrder(
 internal fun buildAppendShuffleOrder(
     timeline: Timeline,
     addedCount: Int,
+    currentWindowIndex: Int = C.INDEX_UNSET,
     randomSeed: Long = System.currentTimeMillis(),
 ): DefaultShuffleOrder? {
     if (addedCount <= 0 || timeline.isEmpty) return null
@@ -75,9 +77,40 @@ internal fun buildAppendShuffleOrder(
         index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
     }
     val existing = timeline.windowCount
-    val shuffled = IntArray(playOrder.size + addedCount) { position ->
-        if (position < playOrder.size) playOrder[position] else existing + (position - playOrder.size)
+    val currentPosInPlayOrder = if (currentWindowIndex != C.INDEX_UNSET) {
+        playOrder.indexOf(currentWindowIndex)
+    } else {
+        -1
     }
+
+    Timber.tag("ShuffleDiag").d(
+        "buildAppendShuffleOrder: existing=$existing, addedCount=$addedCount, currentPosInPlayOrder=$currentPosInPlayOrder"
+    )
+
+    val preservedCount = if (currentPosInPlayOrder in playOrder.indices) currentPosInPlayOrder + 1 else 0
+    val preserved = playOrder.subList(0, preservedCount)
+    val unplayed = playOrder.subList(preservedCount, playOrder.size)
+
+    val toShuffle = IntArray(unplayed.size + addedCount) { pos ->
+        if (pos < unplayed.size) unplayed[pos] else existing + (pos - unplayed.size)
+    }
+
+    val rnd = kotlin.random.Random(randomSeed)
+    for (i in toShuffle.size - 1 downTo 1) {
+        val j = rnd.nextInt(i + 1)
+        val temp = toShuffle[i]
+        toShuffle[i] = toShuffle[j]
+        toShuffle[j] = temp
+    }
+
+    val shuffled = IntArray(preserved.size + toShuffle.size)
+    for (i in preserved.indices) {
+        shuffled[i] = preserved[i]
+    }
+    for (i in toShuffle.indices) {
+        shuffled[preserved.size + i] = toShuffle[i]
+    }
+
     return DefaultShuffleOrder(shuffled, randomSeed)
 }
 

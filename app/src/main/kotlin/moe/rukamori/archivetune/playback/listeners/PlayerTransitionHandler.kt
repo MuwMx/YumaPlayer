@@ -135,7 +135,15 @@ internal class PlayerTransitionHandler(
                         if (player.playbackState != STATE_IDLE) {
                             val wasEndedImmediatelyBeforeMutation = player.playbackState == STATE_ENDED && player.playWhenReady
                             val shuffleOrder =
-                                if (player.shuffleModeEnabled) buildAppendShuffleOrder(player.currentTimeline, loadedItems.size) else null
+                                if (player.shuffleModeEnabled) {
+                                    buildAppendShuffleOrder(
+                                        timeline = player.currentTimeline,
+                                        addedCount = loadedItems.size,
+                                        currentWindowIndex = player.currentMediaItemIndex,
+                                    )
+                                } else {
+                                    null
+                                }
                             player.addMediaItems(loadedItems)
                             shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
                             if (wasEndedImmediatelyBeforeMutation) {
@@ -283,7 +291,16 @@ internal class PlayerTransitionHandler(
                     val newItems = status.items.filter { it.mediaId !in queueIds }
 
                     if (newItems.isNotEmpty()) {
-                        val shuffleOrder = if (player.shuffleModeEnabled) buildAppendShuffleOrder(player.currentTimeline, newItems.size) else null
+                        val shuffleOrder =
+                            if (player.shuffleModeEnabled) {
+                                buildAppendShuffleOrder(
+                                    timeline = player.currentTimeline,
+                                    addedCount = newItems.size,
+                                    currentWindowIndex = player.currentMediaItemIndex,
+                                )
+                            } else {
+                                null
+                            }
                         player.addMediaItems(newItems)
                         shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
                         newItems.forEach { queueDelegate.autoAddedMediaIds.add(it.mediaId) }

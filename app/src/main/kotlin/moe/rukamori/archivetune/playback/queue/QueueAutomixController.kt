@@ -277,7 +277,15 @@ internal class QueueAutomixController(
 
                     if (newItems.isNotEmpty()) {
                         val shuffleOrder =
-                            if (delegate.isShuffleModeEnabled()) buildAppendShuffleOrder(delegate.getCurrentTimeline(), newItems.size) else null
+                            if (delegate.isShuffleModeEnabled()) {
+                                buildAppendShuffleOrder(
+                                    timeline = delegate.getCurrentTimeline(),
+                                    addedCount = newItems.size,
+                                    currentWindowIndex = delegate.getCurrentMediaItemIndex(),
+                                )
+                            } else {
+                                null
+                            }
                         delegate.addMediaItems(newItems)
                         shuffleOrder?.let(delegate::setShuffleOrder)
                         newItems.forEach {

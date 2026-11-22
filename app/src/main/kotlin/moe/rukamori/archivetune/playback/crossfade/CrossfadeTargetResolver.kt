@@ -23,6 +23,7 @@ import moe.rukamori.archivetune.audiodsp.advanceCueForElapsed
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.crossfadePlanGeneration
 import moe.rukamori.archivetune.playback.crossfade.isGaplessAlbumTransition
+import timber.log.Timber
 
 internal fun MusicService.isPlanGenerationCurrent(
     generation: Long,
@@ -106,6 +107,14 @@ internal fun MusicService.resolveCrossfadeTarget(): CrossfadeTarget? {
     if (!crossfadeEnabled || crossfadeDurationMs <= 0L) return null
     if (player.mediaItemCount == 0 || player.currentTimeline.isEmpty) return null
     if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) return null
+
+    Timber.tag("ShuffleDiag").d(
+        "resolveCrossfadeTarget: shuffleMode=%b, currentIndex=%d, nextIndex=%d, mediaItemCount=%d",
+        player.shuffleModeEnabled,
+        player.currentMediaItemIndex,
+        player.nextMediaItemIndex,
+        player.mediaItemCount,
+    )
 
     val currentIndex = player.currentMediaItemIndex
     if (currentIndex !in 0 until player.mediaItemCount) return null

@@ -53,6 +53,14 @@ class ExoDeckController(
         get() = reserveDeck?.player
 
     override fun prepareNext(target: CrossfadeTarget): Boolean {
+        Timber.tag("ShuffleDiag").d(
+            "prepareNext: targetIndex=%d, shuffleMode=%b, mediaItemCount=%d, currentIndex=%d, nextIndex=%d",
+            target.index,
+            activeDeck.player.shuffleModeEnabled,
+            activeDeck.player.mediaItemCount,
+            activeDeck.player.currentMediaItemIndex,
+            activeDeck.player.nextMediaItemIndex,
+        )
         val existingDeck = transitionDeck
         if (existingDeck != null && secondaryCrossfadeTarget == target) {
             existingDeck.player.playWhenReady = false
@@ -169,7 +177,18 @@ class ExoDeckController(
         // Preserves user's latest repeat and shuffle settings 
         incomingPlayer.repeatMode = outgoingPlayer.repeatMode
         incomingPlayer.shuffleModeEnabled = outgoingPlayer.shuffleModeEnabled
-        incomingPlayer.setShuffleOrder(outgoingPlayer.shuffleOrder)
+        Timber.tag("ShuffleDiag").d(
+            "completeHandoff: outgoingCount=%d, incomingCount=%d, shuffleMode=%b, shuffleOrderLength=%d",
+            outgoingPlayer.mediaItemCount,
+            incomingPlayer.mediaItemCount,
+            outgoingPlayer.shuffleModeEnabled,
+            outgoingPlayer.shuffleOrder.length,
+        )
+        runCatching {
+            incomingPlayer.setShuffleOrder(outgoingPlayer.shuffleOrder)
+        }.onFailure { error ->
+            Timber.tag("ShuffleDiag").e(error, "completeHandoff: failed to set shuffle order on incoming player")
+        }
 
         dualForwardingPlayer.attachPlayer(incomingPlayer)
 
