@@ -136,7 +136,7 @@ Java_moe_rukamori_archivetune_playback_smart_TrackFeatures_nativeAnalyze(
   std::string json;
   // A whole-track energy curve dominates the output; reserving up front keeps
   // this from repeatedly reallocating a string that reaches tens of kilobytes.
-  json.reserve(8192 + result.energy_curve.size() * 24);
+  json.reserve(8192 + result.energy_curve.size() * 24 + result.beats.size() * 12);
 
   json += '{';
   AppendField(json, "duration", result.duration, true);
@@ -156,6 +156,8 @@ Java_moe_rukamori_archivetune_playback_smart_TrackFeatures_nativeAnalyze(
 
   json += ",\"key\":";
   AppendString(json, result.key);
+  json += ",\"beats\":";
+  AppendDoubles(json, result.beats);
   json += ",\"downbeats\":";
   AppendDoubles(json, result.downbeats);
   json += ",\"phraseBoundaries\":";

@@ -295,6 +295,47 @@ enum class AutomixTransitionDuration(val value: String) {
     S16("16"),
     S20("20"),
 }
+
+enum class TransitionMode {
+    OFF,
+    CROSSFADE,
+    AUTOMIX,
+    CROSSMIX,
+}
+
+val TransitionModeKey = stringPreferencesKey("transitionMode")
+val CrossmixLengthKey = stringPreferencesKey("crossmixLength")
+val CrossmixTempoKey = stringPreferencesKey("crossmixTempo")
+val CrossmixStyleKey = stringPreferencesKey("crossmixStyle")
+val CrossmixStuntsKey = booleanPreferencesKey("crossmixStunts")
+val CrossmixAlwaysMixKey = booleanPreferencesKey("crossmixAlwaysMix")
+val SkipBlendKey = booleanPreferencesKey("skipBlend")
+val SkipBlendAheadKey = intPreferencesKey("skipBlendAhead")
+
+const val CrossmixStyleAuto = "AUTO"
+const val SkipBlendAheadMax = 4
+
+enum class CrossmixLength(val scale: Float) {
+    SHORT(0.6f),
+    MEDIUM(1f),
+    LONG(1.5f),
+}
+
+enum class CrossmixTempoMatch(val maxSpeedUp: Float) {
+    OFF(0.006f),
+    GENTLE(0.04f),
+    FULL(0.10f),
+}
+
+enum class TransportEffect(val label: String) {
+    OFF("None"),
+    ECHO("Echo"),
+    REWIND("Rewind"),
+    TAPE_STOP("Tape stop"),
+    FAR_AWAY("Fade to far"),
+    REVERB("Reverb wash"),
+    FILTER("Filter sweep"),
+}
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")
 val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")
