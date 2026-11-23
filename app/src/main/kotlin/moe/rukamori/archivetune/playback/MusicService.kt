@@ -145,6 +145,7 @@ import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.audio.AudioOutputs
 import moe.rukamori.archivetune.playback.audio.ServiceAudioPolicyHolder
+import moe.rukamori.archivetune.playback.audio.reconcileAudioEffectSession
 import moe.rukamori.archivetune.playback.audio.pass.AudioPass
 import moe.rukamori.archivetune.playback.audio.pass.LabSound
 import moe.rukamori.archivetune.playback.audio.pass.PassBlocker
@@ -1251,6 +1252,7 @@ class MusicService :
 
             playerEngineHolder.dualForwardingPlayer.attachPlayer(incoming)
             localPlayer = incoming
+            reconcileAudioEffectSession()
 
             if (controller is ExoDeckController) {
                 val filter = djFilterFor(incoming) ?: DjFilterAudioProcessor()

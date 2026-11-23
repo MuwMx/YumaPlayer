@@ -3,24 +3,13 @@ package moe.rukamori.archivetune.ui.player.player_0
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import moe.rukamori.archivetune.ui.player.ambient.ToneSeamRight
-import moe.rukamori.archivetune.ui.player.ambient.pictureTones
 
 @Composable
 internal fun PlayerGradientBackdrop(
@@ -29,37 +18,9 @@ internal fun PlayerGradientBackdrop(
     glowTransition: Float,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    var slotTones by remember { mutableStateOf<Map<String, List<Color>>>(emptyMap()) }
-
-    LaunchedEffect(carousel?.slots) {
-        val slots = carousel?.slots ?: run {
-            if (slotTones.isNotEmpty()) slotTones = emptyMap()
-            return@LaunchedEffect
-        }
-        val activeUrls = slots.mapNotNull { it.artworkUri?.trim()?.takeIf(String::isNotBlank) }.toSet()
-
-        slotTones = slotTones.filterKeys { it in activeUrls }
-
-        for (url in activeUrls) {
-            if (!slotTones.containsKey(url)) {
-                launch(Dispatchers.IO) {
-                    val tones = pictureTones(context, url)
-                    if (tones != null) {
-                        withContext(Dispatchers.Main) {
-                            slotTones = slotTones + Pair(url, tones)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     if (carousel != null && carousel.slots.isNotEmpty()) {
         for (slot in carousel.slots) {
             key(slot.uid) {
-                val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
-                val slotBgColor = slotUrl?.let { slotTones[it]?.getOrNull(ToneSeamRight) } ?: animatedBgColor
                 Spacer(
                     modifier = modifier
                         .fillMaxSize()
@@ -67,7 +28,7 @@ internal fun PlayerGradientBackdrop(
                             alpha = carousel.crossfadeAlpha(slot)
                         }
                         .drawWithCache {
-                            val currentBg = slotBgColor
+                            val currentBg = animatedBgColor
                             val currentGlow = glowTransition
 
                             val charcoalTone = lerp(Color(0xFF080808), currentBg, 0.05f)

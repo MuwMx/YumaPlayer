@@ -99,7 +99,7 @@ object CrossmixPlanner {
         val windowStart = (outgoing.durationMs - MaxLeadMs).coerceAtLeast(0L)
 
         // nothing to plan around: a plain fade, or with always mix on, a real blend counted in seconds
-        fun noPlan() = if (settings.alwaysMix) forcedBlend(outgoing, incoming, naturalEnd, out) else smoothFade(outgoing, incoming, naturalEnd)
+        fun noPlan() = if (settings.alwaysMix) forcedBlend(outgoing, incoming, naturalEnd, out, settings.style) else smoothFade(outgoing, incoming, naturalEnd, settings.style)
         if (out == null || !out.isBeatReliable) return noPlan()
         val outGrid = out.localGrid((naturalEnd - 12_000L).coerceAtLeast(0L)) ?: return noPlan()
 
@@ -132,7 +132,7 @@ object CrossmixPlanner {
 
         // every way this style could play between these two songs; a style the listener picked by hand is never scored out
         fun consider(style: CrossmixStyle, picked: Boolean) {
-            if (style.needsBeatMatch && tempo == null) return
+            if (!picked && style.needsBeatMatch && tempo == null) return
             // always mix keeps to the styles where both songs really play together; a style picked by hand still wins
             if (settings.alwaysMix && !picked && !style.blendsBoth) return
             var styleFit = styleFit(style, out, inc, tempo != null, keyDistance, outLines, naturalEnd, vocalPair)
@@ -153,7 +153,7 @@ object CrossmixPlanner {
                     val exitScore = exitScore(out, bars, exit.grid, exit.swapMs, end, naturalEnd, outLines, style) ?: continue
                     val landing = pickLanding(style, out, inc, exit.swapMs, swap, period, tempo, locked, outVoice, inVoice, latestLanding) ?: continue
                     val match = if (locked) beatMatch(inc!!, landing.timeMs, tempo!!, period, maxSpeedUp) else null
-                    if (style.needsBeatMatch && match == null) continue
+                    if (!picked && style.needsBeatMatch && match == null) continue
                     val inBeat = match?.inBeatMs ?: period
                     // heard from the start of a blend, or from the hand-over for a drop; up to a bar of silent run-up before that, so the beat is locked before anyone hears it
                     val heardFrom = if (style.entersAtEnd) length.toFloat() else 0f
@@ -546,6 +546,7 @@ object CrossmixPlanner {
         outgoing: CrossmixTrackInput,
         incoming: CrossmixTrackInput,
         naturalEnd: Long,
+        preferredStyle: CrossmixStyle? = null,
     ): CrossmixPlan {
         val lines = parseLines(outgoing.lyrics)
         val fadeMs = 9_000L
@@ -554,7 +555,7 @@ object CrossmixPlanner {
         val afterLyrics = lines.lastOrNull { it.end in earliestStart..latestStart }?.end
         val start = (afterLyrics ?: latestStart).coerceIn(earliestStart, latestStart.coerceAtLeast(earliestStart))
         val beatMs = fadeMs / 16.0
-        val style = CrossmixStyle.Dampen
+        val style = preferredStyle ?: CrossmixStyle.Dampen
         val swap = style.swapAt(16)
         val cue = incoming.analysis?.leadingSilenceEndMs?.coerceAtMost(MaxEntryMs) ?: 0L
         return CrossmixPlan(
@@ -580,8 +581,9 @@ object CrossmixPlanner {
         incoming: CrossmixTrackInput,
         naturalEnd: Long,
         out: CrossmixTrackAnalysis?,
+        preferredStyle: CrossmixStyle? = null,
     ): CrossmixPlan {
-        val style = CrossmixStyle.FilterSweep
+        val style = preferredStyle ?: CrossmixStyle.FilterSweep
         val beats = 16
         // the song's own count when it has one, even a shaky one, so the sweep moves with it; else 10 s over the 16
         val beatMs = out?.bpm?.takeIf { it in 70f..180f }?.let { 60_000.0 / it } ?: (ForcedBlendMs / beats)
