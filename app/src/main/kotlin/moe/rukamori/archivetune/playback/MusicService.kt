@@ -40,6 +40,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.ContentObserver
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.BassBoost
@@ -54,6 +55,7 @@ import android.os.PowerManager
 import androidx.core.content.getSystemService
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -78,11 +80,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
@@ -93,22 +102,40 @@ import moe.rukamori.archivetune.audiodsp.DualForwardingPlayer
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
+import moe.rukamori.archivetune.constants.AudioOffload
+import moe.rukamori.archivetune.constants.AudioPassFixedVolumeKey
+import moe.rukamori.archivetune.constants.AudioPassMode
+import moe.rukamori.archivetune.constants.AudioPassModeKey
+import moe.rukamori.archivetune.constants.AudioPassRestoreKey
 import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.HiFiResamplerKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlayerStreamClient
+import moe.rukamori.archivetune.constants.PreferUsbDacKey
+import moe.rukamori.archivetune.constants.UsbPassthroughKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.extensions.collect
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
+import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
+import moe.rukamori.archivetune.playback.audio.AudioOutputs
 import moe.rukamori.archivetune.playback.audio.ServiceAudioPolicyHolder
+import moe.rukamori.archivetune.playback.audio.pass.AudioPass
+import moe.rukamori.archivetune.playback.audio.pass.LabSound
+import moe.rukamori.archivetune.playback.audio.pass.PassBlocker
+import moe.rukamori.archivetune.playback.audio.pass.PassBlockersBefore
+import moe.rukamori.archivetune.playback.audio.pass.clearPassBlockers
+import moe.rukamori.archivetune.playback.audio.pass.passBlockersOf
+import moe.rukamori.archivetune.playback.audio.pass.restorePassBlockers
 import moe.rukamori.archivetune.playback.crossfade.isFullyCached
 import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
 import moe.rukamori.archivetune.playback.crossfade.registerCacheListenerForKey
@@ -130,6 +157,7 @@ import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.widget.LoadWidgetInsightsUseCase
@@ -183,6 +211,57 @@ class MusicService :
     internal var scopeJob = Job()
     internal var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     internal var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
+
+    val audioOutputs by lazy { AudioOutputs(this) }
+    val audioPass by lazy { AudioPass(this, audioOutputs) }
+
+    private val _passBlockers = MutableStateFlow<Set<PassBlocker>>(emptySet())
+    val passBlockers: StateFlow<Set<PassBlocker>> = _passBlockers.asStateFlow()
+
+    var preferredDeviceId: Int? = null
+        private set
+
+    fun setPreferredAudioDevice(deviceId: Int?) {
+        preferredDeviceId = deviceId
+        audioOutputs.select(deviceId)
+    }
+
+    private fun applyOutputRoute(device: AudioDeviceInfo?) {
+        if (playerEngineHolder.isLocalPlayerInitialized) localPlayer.setPreferredAudioDevice(device)
+        secondaryCrossfadePlayer?.setPreferredAudioDevice(device)
+    }
+
+    fun clearPassBlockers() {
+        val lab = audioLabStore
+        val volume = playerVolume.value
+        scope.launch {
+            dataStore.edit { prefs ->
+                prefs[AudioPassRestoreKey] = passJson.encodeToString(PassBlockersBefore.of(prefs, lab, volume))
+                prefs.clearPassBlockers()
+            }
+        }
+        audioLabStore.clearPassBlockers()
+        playerVolume.value = 1f
+    }
+
+    fun restorePassBlockers() {
+        scope.launch {
+            var before: PassBlockersBefore? = null
+            dataStore.edit { prefs ->
+                before = prefs[AudioPassRestoreKey]?.let { runCatching { passJson.decodeFromString<PassBlockersBefore>(it) }.getOrNull() }
+                before?.let(prefs::restorePassBlockers)
+                prefs.remove(AudioPassRestoreKey)
+            }
+            before?.let {
+                audioLabStore.restorePassBlockers(it)
+                playerVolume.value = it.playerVolume
+            }
+        }
+    }
+
+    val canRestorePassBlockers: Flow<Boolean> by lazy {
+        dataStore.data.map { it[AudioPassRestoreKey] != null }.distinctUntilChanged()
+    }
 
     internal val currentPlaybackSourceFlow = MutableStateFlow(PlaybackSource.YT_MUSIC)
     override var currentPlaybackSource: PlaybackSource
@@ -529,6 +608,13 @@ class MusicService :
             reportException(e)
         }
 
+        audioOutputs.onRouteChanged = ::applyOutputRoute
+        audioOutputs.preferUsb = dataStore.get(PreferUsbDacKey, false)
+        audioOutputs.passthrough = dataStore.get(UsbPassthroughKey, false)
+        audioOutputs.resampler = dataStore.get(HiFiResamplerKey, false)
+        audioOutputs.start()
+        audioPass.start()
+
         val localDjFilter = DjFilterAudioProcessor()
         playerListeners = createMusicServicePlayerListeners()
         localPlayer =
@@ -648,6 +734,47 @@ class MusicService :
         }
 
         serviceLifecycle.onCreate()
+        observeAudioPassSettings()
+    }
+
+    private fun observeAudioPassSettings() {
+        val labSound = audioLabStore.state.map { LabSound.of(it) }
+        combine(dataStore.data, labSound, playerVolume) { prefs, lab, volume ->
+            passBlockersOf(prefs, lab, volume)
+        }.distinctUntilChanged()
+            .collect(scope) { blockers ->
+                _passBlockers.value = blockers
+                audioOutputs.floatAllowed = PassBlocker.EQUALIZER !in blockers && PassBlocker.AUDIO_FX !in blockers
+            }
+
+        combine(dataStore.data, passBlockers) { prefs, blockers ->
+            PassSettings(
+                enabled = prefs[UsbPassthroughKey] ?: false,
+                mode = prefs[AudioPassModeKey].toEnum(AudioPassMode.Default),
+                blocked = blockers.isNotEmpty(),
+                fixedVolume = prefs[AudioPassFixedVolumeKey] ?: false,
+            )
+        }.distinctUntilChanged().collect(scope) {
+            audioPass.update(it.enabled, it.mode, it.blocked, it.fixedVolume)
+            updateAudioOffload(dataStore.get(AudioOffload, false))
+            applyEqSettings(desiredEqSettings.value)
+        }
+
+        scope.launch {
+            dataStore.data.map { it[PreferUsbDacKey] ?: false }.distinctUntilChanged().collect {
+                audioOutputs.preferUsb = it
+            }
+        }
+        scope.launch {
+            dataStore.data.map { it[UsbPassthroughKey] ?: false }.distinctUntilChanged().collect {
+                audioOutputs.passthrough = it
+            }
+        }
+        scope.launch {
+            dataStore.data.map { it[HiFiResamplerKey] ?: false }.distinctUntilChanged().collect {
+                audioOutputs.resampler = it
+            }
+        }
     }
     internal fun ensureScopesActive() {
         if (!scopeJob.isActive) scopeJob = Job()
@@ -739,7 +866,8 @@ class MusicService :
     ) = handlePresenceAndListenBrainzInternal(mediaId, mediaMetadata, durationMs, positionMs, reason)
 
     override fun updateAudioOffload(enabled: Boolean) {
-        playerEngineHolder.updateAudioOffload(enabled, crossfadeEnabled)
+        val passEngaged = audioPass.engaged
+        playerEngineHolder.updateAudioOffload(enabled, crossfadeEnabled, passEngaged)
     }
 
     internal fun updateWakeLock() = serviceLifecycle.updateWakeLock()
@@ -777,6 +905,8 @@ class MusicService :
             reverb = reverb,
             loudness = loudness,
             eightD = eightD,
+            audioOutputs = audioOutputs,
+            audioPass = audioPass,
         )
     }
 
@@ -802,6 +932,8 @@ class MusicService :
         moe.rukamori.archivetune.playback.discord.createTransientSongFromMedia(media)
 
     override fun onDestroy() {
+        audioOutputs.release()
+        audioPass.release()
         if (isBecomingNoisyRegistered) {
             runCatching { unregisterReceiver(becomingNoisyReceiver) }
             isBecomingNoisyRegistered = false
@@ -941,3 +1073,6 @@ class MusicService :
         val service: MusicService get() = this@MusicService
     }
 }
+
+private data class PassSettings(val enabled: Boolean, val mode: AudioPassMode, val blocked: Boolean, val fixedVolume: Boolean)
+private val passJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }

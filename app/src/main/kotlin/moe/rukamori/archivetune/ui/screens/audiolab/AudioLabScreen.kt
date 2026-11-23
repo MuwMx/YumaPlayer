@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import kotlinx.coroutines.flow.MutableStateFlow
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.audiodsp.AudioLabEqPresets
 import moe.rukamori.archivetune.audiodsp.AudioLabSoundProfiles
@@ -49,6 +50,7 @@ import moe.rukamori.archivetune.constants.PlaybackSourceKey
 import moe.rukamori.archivetune.constants.QobuzAppIdKey
 import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
+import moe.rukamori.archivetune.playback.audio.AudioOutputs
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -265,6 +267,15 @@ fun AudioLabScreen(
             else -> stringResource(R.string.disabled)
         }
 
+        val outputs = playerConnection?.service?.audioOutputs
+        val devices by remember(outputs) { outputs?.devices ?: MutableStateFlow(emptyList()) }.collectAsStateWithLifecycle(emptyList())
+        val usbDac = devices.firstOrNull { it.kind == AudioOutputs.Kind.USB }
+        val passStatus = when {
+            usbDac != null -> usbDac.name.ifBlank { stringResource(R.string.audiopass_kind_usb) }
+            devices.any { it.isActive && it.kind == AudioOutputs.Kind.BLUETOOTH } -> stringResource(R.string.audiopass_status_bluetooth)
+            else -> stringResource(R.string.audiopass_status_none)
+        }
+
         PreferenceGroup(title = stringResource(R.string.audio_lab_playback_section)) {
             item {
                 PreferenceEntry(
@@ -280,6 +291,14 @@ fun AudioLabScreen(
                     description = transitionsDescription,
                     showChevron = true,
                     onClick = { navController.navigate("settings/player") },
+                )
+            }
+            item {
+                PreferenceEntry(
+                    title = { Text(stringResource(R.string.audiopass_hub_title)) },
+                    description = passStatus,
+                    showChevron = true,
+                    onClick = { navController.navigate("settings/audio_lab/pass") },
                 )
             }
         }

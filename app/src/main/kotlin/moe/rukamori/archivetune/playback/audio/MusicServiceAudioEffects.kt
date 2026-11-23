@@ -116,10 +116,11 @@ internal inline fun <T> MusicService.createAudioEffect(
 }.getOrNull()
 
 internal fun MusicService.applyEqSettingsToEffects(settings: EqSettings) {
-    if (isEqualizerServiceActive) {
+    if (isEqualizerServiceActive || audioPass.engaged) {
         equalizer?.enabled = false
         bassBoost?.enabled = false
         virtualizer?.enabled = false
+        loudnessEnhancer?.enabled = false
         return
     }
     val eq = equalizer ?: return
