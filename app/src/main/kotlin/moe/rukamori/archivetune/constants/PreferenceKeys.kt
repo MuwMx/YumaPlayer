@@ -322,6 +322,30 @@ val EqualizerSelectedProfileIdKey = stringPreferencesKey("equalizerSelectedProfi
 val EqualizerCustomProfilesJsonKey = stringPreferencesKey("equalizerCustomProfilesJson")
 val AudioLabStateJsonKey = stringPreferencesKey("audioLabStateJson")
 
+val PreferUsbDacKey = booleanPreferencesKey("preferUsbDac")
+val UsbPassthroughKey = booleanPreferencesKey("usbDacPassthrough")
+val HiResOutputKey = booleanPreferencesKey("hiResFloatOutput")
+val HiFiResamplerKey = booleanPreferencesKey("hiFiResampler")
+val AudioPassModeKey = stringPreferencesKey("audioPassMode")
+val AudioPassFixedVolumeKey = booleanPreferencesKey("audioPassFixedVolume")
+val AudioPassRestoreKey = stringPreferencesKey("audioPassRestore")
+
+enum class AudioPassMode(val minSdk: Int) {
+    SONG_RATE(34),
+    BIT_PERFECT(34),
+    DIRECT_USB(24),
+    EXCLUSIVE_USB(27),
+    EXCLUSIVE_DAC(27),
+    ;
+
+    val exclusive: Boolean get() = this != SONG_RATE
+
+    companion object {
+        val Default: AudioPassMode
+            get() = if (android.os.Build.VERSION.SDK_INT >= 34) SONG_RATE else DIRECT_USB
+    }
+}
+
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")

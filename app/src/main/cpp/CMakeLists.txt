@@ -16,3 +16,16 @@ target_compile_options(yuma_analysis PRIVATE -O3 -fvisibility=hidden)
 target_link_options(yuma_analysis PRIVATE "-Wl,-z,max-page-size=16384")
 find_library(log-lib log)
 target_link_libraries(yuma_analysis ${log-lib})
+
+add_library(yumapass SHARED
+        pass/usb_pass.cpp
+        pass/exclusive_pass.cpp
+        pass/store_guard.cpp
+)
+if(DEFINED STORE_GUARD_DIR)
+    target_include_directories(yumapass PRIVATE "${STORE_GUARD_DIR}")
+    target_compile_definitions(yumapass PRIVATE HAS_STORE_GUARD_DATA=1)
+endif()
+target_compile_options(yumapass PRIVATE -O2 -Wall -fvisibility=hidden)
+target_link_libraries(yumapass log dl)
+target_link_options(yumapass PRIVATE "-Wl,-z,max-page-size=16384")
