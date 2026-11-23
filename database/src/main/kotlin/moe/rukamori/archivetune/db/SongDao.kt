@@ -172,6 +172,17 @@ interface SongDao {
             LikeSource.SPOTIFY -> likedSongsByRowIdAscSpotify()
         }
 
+    // Id-only badge lookups for list rows (the 0412b6f7 row-subscription
+    // hoist): screens subscribe ONCE and thread membership into rows.
+    @Query("SELECT id FROM song WHERE liked != 0")
+    fun likedSongIds(): Flow<List<String>>
+
+    @Query("SELECT id FROM song WHERE inLibrary IS NOT NULL")
+    fun librarySongIds(): Flow<List<String>>
+
+    @Query("SELECT id FROM song WHERE likedSpotify != 0")
+    fun spotifyLikedSongIds(): Flow<List<String>>
+
     @Transaction
     @Query("SELECT * FROM song WHERE liked != 0 ORDER BY likedDate, rowId")
     fun likedSongsByCreateDateAscUnion(): Flow<List<Song>>
