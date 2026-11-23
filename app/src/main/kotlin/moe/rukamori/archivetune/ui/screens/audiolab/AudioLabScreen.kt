@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,8 +53,6 @@ import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
 import moe.rukamori.archivetune.playback.audio.AudioOutputs
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
-import moe.rukamori.archivetune.ui.component.PreferenceEntry
-import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -270,37 +269,90 @@ fun AudioLabScreen(
         val outputs = playerConnection?.service?.audioOutputs
         val devices by remember(outputs) { outputs?.devices ?: MutableStateFlow(emptyList()) }.collectAsStateWithLifecycle(emptyList())
         val usbDac = devices.firstOrNull { it.kind == AudioOutputs.Kind.USB }
-        val passStatus = when {
-            usbDac != null -> usbDac.name.ifBlank { stringResource(R.string.audiopass_kind_usb) }
-            devices.any { it.isActive && it.kind == AudioOutputs.Kind.BLUETOOTH } -> stringResource(R.string.audiopass_status_bluetooth)
+        val bluetoothDevice = devices.firstOrNull { it.isActive && it.kind == AudioOutputs.Kind.BLUETOOTH }
+        val passStatusLabel = when {
+            usbDac != null -> stringResource(R.string.audiopass_kind_usb)
+            bluetoothDevice != null -> stringResource(R.string.audiopass_status_bluetooth)
             else -> stringResource(R.string.audiopass_status_none)
         }
+        val passSubtitle = when {
+            usbDac != null -> usbDac.name.ifBlank { stringResource(R.string.audiopass_status_connected) }
+            bluetoothDevice != null -> bluetoothDevice.name.ifBlank { stringResource(R.string.audiopass_status_connected) }
+            else -> stringResource(R.string.audiopass_status_none_hint)
+        }
+        val qualityResolution = when {
+            losslessEnabled -> 1f
+            audioQuality == AudioQuality.HIGHEST -> 0.85f
+            audioQuality == AudioQuality.HIGH -> 0.65f
+            audioQuality == AudioQuality.AUTO -> 0.55f
+            audioQuality == AudioQuality.LOW -> 0.15f
+            else -> 0.55f
+        }
 
-        PreferenceGroup(title = stringResource(R.string.audio_lab_playback_section)) {
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.audio_lab_quality_title)) },
-                    description = qualityDescription,
-                    showChevron = true,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
+        ) {
+            Text(
+                text = stringResource(R.string.audio_lab_playback_section),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
+            ) {
+                SummarySketchCard(
+                    title = stringResource(R.string.audio_lab_quality_title),
+                    subtitle = qualityDescription,
+                    active = losslessEnabled,
                     onClick = { navController.navigate("settings/audio_lab/quality") },
+                    modifier = Modifier.weight(1f),
+                    sketch = {
+                        QualitySketch(
+                            resolution = qualityResolution,
+                            active = losslessEnabled,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp),
+                        )
+                    },
                 )
-            }
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.audio_lab_transitions_title)) },
-                    description = transitionsDescription,
-                    showChevron = true,
+
+                val transitionsActive = crossfadeEnabled || automixEnabled
+                SummarySketchCard(
+                    title = stringResource(R.string.audio_lab_transitions_title),
+                    subtitle = transitionsDescription,
+                    active = transitionsActive,
                     onClick = { navController.navigate("settings/player") },
+                    modifier = Modifier.weight(1f),
+                    sketch = {
+                        TransitionSketch(
+                            active = transitionsActive,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp),
+                        )
+                    },
                 )
             }
-            item {
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.audiopass_hub_title)) },
-                    description = passStatus,
-                    showChevron = true,
-                    onClick = { navController.navigate("settings/audio_lab/pass") },
-                )
-            }
+
+            AudioPassHubCard(
+                statusLabel = passStatusLabel,
+                subtitle = passSubtitle,
+                active = usbDac != null,
+                onClick = { navController.navigate("settings/audio_lab/pass") },
+                sketch = {
+                    PassSketch(
+                        plugged = usbDac != null,
+                        modifier = Modifier.size(width = 92.dp, height = 56.dp),
+                    )
+                },
+            )
         }
     }
 }

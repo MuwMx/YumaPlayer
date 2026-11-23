@@ -126,14 +126,15 @@ fun AudioPassScreen(navController: NavController) {
     val devices by remember(outputs) { outputs?.devices ?: MutableStateFlow(emptyList()) }.collectAsStateWithLifecycle(emptyList())
     val blockers by remember(service) { service?.passBlockers ?: MutableStateFlow(emptySet()) }.collectAsStateWithLifecycle(emptySet())
     val pass = service?.audioPass
-    val status by remember(pass) { pass?.status ?: MutableStateFlow(AudioPass.Status.Off) }.collectAsStateWithLifecycle(AudioPass.Status.Off)
+    val passStatus by remember(pass) { pass?.status ?: MutableStateFlow(AudioPass.Status.Off) }.collectAsStateWithLifecycle(AudioPass.Status.Off)
+    val status = passStatus
     val dacVolume by remember(pass) { pass?.dacVolume ?: MutableStateFlow(null) }.collectAsStateWithLifecycle(null)
     val usbPermitted by remember(pass) { pass?.usbPermitted ?: MutableStateFlow(null) }.collectAsStateWithLifecycle(null)
     val canRestore by remember(service) { service?.canRestorePassBlockers ?: MutableStateFlow(false) }.collectAsStateWithLifecycle(false)
 
     var dac by remember { mutableStateOf<UsbDacDetails?>(null) }
     var mixerRate by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(devices) {
+    LaunchedEffect(devices, usbPermitted, passStatus) {
         val (details, rate) = withContext(Dispatchers.IO) {
             UsbDacReader.read(context) to UsbDacReader.mixerRate()
         }

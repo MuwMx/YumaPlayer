@@ -94,6 +94,55 @@ internal fun StageHubCard(
 }
 
 @Composable
+internal fun AudioPassHubCard(
+    statusLabel: String,
+    subtitle: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    sketch: @Composable () -> Unit,
+) {
+    val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 128.dp)
+            .yumaClickable(onClick = onClick)
+            .yumaGlassCard(shape = cardShape)
+            .clip(cardShape)
+            .padding(
+                horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal,
+                vertical = SettingsDimensions.SegmentedItemPaddingVertical,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.BadgeSpacing),
+            ) {
+                Text(
+                    text = stringResource(R.string.audiopass_hub_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                StatusBadgePill(label = statusLabel, active = active)
+            }
+            Spacer(Modifier.height(SettingsDimensions.RowTextSpacing))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(SettingsDimensions.SegmentedIconSpacing))
+        sketch()
+    }
+}
+
+@Composable
 internal fun SummarySketchCard(
     title: String,
     subtitle: String,
@@ -150,6 +199,17 @@ internal fun SummarySketchCard(
 
 @Composable
 internal fun StatusPill(active: Boolean) {
+    StatusBadgePill(
+        label = stringResource(if (active) R.string.enabled else R.string.disabled),
+        active = active,
+    )
+}
+
+@Composable
+internal fun StatusBadgePill(
+    label: String,
+    active: Boolean,
+) {
     val bg = if (active) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     } else {
@@ -166,10 +226,12 @@ internal fun StatusPill(active: Boolean) {
             ),
     ) {
         Text(
-            text = stringResource(if (active) R.string.enabled else R.string.disabled),
+            text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = fg,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

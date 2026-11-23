@@ -188,8 +188,12 @@ class PlayerEngineHolder {
         to.addListener(listener)
     }
 
+    private var lastEffectiveOffloadEnabled: Boolean? = null
+
     fun updateAudioOffload(enabled: Boolean, crossfadeEnabled: Boolean, passEngaged: Boolean = false) {
         val effectiveEnabled = enabled && !crossfadeEnabled && !passEngaged
+        if (lastEffectiveOffloadEnabled == effectiveEnabled) return
+        lastEffectiveOffloadEnabled = effectiveEnabled
         runCatching {
             val builder = localPlayer.trackSelectionParameters.buildUpon()
             val audioOffloadPrefsClass = Class.forName("androidx.media3.common.AudioOffloadPreferences")

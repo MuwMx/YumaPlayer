@@ -43,6 +43,7 @@ import moe.rukamori.archivetune.ui.screens.audiolab.stage.drawStageRoom
 import moe.rukamori.archivetune.ui.screens.audiolab.stage.rememberStageCanvasPalette
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -267,6 +268,135 @@ fun StageSketch(
             palette = palette,
             on = on,
             compact = true,
+        )
+    }
+}
+
+@Composable
+fun QualitySketch(
+    resolution: Float,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val primary = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val animatedResolution by animateFloatAsState(
+        targetValue = resolution.coerceIn(0f, 1f),
+        animationSpec = if (animationsDisabled) snap() else tween(600),
+        label = "qualityResolution",
+    )
+
+    Canvas(modifier = modifier) {
+        val barColor = if (active) primary.copy(alpha = 0.85f) else onSurfaceVariant.copy(alpha = 0.55f)
+        val step = (5.2f - 3.2f * animatedResolution).dp.toPx()
+        val levels = (3 + 12 * animatedResolution).roundToInt().coerceAtLeast(3)
+        val padX = size.width * 0.08f
+        val usableWidth = (size.width - padX * 2f).coerceAtLeast(1f)
+        val midY = size.height * 0.5f
+        val strokeWidth = (step * 0.52f).coerceAtLeast(1.2.dp.toPx())
+        var x = 0f
+        while (x <= usableWidth) {
+            val p = x / usableWidth
+            val amp = (0.35f + 0.35f * sin(p * 23f) + 0.3f * sin(p * 57f + 1f)).coerceIn(0.08f, 1f) *
+                (1f - kotlin.math.abs(p - 0.5f) * 0.45f)
+            val quantized = (amp * levels).roundToInt().coerceAtLeast(1) / levels.toFloat()
+            val half = quantized * size.height * 0.36f
+            drawLine(
+                color = barColor,
+                start = Offset(padX + x, midY - half),
+                end = Offset(padX + x, midY + half),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+            x += step
+        }
+    }
+}
+
+@Composable
+fun TransitionSketch(
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val primary = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val alpha by animateFloatAsState(
+        targetValue = if (active) 0.85f else 0.48f,
+        animationSpec = if (animationsDisabled) snap() else tween(400),
+        label = "transitionSketchAlpha",
+    )
+
+    Canvas(modifier = modifier) {
+        val color = (if (active) primary else onSurfaceVariant).copy(alpha = alpha)
+        val padX = size.width * 0.16f
+        val padY = size.height * 0.22f
+        val left = padX
+        val right = size.width - padX
+        val top = padY
+        val bottom = size.height - padY
+        val midX = (left + right) * 0.5f
+        val stroke = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round)
+
+        val fadeOut = Path().apply {
+            moveTo(left, top)
+            cubicTo(midX, top, midX, bottom, right, bottom)
+        }
+        val fadeIn = Path().apply {
+            moveTo(left, bottom)
+            cubicTo(midX, bottom, midX, top, right, top)
+        }
+        drawPath(path = fadeOut, color = color, style = stroke)
+        drawPath(path = fadeIn, color = color, style = stroke)
+    }
+}
+
+@Composable
+fun PassSketch(
+    plugged: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val primary = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val alpha by animateFloatAsState(
+        targetValue = if (plugged) 0.92f else 0.48f,
+        animationSpec = if (animationsDisabled) snap() else tween(400),
+        label = "passSketchAlpha",
+    )
+
+    Canvas(modifier = modifier) {
+        val color = (if (plugged) primary else onSurfaceVariant).copy(alpha = alpha)
+        val padX = size.width * 0.08f
+        val usableW = size.width - padX * 2f
+        val midY = size.height * 0.5f
+
+        val headSize = Size(usableW * 0.18f, size.height * 0.30f)
+        val bodySize = Size(usableW * 0.42f, size.height * 0.54f)
+        val headLeft = padX
+        val bodyLeft = headLeft + headSize.width
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(headLeft, midY - headSize.height * 0.5f),
+            size = headSize,
+            cornerRadius = CornerRadius(2.dp.toPx()),
+            style = Stroke(width = 2.dp.toPx()),
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(bodyLeft, midY - bodySize.height * 0.5f),
+            size = bodySize,
+            cornerRadius = CornerRadius(5.dp.toPx()),
+            style = Stroke(width = 2.2.dp.toPx()),
+        )
+        drawLine(
+            color = color,
+            start = Offset(bodyLeft + bodySize.width, midY),
+            end = Offset(size.width - padX, midY),
+            strokeWidth = 2.4.dp.toPx(),
+            cap = StrokeCap.Round,
         )
     }
 }
