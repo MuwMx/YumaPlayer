@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 import moe.rukamori.archivetune.ui.component.LikeBurstState
 import moe.rukamori.archivetune.ui.player.ambient.AmbientBackdrop
@@ -114,10 +116,13 @@ fun PlayerBackgroundLayers(
     val ambientColors = rememberAmbientColors()
     FollowPicture(colors = ambientColors, url = targetUrl.takeIf { state.isLiveBackgroundEnabled })
 
+    var backgroundRootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF080808))
+            .onGloballyPositioned { backgroundRootCoordinates = it }
     ) {
         if (!state.isLiveBackgroundEnabled) {
             PlayerGradientBackdrop(
@@ -193,6 +198,7 @@ fun PlayerBackgroundLayers(
                 isCanvasActive = isCanvasActive,
                 lyricsFractionProvider = lyricsFractionProvider,
                 queueFractionProvider = queueFractionProvider,
+                backgroundRootCoordinates = backgroundRootCoordinates,
                 modifier = Modifier.align(Alignment.TopCenter),
                 likeBurst = likeBurst,
                 onAction = onAction

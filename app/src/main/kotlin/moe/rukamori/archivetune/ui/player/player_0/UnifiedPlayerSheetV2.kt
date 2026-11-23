@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -82,7 +83,13 @@ fun UnifiedPlayerSheetV2(
         onAction = onAction,
     )
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    var coverMorphStateRef by remember { mutableStateOf<CoverMorphState?>(null) }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coverMorphStateRef?.containerCoordinates = it }
+    ) {
         val collapsedHorizontalInset = remember(maxWidth, useRail) {
             PlayerDockGeometry.collapsedHorizontalInset(
                 availableWidth = maxWidth,
@@ -125,6 +132,13 @@ fun UnifiedPlayerSheetV2(
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
         val backgroundGradient = rememberBackgroundGradient(state.gradientColor)
+        val coverMorphState = rememberCoverMorphState(
+            isPlaying = state.isPlaying,
+            isReady = state.isReady,
+            isImmersive = { state.isImmersiveEnabled },
+            expansionFraction = { motionScope.expansionFraction.value },
+        )
+        coverMorphStateRef = coverMorphState
 
         PlayerSheetScaffold(
             sheetVisualState = motionScope.sheetVisualState,
@@ -154,7 +168,10 @@ fun UnifiedPlayerSheetV2(
                             density = density
                         )
                 ) {
-                    CompositionLocalProvider(LocalSongCarousel provides carousel) {
+                    CompositionLocalProvider(
+                        LocalSongCarousel provides carousel,
+                        LocalCoverMorphState provides coverMorphState,
+                    ) {
                         UnifiedPlayerSheetLayers(
                             state = state,
                             queueState = queueState,
@@ -190,6 +207,11 @@ fun UnifiedPlayerSheetV2(
                     LikeBurstOverlay(state = likeBurstState)
                 }
             }
+        )
+
+        CoverMorphLayer(
+            state = state,
+            morphState = coverMorphState,
         )
 
         PlayerSheetDialogs(

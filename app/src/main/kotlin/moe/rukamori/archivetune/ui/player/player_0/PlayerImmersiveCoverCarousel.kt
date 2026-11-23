@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -46,11 +47,13 @@ internal fun PlayerImmersiveCoverCarousel(
     lyricsFractionProvider: () -> Float,
     queueFractionProvider: () -> Float,
     modifier: Modifier = Modifier,
+    backgroundRootCoordinates: LayoutCoordinates? = null,
     likeBurst: LikeBurstState? = null,
     onAction: (PlayerAction) -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val coverMorphState = LocalCoverMorphState.current
 
     var isCanvasReady by remember(state.trackUrl) { mutableStateOf(false) }
     var artworkWidthPx by remember { mutableFloatStateOf(0f) }
@@ -65,6 +68,9 @@ internal fun PlayerImmersiveCoverCarousel(
             .fillMaxWidth()
             .aspectRatio(0.75f)
             .onSizeChanged { artworkWidthPx = it.width.toFloat() }
+            .onGloballyPositioned { coords ->
+                coverMorphState?.updateFullImmersiveRect(backgroundRootCoordinates, coords)
+            }
     ) {
         for (slot in carousel.slots) {
             key(slot.uid) {
@@ -88,7 +94,8 @@ internal fun PlayerImmersiveCoverCarousel(
                             .fillMaxSize()
                             .graphicsLayer {
                                 val o = carousel.offsetOf(slot)
-                                alpha = if (abs(o) >= 1f) 0f else immersiveTransitionAlpha * queueArtworkFade
+                                val hideForMorph = isCurrent && state.isImmersiveEnabled && (coverMorphState?.isMorphActive() == true)
+                                alpha = if (abs(o) >= 1f || hideForMorph) 0f else immersiveTransitionAlpha * queueArtworkFade
                                 translationX = o * size.width
                                 clip = true
                             }
@@ -117,7 +124,8 @@ internal fun PlayerImmersiveCoverCarousel(
                     .fillMaxSize()
                     .graphicsLayer {
                         val o = carousel.playingOffset
-                        alpha = if (abs(o) >= 1f) 0f else (1f - abs(o)).coerceIn(0f, 1f)
+                        val hideForMorph = state.isImmersiveEnabled && (coverMorphState?.isMorphActive() == true)
+                        alpha = if (abs(o) >= 1f || hideForMorph) 0f else (1f - abs(o)).coerceIn(0f, 1f)
                         translationX = o * size.width
                         clip = true
                     }

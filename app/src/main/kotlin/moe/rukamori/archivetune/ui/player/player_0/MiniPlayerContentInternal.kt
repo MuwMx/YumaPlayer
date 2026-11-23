@@ -1,8 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -35,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -73,21 +72,8 @@ internal fun MiniPlayerContentInternal(
         playbackProgress.collect { progressMs = it }
     }
 
-    val rotation = remember { Animatable(0f) }
+    val coverMorphState = LocalCoverMorphState.current
     val isAudible = state.isPlaying && state.isReady
-
-    LaunchedEffect(isAudible, isVisible) {
-        if (isAudible && isVisible) {
-            while (true) {
-                val currentDegree = rotation.value % 360f
-                rotation.snapTo(currentDegree)
-                rotation.animateTo(
-                    targetValue = currentDegree + 360f,
-                    animationSpec = tween(durationMillis = 15000, easing = LinearEasing)
-                )
-            }
-        }
-    }
 
     Row(
         modifier = modifier
@@ -123,7 +109,11 @@ internal fun MiniPlayerContentInternal(
                 modifier = Modifier
                     .size(40.dp)
                     .aspectRatio(1f)
-                    .graphicsLayer { rotationZ = rotation.value }
+                    .onGloballyPositioned { coverMorphState?.updateMiniRect(it) }
+                    .graphicsLayer {
+                        rotationZ = coverMorphState?.vinylRotationDeg?.invoke() ?: 0f
+                        alpha = if (coverMorphState?.isMorphActive() == true) 0f else 1f
+                    }
                     .clip(CircleShape)
             ) {
                 val targetUrl = state.coverUrl.takeIf { it.isNotBlank() }

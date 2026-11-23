@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.ui.player.player_0.FullPlayerMotionState
+import moe.rukamori.archivetune.ui.player.player_0.LocalCoverMorphState
 import moe.rukamori.archivetune.ui.player.player_0.PlayerCanvasState
 import moe.rukamori.archivetune.ui.player.player_0.PlayerCoverCard
 import moe.rukamori.archivetune.ui.component.LikeBurstState
@@ -68,6 +69,7 @@ internal fun FullPlayerCoverSlot(
     )
     val trackSwitchScale = remember { Animatable(1f) }
     val coroutineScope = rememberCoroutineScope()
+    val coverMorphState = LocalCoverMorphState.current
 
     val isCoverGlowEnabled by remember(
         state.isAlbumCoverGlowEnabled,
@@ -109,6 +111,9 @@ internal fun FullPlayerCoverSlot(
                 .onSizeChanged { size ->
                     cardWidthPx = if (size.width > 0) size.width.toFloat() else 0f
                 }
+                .onGloballyPositioned { coords ->
+                    coverMorphState?.updateFullCardRect(rootCoordinates, coords)
+                }
                 .graphicsLayer {
                     val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
                     val effectiveScale = playPauseScaleState.value * trackSwitchScale.value
@@ -126,11 +131,12 @@ internal fun FullPlayerCoverSlot(
                         extraLiftPx = 40.dp.toPx(),
                         gapPx = 16.dp.toPx(),
                     )
+                    val hideForMorph = !state.isImmersiveEnabled && (coverMorphState?.isMorphActive() == true)
                     transformOrigin = TransformOrigin(0.5f, 0f)
                     scaleX = kinematics.scale
                     scaleY = kinematics.scale
                     translationY = kinematics.translationY
-                    alpha = kinematics.alpha
+                    alpha = if (hideForMorph) 0f else kinematics.alpha
                 }
         ) {
             Box(
