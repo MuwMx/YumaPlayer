@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.TransitionPlanner
+import moe.rukamori.archivetune.constants.TransitionMode
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.playback.bumpCrossfadePlanGeneration
 import moe.rukamori.archivetune.playback.crossfadePlanGeneration
@@ -33,6 +34,19 @@ private const val FAST_ANALYSIS_TIMEOUT_MS = 500L
 
 internal fun MusicService.scheduleCrossfade() {
     if (!isPlayerInitialized()) return
+    if (transitionMode == TransitionMode.CROSSMIX) {
+        if (isCrossmixDirectorInitialized && !isCrossfading) {
+            crossmixDirector.schedule()
+        }
+        return
+    }
+    if (!crossfadeEnabled) {
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        activeCrossfadeScheduledKey = null
+        releaseSecondaryCrossfadePlayer()
+        return
+    }
     if (isCrossfading) {
         Timber.tag("MusicServiceCrossfade").d("scheduleCrossfade bail: already crossfading")
         return

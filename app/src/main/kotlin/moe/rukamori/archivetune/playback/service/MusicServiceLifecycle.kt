@@ -73,6 +73,8 @@ import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlaybackSourceKey
+import moe.rukamori.archivetune.constants.TransitionMode
+import moe.rukamori.archivetune.constants.TransitionModeKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
 import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
@@ -504,10 +506,15 @@ class MusicServiceLifecycle(
             }
 
         combine(delegate.dataStore.data, delegate.togetherSessionState) { prefs, togetherState ->
-            val enabled = prefs[CrossfadeEnabledKey] ?: false
+            val transitionMode = prefs[TransitionModeKey]?.let { runCatching { TransitionMode.valueOf(it) }.getOrNull() }
+            val enabled = when (transitionMode) {
+                TransitionMode.CROSSFADE, TransitionMode.AUTOMIX -> true
+                TransitionMode.CROSSMIX, TransitionMode.OFF -> false
+                null -> prefs[CrossfadeEnabledKey] ?: false
+            }
             val durationSeconds = prefs[CrossfadeDurationKey] ?: 5f
             val gapless = prefs[CrossfadeGaplessKey] ?: true
-            val automix = prefs[AutomixEnabledKey] ?: false
+            val automix = transitionMode == TransitionMode.AUTOMIX || (transitionMode == null && (prefs[AutomixEnabledKey] ?: false))
             val automixTransitionPreset = prefs[AutomixTransitionDurationKey] ?: "auto"
             val effectiveEnabled = enabled && togetherState is TogetherSessionState.Idle
             val durationMs = (durationSeconds * 1000f).roundToLong()

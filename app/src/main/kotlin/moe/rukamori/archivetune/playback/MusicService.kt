@@ -59,6 +59,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.util.UnstableApi
@@ -86,10 +87,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import moe.rukamori.archivetune.audiodsp.AudioDeck
@@ -102,24 +105,37 @@ import moe.rukamori.archivetune.audiodsp.DualForwardingPlayer
 import moe.rukamori.archivetune.cast.CastMediaItemResolver
 import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
+import moe.rukamori.archivetune.cast.CastScreenState
 import moe.rukamori.archivetune.constants.AudioOffload
 import moe.rukamori.archivetune.constants.AudioPassFixedVolumeKey
 import moe.rukamori.archivetune.constants.AudioPassMode
 import moe.rukamori.archivetune.constants.AudioPassModeKey
 import moe.rukamori.archivetune.constants.AudioPassRestoreKey
 import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.CrossmixAlwaysMixKey
+import moe.rukamori.archivetune.constants.CrossmixLength
+import moe.rukamori.archivetune.constants.CrossmixLengthKey
+import moe.rukamori.archivetune.constants.CrossmixStuntsKey
+import moe.rukamori.archivetune.constants.CrossmixStyleAuto
+import moe.rukamori.archivetune.constants.CrossmixStyleKey
+import moe.rukamori.archivetune.constants.CrossmixTempoKey
+import moe.rukamori.archivetune.constants.CrossmixTempoMatch
 import moe.rukamori.archivetune.constants.HiFiResamplerKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PreferUsbDacKey
+import moe.rukamori.archivetune.constants.TransitionMode
+import moe.rukamori.archivetune.constants.TransitionModeKey
 import moe.rukamori.archivetune.constants.UsbPassthroughKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
 import moe.rukamori.archivetune.extensions.collect
 import moe.rukamori.archivetune.extensions.currentMetadata
+import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.lyrics.LyricsHelper
@@ -140,6 +156,10 @@ import moe.rukamori.archivetune.playback.crossfade.isFullyCached
 import moe.rukamori.archivetune.playback.crossfade.kickOffTrackAnalysis
 import moe.rukamori.archivetune.playback.crossfade.registerCacheListenerForKey
 import moe.rukamori.archivetune.playback.crossfade.unregisterAllCacheListeners
+import moe.rukamori.archivetune.playback.crossmix.CrossmixDirector
+import moe.rukamori.archivetune.playback.crossmix.CrossmixSettings
+import moe.rukamori.archivetune.playback.crossmix.CrossmixStyle
+import moe.rukamori.archivetune.playback.crossmix.CrossmixTransitionAudioProcessor
 import moe.rukamori.archivetune.playback.discord.DiscordHoldController
 import moe.rukamori.archivetune.playback.discord.DiscordSyncOrchestrator
 import moe.rukamori.archivetune.playback.engine.PlayerEngineHolder
@@ -433,6 +453,32 @@ class MusicService :
     internal var crossfadeProgress = 0f
     internal var crossfadePlaybackRequested = false
     internal val djFilterByPlayer: ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor> get() = playerEngineHolder.djFilterByPlayer
+    val crossmixProcessorByPlayer: ConcurrentHashMap<ExoPlayer, CrossmixTransitionAudioProcessor>
+        get() = playerEngineHolder.crossmixProcessorByPlayer
+
+    fun crossmixProcessorFor(player: Player?): CrossmixTransitionAudioProcessor? =
+        playerEngineHolder.crossmixProcessorFor(player)
+
+    var transitionMode: TransitionMode = TransitionMode.OFF
+        internal set
+
+    var crossmixSettings: CrossmixSettings = CrossmixSettings.Default
+        internal set
+
+    lateinit var crossmixDirector: CrossmixDirector
+
+    val isCrossmixDirectorInitialized: Boolean get() = ::crossmixDirector.isInitialized
+
+    private val _crossmixStatus = MutableStateFlow<String?>(null)
+    val crossmixStatus: StateFlow<String?> = _crossmixStatus.asStateFlow()
+
+    val crossmixMixing = MutableStateFlow(false)
+
+    fun testCrossmix() {
+        if (::crossmixDirector.isInitialized) {
+            crossmixDirector.testMix()
+        }
+    }
     internal var lyricsPreloadManager: LyricsPreloadManager? = null
     internal var streamPrefetcher: StreamPrefetcher? = null
     internal val placeholderLookahead by lazy { SpotifyPlaceholderLookahead(this) }
@@ -616,12 +662,13 @@ class MusicService :
         audioPass.start()
 
         val localDjFilter = DjFilterAudioProcessor()
+        val localCrossmixProcessor = CrossmixTransitionAudioProcessor()
         playerListeners = createMusicServicePlayerListeners()
         localPlayer =
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(localDjFilter))
+                .setRenderersFactory(createRenderersFactory(localDjFilter, localCrossmixProcessor))
                 .setLoadControl(createPrimaryLoadControl())
                 .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
                 .setHandleAudioBecomingNoisy(false)
@@ -638,6 +685,7 @@ class MusicService :
                     setOffloadEnabled(false)
                 }
         djFilterByPlayer[localPlayer] = localDjFilter
+        crossmixProcessorByPlayer[localPlayer] = localCrossmixProcessor
         if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
             PlaybackTiming.log("PLAYER_CREATED", startNanos = timingStartNanos)
         }
@@ -662,8 +710,48 @@ class MusicService :
                 addListener(playerListeners)
                 sleepTimer = AdvancedSleepTimer(scope, this)
                 addListener(sleepTimer)
+                addListener(object : Player.Listener {
+                    override fun onPositionDiscontinuity(
+                        oldPosition: Player.PositionInfo,
+                        newPosition: Player.PositionInfo,
+                        reason: Int,
+                    ) {
+                        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                            if (::crossmixDirector.isInitialized && transitionMode == TransitionMode.CROSSMIX) {
+                                crossmixDirector.onUserSeek()
+                            }
+                        }
+                    }
+
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        if (::crossmixDirector.isInitialized && transitionMode == TransitionMode.CROSSMIX) {
+                            crossmixDirector.onItemChanged()
+                            crossmixDirector.schedule()
+                        }
+                    }
+
+                    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                        if (::crossmixDirector.isInitialized && transitionMode == TransitionMode.CROSSMIX) {
+                            crossmixDirector.schedule()
+                        }
+                    }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (::crossmixDirector.isInitialized && transitionMode == TransitionMode.CROSSMIX) {
+                            crossmixDirector.schedule()
+                        }
+                    }
+
+                    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                        if (::crossmixDirector.isInitialized && transitionMode == TransitionMode.CROSSMIX) {
+                            crossmixDirector.schedule()
+                        }
+                    }
+                })
             }
         playerInitialized.value = true
+        crossmixDirector = CrossmixDirector(scope = scope, host = CrossmixHost())
+        observeTransitionSettings()
         queueManager
         widgetUpdater =
             MusicServiceWidgetUpdater(
@@ -886,7 +974,10 @@ class MusicService :
 
     internal fun createCrossfadeLoadControl(): DefaultLoadControl = playerEngineHolder.createCrossfadeLoadControl()
 
-    internal fun createRenderersFactory(djFilter: DjFilterAudioProcessor): androidx.media3.exoplayer.DefaultRenderersFactory {
+    internal fun createRenderersFactory(
+        djFilter: DjFilterAudioProcessor,
+        crossmixProcessor: CrossmixTransitionAudioProcessor? = null,
+    ): androidx.media3.exoplayer.DefaultRenderersFactory {
         val eq = CustomEqualizerAudioProcessor()
         if (::equalizerService.isInitialized) {
             equalizerService.addAudioProcessor(eq)
@@ -907,6 +998,7 @@ class MusicService :
             eightD = eightD,
             audioOutputs = audioOutputs,
             audioPass = audioPass,
+            crossmixProcessor = crossmixProcessor,
         )
     }
 
@@ -932,6 +1024,9 @@ class MusicService :
         moe.rukamori.archivetune.playback.discord.createTransientSongFromMedia(media)
 
     override fun onDestroy() {
+        if (::crossmixDirector.isInitialized) {
+            crossmixDirector.release()
+        }
         audioOutputs.release()
         audioPass.release()
         if (isBecomingNoisyRegistered) {
@@ -1066,6 +1161,196 @@ class MusicService :
     override fun stopAndClearPlaybackSession(clearPersistentState: Boolean) = this.stopAndClearPlayback(clearPersistentState)
 
     // ── Widget Support ────────────────────────────────────────────────────────────
+
+    private fun observeTransitionSettings() {
+        dataStore.data.map { prefs ->
+            val mode = prefs[TransitionModeKey]?.let { runCatching { TransitionMode.valueOf(it) }.getOrNull() } ?: TransitionMode.OFF
+            val length = prefs[CrossmixLengthKey]?.let { runCatching { CrossmixLength.valueOf(it) }.getOrNull() } ?: CrossmixLength.MEDIUM
+            val tempo = prefs[CrossmixTempoKey]?.let { runCatching { CrossmixTempoMatch.valueOf(it) }.getOrNull() } ?: CrossmixTempoMatch.FULL
+            val styleRaw = prefs[CrossmixStyleKey]
+            val style = if (styleRaw == null || styleRaw == CrossmixStyleAuto) null else runCatching { CrossmixStyle.valueOf(styleRaw) }.getOrNull()
+            val stunts = prefs[CrossmixStuntsKey] ?: true
+            val alwaysMix = prefs[CrossmixAlwaysMixKey] ?: true
+            mode to CrossmixSettings(length, tempo, style, stunts, alwaysMix)
+        }.distinctUntilChanged()
+            .collect(scope) { (mode, settings) ->
+                transitionMode = mode
+                crossmixSettings = settings
+                when (mode) {
+                    TransitionMode.CROSSMIX -> {
+                        crossfadeEnabled = false
+                        automixEnabled = false
+                        cancelPlayerCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                        crossmixDirector.onSettingsChanged()
+                    }
+                    TransitionMode.CROSSFADE, TransitionMode.AUTOMIX -> {
+                        crossmixDirector.release()
+                        _crossmixStatus.value = null
+                        crossfadeEnabled = true
+                        automixEnabled = (mode == TransitionMode.AUTOMIX)
+                        scheduleCrossfade()
+                    }
+                    TransitionMode.OFF -> {
+                        crossmixDirector.release()
+                        _crossmixStatus.value = null
+                        crossfadeEnabled = false
+                        automixEnabled = false
+                        cancelPlayerCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    }
+                }
+            }
+    }
+
+    private inner class CrossmixHost : CrossmixDirector.Host {
+        override val currentPlayer: ExoPlayer get() = localPlayer
+
+        override fun processorFor(player: Player): CrossmixTransitionAudioProcessor? =
+            playerEngineHolder.crossmixProcessorFor(player)
+
+        override fun createIncoming(index: Int, positionMs: Long, parameters: PlaybackParameters): ExoPlayer {
+            val incomingDjFilter = DjFilterAudioProcessor()
+            val incomingCrossmixProcessor = CrossmixTransitionAudioProcessor()
+            val incoming = ExoPlayer
+                .Builder(this@MusicService)
+                .setMediaSourceFactory(createMediaSourceFactory())
+                .setRenderersFactory(createRenderersFactory(incomingDjFilter, incomingCrossmixProcessor))
+                .setLoadControl(createPrimaryLoadControl())
+                .setTrackSelector(DefaultTrackSelector(this@MusicService, SafeTrackSelectionFactory()))
+                .setHandleAudioBecomingNoisy(false)
+                .setWakeMode(C.WAKE_MODE_NETWORK)
+                .setAudioAttributes(playbackAudioAttributes(), false)
+                .setSeekBackIncrementMs(5000)
+                .setSeekForwardIncrementMs(5000)
+                .build()
+                .apply {
+                    setOffloadEnabled(false)
+                }
+            djFilterByPlayer[incoming] = incomingDjFilter
+            crossmixProcessorByPlayer[incoming] = incomingCrossmixProcessor
+
+            val queueItems = (0 until player.mediaItemCount).mapNotNull {
+                runCatching { player.getMediaItemAt(it) }.getOrNull()
+            }
+            incoming.setMediaItems(queueItems, index.coerceIn(0, (queueItems.size - 1).coerceAtLeast(0)), positionMs)
+            incoming.repeatMode = localPlayer.repeatMode
+            incoming.shuffleModeEnabled = localPlayer.shuffleModeEnabled
+            runCatching { incoming.setShuffleOrder(localPlayer.shuffleOrder) }
+            incoming.playbackParameters = parameters
+            incoming.volume = localPlayer.volume
+            incoming.playWhenReady = false
+            android.util.Log.i(
+                "Crossmix",
+                "createIncoming: index=$index, positionMs=$positionMs, hasProcessor=${processorFor(incoming) != null}",
+            )
+            return incoming
+        }
+
+        override fun promote(incoming: ExoPlayer, outgoing: ExoPlayer) {
+            android.util.Log.i(
+                "Crossmix",
+                "promote: outProcessor=${processorFor(outgoing) != null}, inProcessor=${processorFor(incoming) != null}, playbackState=${incoming.playbackState}, playWhenReady=${incoming.playWhenReady}",
+            )
+            outgoing.pauseAtEndOfMediaItems = true
+
+            transferAudioEffects(incoming)
+            incoming.repeatMode = outgoing.repeatMode
+            incoming.shuffleModeEnabled = outgoing.shuffleModeEnabled
+            runCatching { incoming.setShuffleOrder(outgoing.shuffleOrder) }
+
+            playerEngineHolder.dualForwardingPlayer.attachPlayer(incoming)
+            localPlayer = incoming
+
+            if (controller is ExoDeckController) {
+                val filter = djFilterFor(incoming) ?: DjFilterAudioProcessor()
+                (controller as ExoDeckController).activeDeck = ExoDeck(incoming, filter, isIncoming = false)
+            }
+
+            incoming.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (!crossmixDirector.isTransitioning) {
+                        incoming.removeListener(this)
+                        return
+                    }
+                    if (isPlaying) {
+                        val finished = outgoing.playbackState == Player.STATE_ENDED ||
+                            (outgoing.duration > 0 && outgoing.currentPosition >= outgoing.duration - 250)
+                        if (!finished && !outgoing.playWhenReady) outgoing.play()
+                    } else {
+                        if (outgoing.playWhenReady) outgoing.pause()
+                    }
+                }
+            })
+
+            currentMediaMetadata.value = incoming.currentMetadata
+        }
+
+        override fun release(outgoing: ExoPlayer) {
+            runCatching {
+                outgoing.stop()
+                outgoing.clearMediaItems()
+                outgoing.release()
+            }
+            crossmixProcessorByPlayer.remove(outgoing)
+            djFilterByPlayer.remove(outgoing)
+        }
+
+        override fun discard(incoming: ExoPlayer) {
+            runCatching {
+                incoming.stop()
+                incoming.clearMediaItems()
+                incoming.release()
+            }
+            crossmixProcessorByPlayer.remove(incoming)
+            djFilterByPlayer.remove(incoming)
+        }
+
+        override fun crossmixBlocker(): String? = when {
+            transitionMode != TransitionMode.CROSSMIX -> "Crossfade is set to ${transitionMode.name.lowercase()}, not Crossmix"
+            isCrossfading -> "A plain crossfade is running"
+            player.repeatMode == Player.REPEAT_MODE_ONE -> "Repeat one plays the song straight round"
+            (castPlaybackRepository.screenState.value as? CastScreenState.Success)?.uiState != null -> "Casting: Crossmix waits until you're back"
+            sleepTimer.pauseWhenSongEnd.value -> "The sleep timer stops after this song"
+            else -> null
+        }
+
+        override fun nextIndex(): Int =
+            if (player.repeatMode == Player.REPEAT_MODE_ONE) player.currentMediaItemIndex else player.nextMediaItemIndex
+
+        override suspend fun lyrics(item: MediaItem): String? = withContext(Dispatchers.IO) {
+            val stored = runCatching { database.lyrics(item.mediaId).first()?.lyrics }.getOrNull()
+            if (stored != null) return@withContext stored.takeUnless { it == LyricsEntity.LYRICS_NOT_FOUND }
+            val metadata = item.metadata ?: return@withContext null
+            val lyrics = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                runCatching { lyricsHelper.getLyrics(metadata) }.getOrNull()
+            } ?: return@withContext null
+            lyrics.takeUnless { it == LyricsEntity.LYRICS_NOT_FOUND }
+        }
+
+        override fun baseParameters(): PlaybackParameters = player.playbackParameters
+
+        override fun onMixingChanged(mixing: Boolean) {
+            crossmixMixing.value = mixing
+        }
+
+        override fun onStatus(status: String) {
+            _crossmixStatus.value = status
+        }
+
+        override fun albumOf(index: Int): String? {
+            if (!crossfadeGapless || index !in 0 until player.mediaItemCount) return null
+            return player.getMediaItemAt(index).mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() }
+        }
+
+        override fun settings(): CrossmixSettings = crossmixSettings
+
+        override fun learnedStartLatencyMs(): Double? = null
+
+        override fun onStartLatencyLearned(ms: Double) {}
+
+        override fun kickOffAnalysis(item: MediaItem) {
+            this@MusicService.kickOffTrackAnalysis(item)
+        }
+    }
 
     fun updateWidget() = widgetUpdater.update()
 

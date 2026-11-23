@@ -34,7 +34,7 @@ class ExoDeckController(
 ) : DeckController {
 
     override var activeDeck: ExoDeck = initialDeck
-        private set
+        internal set
 
     override var transitionDeck: ExoDeck? = null
         private set

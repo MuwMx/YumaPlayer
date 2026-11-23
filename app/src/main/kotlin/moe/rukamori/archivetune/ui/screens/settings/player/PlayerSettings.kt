@@ -64,6 +64,8 @@ import moe.rukamori.archivetune.constants.MemoryCacheToggleKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.constants.PlaybackSourceKey
+import moe.rukamori.archivetune.constants.TransitionMode
+import moe.rukamori.archivetune.constants.TransitionModeKey
 import moe.rukamori.archivetune.constants.QobuzAppIdKey
 import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
@@ -221,6 +223,7 @@ fun PlayerSettings(navController: NavController) {
         crossfadeGapless = crossfadeGapless,
         automixEnabled = automixEnabled,
         automixTransitionDuration = automixTransitionDuration,
+        transitionMode = rememberEnumPreference(TransitionModeKey, defaultValue = TransitionMode.OFF).value,
         memoryCacheToggle = memoryCacheToggle,
         downloadLocationUri = downloadLocationUri,
         flacFolderPath = flacFolderPath,
@@ -265,6 +268,7 @@ fun PlayerSettings(navController: NavController) {
             onQobuzUserAuthTokenChange = onQobuzUserAuthTokenChange,
             onEqualizerClick = onEqualizerClick,
             onAudioQualitySourcesClick = { navController.navigate("settings/audio_lab/quality") },
+            onTransitionsClick = { navController.navigate("settings/audio_lab/transitions") },
         )
     }
 

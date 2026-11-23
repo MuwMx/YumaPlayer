@@ -51,6 +51,8 @@ import moe.rukamori.archivetune.constants.PlaybackSourceKey
 import moe.rukamori.archivetune.constants.QobuzAppIdKey
 import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
+import moe.rukamori.archivetune.constants.TransitionMode
+import moe.rukamori.archivetune.constants.TransitionModeKey
 import moe.rukamori.archivetune.playback.audio.AudioOutputs
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
@@ -83,6 +85,7 @@ fun AudioLabScreen(
     val (crossfadeEnabled) = rememberPreference(CrossfadeEnabledKey, defaultValue = false)
     val (crossfadeDurationSeconds) = rememberPreference(CrossfadeDurationKey, defaultValue = 5f)
     val (automixEnabled) = rememberPreference(AutomixEnabledKey, defaultValue = false)
+    val (transitionMode) = rememberEnumPreference(TransitionModeKey, defaultValue = TransitionMode.OFF)
 
     ListenToAudioTap(active = isPlaying)
 
@@ -250,20 +253,23 @@ fun AudioLabScreen(
                 AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
             }
         }
-        val transitionsDescription = when {
-            crossfadeEnabled && automixEnabled -> {
-                val crossfadeLabel = stringResource(R.string.audio_crossfade_title)
-                val durationLabel = stringResource(R.string.audio_crossfade_seconds, crossfadeDurationSeconds.roundToInt().toString())
-                val automixLabel = stringResource(R.string.automix_title)
-                "$crossfadeLabel ($durationLabel) · $automixLabel"
-            }
-            crossfadeEnabled -> {
-                val crossfadeLabel = stringResource(R.string.audio_crossfade_title)
-                val durationLabel = stringResource(R.string.audio_crossfade_seconds, crossfadeDurationSeconds.roundToInt().toString())
-                "$crossfadeLabel · $durationLabel"
-            }
-            automixEnabled -> stringResource(R.string.automix_title)
-            else -> stringResource(R.string.disabled)
+        val effectiveTransitionMode = when {
+            transitionMode != TransitionMode.OFF -> transitionMode
+            automixEnabled -> TransitionMode.AUTOMIX
+            crossfadeEnabled -> TransitionMode.CROSSFADE
+            else -> TransitionMode.OFF
+        }
+        val transitionsDescription = when (effectiveTransitionMode) {
+            TransitionMode.CROSSMIX -> stringResource(R.string.transition_mode_crossmix)
+            TransitionMode.AUTOMIX -> stringResource(
+                R.string.transitions_player_summary_automix,
+                crossfadeDurationSeconds.roundToInt(),
+            )
+            TransitionMode.CROSSFADE -> stringResource(
+                R.string.transitions_player_summary_crossfade,
+                crossfadeDurationSeconds.roundToInt(),
+            )
+            TransitionMode.OFF -> stringResource(R.string.disabled)
         }
 
         val outputs = playerConnection?.service?.audioOutputs
@@ -323,12 +329,12 @@ fun AudioLabScreen(
                     },
                 )
 
-                val transitionsActive = crossfadeEnabled || automixEnabled
+                val transitionsActive = effectiveTransitionMode != TransitionMode.OFF
                 SummarySketchCard(
                     title = stringResource(R.string.audio_lab_transitions_title),
                     subtitle = transitionsDescription,
                     active = transitionsActive,
-                    onClick = { navController.navigate("settings/player") },
+                    onClick = { navController.navigate("settings/audio_lab/transitions") },
                     modifier = Modifier.weight(1f),
                     sketch = {
                         TransitionSketch(

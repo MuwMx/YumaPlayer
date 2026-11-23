@@ -48,6 +48,8 @@ import moe.rukamori.archivetune.playback.audio.PrecisionSink
 import moe.rukamori.archivetune.playback.audio.pass.AudioPass
 import moe.rukamori.archivetune.playback.audio.pass.PassRouterSink
 import moe.rukamori.archivetune.playback.audio.pass.PassSink
+import moe.rukamori.archivetune.playback.crossmix.CrossmixClockSink
+import moe.rukamori.archivetune.playback.crossmix.CrossmixTransitionAudioProcessor
 import moe.rukamori.archivetune.playback.engine.flacCacheKey
 import moe.rukamori.archivetune.playback.engine.flacStreamCacheKey
 import moe.rukamori.archivetune.playback.engine.ytStreamCacheKey
@@ -87,6 +89,7 @@ class PlayerEngineHolder {
         get() = if (isControllerInitialized) (controller as? ExoDeckController)?.reserveCrossfadePlayer else null
 
     val djFilterByPlayer = ConcurrentHashMap<ExoPlayer, DjFilterAudioProcessor>()
+    val crossmixProcessorByPlayer = ConcurrentHashMap<ExoPlayer, CrossmixTransitionAudioProcessor>()
 
     val mediaOkHttpClient: OkHttpClient by lazy {
         OkHttpClient
@@ -173,6 +176,8 @@ class PlayerEngineHolder {
 
     fun djFilterFor(player: ExoPlayer?): DjFilterAudioProcessor? = player?.let { djFilterByPlayer[it] }
 
+    fun crossmixProcessorFor(player: Player?): CrossmixTransitionAudioProcessor? = player?.let { crossmixProcessorByPlayer[it] }
+
     fun resetDjFilters(vararg players: ExoPlayer?) {
         for (player in players) {
             djFilterFor(player)?.clearAutomation()
@@ -251,6 +256,7 @@ class PlayerEngineHolder {
         eightD: EightDAudioProcessor? = null,
         audioOutputs: AudioOutputs? = null,
         audioPass: AudioPass? = null,
+        crossmixProcessor: CrossmixTransitionAudioProcessor? = null,
     ) =
         object : DefaultRenderersFactory(context) {
             private var router: PassRouterSink? = null
@@ -274,15 +280,22 @@ class PlayerEngineHolder {
                                 reverb,
                                 loudness,
                                 eightD,
+                                crossmixProcessor,
                             ).toTypedArray(),
                         ),
                     ).build()
 
-                return if (audioOutputs != null && audioPass != null) {
+                val baseSink = if (audioOutputs != null && audioPass != null) {
                     val precision = PrecisionSink(defaultAudioSink, audioOutputs)
                     PassRouterSink(precision, PassSink(audioPass), audioPass).also { router = it }
                 } else {
                     defaultAudioSink
+                }
+
+                return if (crossmixProcessor != null) {
+                    CrossmixClockSink(baseSink, crossmixProcessor)
+                } else {
+                    baseSink
                 }
             }
 

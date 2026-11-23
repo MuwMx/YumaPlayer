@@ -2002,7 +2002,7 @@
     <string name="audio_lab_profile_club_bass">Club Bass</string>
     <string name="audio_lab_playback_section">Playback</string>
     <string name="audio_lab_quality_title">Audio Quality</string>
-    <string name="audio_lab_transitions_title">Transitions &amp; Automix</string>
+    <string name="audio_lab_transitions_title">Transitions</string>
     <string name="audio_lab_stage_sources_count">%1$d sources</string>
 
     <string name="audio_lab_eq_title">Equalizer</string>
@@ -2284,4 +2284,45 @@
     <string name="audiopass_offer_title">A few things are in the way</string>
     <string name="audiopass_offer_body">Passthrough only takes songs while nothing changes the sound. These are on right now:</string>
     <string name="audiopass_offer_keep">Keep them on</string>
+
+    <string name="transitions_title">Transitions</string>
+    <string name="transitions_enabled_title">Enable transitions</string>
+    <string name="transitions_enabled_desc">Smoothly blend between songs instead of playing back-to-back</string>
+    <string name="transitions_off_desc">Each song ends before the next one starts</string>
+    <string name="transition_selected">Selected</string>
+    <string name="transition_mode_crossfade">Crossfade</string>
+    <string name="transition_mode_automix">Automix</string>
+    <string name="transition_mode_crossmix">Crossmix</string>
+    <string name="transition_crossfade_desc">Pick how long each song blends into the next</string>
+    <string name="transition_automix_desc">Adaptive transitions with tempo normalization</string>
+    <string name="transition_duration_title">Length</string>
+    <string name="transition_duration_seconds">%1$d s</string>
+    <string name="transition_gapless_title">Keep gapless albums intact</string>
+    <string name="transition_gapless_desc">Album tracks that run straight into each other play through unmixed</string>
+    <string name="crossmix_desc">DJ-style: reads tempo, beats, key, energy and vocals, then picks the best transition and beat-matches</string>
+    <string name="crossmix_style_title">Transition style</string>
+    <string name="crossmix_style_desc">Let YumaPlayer pick the one that fits each pair, or pin one</string>
+    <string name="crossmix_style_auto">Auto (Let YumaPlayer choose)</string>
+    <string name="crossmix_length_title">Length</string>
+    <string name="crossmix_length_desc">How long the two songs play together</string>
+    <string name="crossmix_length_short">Short</string>
+    <string name="crossmix_length_medium">Medium</string>
+    <string name="crossmix_length_long">Long</string>
+    <string name="crossmix_tempo_title">Tempo match</string>
+    <string name="crossmix_tempo_desc">How far the slower song may be sped up to match beats</string>
+    <string name="crossmix_tempo_off">Off</string>
+    <string name="crossmix_tempo_gentle">Gentle</string>
+    <string name="crossmix_tempo_full">Full</string>
+    <string name="crossmix_stunts_title">Stunts</string>
+    <string name="crossmix_stunts_desc">Backspins, tape stops, risers and drops when energy jumps</string>
+    <string name="crossmix_always_mix_title">Always mix</string>
+    <string name="crossmix_always_mix_desc">Overlap every change, even when beats don\'t align</string>
+    <string name="crossmix_status_title">Crossmix status</string>
+    <string name="crossmix_status_empty">Nothing yet. Play a song with another queued after it</string>
+    <string name="crossmix_test_title">Test on this song</string>
+    <string name="crossmix_test_desc">Plans the mix into the next song and jumps just before it</string>
+    <string name="transitions_player_summary_off">Off</string>
+    <string name="transitions_player_summary_crossfade">Crossfade · %1$d s</string>
+    <string name="transitions_player_summary_automix">Automix · %1$d s</string>
+    <string name="transitions_player_summary_crossmix">Crossmix</string>
 </resources>

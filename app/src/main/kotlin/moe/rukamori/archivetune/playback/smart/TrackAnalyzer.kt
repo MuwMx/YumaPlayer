@@ -95,6 +95,8 @@ object TrackAnalyzer : AnalysisStore {
             val result = toResult(cachedDb)
             if (result.contentEndTime in 1.0..35.0 && result.mixOutTime in 1.0..35.0) {
                 Timber.tag("TrackAnalyzer").w("Ignoring corrupted short analysis in Room for trackId=$trackId contentEnd=${result.contentEndTime}")
+            } else if (result.rawJson.isBlank() && result.bpm > 0.0) {
+                Timber.tag("TrackAnalyzer").w("Ignoring legacy DB entry without rawJson")
             } else {
                 Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
                 memoryCache[trackId] = result
@@ -611,7 +613,7 @@ object TrackAnalyzer : AnalysisStore {
         mixOutTime = entity.mixOutTime,
         contentEndTime = entity.contentEndTime,
         firstBeat = entity.firstBeat,
-        rawJson = "",
+        rawJson = entity.rawJson,
     )
 
     fun fromResult(
@@ -635,6 +637,7 @@ object TrackAnalyzer : AnalysisStore {
             contentEndTime = result.contentEndTime,
             dynamicRangeDb = parsedDynamicRangeDb,
             loudnessLufs = parsedLoudnessLufs,
+            rawJson = result.rawJson,
             updatedAt = updatedAt,
         )
     }

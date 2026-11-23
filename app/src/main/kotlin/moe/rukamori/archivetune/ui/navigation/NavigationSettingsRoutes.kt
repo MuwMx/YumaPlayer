@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.ui.screens.audiolab.AudioLabScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.AudioPassScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.quality.AudioQualitySourcesScreen
 import moe.rukamori.archivetune.ui.screens.audiolab.stage.StageScreen
+import moe.rukamori.archivetune.ui.screens.audiolab.transitions.TransitionsScreen
 import moe.rukamori.archivetune.ui.screens.login.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.login.LOGIN_URL_ARGUMENT
 import moe.rukamori.archivetune.ui.screens.login.LoginScreen
@@ -101,6 +102,9 @@ internal fun NavGraphBuilder.settingsNavigationRoutes(
     }
     composable("settings/audio_lab/pass") {
         AudioPassScreen(navController = navController)
+    }
+    composable("settings/audio_lab/transitions") {
+        TransitionsScreen(navController = navController)
     }
     composable("settings/lyrics") {
         LyricsSettings(navController)

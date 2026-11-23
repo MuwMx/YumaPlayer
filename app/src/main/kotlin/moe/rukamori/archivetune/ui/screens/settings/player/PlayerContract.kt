@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.constants.QobuzAppSecretKey
 import moe.rukamori.archivetune.constants.QobuzUserAuthTokenKey
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
+import moe.rukamori.archivetune.constants.TransitionMode
 import moe.rukamori.archivetune.constants.WakelockKey
 
 internal object PlayerContract {
@@ -80,6 +81,7 @@ data class PlayerSettingsUiState(
     val crossfadeGapless: Boolean = true,
     val automixEnabled: Boolean = false,
     val automixTransitionDuration: AutomixTransitionDuration = AutomixTransitionDuration.AUTO,
+    val transitionMode: TransitionMode = TransitionMode.OFF,
     val memoryCacheToggle: Boolean = false,
     val downloadLocationUri: String = "",
     val flacFolderPath: String? = null,
@@ -117,6 +119,7 @@ data class PlayerSettingsUiActions(
     val onQobuzUserAuthTokenChange: (String) -> Unit = {},
     val onEqualizerClick: () -> Unit = {},
     val onAudioQualitySourcesClick: () -> Unit = {},
+    val onTransitionsClick: () -> Unit = {},
 )
 
 typealias PlayerSettingsActions = PlayerSettingsUiActions

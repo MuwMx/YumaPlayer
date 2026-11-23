@@ -20,5 +20,6 @@ data class TrackAnalysisEntity(
     val contentEndTime: Double = 0.0,
     val dynamicRangeDb: Double = 0.0,
     val loudnessLufs: Double = 0.0,
+    val rawJson: String = "",
     val updatedAt: Long = System.currentTimeMillis(),
 )
