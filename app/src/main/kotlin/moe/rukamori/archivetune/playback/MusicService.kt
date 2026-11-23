@@ -1238,18 +1238,10 @@ class MusicService :
             incoming.playbackParameters = parameters
             incoming.volume = localPlayer.volume
             incoming.playWhenReady = false
-            android.util.Log.i(
-                "Crossmix",
-                "createIncoming: index=$index, positionMs=$positionMs, hasProcessor=${processorFor(incoming) != null}",
-            )
             return incoming
         }
 
         override fun promote(incoming: ExoPlayer, outgoing: ExoPlayer) {
-            android.util.Log.i(
-                "Crossmix",
-                "promote: outProcessor=${processorFor(outgoing) != null}, inProcessor=${processorFor(incoming) != null}, playbackState=${incoming.playbackState}, playWhenReady=${incoming.playWhenReady}",
-            )
             outgoing.pauseAtEndOfMediaItems = true
 
             transferAudioEffects(incoming)

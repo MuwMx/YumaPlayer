@@ -77,8 +77,6 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
     @Volatile private var targetDelayMs = 0.0
     @Volatile private var finishing = false
     @Volatile private var fadingOut = false
-    @Volatile private var firstRenderLogged = false
-    @Volatile private var lastRenderLogMs = 0L
     // the outgoing side, once its part is over, stays silent for good: whatever its clock does next
     @Volatile private var silenced = false
 
@@ -121,11 +119,8 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         calibrated = false
         clockCorrectionMs = 0.0
         targetDelayMs = 0.0
-        firstRenderLogged = false
-        lastRenderLogMs = 0L
         this.script = script
         idle = false
-        android.util.Log.i("Crossmix", "arm: role=${script.role}, style=${script.style}, anchorMs=${script.anchorMs}, lengthBeats=${script.lengthBeats}, supported=$supported, sampleRate=$sampleRate")
     }
 
     /** where the beat lock wants this side, in ms of delay */
@@ -153,8 +148,6 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         fadingOut = false
         silenced = false
         targetDelayMs = 0.0
-        firstRenderLogged = false
-        lastRenderLogMs = 0L
         currentBeat = Float.NaN
     }
 
@@ -176,7 +169,6 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         pendingSupported = takes
         pendingRate = if (takes) inputAudioFormat.sampleRate else 0
         pendingChannels = if (takes) inputAudioFormat.channelCount else 0
-        android.util.Log.i("Crossmix", "configure: encoding=${inputAudioFormat.encoding}, sampleRate=${inputAudioFormat.sampleRate}, channelCount=${inputAudioFormat.channelCount}, supported=$takes")
         return if (takes) inputAudioFormat else AudioProcessor.AudioFormat.NOT_SET
     }
 
@@ -425,19 +417,6 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                     }
                     currentBeat = beat
                     if (beat >= -0.5f) scriptHeard = true
-                }
-                if (!firstRenderLogged) {
-                    firstRenderLogged = true
-                    android.util.Log.i("Crossmix", "render: clockValid=$clockValid, beat=$beat, gain=${params.gain}, role=${s.role}")
-                }
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (now - lastRenderLogMs >= 1000L) {
-                    lastRenderLogMs = now
-                    val role = s.role
-                    android.util.Log.i(
-                        "Crossmix",
-                        "render[1s]: role=$role, clockValid=$clockValid, beat=$beat, gain=${params.gain}, idle=$idle, silenced=$silenced, finishing=$finishing"
-                    )
                 }
                 if (!started) {
                     // first block: start the glides where the style is, so nothing sweeps in from defaults

@@ -294,11 +294,20 @@ object TrackAnalyzer : AnalysisStore {
         decodeTailSamples: (() -> FloatArray?)? = null,
         decodeFullSamples: (() -> FloatArray?)? = null,
     ): TrackAnalysisResult? = withContext(Dispatchers.Default) {
-        memoryCache[trackId]?.let { return@withContext it }
+        val isFullDurationKnown = durationSeconds != null && durationSeconds > 45.0
+        memoryCache[trackId]?.let { cached ->
+            if (!isFullDurationKnown || cached.mixOutTime > 0.0 || cached.contentEndTime > 0.0) {
+                return@withContext cached
+            }
+        }
 
         var activeDeferred: Deferred<TrackAnalysisResult?>? = null
         val isNew = synchronized(inFlight) {
-            memoryCache[trackId]?.let { return@withContext it }
+            memoryCache[trackId]?.let { cached ->
+                if (!isFullDurationKnown || cached.mixOutTime > 0.0 || cached.contentEndTime > 0.0) {
+                    return@withContext cached
+                }
+            }
             activeDeferred = inFlight[trackId]
             if (activeDeferred != null) {
                 false
@@ -329,7 +338,11 @@ object TrackAnalyzer : AnalysisStore {
                         Timber.tag("BPM_DEBUG").e("STARTING C++ ANALYSIS: track=$trackId")
 
                         analysisSemaphore.withPermit {
-                            memoryCache[trackId]?.let { return@withPermit it }
+                            memoryCache[trackId]?.let { cached ->
+                                if (!isFullDurationKnown || cached.mixOutTime > 0.0 || cached.contentEndTime > 0.0) {
+                                    return@withPermit cached
+                                }
+                            }
 
                             val headSamples = runCatching { decodeHeadSamples() }.getOrNull()
                             if (headSamples == null || headSamples.isEmpty()) {
@@ -382,24 +395,13 @@ object TrackAnalyzer : AnalysisStore {
                                 headResult
                             }
 
-                            val cliffedResult = applyFullSpanCliff(
-                                base = finalResult,
-                                durationSeconds = durationSeconds,
-                                durationMs = durationMs,
-                                decodeFullSamples = decodeFullSamples,
-                                trackId = trackId,
-                            )
-
-                            val isFullDurationKnown = durationSeconds != null && durationSeconds > 45.0
-
                             val sanitizedResult = if (!isFullDurationKnown) {
-                                cliffedResult.copy(
+                                finalResult.copy(
                                     mixOutTime = 0.0,
-                                    contentEndTime = 0.0 ,
-                                    rawJson = ""
+                                    contentEndTime = 0.0,
                                 )
                             } else {
-                                cliffedResult
+                                finalResult
                             }
 
                             Timber.tag("BPM_DEBUG").w("Track: $trackId, duration: $durationSeconds, isFullDurationKnown: $isFullDurationKnown, json length: ${sanitizedResult.rawJson.length}, has beats: ${sanitizedResult.rawJson.contains("\"beats\"")}")
@@ -409,15 +411,15 @@ object TrackAnalyzer : AnalysisStore {
                                         "bpm=${sanitizedResult.bpm} mixOut=${sanitizedResult.mixOutTime}",
                             )
 
+                            memoryCache[trackId] = sanitizedResult
                             if (isFullDurationKnown) {
-                                memoryCache[trackId] = sanitizedResult
                                 analyzerScope.launch(Dispatchers.IO) {
                                     runCatching {
                                         database?.trackAnalysisDao()?.upsert(fromResult(trackId, sanitizedResult))
                                     }
                                 }
                             } else {
-                                Timber.tag("TrackAnalyzer").w("Not saving cues to Room or permanent cache for $trackId: duration is unknown or too short ($durationSeconds)")
+                                Timber.tag("TrackAnalyzer").w("Not saving cues to Room for $trackId: duration is unknown or too short ($durationSeconds)")
                             }
 
                             _analysisEvents.tryEmit(trackId to sanitizedResult)
@@ -445,54 +447,6 @@ object TrackAnalyzer : AnalysisStore {
         }
 
         activeDeferred?.await()
-    }
-
-    private fun applyFullSpanCliff(
-        base: TrackAnalysisResult,
-        durationSeconds: Double?,
-        durationMs: Long?,
-        decodeFullSamples: (() -> FloatArray?)?,
-        trackId: String,
-    ): TrackAnalysisResult {
-        if (decodeFullSamples == null) return base
-        if (!AudioDecoder.canDoFullPass(durationMs)) return base
-        if (durationSeconds == null || durationSeconds <= 0.0) return base
-        val contentEnd = if (base.contentEndTime > 0.0) base.contentEndTime else durationSeconds
-        if (contentEnd <= 0.0) return base
-        var fullSamples = runCatching { decodeFullSamples() }.getOrNull()
-        if (fullSamples == null || fullSamples.isEmpty()) return base
-        try {
-            val cliff = runCatching { TrackFeatures.energyCliff(fullSamples, durationSeconds) }.getOrDefault(0.0)
-            if (!cliff.isFinite() || cliff <= 0.0 || cliff >= contentEnd - 8.0) return base
-            val mergedRawJson = runCatching {
-                if (base.rawJson.isBlank()) return@runCatching base.rawJson
-                val json = JSONObject(base.rawJson)
-                json.put("mixOutTime", cliff)
-                val candidates = json.optJSONArray("mixOutCandidates")
-                val cliffObj = JSONObject().put("t", cliff).put("s", 0.95).put("y", "energy_cliff")
-                if (candidates != null) {
-                    var replaced = false
-                    for (i in 0 until candidates.length()) {
-                        val existing = candidates.optJSONObject(i) ?: continue
-                        if (existing.optString("y") == "energy_cliff" &&
-                            kotlin.math.abs(existing.optDouble("t", 0.0) - cliff) < 2.0
-                        ) {
-                            candidates.put(i, cliffObj)
-                            replaced = true
-                            break
-                        }
-                    }
-                    if (!replaced) candidates.put(cliffObj)
-                } else {
-                    json.put("mixOutCandidates", org.json.JSONArray().put(cliffObj))
-                }
-                json.toString()
-            }.getOrDefault(base.rawJson)
-            return base.copy(mixOutTime = cliff, rawJson = mergedRawJson)
-        } finally {
-            fullSamples.fill(0f)
-            fullSamples = null
-        }
     }
 
     private fun logCues(trackId: String, result: TrackAnalysisResult) {

@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
+import moe.rukamori.archivetune.playback.engine.extractMediaIdFromCacheKey
 import moe.rukamori.archivetune.utils.YTPlayerUtils
 
 object RecoveryMaintenanceOps {
@@ -160,12 +161,7 @@ object RecoveryMaintenanceOps {
             override fun onSpanAdded(cache: Cache, span: CacheSpan) {
                 val key = span.key
                 timber.log.Timber.tag(tag).d("Automix cache onSpanAdded key=$key length=${span.length} cached=${cache.isCached(key, span.position, span.length)}")
-                val mediaId =
-                    if (key.startsWith(flacCacheKeyPrefix)) {
-                        key.removePrefix(flacCacheKeyPrefix)
-                    } else {
-                        key
-                    }
+                val mediaId = extractMediaIdFromCacheKey(key)
                 if (mediaId.isNotBlank()) {
                     onSpanAdded(cache, key, mediaId)
                 }
