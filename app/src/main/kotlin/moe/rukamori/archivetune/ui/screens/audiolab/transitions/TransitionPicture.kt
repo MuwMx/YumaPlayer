@@ -23,10 +23,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.ui.screens.audiolab.FxPictureCanvas
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
@@ -80,8 +82,10 @@ internal fun TransitionPicture(
         val breath = 0.94f + 0.1f * level * on
 
         drawWaveBars(shape, accent, sweep, glow = on, breath = breath)
-        if (style == TransitionStyle.Crossmix) {
-            drawKnot(tools, shape, accent, t, on, punch)
+        when (style) {
+            TransitionStyle.Crossfade -> Unit
+            TransitionStyle.Automix -> drawBassSwap(tools, shape, accent, t, on, level)
+            TransitionStyle.Crossmix -> drawKnot(tools, shape, accent, t, on, punch)
         }
         drawCrossLines(tools, shape, accent, alpha = 0.5f + 0.3f * on)
     }
@@ -206,6 +210,49 @@ private fun DrawScope.drawCrossLine(
     }
     drawPath(path, color.copy(alpha = alpha * 0.12f), style = tools.haze)
     drawPath(path, color.copy(alpha = alpha), style = tools.line)
+}
+
+private fun DrawScope.drawBassSwap(
+    tools: PictureTools,
+    shape: Shape,
+    color: Color,
+    time: Float,
+    on: Float,
+    level: Float,
+) {
+    val reach = shape.fade * 0.6f + 8.dp.toPx()
+    val radius = max(shape.fade * 0.42f, size.height * 0.38f)
+    val phase = if (on > 0.01f) (time * 0.36f) % 1f else 0.5f
+    val handoffX = shape.mid + (smoothStep(phase) * 2f - 1f) * reach * 0.7f * on
+    val handoffFade = if (on > 0.01f) sin(phase * PI.toFloat()).coerceAtLeast(0f) else 1f
+    val light = (0.07f + 0.14f * on + 0.14f * level * on) * (1f - on + on * handoffFade)
+
+    translate(left = handoffX, top = shape.cy) {
+        drawCircle(tools.glowAt(Offset.Zero, radius, color), radius, Offset.Zero, alpha = light)
+    }
+
+    val step = 1.5.dp.toPx()
+    val breath = 1f + 0.14f * level * on
+    val swell = 0.92f + 0.08f * sin(time * 2.1f) * on
+    val amp = shape.half * 0.56f * breath * swell
+
+    for (k in 0..1) {
+        val path = tools.strands[k]
+        val sign = if (k == 0) 1f else -1f
+        val drift = if (k == 0) 0f else 0.35f * on
+        path.reset()
+        var x = shape.mid - reach
+        path.moveTo(x, shape.cy)
+        while (x < shape.mid + reach) {
+            x = min(x + step, shape.mid + reach)
+            val d = (x - shape.mid) / reach
+            val bell = square(1f - d * d)
+            val wave = sin(d * PI.toFloat() + drift * sin(time * 1.4f))
+            path.lineTo(x, shape.cy + sign * amp * bell * wave)
+        }
+        drawPath(path, color.copy(alpha = 0.05f + 0.06f * on), style = tools.strandHaze)
+        drawPath(path, color.copy(alpha = 0.16f + 0.24f * on), style = tools.strand)
+    }
 }
 
 private fun DrawScope.drawKnot(
