@@ -309,8 +309,7 @@ internal fun CoverMorphLayer(
                     }
                 } else {
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val immersive = morphState.isImmersive()
-                    val t = if (immersive) p else p * p * (3f - 2f * p)
+                    val t = p
                     val start = morphState.miniRect()
                     val end = morphState.targetRect()
 
@@ -343,7 +342,7 @@ internal fun CoverMorphLayer(
                     alpha = 1f
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
                     val immersive = morphState.isImmersive()
-                    val t = if (immersive) p else p * p * (3f - 2f * p)
+                    val t = p
 
                     val start = morphState.miniRect()
                     val startRadius = min(start.width, start.height) / 2f
