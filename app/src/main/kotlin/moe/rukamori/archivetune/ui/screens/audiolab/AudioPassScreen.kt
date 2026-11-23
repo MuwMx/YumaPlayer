@@ -16,22 +16,25 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -45,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -55,13 +59,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,6 +76,7 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioPassFixedVolumeKey
 import moe.rukamori.archivetune.constants.AudioPassMode
@@ -85,13 +93,14 @@ import moe.rukamori.archivetune.playback.audio.UsbDacDetails
 import moe.rukamori.archivetune.playback.audio.UsbDacReader
 import moe.rukamori.archivetune.playback.audio.pass.AudioPass
 import moe.rukamori.archivetune.playback.audio.pass.PassBlocker
-import moe.rukamori.archivetune.ui.component.PreferenceGroup
-import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
+import moe.rukamori.archivetune.ui.theme.LocalYumaColors
+import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
+import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
@@ -101,6 +110,12 @@ private sealed interface Shown {
     data class Bluetooth(val state: BluetoothCodecWatcher.State) : Shown
     data object Wired : Shown
     data object Nothing : Shown
+}
+
+private enum class HeroTone {
+    BitPerfect,
+    Blocked,
+    Normal,
 }
 
 @Composable
@@ -149,6 +164,15 @@ fun AudioPassScreen(navController: NavController) {
         )
     }
 
+    val (preferUsb, onPreferUsb) = rememberPreference(PreferUsbDacKey, defaultValue = false)
+    val (hiRes, onHiRes) = rememberPreference(HiResOutputKey, defaultValue = false)
+    val (resampler, onResampler) = rememberPreference(HiFiResamplerKey, defaultValue = false)
+    val (passthrough, onPassthrough) = rememberPreference(UsbPassthroughKey, defaultValue = false)
+    val (mode, onMode) = rememberEnumPreference(AudioPassModeKey, defaultValue = AudioPassMode.Default)
+    val offerToClear = {
+        if (blockers.isNotEmpty()) showBlockersOffer = true
+    }
+
     YumaSettingsScaffold(
         title = { Text(stringResource(R.string.audiopass_hub_title)) },
         onBackClick = { navController.navigateUp() },
@@ -159,72 +183,54 @@ fun AudioPassScreen(navController: NavController) {
                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
             verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
         ) {
-            StatusCard(shown, mixerRate, onPermission = bluetooth::refresh)
+            SignalPathHeroCard(
+                shown = shown,
+                mixerRate = mixerRate,
+                passthrough = passthrough,
+                mode = mode,
+                hiRes = hiRes,
+                status = status,
+                blockers = blockers,
+                canRestore = canRestore,
+                onClearBlockers = { service?.clearPassBlockers() },
+                onRestoreBlockers = { service?.restorePassBlockers() },
+                onPermission = bluetooth::refresh,
+            )
 
-            val (preferUsb, onPreferUsb) = rememberPreference(PreferUsbDacKey, defaultValue = false)
-            val (hiRes, onHiRes) = rememberPreference(HiResOutputKey, defaultValue = false)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
-            ) {
-                OptionTile(
-                    title = stringResource(R.string.audiopass_prefer_usb),
-                    checked = preferUsb,
-                    onChange = onPreferUsb,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                )
-                OptionTile(
-                    title = stringResource(R.string.audiopass_hires),
-                    checked = hiRes,
-                    onChange = onHiRes,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                )
-            }
+            ProcessingSection(
+                preferUsb = preferUsb,
+                onPreferUsb = onPreferUsb,
+                hiRes = hiRes,
+                onHiRes = onHiRes,
+                resampler = resampler,
+                onResampler = onResampler,
+                resamplerBypassed = passthrough && mode.exclusive,
+                bypassMode = mode,
+            )
 
-            val (resampler, onResampler) = rememberPreference(HiFiResamplerKey, defaultValue = false)
-            val (passthrough, onPassthrough) = rememberPreference(UsbPassthroughKey, defaultValue = false)
-            val (mode, onMode) = rememberEnumPreference(AudioPassModeKey, defaultValue = AudioPassMode.Default)
-            val offerToClear = {
-                if (blockers.isNotEmpty()) showBlockersOffer = true
-            }
-
-            PreferenceGroup(title = stringResource(R.string.audiopass_exclusive)) {
-                item {
-                    SwitchPreference(
-                        title = { Text(stringResource(R.string.audiopass_resampler)) },
-                        description = stringResource(R.string.audiopass_resampler_desc),
-                        checked = resampler,
-                        onCheckedChange = onResampler,
-                    )
-                }
-            }
-
-            PassthroughCard(
-                on = passthrough,
-                onChange = { turnedOn ->
+            OutputModeSection(
+                passthrough = passthrough,
+                onPassthroughChange = { turnedOn ->
                     onPassthrough(turnedOn)
                     if (turnedOn && mode.exclusive) offerToClear()
                 },
                 mode = mode,
-                onMode = { picked ->
+                onModeSelect = { picked ->
                     onMode(picked)
                     if (passthrough && picked.exclusive && !mode.exclusive) offerToClear()
                 },
                 status = status.takeIf { mode.exclusive },
             )
 
+            val showUsbDacCard = (passthrough && mode == AudioPassMode.DIRECT_USB) ||
+                (plugged != null && (usbPermitted != null || dacVolume != null))
             AnimatedVisibility(
-                visible = passthrough && mode == AudioPassMode.DIRECT_USB,
+                visible = showUsbDacCard,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut(),
             ) {
                 DirectUsbCard(
+                    dacName = plugged?.name,
                     permitted = usbPermitted,
                     volume = dacVolume,
                     onAllow = { pass?.requestUsbPermission() },
@@ -245,6 +251,8 @@ fun AudioPassScreen(navController: NavController) {
                     onRestore = { service?.restorePassBlockers() },
                 )
             }
+
+            Spacer(Modifier.height(SettingsDimensions.ScreenBottomPadding))
         }
     }
 }
@@ -260,64 +268,661 @@ private fun rememberBluetoothCodec(): BluetoothCodecWatcher {
     return watcher
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StatusCard(shown: Shown, mixerRate: Int?, onPermission: () -> Unit) {
-    val status = when (shown) {
+private fun SignalPathHeroCard(
+    shown: Shown,
+    mixerRate: Int?,
+    passthrough: Boolean,
+    mode: AudioPassMode,
+    hiRes: Boolean,
+    status: AudioPass.Status,
+    blockers: Set<PassBlocker>,
+    canRestore: Boolean,
+    onClearBlockers: () -> Unit,
+    onRestoreBlockers: () -> Unit,
+    onPermission: () -> Unit,
+) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val yumaColors = LocalYumaColors.current
+    val tone = when {
+        passthrough && mode.exclusive && blockers.isNotEmpty() -> HeroTone.Blocked
+        passthrough && mode.exclusive && blockers.isEmpty() && status is AudioPass.Status.Playing && status.exact -> HeroTone.BitPerfect
+        else -> HeroTone.Normal
+    }
+
+    val dotColor by animateColorAsState(
+        targetValue = when (tone) {
+            HeroTone.BitPerfect -> MaterialTheme.colorScheme.primary
+            HeroTone.Blocked -> MaterialTheme.colorScheme.error
+            HeroTone.Normal -> if (shown is Shown.Dac) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+        },
+        animationSpec = if (animationsDisabled) snap() else tween(240),
+        label = "signalHeroDot",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when (tone) {
+            HeroTone.BitPerfect -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            HeroTone.Blocked -> MaterialTheme.colorScheme.error.copy(alpha = 0.55f)
+            HeroTone.Normal -> yumaColors.glassBorder
+        },
+        animationSpec = if (animationsDisabled) snap() else tween(240),
+        label = "signalHeroBorder",
+    )
+    val badgeBg by animateColorAsState(
+        targetValue = when (tone) {
+            HeroTone.BitPerfect -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
+            HeroTone.Blocked -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.88f)
+            HeroTone.Normal -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+        },
+        animationSpec = if (animationsDisabled) snap() else tween(240),
+        label = "signalHeroBadgeBg",
+    )
+    val badgeFg = when (tone) {
+        HeroTone.BitPerfect -> MaterialTheme.colorScheme.primary
+        HeroTone.Blocked -> MaterialTheme.colorScheme.onErrorContainer
+        HeroTone.Normal -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val statusTitleRes = when (shown) {
         is Shown.Dac -> if (shown.details.androidOutput) R.string.audiopass_status_connected else R.string.audiopass_status_driven
         is Shown.Bluetooth -> R.string.audiopass_status_bluetooth
         Shown.Wired -> R.string.audiopass_status_wired
         Shown.Nothing -> R.string.audiopass_status_none
     }
+
+    val sourceNode = when (status) {
+        is AudioPass.Status.Playing -> "${khz(status.sampleRate)} kHz · ${status.bits}-bit"
+        is AudioPass.Status.Fell -> "${khz(status.sampleRate)} kHz · ${status.sourceBits}-bit"
+        else -> when {
+            hiRes -> "32-bit"
+            mixerRate != null -> "${khz(mixerRate)} kHz"
+            else -> "PCM"
+        }
+    }
+    val modeNode = if (passthrough) {
+        stringResource(mode.title)
+    } else {
+        stringResource(R.string.audiopass_info_mixer)
+    }
+    val deviceNode = when (shown) {
+        is Shown.Dac -> shown.details.name
+        is Shown.Bluetooth -> when (val bt = shown.state) {
+            is BluetoothCodecWatcher.State.Known -> bt.device
+            is BluetoothCodecWatcher.State.NeedsPermission -> bt.device
+            is BluetoothCodecWatcher.State.Unknown -> bt.device
+            is BluetoothCodecWatcher.State.LeAudio -> bt.device
+            BluetoothCodecWatcher.State.None -> stringResource(R.string.audiopass_status_bluetooth)
+        }
+        Shown.Wired -> stringResource(R.string.audiopass_value_jack)
+        Shown.Nothing -> stringResource(R.string.audiopass_kind_speaker)
+    }
+
     val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .yumaGlassCard(shape = cardShape)
+            .yumaGlassCard(
+                shape = cardShape,
+                borderColor = borderColor,
+            )
             .clip(cardShape)
-            .padding(20.dp),
+            .padding(SettingsDimensions.SegmentedItemPaddingHorizontal),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(SettingsDimensions.BadgeSize)
+                        .clip(CircleShape)
+                        .background(dotColor),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.audiopass_status_label).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 1.sp,
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(SettingsDimensions.SegmentedBadgeCornerPercent))
+                    .background(badgeBg)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = when (tone) {
+                        HeroTone.BitPerfect -> stringResource(R.string.audiopass_mode_bit_perfect)
+                        HeroTone.Blocked -> "${blockers.size}"
+                        HeroTone.Normal -> modeNode
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = badgeFg,
+                )
+            }
+        }
+
         Text(
-            text = stringResource(R.string.audiopass_status_label).uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 1.sp,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = stringResource(status),
-            style = MaterialTheme.typography.headlineMedium,
+            text = stringResource(statusTitleRes),
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Spacer(Modifier.height(14.dp))
-        Box(
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            SignalNodePill(
+                text = sourceNode,
+                highlighted = tone == HeroTone.BitPerfect,
+            )
+            Text(
+                text = "→",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            SignalNodePill(
+                text = modeNode,
+                highlighted = tone == HeroTone.BitPerfect,
+            )
+            Text(
+                text = "→",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            SignalNodePill(
+                text = deviceNode,
+                highlighted = tone == HeroTone.BitPerfect,
+            )
+        }
+
+        if (passthrough && mode.exclusive) {
+            statusLine(status)?.let { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (tone) {
+                        HeroTone.BitPerfect -> MaterialTheme.colorScheme.primary
+                        HeroTone.Blocked -> MaterialTheme.colorScheme.error
+                        HeroTone.Normal -> MaterialTheme.colorScheme.primary
+                    },
+                )
+            }
+        }
+
+        if (passthrough && mode.exclusive && blockers.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.audiopass_blockers_title),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                PillButton(
+                    text = stringResource(R.string.audiopass_blockers_button),
+                    onClick = onClearBlockers,
+                )
+            }
+        } else if (canRestore) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                PillButton(
+                    text = stringResource(R.string.audiopass_blockers_restore),
+                    onClick = onRestoreBlockers,
+                )
+            }
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SettingsDimensions.GlassBorderThickness)
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        )
-        Spacer(Modifier.height(14.dp))
-        when (shown) {
-            is Shown.Dac -> InfoRows(dacRows(shown.details, mixerRate))
-            is Shown.Bluetooth -> BluetoothDetails(shown.state, onPermission)
-            Shown.Wired -> InfoRows(listOfNotNull(
-                stringResource(R.string.audiopass_info_output) to stringResource(R.string.audiopass_value_jack),
-                mixerRate?.let { stringResource(R.string.audiopass_info_mixer) to stringResource(R.string.audiopass_value_khz, khz(it)) },
-            ))
-            Shown.Nothing -> {
-                Text(
-                    text = stringResource(R.string.audiopass_status_none_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.28f))
+                .padding(14.dp),
+        ) {
+            when (shown) {
+                is Shown.Dac -> InfoRows(dacRows(shown.details, mixerRate))
+                is Shown.Bluetooth -> BluetoothDetails(shown.state, onPermission)
+                Shown.Wired -> InfoRows(
+                    listOfNotNull(
+                        stringResource(R.string.audiopass_info_output) to stringResource(R.string.audiopass_value_jack),
+                        mixerRate?.let { stringResource(R.string.audiopass_info_mixer) to stringResource(R.string.audiopass_value_khz, khz(it)) },
+                    ),
                 )
-                mixerRate?.let {
-                    Spacer(Modifier.height(12.dp))
-                    InfoRows(listOf(stringResource(R.string.audiopass_info_mixer) to stringResource(R.string.audiopass_value_khz, khz(it))))
+                Shown.Nothing -> {
+                    Text(
+                        text = stringResource(R.string.audiopass_status_none_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    mixerRate?.let {
+                        Spacer(Modifier.height(10.dp))
+                        InfoRows(listOf(stringResource(R.string.audiopass_info_mixer) to stringResource(R.string.audiopass_value_khz, khz(it))))
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SignalNodePill(
+    text: String,
+    highlighted: Boolean,
+) {
+    val bg = if (highlighted) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+    }
+    val fg = if (highlighted) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(SettingsDimensions.SegmentedBadgeCornerPercent))
+            .background(bg)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = fg,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(
+            horizontal = 4.dp,
+            vertical = SettingsDimensions.SectionHeaderBottomPadding,
+        ),
+    )
+}
+
+@Composable
+private fun ProcessingSection(
+    preferUsb: Boolean,
+    onPreferUsb: (Boolean) -> Unit,
+    hiRes: Boolean,
+    onHiRes: (Boolean) -> Unit,
+    resampler: Boolean,
+    onResampler: (Boolean) -> Unit,
+    resamplerBypassed: Boolean,
+    bypassMode: AudioPassMode,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(stringResource(R.string.audiopass_options))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentGap),
+        ) {
+            YumaToggleRow(
+                title = stringResource(R.string.audiopass_prefer_usb),
+                checked = preferUsb,
+                onCheckedChange = onPreferUsb,
+                position = YumaSegmentPosition.First,
+            )
+            YumaToggleRow(
+                title = stringResource(R.string.audiopass_hires),
+                checked = hiRes,
+                onCheckedChange = onHiRes,
+                position = YumaSegmentPosition.Middle,
+            )
+            YumaToggleRow(
+                title = stringResource(R.string.audiopass_resampler),
+                description = stringResource(R.string.audiopass_resampler_desc),
+                badge = if (resamplerBypassed) stringResource(bypassMode.title) else null,
+                checked = resampler,
+                onCheckedChange = onResampler,
+                dimmed = resamplerBypassed,
+                position = YumaSegmentPosition.Last,
+            )
+        }
+    }
+}
+
+@Composable
+private fun YumaToggleRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    position: YumaSegmentPosition,
+    description: String? = null,
+    badge: String? = null,
+    dimmed: Boolean = false,
+) {
+    val shape = segmentShape(position)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = SettingsDimensions.SegmentedItemMinHeight)
+            .yumaClickable { onCheckedChange(!checked) }
+            .yumaGlassCard(
+                shape = shape,
+                position = position,
+            )
+            .clip(shape)
+            .alpha(if (dimmed) 0.55f else 1f)
+            .padding(
+                horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal,
+                vertical = SettingsDimensions.SegmentedItemPaddingVertical,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (badge != null) {
+                    CapabilityBadge(
+                        label = badge,
+                        highlighted = false,
+                    )
+                }
+            }
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        YumaSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+    }
+}
+
+@Composable
+private fun YumaSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        thumbContent = {
+            AnimatedContent(
+                targetState = checked,
+                transitionSpec = {
+                    fadeIn(tween(100)) togetherWith fadeOut(tween(100))
+                },
+                label = "audioPassSwitchThumb",
+            ) { isChecked ->
+                Icon(
+                    painter = painterResource(
+                        id = if (isChecked) R.drawable.check else R.drawable.close,
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                )
+            }
+        },
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+            checkedTrackColor = MaterialTheme.colorScheme.primary,
+            checkedIconColor = MaterialTheme.colorScheme.primary,
+            uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+            uncheckedIconColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    )
+}
+
+@Composable
+private fun OutputModeSection(
+    passthrough: Boolean,
+    onPassthroughChange: (Boolean) -> Unit,
+    mode: AudioPassMode,
+    onModeSelect: (AudioPassMode) -> Unit,
+    status: AudioPass.Status?,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(stringResource(R.string.audiopass_exclusive))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentGap),
+        ) {
+            YumaToggleRow(
+                title = stringResource(R.string.audiopass_passthrough),
+                description = stringResource(R.string.audiopass_passthrough_desc),
+                checked = passthrough,
+                onCheckedChange = onPassthroughChange,
+                position = if (passthrough) YumaSegmentPosition.First else YumaSegmentPosition.Single,
+            )
+
+            AnimatedVisibility(
+                visible = passthrough,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentGap),
+                ) {
+                    val entries = AudioPassMode.entries
+                    entries.forEachIndexed { index, option ->
+                        val available = Build.VERSION.SDK_INT >= option.minSdk
+                        val position = if (index == entries.lastIndex) {
+                            YumaSegmentPosition.Last
+                        } else {
+                            YumaSegmentPosition.Middle
+                        }
+                        AudioPassModeRow(
+                            title = stringResource(option.title),
+                            description = if (available) {
+                                stringResource(option.description)
+                            } else {
+                                stringResource(R.string.audiopass_mode_needs, androidName(option.minSdk))
+                            },
+                            badges = option.capabilityBadges,
+                            selected = option == mode,
+                            enabled = available,
+                            position = position,
+                            onClick = { onModeSelect(option) },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (passthrough) {
+            statusLine(status)?.let { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioPassModeRow(
+    title: String,
+    description: String,
+    badges: List<String>,
+    selected: Boolean,
+    enabled: Boolean,
+    position: YumaSegmentPosition,
+    onClick: () -> Unit,
+) {
+    val yumaColors = LocalYumaColors.current
+    val shape = segmentShape(position)
+    val bg = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+    } else {
+        yumaColors.glassBackground
+    }
+    val border = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+    } else {
+        yumaColors.glassBorder
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .yumaClickable(enabled = enabled, onClick = onClick)
+            .yumaGlassCard(
+                shape = shape,
+                backgroundColor = bg,
+                borderColor = border,
+                position = position,
+            )
+            .clip(shape)
+            .alpha(if (enabled) 1f else 0.5f)
+            .padding(
+                horizontal = SettingsDimensions.SegmentedItemPaddingHorizontal,
+                vertical = SettingsDimensions.SegmentedItemPaddingVertical,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                badges.forEach { badge ->
+                    CapabilityBadge(
+                        label = badge,
+                        highlighted = selected,
+                    )
+                }
+            }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (selected) {
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.check),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapabilityBadge(
+    label: String,
+    highlighted: Boolean,
+) {
+    val bg = if (highlighted) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f)
+    }
+    val fg = if (highlighted) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(SettingsDimensions.SegmentedBadgeCornerPercent))
+            .background(bg)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = fg,
+        )
+    }
+}
+
+private fun segmentShape(position: YumaSegmentPosition): Shape = when (position) {
+    YumaSegmentPosition.Single -> RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
+    YumaSegmentPosition.First -> RoundedCornerShape(
+        topStart = SettingsDimensions.SegmentedCornerLarge,
+        topEnd = SettingsDimensions.SegmentedCornerLarge,
+        bottomStart = SettingsDimensions.SegmentedCornerSmall,
+        bottomEnd = SettingsDimensions.SegmentedCornerSmall,
+    )
+    YumaSegmentPosition.Middle -> RoundedCornerShape(SettingsDimensions.SegmentedCornerSmall)
+    YumaSegmentPosition.Last -> RoundedCornerShape(
+        topStart = SettingsDimensions.SegmentedCornerSmall,
+        topEnd = SettingsDimensions.SegmentedCornerSmall,
+        bottomStart = SettingsDimensions.SegmentedCornerLarge,
+        bottomEnd = SettingsDimensions.SegmentedCornerLarge,
+    )
 }
 
 @Composable
@@ -358,7 +963,7 @@ private fun ColumnScope.BluetoothDetails(state: BluetoothCodecWatcher.State, onP
     when (state) {
         is BluetoothCodecWatcher.State.Known -> {
             InfoRows(bluetoothRows(state.device, state.codec))
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(if (state.codec.lossless) R.string.audiopass_bt_lossless else R.string.audiopass_bt_reencoded),
                 style = MaterialTheme.typography.bodySmall,
@@ -392,7 +997,7 @@ private fun ColumnScope.BluetoothDetails(state: BluetoothCodecWatcher.State, onP
         }
         is BluetoothCodecWatcher.State.NeedsPermission -> {
             InfoRows(listOf(stringResource(R.string.audiopass_info_headphones) to state.device))
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.audiopass_bt_permission_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -404,11 +1009,13 @@ private fun ColumnScope.BluetoothDetails(state: BluetoothCodecWatcher.State, onP
             }
         }
         is BluetoothCodecWatcher.State.Unknown -> {
-            InfoRows(listOf(
-                stringResource(R.string.audiopass_info_headphones) to state.device,
-                stringResource(R.string.audiopass_info_codec) to stringResource(R.string.audiopass_value_unknown),
-            ))
-            Spacer(Modifier.height(14.dp))
+            InfoRows(
+                listOf(
+                    stringResource(R.string.audiopass_info_headphones) to state.device,
+                    stringResource(R.string.audiopass_info_codec) to stringResource(R.string.audiopass_value_unknown),
+                ),
+            )
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.audiopass_bt_unknown_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -416,11 +1023,13 @@ private fun ColumnScope.BluetoothDetails(state: BluetoothCodecWatcher.State, onP
             )
         }
         is BluetoothCodecWatcher.State.LeAudio -> {
-            InfoRows(listOf(
-                stringResource(R.string.audiopass_info_headphones) to state.device,
-                stringResource(R.string.audiopass_info_codec) to stringResource(R.string.audiopass_value_le_audio),
-            ))
-            Spacer(Modifier.height(14.dp))
+            InfoRows(
+                listOf(
+                    stringResource(R.string.audiopass_info_headphones) to state.device,
+                    stringResource(R.string.audiopass_info_codec) to stringResource(R.string.audiopass_value_le_audio),
+                ),
+            )
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.audiopass_bt_reencoded),
                 style = MaterialTheme.typography.bodySmall,
@@ -488,8 +1097,8 @@ private fun PillButton(text: String, enabled: Boolean = true, onClick: () -> Uni
     Box(
         modifier = Modifier
             .clip(CircleShape)
+            .yumaClickable(enabled = enabled, onClick = onClick)
             .background(bg)
-            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
@@ -498,171 +1107,6 @@ private fun PillButton(text: String, enabled: Boolean = true, onClick: () -> Uni
             fontWeight = FontWeight.SemiBold,
             color = fg,
         )
-    }
-}
-
-@Composable
-private fun OptionTile(
-    title: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
-    Column(
-        modifier = modifier
-            .yumaClickable { onChange(!checked) }
-            .yumaGlassCard(shape = cardShape)
-            .clip(cardShape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.weight(1f).heightIn(min = 12.dp))
-        Switch(checked = checked, onCheckedChange = onChange)
-    }
-}
-
-@Composable
-private fun PassthroughCard(
-    on: Boolean,
-    onChange: (Boolean) -> Unit,
-    mode: AudioPassMode,
-    onMode: (AudioPassMode) -> Unit,
-    status: AudioPass.Status?,
-) {
-    val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .yumaGlassCard(shape = cardShape)
-            .clip(cardShape)
-            .padding(16.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .yumaClickable { onChange(!on) }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.audiopass_passthrough),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = stringResource(R.string.audiopass_passthrough_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Switch(checked = on, onCheckedChange = onChange)
-        }
-
-        AnimatedVisibility(
-            visible = on,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.audiopass_modes).uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 2.dp, bottom = 4.dp),
-                )
-                AudioPassMode.entries.forEach { option ->
-                    val available = Build.VERSION.SDK_INT >= option.minSdk
-                    AudioPassModeRow(
-                        title = stringResource(option.title),
-                        description = if (available) stringResource(option.description) else stringResource(R.string.audiopass_mode_needs, androidName(option.minSdk)),
-                        selected = option == mode,
-                        enabled = available,
-                    ) { onMode(option) }
-                }
-
-                statusLine(status)?.let { line ->
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = line,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AudioPassModeRow(
-    title: String,
-    description: String,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(14.dp)
-    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f)
-    val borderCol = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) else Color.Transparent
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(bg)
-            .border(SettingsDimensions.GlassBorderThickness, borderCol, shape)
-            .yumaClickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-            )
-        }
-        if (selected) {
-            Spacer(Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.check),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
     }
 }
 
@@ -680,114 +1124,128 @@ internal fun statusLine(status: AudioPass.Status?): String? = when (status) {
 
 @Composable
 private fun DirectUsbCard(
+    dacName: String?,
     permitted: Boolean?,
     volume: AudioPass.DacVolume?,
     onAllow: () -> Unit,
     onVolume: (Double) -> Unit,
 ) {
-    val cardShape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge)
     val (fixedVolume, onFixedVolume) = rememberPreference(AudioPassFixedVolumeKey, defaultValue = false)
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .yumaGlassCard(shape = cardShape)
-            .clip(cardShape)
-            .padding(16.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.audiopass_usb_title),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(4.dp))
-        when (permitted) {
-            null -> Text(
-                text = stringResource(R.string.audiopass_usb_no_dac),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            false -> {
-                Text(
-                    text = stringResource(R.string.audiopass_usb_permission_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(10.dp))
-                PillButton(
-                    text = stringResource(R.string.audiopass_usb_permission),
-                    onClick = onAllow,
-                )
-            }
-            true -> Unit
-        }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(stringResource(R.string.audiopass_usb_title))
 
-        if (volume != null) {
-            Spacer(Modifier.height(12.dp))
-            val panelShape = RoundedCornerShape(14.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentGap),
+        ) {
+            val topShape = segmentShape(YumaSegmentPosition.First)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(panelShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f))
-                    .padding(14.dp),
+                    .yumaGlassCard(
+                        shape = topShape,
+                        position = YumaSegmentPosition.First,
+                    )
+                    .clip(topShape)
+                    .padding(SettingsDimensions.SegmentedItemPaddingHorizontal),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.audiopass_dac_volume),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = stringResource(R.string.audiopass_value_db, String.format(Locale.ROOT, "%.1f", volume.currentDb)),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                if (dacName != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = dacName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (permitted == true) {
+                            CapabilityBadge(label = "USB", highlighted = true)
+                        }
+                    }
                 }
-                Slider(
-                    value = AudioPass.levelOf(volume),
-                    onValueChange = { level -> onVolume(AudioPass.dbAt(volume, level)) },
-                    valueRange = 0f..1f,
-                )
-                Text(
-                    text = stringResource(R.string.audiopass_dac_volume_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
 
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .yumaClickable { onFixedVolume(!fixedVolume) }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.audiopass_fixed_volume),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = stringResource(R.string.audiopass_fixed_volume_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                when (permitted) {
+                    null -> Text(
+                        text = stringResource(R.string.audiopass_usb_no_dac),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    false -> {
+                        Text(
+                            text = stringResource(R.string.audiopass_usb_permission_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        PillButton(
+                            text = stringResource(R.string.audiopass_usb_permission),
+                            onClick = onAllow,
+                        )
+                    }
+                    true -> Unit
+                }
+
+                if (volume != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f))
+                            .padding(14.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.audiopass_dac_volume),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = stringResource(R.string.audiopass_value_db, String.format(Locale.ROOT, "%.1f", volume.currentDb)),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        Slider(
+                            value = AudioPass.levelOf(volume),
+                            onValueChange = { level -> onVolume(AudioPass.dbAt(volume, level)) },
+                            valueRange = 0f..1f,
+                        )
+                        Text(
+                            text = stringResource(R.string.audiopass_dac_volume_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.width(12.dp))
-            Switch(checked = fixedVolume, onCheckedChange = onFixedVolume)
+
+            YumaToggleRow(
+                title = stringResource(R.string.audiopass_fixed_volume),
+                description = stringResource(R.string.audiopass_fixed_volume_desc),
+                checked = fixedVolume,
+                onCheckedChange = onFixedVolume,
+                position = YumaSegmentPosition.Last,
+            )
         }
     }
 }
+
+private val AudioPassMode.capabilityBadges: List<String>
+    get() = when (this) {
+        AudioPassMode.SONG_RATE -> listOf("API 34")
+        AudioPassMode.BIT_PERFECT -> listOf("API 34")
+        AudioPassMode.DIRECT_USB -> listOf("USB")
+        AudioPassMode.EXCLUSIVE_USB -> listOf("USB", "AAudio")
+        AudioPassMode.EXCLUSIVE_DAC -> listOf("AAudio")
+    }
 
 private val AudioPassMode.title: Int
     @StringRes get() = when (this) {
@@ -827,7 +1285,7 @@ private fun BlockersCard(
             .fillMaxWidth()
             .yumaGlassCard(shape = cardShape)
             .clip(cardShape)
-            .padding(18.dp),
+            .padding(SettingsDimensions.SegmentedItemPaddingHorizontal),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
