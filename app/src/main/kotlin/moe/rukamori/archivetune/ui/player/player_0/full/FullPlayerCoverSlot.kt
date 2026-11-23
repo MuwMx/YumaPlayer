@@ -112,11 +112,12 @@ internal fun FullPlayerCoverSlot(
                     cardWidthPx = if (size.width > 0) size.width.toFloat() else 0f
                 }
                 .onGloballyPositioned { coords ->
-                    coverMorphState?.updateFullCardRect(rootCoordinates, coords)
+                    coverMorphState?.updateFullCardRect(coords)
                 }
                 .graphicsLayer {
                     val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible
                     val effectiveScale = playPauseScaleState.value * trackSwitchScale.value
+                    coverMorphState?.updateFullCardScale(playPauseScaleState.value)
 
                     val kinematics = calculateCoverKinematics(
                         q = queueFractionProvider().coerceIn(0f, 1f),

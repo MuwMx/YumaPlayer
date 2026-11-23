@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +40,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.layout
@@ -49,10 +52,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
-import coil3.request.error
-import coil3.request.placeholder
 import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -66,6 +68,11 @@ internal class CoverMorphState(
     val expansionFraction: () -> Float,
     val isImmersive: () -> Boolean,
     val vinylRotation: Animatable<Float, AnimationVector1D>,
+    val collapsedYProvider: () -> Float,
+    val collapsedHorizontalInsetPx: Float,
+    val miniSizePx: Float,
+    val miniLeftInsetPx: Float,
+    val miniTopInsetPx: Float,
 ) {
     val vinylRotationDeg: () -> Float = { vinylRotation.value }
 
@@ -76,12 +83,49 @@ internal class CoverMorphState(
         private set
     var fullImmersiveRect by mutableStateOf(Rect.Zero)
         private set
+    var fullCardScale by mutableFloatStateOf(1f)
+        private set
 
-    fun targetRect(): Rect = if (isImmersive()) fullImmersiveRect else fullCardRect
+    fun updateFullCardScale(scale: Float) {
+        if (fullCardScale != scale) {
+            fullCardScale = scale
+        }
+    }
+
+    fun effectiveMiniRect(): Rect {
+        if (miniRect != Rect.Zero) return miniRect
+        val left = collapsedHorizontalInsetPx + miniLeftInsetPx
+        val top = collapsedYProvider() + miniTopInsetPx
+        return Rect(
+            left = left,
+            top = top,
+            right = left + miniSizePx,
+            bottom = top + miniSizePx,
+        )
+    }
+
+    fun targetRect(): Rect {
+        if (isImmersive()) return fullImmersiveRect
+        val raw = fullCardRect
+        if (raw.isEmpty) return raw
+        val s = fullCardScale
+        if (s == 1f) return raw
+        val w = raw.width
+        val h = raw.height
+        val scaledW = w * s
+        val left = raw.left + w * (1f - s) / 2f
+        val top = raw.top
+        return Rect(
+            left = left,
+            top = top,
+            right = left + scaledW,
+            bottom = top + h * s,
+        )
+    }
 
     fun hasValidAnchors(): Boolean {
         val target = targetRect()
-        return !miniRect.isEmpty && !target.isEmpty
+        return !effectiveMiniRect().isEmpty && !target.isEmpty
     }
 
     fun isMorphActive(): Boolean {
@@ -107,9 +151,11 @@ internal class CoverMorphState(
         }
     }
 
-    fun updateFullCardRect(rootCoords: LayoutCoordinates?, coords: LayoutCoordinates) {
-        if (rootCoords == null || !rootCoords.isAttached || !coords.isAttached) return
-        val topLeft = rootCoords.localPositionOf(coords, Offset.Zero)
+    fun updateFullCardRect(coords: LayoutCoordinates) {
+        if (expansionFraction() < 0.99f || !coords.isAttached) return
+        val container = containerCoordinates ?: return
+        if (!container.isAttached) return
+        val topLeft = container.localPositionOf(coords, Offset.Zero)
         val size = coords.size
         if (size.width <= 0 || size.height <= 0) return
         val next = Rect(
@@ -123,9 +169,11 @@ internal class CoverMorphState(
         }
     }
 
-    fun updateFullImmersiveRect(rootCoords: LayoutCoordinates?, coords: LayoutCoordinates) {
-        if (rootCoords == null || !rootCoords.isAttached || !coords.isAttached) return
-        val topLeft = rootCoords.localPositionOf(coords, Offset.Zero)
+    fun updateFullImmersiveRect(coords: LayoutCoordinates) {
+        if (expansionFraction() < 0.99f || !coords.isAttached) return
+        val container = containerCoordinates ?: return
+        if (!container.isAttached) return
+        val topLeft = container.localPositionOf(coords, Offset.Zero)
         val size = coords.size
         if (size.width <= 0 || size.height <= 0) return
         val next = Rect(
@@ -146,13 +194,33 @@ internal fun rememberCoverMorphState(
     isReady: Boolean,
     isImmersive: () -> Boolean,
     expansionFraction: () -> Float,
+    collapsedYProvider: () -> Float,
+    collapsedHorizontalInsetPx: Float,
 ): CoverMorphState {
+    val density = LocalDensity.current
+    val miniSizePx = remember(density) { with(density) { 40.dp.toPx() } }
+    val miniLeftInsetPx = remember(density) { with(density) { 16.dp.toPx() } }
+    val miniTopInsetPx = remember(density) { with(density) { 12.dp.toPx() } }
     val vinylRotation = remember { Animatable(0f) }
-    val morphState = remember(expansionFraction, isImmersive, vinylRotation) {
+    val morphState = remember(
+        expansionFraction,
+        isImmersive,
+        vinylRotation,
+        collapsedYProvider,
+        collapsedHorizontalInsetPx,
+        miniSizePx,
+        miniLeftInsetPx,
+        miniTopInsetPx,
+    ) {
         CoverMorphState(
             expansionFraction = expansionFraction,
             isImmersive = isImmersive,
             vinylRotation = vinylRotation,
+            collapsedYProvider = collapsedYProvider,
+            collapsedHorizontalInsetPx = collapsedHorizontalInsetPx,
+            miniSizePx = miniSizePx,
+            miniLeftInsetPx = miniLeftInsetPx,
+            miniTopInsetPx = miniTopInsetPx,
         )
     }
 
@@ -213,11 +281,9 @@ internal fun CoverMorphLayer(
     val morphShape = remember { MorphRoundedRectShape() }
 
     val cleanUrl = state.coverUrl.trim().takeIf(String::isNotBlank)
-    val request = remember(cleanUrl, state.placeholderResId) {
+    val request = remember(cleanUrl) {
         ImageRequest.Builder(context)
             .data(cleanUrl)
-            .placeholder(state.placeholderResId)
-            .error(state.placeholderResId)
             .apply {
                 if (cleanUrl != null) {
                     memoryCacheKey(cleanUrl)
@@ -226,11 +292,40 @@ internal fun CoverMorphLayer(
             }
             .build()
     }
-    val painter = if (cleanUrl != null) {
-        rememberAsyncImagePainter(model = request)
-    } else {
-        painterResource(id = state.placeholderResId)
+    val asyncPainter = rememberAsyncImagePainter(model = request)
+    val painterState by asyncPainter.state.collectAsState()
+    var currentPainter by remember { mutableStateOf<Painter?>(null) }
+    var previousPainter by remember { mutableStateOf<Painter?>(null) }
+    var lastLoadedUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(cleanUrl) {
+        if (cleanUrl == null) {
+            currentPainter = null
+            previousPainter = null
+            lastLoadedUrl = null
+        } else if (currentPainter != null && lastLoadedUrl != cleanUrl) {
+            previousPainter = currentPainter
+            currentPainter = null
+        }
     }
+
+    LaunchedEffect(painterState) {
+        when (painterState) {
+            is AsyncImagePainter.State.Success -> {
+                currentPainter = (painterState as AsyncImagePainter.State.Success).painter
+                previousPainter = null
+                lastLoadedUrl = cleanUrl
+            }
+            is AsyncImagePainter.State.Error -> {
+                currentPainter = null
+                previousPainter = null
+            }
+            else -> {}
+        }
+    }
+
+    val placeholder = painterResource(id = state.placeholderResId)
+    val displayPainter = currentPainter ?: previousPainter ?: placeholder
 
     Box(
         modifier = modifier
@@ -243,14 +338,14 @@ internal fun CoverMorphLayer(
                     }
                 } else {
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val travel = 1f - (1f - p) * (1f - p)
-                    val start = morphState.miniRect
+                    val t = p * p * (3f - 2f * p)
+                    val start = morphState.effectiveMiniRect()
                     val end = morphState.targetRect()
 
-                    val cx = lerp(start.center.x, end.center.x, travel)
-                    val cy = lerp(start.center.y, end.center.y, travel)
-                    val w = lerp(start.width, end.width, travel)
-                    val h = lerp(start.height, end.height, travel)
+                    val cx = lerp(start.center.x, end.center.x, t)
+                    val cy = lerp(start.center.y, end.center.y, t)
+                    val w = lerp(start.width, end.width, t)
+                    val h = lerp(start.height, end.height, t)
 
                     val wInt = w.roundToInt().coerceAtLeast(1)
                     val hInt = h.roundToInt().coerceAtLeast(1)
@@ -275,14 +370,14 @@ internal fun CoverMorphLayer(
                     }
                     alpha = 1f
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val travel = 1f - (1f - p) * (1f - p)
+                    val t = p * p * (3f - 2f * p)
                     val immersive = morphState.isImmersive()
 
-                    val start = morphState.miniRect
+                    val start = morphState.effectiveMiniRect()
                     val startRadius = min(start.width, start.height) / 2f
                     val midTargetRadius = if (immersive) midImmersiveRadiusPx else cardCornerRadiusPx
                     val targetRadius = if (immersive) 0f else cardCornerRadiusPx
-                    val midRadius = lerp(startRadius, midTargetRadius, travel)
+                    val midRadius = lerp(startRadius, midTargetRadius, t)
                     val settleT = ((p - 0.85f) / 0.15f).coerceIn(0f, 1f)
                     morphShape.cornerRadiusPx = lerp(midRadius, targetRadius, settleT)
 
@@ -340,7 +435,7 @@ internal fun CoverMorphLayer(
                 }
         ) {
             Image(
-                painter = painter,
+                painter = displayPainter,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,

@@ -137,6 +137,8 @@ fun UnifiedPlayerSheetV2(
             isReady = state.isReady,
             isImmersive = { state.isImmersiveEnabled },
             expansionFraction = { motionScope.expansionFraction.value },
+            collapsedYProvider = { motionScope.collapsedY },
+            collapsedHorizontalInsetPx = with(density) { collapsedHorizontalInset.toPx() },
         )
         coverMorphStateRef = coverMorphState
 
