@@ -33,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -109,7 +108,6 @@ internal fun MiniPlayerContentInternal(
                 modifier = Modifier
                     .size(40.dp)
                     .aspectRatio(1f)
-                    .onGloballyPositioned { coverMorphState?.updateMiniRect(it) }
                     .graphicsLayer {
                         rotationZ = coverMorphState?.vinylRotationDeg?.invoke() ?: 0f
                         alpha = if (coverMorphState?.isMorphActive() == true) 0f else 1f

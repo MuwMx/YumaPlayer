@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
@@ -29,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -63,25 +62,51 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 
 internal val LocalCoverMorphState = staticCompositionLocalOf<CoverMorphState?> { null }
 
+@Immutable
+internal data class MorphEndpointsPx(
+    val miniLeftPx: Float,
+    val miniTopInsetPx: Float,
+    val miniSizePx: Float,
+    val immersiveRect: Rect,
+    val cardLeftPx: Float,
+    val cardDefaultTopPx: Float,
+    val cardWidthPx: Float,
+) {
+    fun miniRect(collapsedY: Float): Rect {
+        val top = collapsedY + miniTopInsetPx
+        return Rect(
+            left = miniLeftPx,
+            top = top,
+            right = miniLeftPx + miniSizePx,
+            bottom = top + miniSizePx,
+        )
+    }
+
+    fun cardRect(cardTopPxOverride: Float, scale: Float): Rect {
+        val top = if (cardTopPxOverride > 0f) cardTopPxOverride else cardDefaultTopPx
+        val scaledW = cardWidthPx * scale
+        val left = cardLeftPx + cardWidthPx * (1f - scale) / 2f
+        return Rect(
+            left = left,
+            top = top,
+            right = left + scaledW,
+            bottom = top + scaledW,
+        )
+    }
+}
+
 @Stable
 internal class CoverMorphState(
     val expansionFraction: () -> Float,
     val isImmersive: () -> Boolean,
     val vinylRotation: Animatable<Float, AnimationVector1D>,
     val collapsedYProvider: () -> Float,
-    val collapsedHorizontalInsetPx: Float,
-    val miniSizePx: Float,
-    val miniLeftInsetPx: Float,
-    val miniTopInsetPx: Float,
+    endpoints: MorphEndpointsPx,
 ) {
     val vinylRotationDeg: () -> Float = { vinylRotation.value }
 
-    var containerCoordinates: LayoutCoordinates? = null
-    var miniRect by mutableStateOf(Rect.Zero)
-        private set
-    var fullCardRect by mutableStateOf(Rect.Zero)
-        private set
-    var fullImmersiveRect by mutableStateOf(Rect.Zero)
+    var endpoints by mutableStateOf(endpoints)
+    var cardTopPx by mutableFloatStateOf(0f)
         private set
     var fullCardScale by mutableFloatStateOf(1f)
         private set
@@ -92,99 +117,27 @@ internal class CoverMorphState(
         }
     }
 
-    fun effectiveMiniRect(): Rect {
-        if (miniRect != Rect.Zero) return miniRect
-        val left = collapsedHorizontalInsetPx + miniLeftInsetPx
-        val top = collapsedYProvider() + miniTopInsetPx
-        return Rect(
-            left = left,
-            top = top,
-            right = left + miniSizePx,
-            bottom = top + miniSizePx,
-        )
+    fun updateCardTopPx(topPx: Float) {
+        if (topPx > 0f && cardTopPx != topPx) {
+            cardTopPx = topPx
+        }
     }
+
+    fun miniRect(): Rect = endpoints.miniRect(collapsedYProvider())
 
     fun targetRect(): Rect {
-        if (isImmersive()) return fullImmersiveRect
-        val raw = fullCardRect
-        if (raw.isEmpty) return raw
-        val s = fullCardScale
-        if (s == 1f) return raw
-        val w = raw.width
-        val h = raw.height
-        val scaledW = w * s
-        val left = raw.left + w * (1f - s) / 2f
-        val top = raw.top
-        return Rect(
-            left = left,
-            top = top,
-            right = left + scaledW,
-            bottom = top + h * s,
-        )
+        return if (isImmersive()) {
+            endpoints.immersiveRect
+        } else {
+            endpoints.cardRect(cardTopPxOverride = cardTopPx, scale = fullCardScale)
+        }
     }
 
-    fun hasValidAnchors(): Boolean {
-        val target = targetRect()
-        return !effectiveMiniRect().isEmpty && !target.isEmpty
-    }
+    fun hasValidAnchors(): Boolean = true
 
     fun isMorphActive(): Boolean {
         val p = expansionFraction()
         return p in 0.001f..0.999f && hasValidAnchors()
-    }
-
-    fun updateMiniRect(coords: LayoutCoordinates) {
-        if (expansionFraction() > 0.01f || !coords.isAttached) return
-        val container = containerCoordinates ?: return
-        if (!container.isAttached) return
-        val topLeft = container.localPositionOf(coords, Offset.Zero)
-        val size = coords.size
-        if (size.width <= 0 || size.height <= 0) return
-        val next = Rect(
-            left = topLeft.x,
-            top = topLeft.y,
-            right = topLeft.x + size.width,
-            bottom = topLeft.y + size.height,
-        )
-        if (next != miniRect) {
-            miniRect = next
-        }
-    }
-
-    fun updateFullCardRect(coords: LayoutCoordinates) {
-        if (expansionFraction() < 0.99f || !coords.isAttached) return
-        val container = containerCoordinates ?: return
-        if (!container.isAttached) return
-        val topLeft = container.localPositionOf(coords, Offset.Zero)
-        val size = coords.size
-        if (size.width <= 0 || size.height <= 0) return
-        val next = Rect(
-            left = topLeft.x,
-            top = topLeft.y,
-            right = topLeft.x + size.width,
-            bottom = topLeft.y + size.height,
-        )
-        if (next != fullCardRect) {
-            fullCardRect = next
-        }
-    }
-
-    fun updateFullImmersiveRect(coords: LayoutCoordinates) {
-        if (expansionFraction() < 0.99f || !coords.isAttached) return
-        val container = containerCoordinates ?: return
-        if (!container.isAttached) return
-        val topLeft = container.localPositionOf(coords, Offset.Zero)
-        val size = coords.size
-        if (size.width <= 0 || size.height <= 0) return
-        val next = Rect(
-            left = topLeft.x,
-            top = topLeft.y,
-            right = topLeft.x + size.width,
-            bottom = topLeft.y + size.height,
-        )
-        if (next != fullImmersiveRect) {
-            fullImmersiveRect = next
-        }
     }
 }
 
@@ -196,33 +149,51 @@ internal fun rememberCoverMorphState(
     expansionFraction: () -> Float,
     collapsedYProvider: () -> Float,
     collapsedHorizontalInsetPx: Float,
+    screenWidthPx: Float,
+    screenHeightPx: Float,
+    statusBarTopPx: Float,
 ): CoverMorphState {
     val density = LocalDensity.current
-    val miniSizePx = remember(density) { with(density) { 40.dp.toPx() } }
-    val miniLeftInsetPx = remember(density) { with(density) { 16.dp.toPx() } }
-    val miniTopInsetPx = remember(density) { with(density) { 12.dp.toPx() } }
+    val endpoints = remember(
+        screenWidthPx,
+        screenHeightPx,
+        collapsedHorizontalInsetPx,
+        statusBarTopPx,
+        density,
+    ) {
+        val safeW = screenWidthPx.coerceAtLeast(1f)
+        val miniSizePx = with(density) { 40.dp.toPx() }
+        val miniLeftPx = collapsedHorizontalInsetPx + with(density) { 16.dp.toPx() }
+        val miniTopInsetPx = with(density) { 12.dp.toPx() }
+        val cardHorizontalPaddingPx = with(density) { 22.dp.toPx() }
+        val cardWidthPx = (safeW - cardHorizontalPaddingPx * 2f).coerceAtLeast(1f)
+        val cardDefaultTopPx = statusBarTopPx + with(density) { 72.dp.toPx() }
+        MorphEndpointsPx(
+            miniLeftPx = miniLeftPx,
+            miniTopInsetPx = miniTopInsetPx,
+            miniSizePx = miniSizePx,
+            immersiveRect = Rect(0f, 0f, safeW, safeW / 0.75f),
+            cardLeftPx = cardHorizontalPaddingPx,
+            cardDefaultTopPx = cardDefaultTopPx,
+            cardWidthPx = cardWidthPx,
+        )
+    }
     val vinylRotation = remember { Animatable(0f) }
     val morphState = remember(
         expansionFraction,
         isImmersive,
         vinylRotation,
         collapsedYProvider,
-        collapsedHorizontalInsetPx,
-        miniSizePx,
-        miniLeftInsetPx,
-        miniTopInsetPx,
     ) {
         CoverMorphState(
             expansionFraction = expansionFraction,
             isImmersive = isImmersive,
             vinylRotation = vinylRotation,
             collapsedYProvider = collapsedYProvider,
-            collapsedHorizontalInsetPx = collapsedHorizontalInsetPx,
-            miniSizePx = miniSizePx,
-            miniLeftInsetPx = miniLeftInsetPx,
-            miniTopInsetPx = miniTopInsetPx,
+            endpoints = endpoints,
         )
     }
+    morphState.endpoints = endpoints
 
     val isMiniSpinning by remember(isPlaying, isReady) {
         derivedStateOf {
@@ -338,8 +309,9 @@ internal fun CoverMorphLayer(
                     }
                 } else {
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val t = p * p * (3f - 2f * p)
-                    val start = morphState.effectiveMiniRect()
+                    val immersive = morphState.isImmersive()
+                    val t = if (immersive) p else p * p * (3f - 2f * p)
+                    val start = morphState.miniRect()
                     val end = morphState.targetRect()
 
                     val cx = lerp(start.center.x, end.center.x, t)
@@ -370,10 +342,10 @@ internal fun CoverMorphLayer(
                     }
                     alpha = 1f
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val t = p * p * (3f - 2f * p)
                     val immersive = morphState.isImmersive()
+                    val t = if (immersive) p else p * p * (3f - 2f * p)
 
-                    val start = morphState.effectiveMiniRect()
+                    val start = morphState.miniRect()
                     val startRadius = min(start.width, start.height) / 2f
                     val midTargetRadius = if (immersive) midImmersiveRadiusPx else cardCornerRadiusPx
                     val targetRadius = if (immersive) 0f else cardCornerRadiusPx

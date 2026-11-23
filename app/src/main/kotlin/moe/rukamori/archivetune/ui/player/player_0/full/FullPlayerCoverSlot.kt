@@ -100,7 +100,11 @@ internal fun FullPlayerCoverSlot(
             .padding(horizontal = 22.dp)
             .onGloballyPositioned { slotCoords ->
                 if (rootCoordinates != null && rootCoordinates.isAttached && slotCoords.isAttached) {
-                    cardTopInRoot = rootCoordinates.localPositionOf(slotCoords, Offset.Zero).y
+                    val top = rootCoordinates.localPositionOf(slotCoords, Offset.Zero).y
+                    cardTopInRoot = top
+                    if (top > 0f) {
+                        coverMorphState?.updateCardTopPx(top)
+                    }
                 }
             }
     ) {
@@ -110,9 +114,6 @@ internal fun FullPlayerCoverSlot(
                 .aspectRatio(1f)
                 .onSizeChanged { size ->
                     cardWidthPx = if (size.width > 0) size.width.toFloat() else 0f
-                }
-                .onGloballyPositioned { coords ->
-                    coverMorphState?.updateFullCardRect(coords)
                 }
                 .graphicsLayer {
                     val isCoverVisible = !state.isImmersiveEnabled && !motionState.isOverlayVisible

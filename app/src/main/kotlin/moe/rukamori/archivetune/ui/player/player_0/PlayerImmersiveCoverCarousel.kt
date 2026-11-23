@@ -68,9 +68,6 @@ internal fun PlayerImmersiveCoverCarousel(
             .fillMaxWidth()
             .aspectRatio(0.75f)
             .onSizeChanged { artworkWidthPx = it.width.toFloat() }
-            .onGloballyPositioned { coords ->
-                coverMorphState?.updateFullImmersiveRect(coords)
-            }
     ) {
         for (slot in carousel.slots) {
             key(slot.uid) {

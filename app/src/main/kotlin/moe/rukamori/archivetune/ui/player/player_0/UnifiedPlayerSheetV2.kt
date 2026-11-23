@@ -10,7 +10,9 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -21,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -83,12 +84,8 @@ fun UnifiedPlayerSheetV2(
         onAction = onAction,
     )
 
-    var coverMorphStateRef by remember { mutableStateOf<CoverMorphState?>(null) }
-
     BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            .onGloballyPositioned { coverMorphStateRef?.containerCoordinates = it }
+        modifier = modifier.fillMaxSize()
     ) {
         val collapsedHorizontalInset = remember(maxWidth, useRail) {
             PlayerDockGeometry.collapsedHorizontalInset(
@@ -132,6 +129,7 @@ fun UnifiedPlayerSheetV2(
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
 
         val backgroundGradient = rememberBackgroundGradient(state.gradientColor)
+        val statusBarTopPx = WindowInsets.statusBars.getTop(density).toFloat()
         val coverMorphState = rememberCoverMorphState(
             isPlaying = state.isPlaying,
             isReady = state.isReady,
@@ -139,8 +137,10 @@ fun UnifiedPlayerSheetV2(
             expansionFraction = { motionScope.expansionFraction.value },
             collapsedYProvider = { motionScope.collapsedY },
             collapsedHorizontalInsetPx = with(density) { collapsedHorizontalInset.toPx() },
+            screenWidthPx = motionScope.screenWidthPx,
+            screenHeightPx = motionScope.screenHeightPx,
+            statusBarTopPx = statusBarTopPx,
         )
-        coverMorphStateRef = coverMorphState
 
         PlayerSheetScaffold(
             sheetVisualState = motionScope.sheetVisualState,
