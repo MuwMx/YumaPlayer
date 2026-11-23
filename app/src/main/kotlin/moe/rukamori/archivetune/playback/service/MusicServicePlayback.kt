@@ -262,13 +262,11 @@ internal fun MusicService.createPlaybackRecoveryEngine(): PlaybackRecoveryEngine
                     PlaybackSource.FLAC -> {
                         invalidateLosslessUrlCache(mediaId)
                         val v2Key = flacStreamCacheKey(mediaId)
+                        val legacyKey = flacCacheKey(mediaId)
                         runCatching { playerCache.removeResource(v2Key) }
-                        val hasKnownLength = runCatching {
-                            downloadCache.getContentMetadata(v2Key).get(androidx.media3.datasource.cache.ContentMetadata.KEY_CONTENT_LENGTH, -1L) > 0L
-                        }.getOrDefault(false)
-                        if (hasKnownLength && !isKeyFullyCached(v2Key, mediaId)) {
-                            runCatching { downloadCache.removeResource(v2Key) }
-                        }
+                        runCatching { playerCache.removeResource(legacyKey) }
+                        runCatching { downloadCache.removeResource(v2Key) }
+                        runCatching { downloadCache.removeResource(legacyKey) }
                     }
                     PlaybackSource.YT_MUSIC -> {
                         invalidatePlaybackUrlCache(mediaId)
