@@ -2303,6 +2303,10 @@
     <string name="crossmix_style_title">Transition style</string>
     <string name="crossmix_style_desc">Let YumaPlayer pick the one that fits each pair, or pin one</string>
     <string name="crossmix_style_auto">Auto (Let YumaPlayer choose)</string>
+    <string name="crossmix_style_category_everyday">Everyday</string>
+    <string name="crossmix_style_category_lift">Energy lift</string>
+    <string name="crossmix_style_category_fall">Energy fall</string>
+    <string name="crossmix_style_category_flavour">Flavour</string>
     <string name="crossmix_length_title">Length</string>
     <string name="crossmix_length_desc">How long the two songs play together</string>
     <string name="crossmix_length_short">Short</string>

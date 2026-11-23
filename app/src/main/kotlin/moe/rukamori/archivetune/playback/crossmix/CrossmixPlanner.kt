@@ -87,6 +87,32 @@ object CrossmixPlanner {
     // with always mix on, a blend is never over in a blink, so it's heard as two songs mixing and not as a quick fade
     private const val AlwaysMixMinOverlapMs = 6_000.0
 
+    private class PlanningContext(
+        val settings: CrossmixSettings,
+        val out: CrossmixTrackAnalysis,
+        val inc: CrossmixTrackAnalysis?,
+        val outGrid: LocalGrid,
+        val tempo: Tempo?,
+        val keyDistance: Int?,
+        val keyClash: Boolean,
+        val outLines: List<Line>,
+        val bars: LongArray,
+        val exits: List<Exit>,
+        val outVoice: Voice,
+        val inVoice: Voice,
+        val vocalPair: Float,
+        val calmMatch: Boolean,
+        val naturalEnd: Long,
+        val windowStart: Long,
+        val latestLanding: Long,
+        val gesture: CrossmixStyle,
+        val variation: Int,
+        val scratchOut: FxParams = FxParams(),
+        val scratchIn: FxParams = FxParams(),
+    )
+
+    private data class Candidate(val plan: CrossmixPlan, val score: Float)
+
     /** the one transition that suits these two songs best, within the listener's settings; the same two songs always get the same mix */
     fun plan(
         outgoing: CrossmixTrackInput,
@@ -99,110 +125,70 @@ object CrossmixPlanner {
         val windowStart = (outgoing.durationMs - MaxLeadMs).coerceAtLeast(0L)
 
         // nothing to plan around: a plain fade, or with always mix on, a real blend counted in seconds
-        fun noPlan() = if (settings.alwaysMix) forcedBlend(outgoing, incoming, naturalEnd, out, settings.style) else smoothFade(outgoing, incoming, naturalEnd, settings.style)
+        fun noPlan() = if (settings.alwaysMix) {
+            forcedBlend(outgoing, incoming, naturalEnd, out, settings.style)
+        } else {
+            smoothFade(outgoing, incoming, naturalEnd, settings.style)
+        }
         if (out == null || !out.isBeatReliable) return noPlan()
         val outGrid = out.localGrid((naturalEnd - 12_000L).coerceAtLeast(0L)) ?: return noPlan()
 
-        val maxSpeedUp = settings.tempoMatch.maxSpeedUp
-        val tempo = tempoFactor(out, inc, maxSpeedUp)
+        val tempo = resolveTempo(out, inc, settings)
         val keyDistance = Harmony.camelotDistance(out.key, inc?.key)?.takeIf {
             out.keyConfidence > 0.3f && (inc?.keyConfidence ?: 0f) > 0.3f
         }
-        val keyClash = keyDistance != null && keyDistance >= 3
         val outLines = parseLines(outgoing.lyrics)
         val inLines = parseLines(incoming.lyrics)
         val bars = out.barStartsMs()
-        val exits = exitPoints(out, bars, outGrid, windowStart, naturalEnd)
         val outVoice = Voice(outLines, out.vocal)
         val inVoice = Voice(inLines, inc?.vocal)
-        // how much singing there is where these two would meet: the end of this one, the opening of the next
-        val vocalPair = outVoice.average(windowStart.toDouble(), naturalEnd.toDouble()) *
-            inVoice.average(0.0, 60_000.0)
-        val calmMatch = tempo != null && max(out.vibe.energy, inc?.vibe?.energy ?: 0.5f) < CalmEnergy
-        // the next song lands no deeper than two minutes in, nor past a quarter of it
-        val latestLanding = if (incoming.durationMs > 0L) min(MaxEntryMs, incoming.durationMs / 4) else MaxEntryMs
-        val gesture = pairGesture(out, inc)
-        val scratchOut = FxParams()
-        val scratchIn = FxParams()
+        val ctx = PlanningContext(
+            settings = settings,
+            out = out,
+            inc = inc,
+            outGrid = outGrid,
+            tempo = tempo,
+            keyDistance = keyDistance,
+            keyClash = keyDistance != null && keyDistance >= 3,
+            outLines = outLines,
+            bars = bars,
+            exits = exitPoints(out, bars, outGrid, windowStart, naturalEnd),
+            outVoice = outVoice,
+            inVoice = inVoice,
+            // how much singing there is where these two would meet: the end of this one, the opening of the next
+            vocalPair = outVoice.average(windowStart.toDouble(), naturalEnd.toDouble()) *
+                inVoice.average(0.0, 60_000.0),
+            calmMatch = tempo != null && max(out.vibe.energy, inc?.vibe?.energy ?: 0.5f) < CalmEnergy,
+            naturalEnd = naturalEnd,
+            windowStart = windowStart,
+            // the next song lands no deeper than two minutes in, nor past a quarter of it
+            latestLanding = if (incoming.durationMs > 0L) min(MaxEntryMs, incoming.durationMs / 4) else MaxEntryMs,
+            gesture = pairGesture(out, inc),
+            // variants differ in how many beats a spin, stop or echo takes: quick tempos use the longer count so both last about as long in seconds
+            variation = if (60_000.0 / outGrid.periodMs >= 118.0) 1 else 0,
+        )
 
-        data class Candidate(val plan: CrossmixPlan, val score: Float)
+        return resolveStyle(ctx) ?: noPlan()
+    }
+
+    private fun resolveTempo(
+        out: CrossmixTrackAnalysis,
+        inc: CrossmixTrackAnalysis?,
+        settings: CrossmixSettings,
+    ): Tempo? = tempoFactor(out, inc, settings.tempoMatch.maxSpeedUp)
+
+    private fun resolveStyle(ctx: PlanningContext): CrossmixPlan? {
         val candidates = ArrayList<Candidate>()
-        // variants differ in how many beats a spin, stop or echo takes: quick tempos use the longer count so both last about as long in seconds
-        val variation = if (60_000.0 / outGrid.periodMs >= 118.0) 1 else 0
-
-        // every way this style could play between these two songs; a style the listener picked by hand is never scored out
-        fun consider(style: CrossmixStyle, picked: Boolean) {
-            if (!picked && style.needsBeatMatch && tempo == null) return
-            // always mix keeps to the styles where both songs really play together; a style picked by hand still wins
-            if (settings.alwaysMix && !picked && !style.blendsBoth) return
-            var styleFit = styleFit(style, out, inc, tempo != null, keyDistance, outLines, naturalEnd, vocalPair)
-            if (picked) styleFit = max(styleFit, 0f) else if (styleFit <= -5f) return
-            val bonus = if (tempo == null && style == gesture) GestureBonus else 0f
-            // overlapping styles lock the beat when tempos allow, hand-over styles only need the next downbeat on the outgoing one's
-            val locked = tempo != null && (style.needsBeatMatch || !style.entersAtEnd)
-            for (length in style.lengths) {
-                // overlaps stay short: long ones only for two calm songs that lock together, or when the listener asked for long
-                if (!style.entersAtEnd && !overlapFits(length, length * outGrid.periodMs, tempo != null, calmMatch, settings)) continue
-                val swap = style.swapAt(length)
-                for (exit in exits) {
-                    // the hand-over sits on one of this song's bars, counted on the beats fitted around it, and the whole move fits in its last 30 s
-                    val period = exit.grid.periodMs
-                    val start = (exit.swapMs - swap * period).toLong()
-                    val end = (start + length * period).toLong()
-                    if (start < windowStart || end > naturalEnd - 150L) continue
-                    val exitScore = exitScore(out, bars, exit.grid, exit.swapMs, end, naturalEnd, outLines, style) ?: continue
-                    val landing = pickLanding(style, out, inc, exit.swapMs, swap, period, tempo, locked, outVoice, inVoice, latestLanding) ?: continue
-                    val match = if (locked) beatMatch(inc!!, landing.timeMs, tempo!!, period, maxSpeedUp) else null
-                    if (!picked && style.needsBeatMatch && match == null) continue
-                    val inBeat = match?.inBeatMs ?: period
-                    // heard from the start of a blend, or from the hand-over for a drop; up to a bar of silent run-up before that, so the beat is locked before anyone hears it
-                    val heardFrom = if (style.entersAtEnd) length.toFloat() else 0f
-                    val heardMs = landing.timeMs + (heardFrom - swap) * inBeat
-                    if (heardMs < -1.0) continue
-                    val preRoll = min(4f, (heardMs / inBeat).toFloat()).coerceAtLeast(0f)
-                    val plan = CrossmixPlan(
-                        style = style,
-                        variation = variation,
-                        lengthBeats = length,
-                        swapBeat = swap,
-                        outStartMs = start,
-                        outBeatMs = period,
-                        inCueMs = landing.timeMs,
-                        inMediaPerBeat = inBeat,
-                        inSpeed = match?.inSpeed ?: 1f,
-                        outSpeed = match?.outSpeed ?: 1f,
-                        beatMatched = match != null,
-                        inStartBeat = heardFrom - preRoll,
-                    )
-                    val lengthFit = lengthFit(style, length, out, inc, keyClash)
-                    // two voices at once is the one thing a mix must never do: a clash scores a blend down so a shorter one or another spot wins, and failing that the voices get bands of their own
-                    var chosen = plan
-                    val found = vocalClash(plan, outVoice, inVoice, scratchOut, scratchIn)
-                    var clash = found.beats * ClashPerBeat
-                    if (clash > 0.08f && !style.entersAtEnd && style != CrossmixStyle.FarAway && style != CrossmixStyle.Dampen) {
-                        val yielding = plan.copy(yieldAmount = (found.sharedShare / 0.5f).coerceIn(0.35f, 1f))
-                        val yieldClash = vocalClash(yielding, outVoice, inVoice, scratchOut, scratchIn).beats * ClashPerBeat + YieldCost
-                        if (yieldClash < clash) {
-                            chosen = yielding
-                            clash = yieldClash
-                        }
-                    }
-                    candidates += Candidate(chosen, styleFit + bonus + exitScore + landing.score + lengthFit - clash)
-                }
-            }
-        }
-
         // the listener's own style first; when it can't play here (it needs a beat match these two don't have), the planner picks as usual
-        settings.style?.let { consider(it, picked = true) }
+        ctx.settings.style?.let { evaluateStyle(ctx, it, picked = true, candidates = candidates) }
         if (candidates.isEmpty()) {
             for (style in CrossmixStyle.entries) {
                 if (style.use == StyleUse.Flavour) continue
-                if (!settings.stunts && style.use != StyleUse.Everyday) continue
-                consider(style, picked = false)
+                if (!ctx.settings.stunts && style.use != StyleUse.Everyday) continue
+                evaluateStyle(ctx, style, picked = false, candidates = candidates)
             }
         }
-
-        if (candidates.isEmpty()) return noPlan()
+        if (candidates.isEmpty()) return null
         // best fit wins, a dead heat goes to the longer then earlier-listed style so the pick never depends on search order
         return candidates.maxWith(
             compareBy<Candidate> { it.score }
@@ -210,6 +196,78 @@ object CrossmixPlanner {
                 .thenByDescending { it.plan.style.ordinal }
                 .thenBy { it.plan.outStartMs }
         ).plan
+    }
+
+    /** every way this style could play between these two songs; a style the listener picked by hand is never scored out */
+    private fun evaluateStyle(
+        ctx: PlanningContext,
+        style: CrossmixStyle,
+        picked: Boolean,
+        candidates: MutableList<Candidate>,
+    ) {
+        val tempo = ctx.tempo
+        if (!picked && style.needsBeatMatch && tempo == null) return
+        // always mix keeps to the styles where both songs really play together; a style picked by hand still wins
+        if (ctx.settings.alwaysMix && !picked && !style.blendsBoth) return
+        var styleFit = styleFit(style, ctx.out, ctx.inc, tempo != null, ctx.keyDistance, ctx.outLines, ctx.naturalEnd, ctx.vocalPair)
+        if (picked) styleFit = max(styleFit, 0f) else if (styleFit <= -5f) return
+        val bonus = if (tempo == null && style == ctx.gesture) GestureBonus else 0f
+        // overlapping styles lock the beat when tempos allow, hand-over styles only need the next downbeat on the outgoing one's
+        val locked = tempo != null && (style.needsBeatMatch || !style.entersAtEnd)
+        val maxSpeedUp = ctx.settings.tempoMatch.maxSpeedUp
+        for (length in style.lengths) {
+            // overlaps stay short: long ones only for two calm songs that lock together, or when the listener asked for long
+            if (!style.entersAtEnd && !overlapFits(length, length * ctx.outGrid.periodMs, tempo != null, ctx.calmMatch, ctx.settings)) continue
+            val swap = style.swapAt(length)
+            for (exit in ctx.exits) {
+                // the hand-over sits on one of this song's bars, counted on the beats fitted around it, and the whole move fits in its last 30 s
+                val period = exit.grid.periodMs
+                val start = (exit.swapMs - swap * period).toLong()
+                val end = (start + length * period).toLong()
+                if (start < ctx.windowStart || end > ctx.naturalEnd - 150L) continue
+                val exitScore = exitScore(ctx.out, ctx.bars, exit.grid, exit.swapMs, end, ctx.naturalEnd, ctx.outLines, style) ?: continue
+                val landing = pickLanding(
+                    style, ctx.out, ctx.inc, exit.swapMs, swap, period, tempo, locked,
+                    ctx.outVoice, ctx.inVoice, ctx.latestLanding,
+                ) ?: continue
+                val match = if (locked) beatMatch(ctx.inc!!, landing.timeMs, tempo!!, period, maxSpeedUp) else null
+                if (!picked && style.needsBeatMatch && match == null) continue
+                val inBeat = match?.inBeatMs ?: period
+                // heard from the start of a blend, or from the hand-over for a drop; up to a bar of silent run-up before that, so the beat is locked before anyone hears it
+                val heardFrom = if (style.entersAtEnd) length.toFloat() else 0f
+                val heardMs = landing.timeMs + (heardFrom - swap) * inBeat
+                if (heardMs < -1.0) continue
+                val preRoll = min(4f, (heardMs / inBeat).toFloat()).coerceAtLeast(0f)
+                val plan = CrossmixPlan(
+                    style = style,
+                    variation = ctx.variation,
+                    lengthBeats = length,
+                    swapBeat = swap,
+                    outStartMs = start,
+                    outBeatMs = period,
+                    inCueMs = landing.timeMs,
+                    inMediaPerBeat = inBeat,
+                    inSpeed = match?.inSpeed ?: 1f,
+                    outSpeed = match?.outSpeed ?: 1f,
+                    beatMatched = match != null,
+                    inStartBeat = heardFrom - preRoll,
+                )
+                val lengthFit = lengthFit(style, length, ctx.out, ctx.inc, ctx.keyClash)
+                // two voices at once is the one thing a mix must never do: a clash scores a blend down so a shorter one or another spot wins, and failing that the voices get bands of their own
+                var chosen = plan
+                val found = vocalClash(plan, ctx.outVoice, ctx.inVoice, ctx.scratchOut, ctx.scratchIn)
+                var clash = found.beats * ClashPerBeat
+                if (clash > 0.08f && !style.entersAtEnd && style != CrossmixStyle.FarAway && style != CrossmixStyle.Dampen) {
+                    val yielding = plan.copy(yieldAmount = (found.sharedShare / 0.5f).coerceIn(0.35f, 1f))
+                    val yieldClash = vocalClash(yielding, ctx.outVoice, ctx.inVoice, ctx.scratchOut, ctx.scratchIn).beats * ClashPerBeat + YieldCost
+                    if (yieldClash < clash) {
+                        chosen = yielding
+                        clash = yieldClash
+                    }
+                }
+                candidates += Candidate(chosen, styleFit + bonus + exitScore + landing.score + lengthFit - clash)
+            }
+        }
     }
 
     /** where a song's voice is, 0..1: from synced lyrics if it has them, else the analyser's lead curve (a good guess), else a middling guess */

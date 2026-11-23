@@ -34,8 +34,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -62,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -87,16 +90,13 @@ import moe.rukamori.archivetune.constants.TransitionModeKey
 import moe.rukamori.archivetune.playback.crossmix.CrossmixStyle
 import moe.rukamori.archivetune.playback.crossmix.StyleUse
 import moe.rukamori.archivetune.ui.component.MarqueeText
-import moe.rukamori.archivetune.ui.component.PreferenceSelectionOption
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.screens.audiolab.ListenToAudioTap
 import moe.rukamori.archivetune.ui.screens.settings.components.YumaSettingsScaffold
-import moe.rukamori.archivetune.ui.screens.settings.components.segmentedSettingsItemShape
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
-import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
@@ -532,9 +532,11 @@ private fun CrossmixOptions(
     }
 }
 
-private data class StylePickerOption(
-    val key: String,
-    val label: String,
+private val StyleCategories: List<Pair<StyleUse, Int>> = listOf(
+    StyleUse.Everyday to R.string.crossmix_style_category_everyday,
+    StyleUse.Lift to R.string.crossmix_style_category_lift,
+    StyleUse.Fall to R.string.crossmix_style_category_fall,
+    StyleUse.Flavour to R.string.crossmix_style_category_flavour,
 )
 
 @Composable
@@ -557,12 +559,10 @@ private fun CrossmixStylePickerSheet(
     }
 
     val autoLabel = stringResource(R.string.crossmix_style_auto)
-    val options = remember(autoLabel) {
-        buildList {
-            add(StylePickerOption(CrossmixStyleAuto, autoLabel))
-            PinnableStyles.forEach { style ->
-                add(StylePickerOption(style.name, style.label))
-            }
+    val groupedStyles = remember {
+        StyleCategories.mapNotNull { (use, titleRes) ->
+            val styles = CrossmixStyle.entries.filter { it.use == use }
+            if (styles.isEmpty()) null else titleRes to styles
         }
     }
 
@@ -622,38 +622,106 @@ private fun CrossmixStylePickerSheet(
                     modifier = Modifier.padding(bottom = SettingsDimensions.BottomSheetTitleBottomPadding),
                 )
 
-                LazyColumn(
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = SettingsDimensions.BottomSheetListMaxHeight),
-                    verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SegmentedItemGap),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    itemsIndexed(
-                        items = options,
-                        key = { _, option -> option.key },
-                    ) { index, option ->
-                        val shape = remember(index, options.size) {
-                            segmentedSettingsItemShape(index, options.size)
-                        }
-                        val position = remember(index, options.size) {
-                            yumaSegmentPosition(index, options.size)
-                        }
-                        PreferenceSelectionOption(
-                            text = option.label,
-                            selected = selectedStyleName == option.key,
-                            shape = shape,
-                            position = position,
-                            modifier = Modifier.heightIn(min = 56.dp),
+                    item(
+                        key = CrossmixStyleAuto,
+                        span = { GridItemSpan(2) },
+                    ) {
+                        StyleGridTile(
+                            label = autoLabel,
+                            selected = selectedStyleName == CrossmixStyleAuto,
                             onClick = {
                                 hideSheet {
-                                    onSelect(option.key)
+                                    onSelect(CrossmixStyleAuto)
                                 }
                             },
                         )
                     }
+
+                    groupedStyles.forEach { (titleRes, styles) ->
+                        item(
+                            key = "header_$titleRes",
+                            span = { GridItemSpan(2) },
+                        ) {
+                            Text(
+                                text = stringResource(titleRes),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                            )
+                        }
+
+                        items(
+                            items = styles,
+                            key = { it.name },
+                        ) { style ->
+                            StyleGridTile(
+                                label = style.label,
+                                selected = selectedStyleName == style.name,
+                                onClick = {
+                                    hideSheet {
+                                        onSelect(style.name)
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StyleGridTile(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = LocalYumaColors.current
+    val tileShape = RoundedCornerShape(12.dp)
+    val backgroundColor = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+    } else {
+        colors.glassBackground
+    }
+    val borderColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        colors.glassBorder
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .yumaClickable(onClick = onClick)
+            .yumaGlassCard(
+                shape = tileShape,
+                backgroundColor = backgroundColor,
+                borderColor = borderColor,
+            )
+            .clip(tileShape)
+            .padding(horizontal = 10.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -743,12 +811,13 @@ private fun SegmentedOptionRow(
                             .yumaClickable { onSelect(index) }
                             .padding(horizontal = 6.dp),
                     ) {
-                        MarqueeText(
+                        Text(
                             text = label,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                             color = labelColor,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
