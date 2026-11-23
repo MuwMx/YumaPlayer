@@ -552,22 +552,31 @@ class CrossmixDirector(
     private suspend fun relaxTempo(session: Running) {
         val incoming = session.incoming
         val base = session.base
+        android.util.Log.i(Tag, "relaxTempo: start (idle=${session.inProcessor.idle}, speed=${incoming.playbackParameters.speed}, base=${base.speed})")
         // the renderer goes idle once its delay has eased back to nothing; it can't take longer
         // than this, but if it somehow does, step it out rather than hold up every later transition
         val deadline = System.currentTimeMillis() + 90_000L
         while (scope.isActive && !session.inProcessor.idle) {
-            if (incoming.currentMediaItemIndex == C.INDEX_UNSET) return
+            if (incoming.currentMediaItemIndex == C.INDEX_UNSET) {
+                android.util.Log.i(Tag, "relaxTempo: incoming INDEX_UNSET early return")
+                return
+            }
             if (System.currentTimeMillis() > deadline) {
+                android.util.Log.w(Tag, "relaxTempo: inProcessor.idle wait timeout after 90s, forcing finish()")
                 session.inProcessor.finish()
                 delay(1_000)
                 break
             }
             delay(500)
         }
+        android.util.Log.i(Tag, "relaxTempo: inProcessor.idle wait completed (idle=${session.inProcessor.idle}, active=${scope.isActive})")
         while (scope.isActive) {
             val current = incoming.playbackParameters
             // the listener changed the speed themselves: theirs wins
-            if (abs(current.speed - session.lastSetSpeed) > 0.0005f) break
+            if (abs(current.speed - session.lastSetSpeed) > 0.0005f) {
+                android.util.Log.i(Tag, "relaxTempo: listener speed change detected, breaking")
+                break
+            }
             val gap = base.speed - current.speed
             if (abs(gap) < 0.0005f) {
                 if (current.speed != base.speed || current.pitch != base.pitch) incoming.playbackParameters = base
@@ -581,12 +590,14 @@ class CrossmixDirector(
             delay((8 * session.plan.inMediaPerBeat / max(0.25f, nextSpeed)).toLong().coerceIn(1_000L, 8_000L))
         }
         session.tempoSettled = true
+        android.util.Log.i(Tag, "relaxTempo: tempo settled, calling finishSession()")
         finishSession(session)
     }
 
     private suspend fun releaseOutgoingWhenDone(session: Running) {
         val plan = session.plan
         val outgoing = session.outgoing
+        android.util.Log.i(Tag, "releaseOutgoingWhenDone: start (pos=${outgoing.currentPosition}, outReleaseMs=${plan.outReleaseMs})")
         while (scope.isActive && running === session && !session.released) {
             val ended = outgoing.playbackState == Player.STATE_ENDED ||
                 outgoing.playbackState == Player.STATE_IDLE ||
@@ -594,7 +605,11 @@ class CrossmixDirector(
             if (ended || outgoing.currentPosition >= plan.outReleaseMs) break
             delay(200)
         }
-        if (session.released) return
+        android.util.Log.i(Tag, "releaseOutgoingWhenDone: loop exit (active=${scope.isActive}, isRunning=${running === session}, released=${session.released}, pos=${outgoing.currentPosition}, state=${outgoing.playbackState})")
+        if (session.released) {
+            android.util.Log.i(Tag, "releaseOutgoingWhenDone: already released, returning")
+            return
+        }
         session.outProcessor.fadeOutNow()
         delay(90)
         session.released = true
@@ -602,6 +617,7 @@ class CrossmixDirector(
         host.onMixingChanged(false)
         letIncomingThrough(session)
         report("Mixed with ${plan.style.label}")
+        android.util.Log.i(Tag, "releaseOutgoingWhenDone: calling finishSession()")
         finishSession(session)
     }
 
@@ -609,6 +625,7 @@ class CrossmixDirector(
     private fun letIncomingThrough(session: Running) {
         val processor = session.inProcessor
         val beat = processor.currentBeat
+        android.util.Log.i(Tag, "letIncomingThrough: inIdle=${processor.idle}, currentBeat=$beat, swapBeat=${session.plan.swapBeat}")
         if (processor.idle || (!beat.isNaN() && beat >= session.plan.swapBeat)) return
         android.util.Log.w(Tag, "the next song was still held silent at beat $beat when the old one ended, letting it through")
         processor.finish()
@@ -616,9 +633,11 @@ class CrossmixDirector(
 
     /** a session is over once the outgoing player is gone and the tempo is the listener's again */
     private fun finishSession(session: Running) {
+        android.util.Log.i(Tag, "finishSession: isRunningSession=${running === session}, released=${session.released}, tempoSettled=${session.tempoSettled}")
         if (running !== session) return
         if (!session.released || !session.tempoSettled) return
         running = null
+        android.util.Log.i(Tag, "finishSession: session completed, calling schedule()")
         // the incoming song is the current one now; plan its own hand-over
         schedule()
     }

@@ -25,6 +25,7 @@ import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.playback.MusicService
 import moe.rukamori.archivetune.audiodsp.TrackAnalysisResult
 import moe.rukamori.archivetune.constants.PlaybackSource
+import moe.rukamori.archivetune.constants.TransitionMode
 import moe.rukamori.archivetune.playback.engine.flacCacheKey
 import moe.rukamori.archivetune.playback.engine.flacStreamCacheKey
 import moe.rukamori.archivetune.playback.engine.ytStreamCacheKey
@@ -122,13 +123,13 @@ internal fun MusicService.unregisterAllCacheListeners() {
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaItem: MediaItem?) {
-    if (mediaItem == null || !automixEnabled) return
+    if (mediaItem == null || !(automixEnabled || transitionMode == TransitionMode.CROSSMIX)) return
     val mediaId = mediaItem.mediaId.ifBlank { mediaItem.metadata?.id.orEmpty() }
     kickOffTrackAnalysis(mediaId, mediaItem)
 }
 
 internal fun MusicService.kickOffTrackAnalysis(mediaId: String, mediaItem: MediaItem? = null) {
-    if (mediaId.isBlank() || !automixEnabled) return
+    if (mediaId.isBlank() || !(automixEnabled || transitionMode == TransitionMode.CROSSMIX)) return
     if (SpotifyPlaceholders.isPlaceholder(mediaId)) return
     if (TrackAnalyzer.shouldThrottleKickOff(mediaId)) return
 

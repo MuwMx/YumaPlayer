@@ -95,8 +95,8 @@ object TrackAnalyzer : AnalysisStore {
             val result = toResult(cachedDb)
             if (result.contentEndTime in 1.0..35.0 && result.mixOutTime in 1.0..35.0) {
                 Timber.tag("TrackAnalyzer").w("Ignoring corrupted short analysis in Room for trackId=$trackId contentEnd=${result.contentEndTime}")
-            } else if (result.rawJson.isBlank() && result.bpm > 0.0) {
-                Timber.tag("TrackAnalyzer").w("Ignoring legacy DB entry without rawJson")
+            } else if (result.rawJson.isBlank() || result.bpm <= 0.0) {
+                Timber.tag("TrackAnalyzer").w("Ignoring corrupted DB entry without rawJson or BPM")
             } else {
                 Timber.tag("TrackAnalyzer").d("Room hit trackId=$trackId bpm=${result.bpm} mixOut=${result.mixOutTime}")
                 memoryCache[trackId] = result
@@ -326,6 +326,8 @@ object TrackAnalyzer : AnalysisStore {
                             Timber.tag("TrackAnalyzer").d("Analysing $trackId, PLAYBACK")
                         }
 
+                        Timber.tag("BPM_DEBUG").e("STARTING C++ ANALYSIS: track=$trackId")
+
                         analysisSemaphore.withPermit {
                             memoryCache[trackId]?.let { return@withPermit it }
 
@@ -348,6 +350,8 @@ object TrackAnalyzer : AnalysisStore {
                                 Timber.tag("TrackAnalyzer").w("Native analyze returned null/crashed trackId=$trackId samples=${headSamples.size}")
                                 return@withPermit null
                             }
+
+                            Timber.tag("BPM_DEBUG").e("C++ RETURNED: track=$trackId, bpm=${headResult.bpm}, jsonLength=${headResult.rawJson.length}")
 
                             val durationMs = if (durationSeconds != null && durationSeconds > 0.0) {
                                 (durationSeconds * 1000.0).roundToLong()
@@ -397,6 +401,8 @@ object TrackAnalyzer : AnalysisStore {
                             } else {
                                 cliffedResult
                             }
+
+                            Timber.tag("BPM_DEBUG").w("Track: $trackId, duration: $durationSeconds, isFullDurationKnown: $isFullDurationKnown, json length: ${sanitizedResult.rawJson.length}, has beats: ${sanitizedResult.rawJson.contains("\"beats\"")}")
 
                             Timber.tag("TrackAnalyzer").d(
                                 "Analysed $trackId in ${System.currentTimeMillis() - startedMs}ms " +

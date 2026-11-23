@@ -78,6 +78,7 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
     @Volatile private var finishing = false
     @Volatile private var fadingOut = false
     @Volatile private var firstRenderLogged = false
+    @Volatile private var lastRenderLogMs = 0L
     // the outgoing side, once its part is over, stays silent for good: whatever its clock does next
     @Volatile private var silenced = false
 
@@ -121,6 +122,7 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         clockCorrectionMs = 0.0
         targetDelayMs = 0.0
         firstRenderLogged = false
+        lastRenderLogMs = 0L
         this.script = script
         idle = false
         android.util.Log.i("Crossmix", "arm: role=${script.role}, style=${script.style}, anchorMs=${script.anchorMs}, lengthBeats=${script.lengthBeats}, supported=$supported, sampleRate=$sampleRate")
@@ -152,6 +154,7 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         silenced = false
         targetDelayMs = 0.0
         firstRenderLogged = false
+        lastRenderLogMs = 0L
         currentBeat = Float.NaN
     }
 
@@ -426,6 +429,15 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                 if (!firstRenderLogged) {
                     firstRenderLogged = true
                     android.util.Log.i("Crossmix", "render: clockValid=$clockValid, beat=$beat, gain=${params.gain}, role=${s.role}")
+                }
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastRenderLogMs >= 1000L) {
+                    lastRenderLogMs = now
+                    val role = s.role
+                    android.util.Log.i(
+                        "Crossmix",
+                        "render[1s]: role=$role, clockValid=$clockValid, beat=$beat, gain=${params.gain}, idle=$idle, silenced=$silenced, finishing=$finishing"
+                    )
                 }
                 if (!started) {
                     // first block: start the glides where the style is, so nothing sweeps in from defaults
