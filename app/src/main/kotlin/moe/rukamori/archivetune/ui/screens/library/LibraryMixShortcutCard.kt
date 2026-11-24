@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import moe.rukamori.archivetune.ui.navigation.containerTransformSource
@@ -74,15 +77,16 @@ fun ShortcutCard(
                     shape = RoundedCornerShape(SettingsDimensions.LibraryCardRadius),
                     position = YumaSegmentPosition.Single,
                 )
-                .padding(SettingsDimensions.SectionSpacing),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(SettingsDimensions.SectionSpacing),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(
                 modifier =
                     Modifier
-                        .size(SettingsDimensions.LibraryBadgeSize)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(SettingsDimensions.LibrarySmallRadius))
                         .background(iconBgColor),
                 contentAlignment = Alignment.Center,
@@ -94,16 +98,22 @@ fun ShortcutCard(
                     modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                 )
             }
-            Column {
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = countText,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

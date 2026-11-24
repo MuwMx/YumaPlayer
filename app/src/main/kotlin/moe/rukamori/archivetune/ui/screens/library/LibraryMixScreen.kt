@@ -6,7 +6,6 @@
 
 package moe.rukamori.archivetune.ui.screens.library
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,8 +43,6 @@ import moe.rukamori.archivetune.spotify.SpotifyPlaybackResolver
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.ui.screens.library.LibraryMixViewModel
-import moe.rukamori.archivetune.ui.screens.library.MostPlayedAlbumUiState
 
 @Composable
 fun LibraryMixScreen(
@@ -64,14 +60,10 @@ fun LibraryMixScreen(
     val database = LocalDatabase.current
 
     val likedSongsCount by database.likedSongsCount(LikeSource.YTM).collectAsState(initial = 0)
-    val recentSongs by database.recentSongs(15).collectAsState(initial = emptyList())
 
-    val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val mostPlayedAlbumUiState by viewModel.mostPlayedAlbumUiState.collectAsStateWithLifecycle()
-    val topMixesUiState by viewModel.topMixesUiState.collectAsStateWithLifecycle()
     val spotifyPlaylists by spotifyLibraryViewModel.playlists.collectAsStateWithLifecycle()
     val spotifyAccountState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
     val likedSongsTotal by spotifyLibraryViewModel.likedSongsTotal.collectAsStateWithLifecycle()
@@ -101,33 +93,6 @@ fun LibraryMixScreen(
                 emptyList()
             }
         }
-    val mostPlayedAlbum = (mostPlayedAlbumUiState as? MostPlayedAlbumUiState.Success)?.album
-    val playSpotlightAlbum: () -> Unit =
-        remember(mostPlayedAlbum?.tracks, playerConnection) {
-            {
-                mostPlayedAlbum?.let { album ->
-                    playerConnection.playQueue(
-                        ListQueue(items = album.tracks.map { it.toMediaItem() }),
-                    )
-                } ?: Toast.makeText(context, R.string.error_unknown, Toast.LENGTH_SHORT).show()
-            }
-        }
-    val shuffleSpotlightAlbum: () -> Unit =
-        remember(mostPlayedAlbum?.tracks, playerConnection) {
-            {
-                mostPlayedAlbum?.let { album ->
-                    playerConnection.playQueue(
-                        ListQueue(items = album.tracks.shuffled().map { it.toMediaItem() }),
-                    )
-                }
-            }
-        }
-
-    LaunchedEffect(viewModel) {
-        viewModel.topMixEvents.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
-    }
 
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -140,17 +105,6 @@ fun LibraryMixScreen(
             contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
             modifier = Modifier.fillMaxSize(),
         ) {
-            spotlightSection(
-                albumUiState = mostPlayedAlbumUiState,
-                onOpenAlbum = {
-                    mostPlayedAlbum?.let { album ->
-                        navController.navigate("album/${album.id}")
-                    }
-                },
-                onPlayAll = playSpotlightAlbum,
-                onShuffle = shuffleSpotlightAlbum,
-            )
-
             shortcutsSection(
                 likedSongsCount = likedSongsCount,
                 onOpenLiked = { navController.navigate("auto_playlist/liked") },
@@ -158,33 +112,6 @@ fun LibraryMixScreen(
                 onOpenCache = { navController.navigate("cache_playlist/cached") },
                 onOpenLocal = { navController.navigate("local_songs") },
             )
-
-            recentlyPlayedSection(
-                recentSongs = recentSongs,
-                onPlayRecent = { song ->
-                    playerConnection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
-                },
-            )
-
-            topMixesSection(
-                uiState = topMixesUiState,
-                onRefreshTopMixes = viewModel::refreshTopMixes,
-                onConfigureAi = { navController.navigate("settings/ai_integration") },
-                onPlayMix = { mix ->
-                    playerConnection.playQueue(
-                        ListQueue(
-                            items = mix.tracks.map { it.toMediaItem() },
-                        ),
-                    )
-                },
-            )
-
-            val playlistTagFilterContent = filterContent
-            if (playlistTagFilterContent != null) {
-                item(key = "playlist_tag_filters") {
-                    playlistTagFilterContent()
-                }
-            }
 
             // Playlists Row
             playlistsRowSection(

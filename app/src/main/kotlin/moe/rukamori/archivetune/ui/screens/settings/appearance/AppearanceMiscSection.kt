@@ -111,7 +111,6 @@ fun AppearanceMiscSection(
                     listOf(
                         LibraryFilter.LIBRARY,
                         LibraryFilter.PLAYLISTS,
-                        LibraryFilter.SONGS,
                         LibraryFilter.ALBUMS,
                         LibraryFilter.ARTISTS,
                     ),

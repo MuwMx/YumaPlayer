@@ -77,10 +77,8 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.LibraryFilter
-import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.db.entities.TagEntity
-import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.ui.component.LibraryFilterChipBar
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
@@ -91,37 +89,22 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun LibraryScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel(),
 ) {
     val defaultFilter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
     val database = LocalDatabase.current
     val (selectedTagIds, onSelectedTagIdsChange) = rememberPlaylistTagFilterState(database)
     val allTags by database.allTags().collectAsState(initial = emptyList())
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
-    val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = true)
     var showTagsManagementDialog by rememberSaveable { mutableStateOf(false) }
-    val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
     val activeSelectedTagIds = if (showTagsInLibrary) selectedTagIds else emptySet()
     val libraryFilters =
-        remember(showSpotifyPlaylists) {
-            if (showSpotifyPlaylists) {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SPOTIFY,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
-            } else {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
-            }
+        remember {
+            listOf(
+                LibraryFilter.LIBRARY,
+                LibraryFilter.PLAYLISTS,
+                LibraryFilter.ARTISTS,
+                LibraryFilter.ALBUMS,
+            )
         }
 
     if (showTagsManagementDialog) {
@@ -132,7 +115,7 @@ fun LibraryScreen(
 
     val pagerState =
         rememberPagerState(
-            initialPage = libraryFilters.indexOf(defaultFilter).takeIf { it >= 0 } ?: 0,
+            initialPage = libraryFilters.indexOf(defaultFilter).coerceAtLeast(0),
         ) { libraryFilters.size }
 
     val coroutineScope = rememberCoroutineScope()
@@ -162,8 +145,7 @@ fun LibraryScreen(
             LibraryCollapsingHeader(currentFilter = currentFilter, state = headerState)
 
             LaunchedEffect(defaultFilter, libraryFilters) {
-                val selectedFilter = defaultFilter.takeIf { it in libraryFilters } ?: LibraryFilter.LIBRARY
-                val selectedPage = libraryFilters.indexOf(selectedFilter).takeIf { it >= 0 } ?: 0
+                val selectedPage = libraryFilters.indexOf(defaultFilter).coerceAtLeast(0)
                 if (pagerState.currentPage != selectedPage) {
                     pagerState.scrollToPage(selectedPage)
                 }
@@ -246,21 +228,6 @@ fun LibraryScreen(
                         )
                     }
 
-                    LibraryFilter.SPOTIFY -> {
-                        LibrarySpotifyPlaylistsScreen(navController = navController)
-                    }
-
-                    LibraryFilter.SONGS -> {
-                        LibrarySongsScreen(
-                            navController = navController,
-                            onDeselect = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(0)
-                                }
-                            },
-                        )
-                    }
-
                     LibraryFilter.ARTISTS -> {
                         LibraryArtistsScreen(
                             navController = navController,
@@ -282,6 +249,8 @@ fun LibraryScreen(
                             },
                         )
                     }
+
+                    else -> Unit
                 }
             }
         }
