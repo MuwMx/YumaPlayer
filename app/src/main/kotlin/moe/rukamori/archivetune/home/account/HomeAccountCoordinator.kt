@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.auth.SwitchSavedYouTubeAccountUseCase
 import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
@@ -282,6 +283,7 @@ class HomeAccountCoordinator
                         .collect { cookie ->
                             try {
                                 val isLoggedIn = hasYouTubeLoginCookie(cookie)
+                                val isInitial = isInitialEmission
                                 val loginTransition = !isInitialEmission && isLoggedIn && !wasPreviouslyLoggedIn
                                 wasPreviouslyLoggedIn = isLoggedIn
                                 isInitialEmission = false
@@ -291,6 +293,11 @@ class HomeAccountCoordinator
                                         clearAccountData()
                                         notifyAuthCleared()
                                         return@collect
+                                    }
+
+                                    if (isInitial) {
+                                        SplashGate.awaitSplashDone(5000L)
+                                        delay(1500L)
                                     }
 
                                     supervisorScope {

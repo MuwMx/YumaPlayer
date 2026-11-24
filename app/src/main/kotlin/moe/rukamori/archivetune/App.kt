@@ -35,7 +35,6 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeLocale
 import moe.rukamori.archivetune.kugou.KuGou
 import moe.rukamori.archivetune.lastfm.LastFM
-import moe.rukamori.archivetune.lyrics.SharedLyricsEngine
 import moe.rukamori.archivetune.spotify.Spotify
 import moe.rukamori.archivetune.spotify.SpotifyGraphqlClient
 import moe.rukamori.archivetune.spotify.SpotifyHashDiscovery
@@ -58,7 +57,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class App :
     Application(),
     SingletonImageLoader.Factory {
-    @Inject internal lateinit var syncUtils: SyncUtils
+    @Inject internal lateinit var syncUtils: dagger.Lazy<SyncUtils>
     @Inject lateinit var deviceGraphicsClassifier: DeviceGraphicsClassifier
 
     internal val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -88,13 +87,15 @@ class App :
         }
         instance = this
         if (currentProcessName()?.endsWith(":crash") == true) {
-            Timber.plant(Timber.DebugTree())
+            if (BuildConfig.DEBUG) {
+                Timber.plant(Timber.DebugTree())
+            }
             return
         }
         BotGuardTokenGenerator.initialize(this)
         PreferenceStore.start(this)
-        Timber.plant(Timber.DebugTree())
         if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
             Timber.tag(moe.rukamori.archivetune.playback.PlaybackTiming.TAG).d("PROCESS_START tNs=$t0")
         }
         try {
@@ -118,7 +119,6 @@ class App :
             bearerToken = BuildConfig.CANVAS_BEARER_TOKEN,
             tidalToken = BuildConfig.CANVAS_TIDAL_TOKEN,
         )
-        SharedLyricsEngine.update()
 
         val locale = Locale.getDefault()
         val languageTag = locale.toLanguageTag().replace("-Hant", "")

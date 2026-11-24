@@ -9,6 +9,7 @@ import android.content.Intent
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -39,8 +40,9 @@ import kotlin.system.exitProcess
 internal fun App.initializeDeferredAsync() {
     applicationScope.launch(Dispatchers.IO) {
         try {
-            SplashGate.awaitSplashDone(3000L)
-            syncUtils.trySpotifyAutoSync()
+            SplashGate.awaitSplashDone(5000L)
+            delay(1500L)
+            syncUtils.get().trySpotifyAutoSync()
         } catch (e: Exception) {
             Timber.e(e, "Error restoring Spotify auto-sync on app startup")
         }
@@ -115,6 +117,7 @@ internal fun App.initializeDeferredAsync() {
     }
 
     applicationScope.launch(Dispatchers.IO) {
+        var isInitialDnsEmission = true
         dataStore.data
             .map {
                 Triple(
@@ -143,7 +146,11 @@ internal fun App.initializeDeferredAsync() {
                 } else {
                     YouTube.dns = Dns.SYSTEM
                 }
-                SharedLyricsEngine.update()
+                if (isInitialDnsEmission) {
+                    isInitialDnsEmission = false
+                } else {
+                    SharedLyricsEngine.update()
+                }
             }
     }
 
@@ -158,7 +165,11 @@ internal fun App.initializeDeferredAsync() {
                     YTPlayerUtils.clearPlaybackAuthCaches()
                     val newSessionId = authState.sessionId
                     if (!newSessionId.isNullOrBlank()) {
-                        BotGuardTokenGenerator.preWarm(newSessionId)
+                        applicationScope.launch(Dispatchers.IO) {
+                            SplashGate.awaitSplashDone(5000L)
+                            delay(2500L)
+                            BotGuardTokenGenerator.preWarm(newSessionId)
+                        }
                     }
                 }
             }

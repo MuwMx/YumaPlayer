@@ -28,9 +28,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.constants.BlurNavBarKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DefaultOpenTabKey
@@ -116,7 +118,11 @@ fun rememberScaffoldAppState(
     val useRail = isTvDevice || currentWindowAdaptiveInfo().windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     val updateViewModel: UpdateViewModel = hiltViewModel()
-    LaunchedEffect(updateChannel) { updateViewModel.forceCheck(updateChannel) }
+    LaunchedEffect(updateChannel) {
+        SplashGate.awaitSplashDone(5000L)
+        delay(2000L)
+        updateViewModel.checkUpdates(updateChannel)
+    }
     val updateState by updateViewModel.updateState.collectAsStateWithLifecycle()
 
     val coroutineScope = rememberCoroutineScope()

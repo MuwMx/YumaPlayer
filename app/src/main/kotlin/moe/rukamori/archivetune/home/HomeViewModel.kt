@@ -26,6 +26,7 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.aicontentfilter.FilterAiContentUseCase
 import moe.rukamori.archivetune.aicontentfilter.LoadAiContentFilterPolicyUseCase
 import moe.rukamori.archivetune.auth.SwitchSavedYouTubeAccountUseCase
@@ -422,6 +423,7 @@ constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
+            SplashGate.awaitSplashDone(5000L)
             delay(3000.milliseconds)
             syncUtils.cleanupDuplicatePlaylists()
         }

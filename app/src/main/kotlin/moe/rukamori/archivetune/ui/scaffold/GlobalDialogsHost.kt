@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.BuildConfig
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HasPressedStarKey
 import moe.rukamori.archivetune.constants.LaunchCountKey
@@ -213,7 +214,8 @@ fun BoxScope.GlobalDialogsHost(
         while (playerConnection == null) {
             delay(100.milliseconds)
         }
-        delay(500.milliseconds)
+        SplashGate.awaitSplashDone(5000L)
+        delay(2000L)
         if (
             System.currentTimeMillis() - Updater.lastCheckTime > 1.days.inWholeMilliseconds
         ) {
@@ -221,22 +223,24 @@ fun BoxScope.GlobalDialogsHost(
                 BuildConfig.VERSION_NAME.startsWith("canary.") ||
                     BuildConfig.NIGHTLY_BUILD_HASH.isNotBlank()
             val targetChannel = if (isCanary) UpdateChannel.DAILY_NIGHTLY else UpdateChannel.STABLE
-            val versionResult =
+            val releaseResult =
                 if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
-                    Updater.getLatestCanaryVersionName()
+                    Updater.getLatestCanaryReleaseInfo()
                 } else {
-                    Updater.getLatestVersionName()
+                    Updater.getLatestReleaseInfo()
                 }
-            versionResult.onSuccess {
-                if (Updater.isUpdateAvailable(it, BuildConfig.VERSION_NAME)) {
+            releaseResult.onSuccess { release ->
+                val versionName =
+                    if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
+                        Updater.getCanaryReleaseVersionName(release)
+                    } else {
+                        Updater.getReleaseVersionName(release)
+                    }
+                if (Updater.isUpdateAvailable(versionName, BuildConfig.VERSION_NAME)) {
                     latestUpdateChannel = targetChannel
-                    latestVersionName = it
-                    latestImageUrl =
-                        if (targetChannel == UpdateChannel.DAILY_NIGHTLY) {
-                            Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
-                        } else {
-                            Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
-                        }
+                    latestImageUrl = release.imageUrl
+                    releaseNotes = release.body
+                    latestVersionName = versionName
                 }
             }
         }
@@ -253,23 +257,6 @@ fun BoxScope.GlobalDialogsHost(
             latestUpdateChannel == expectedChannel &&
             Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
         ) {
-            val releaseNotesResult =
-                if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
-                    Updater.getLatestCanaryReleaseNotes()
-                } else {
-                    Updater.getLatestReleaseNotes()
-                }
-            releaseNotesResult.onSuccess {
-                releaseNotes = it
-            }.onFailure {
-                releaseNotes = null
-            }
-            latestImageUrl =
-                if (latestUpdateChannel == UpdateChannel.DAILY_NIGHTLY) {
-                    Updater.getLatestCanaryReleaseInfo().getOrNull()?.imageUrl
-                } else {
-                    Updater.getLatestReleaseInfo().getOrNull()?.imageUrl
-                }
             bottomSheetPageState.show(updateSheetContent)
         }
     }
