@@ -346,6 +346,8 @@ internal fun containerTransformKeyForEntry(entry: NavBackStackEntry): String? {
         "spotify_album/{albumId}",
         -> args.getString("albumId")?.let { "album-$it" }
 
+        "artist/{artistId}" -> args.getString("artistId")?.let { "artist-$it" }
+
         "online_playlist/{playlistId}",
         "local_playlist/{playlistId}",
         "spotify_playlist/{playlistId}",

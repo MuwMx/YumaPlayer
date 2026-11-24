@@ -68,6 +68,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.asScrollContract
 import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.ui.screens.artist.ArtistViewModel
@@ -129,7 +130,8 @@ fun ArtistScreen(
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val topPadding = systemBarsTopPadding + AppBarHeight
 
-    val thumbnail = uiState.artistPage?.artist?.thumbnail ?: uiState.libraryArtist?.artist?.thumbnailUrl
+    val fallbackCover = remember(viewModel.artistId) { containerTransformCover("artist-${viewModel.artistId}") }
+    val thumbnail = uiState.artistPage?.artist?.thumbnail ?: uiState.libraryArtist?.artist?.thumbnailUrl ?: fallbackCover
     val (gradientColors, gradientAlpha) =
         rememberArtistGradientState(
             thumbnailUrl = thumbnail,

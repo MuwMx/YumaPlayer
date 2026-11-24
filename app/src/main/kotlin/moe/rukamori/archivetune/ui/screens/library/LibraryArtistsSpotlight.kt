@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Artist
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.library.MostPlayedAlbumUiState
 
 fun LazyListScope.spotlightSection(
@@ -106,6 +107,10 @@ fun LazyListScope.artistsRowSection(
                             modifier =
                                 Modifier
                                     .width(80.dp)
+                                    .containerTransformSource(
+                                        key = "artist-${artist.id}",
+                                        coverUrl = artist.thumbnailUrl,
+                                    )
                                     .clickable {
                                         onOpenArtist(item)
                                     },

@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
@@ -51,6 +52,7 @@ internal fun LazyItemScope.OnlineSearchResultRow(
                     key =
                         when (item) {
                             is AlbumItem -> "album-${item.id}"
+                            is ArtistItem -> "artist-${item.id}"
                             is PlaylistItem -> "playlist-${item.id}"
                             else -> null
                         },

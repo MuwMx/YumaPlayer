@@ -84,6 +84,7 @@ internal fun YouTubeGridItemWrapper(
                     key =
                         when (item) {
                             is AlbumItem -> "album-${item.id}"
+                            is ArtistItem -> "artist-${item.id}"
                             is PlaylistItem -> "playlist-${item.id}"
                             else -> null
                         },
@@ -242,6 +243,10 @@ internal fun LocalGridItem(
                 modifier =
                     modifier
                         .fillMaxWidth()
+                        .containerTransformSource(
+                            key = "artist-${item.id}",
+                            coverUrl = item.artist.thumbnailUrl,
+                        )
                         .focusable()
                         .combinedClickable(
                             onClick = { navController.navigate("artist/${item.id}") },

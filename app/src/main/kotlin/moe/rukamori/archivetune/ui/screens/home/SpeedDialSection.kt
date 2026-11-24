@@ -382,12 +382,14 @@ fun SpeedDialSection(
                                             val transformKey =
                                                 when (localItem) {
                                                     is Album -> "album-${localItem.id}"
+                                                    is Artist -> "artist-${localItem.id}"
                                                     is Playlist -> "playlist-${localItem.id}"
                                                     else -> null
                                                 }
                                             val coverUrl =
                                                 when (localItem) {
                                                     is Album -> localItem.album.thumbnailUrl
+                                                    is Artist -> localItem.artist.thumbnailUrl
                                                     is Playlist -> localItem.thumbnails.firstOrNull()
                                                     else -> null
                                                 }

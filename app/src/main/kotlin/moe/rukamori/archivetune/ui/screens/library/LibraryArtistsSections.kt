@@ -53,6 +53,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistFilter
 import moe.rukamori.archivetune.constants.ArtistSortType
 import moe.rukamori.archivetune.db.entities.Artist
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -87,6 +88,11 @@ fun SpotlightSection(
                 Modifier
                     .weight(1.3f)
                     .fillMaxHeight()
+                    .containerTransformSource(
+                        key = topArtist?.let { "artist-${it.id}" },
+                        cornerRadius = SettingsDimensions.LibrarySheetRadius,
+                        coverUrl = topArtist?.artist?.thumbnailUrl,
+                    )
                     .yumaClickable(
                         pressedScale = SettingsAnimations.PressScale,
                         onClick = onOpenTopArtist,
@@ -426,6 +432,11 @@ fun ArtistGridCard(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = "artist-${artist.id}",
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                    coverUrl = artist.thumbnailUrl,
+                )
                 .yumaCombinedClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,
@@ -505,6 +516,10 @@ fun RecentArtistsRow(
                 modifier =
                     Modifier
                         .width(72.dp)
+                        .containerTransformSource(
+                            key = "artist-${artist.id}",
+                            coverUrl = artist.thumbnailUrl,
+                        )
                         .yumaClickable(
                             pressedScale = SettingsAnimations.PressScale,
                             onClick = { onArtistClick(artistWrapper) },

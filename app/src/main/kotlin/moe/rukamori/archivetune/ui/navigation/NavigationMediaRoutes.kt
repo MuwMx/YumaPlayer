@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
 
 private val ArtworkDetailPrefixes = listOf(
     "album/",
+    "artist/",
     "spotify_album/",
     "local_playlist/",
     "online_playlist/",
@@ -44,6 +45,7 @@ internal fun isArtworkDetailRoute(route: String?): Boolean {
     return ArtworkDetailPrefixes.any { cleanRoute.startsWith(it) } ||
             cleanRoute in setOf(
         "album/{albumId}",
+        "artist/{artistId}",
         "spotify_album/{albumId}",
         "local_playlist/{playlistId}",
         "online_playlist/{playlistId}",

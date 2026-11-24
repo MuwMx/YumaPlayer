@@ -181,6 +181,10 @@ internal fun LazyItemScope.LocalSearchArtistItem(
         artist = artist,
         modifier =
             Modifier
+                .containerTransformSource(
+                    key = "artist-${artist.id}",
+                    coverUrl = artist.artist.thumbnailUrl,
+                )
                 .clickable {
                     onDismiss()
                     navController.navigate("artist/${artist.id}")

@@ -63,6 +63,10 @@ fun LibraryArtistListItem(
     modifier =
         modifier
             .fillMaxWidth()
+            .containerTransformSource(
+                key = "artist-${artist.id}",
+                coverUrl = artist.artist.thumbnailUrl,
+            )
             .clickable {
                 navController.navigate("artist/${artist.id}")
             },
@@ -82,6 +86,10 @@ fun LibraryArtistGridItem(
     modifier =
         modifier
             .fillMaxWidth()
+            .containerTransformSource(
+                key = "artist-${artist.id}",
+                coverUrl = artist.artist.thumbnailUrl,
+            )
             .combinedClickable(
                 onClick = {
                     navController.navigate("artist/${artist.id}")

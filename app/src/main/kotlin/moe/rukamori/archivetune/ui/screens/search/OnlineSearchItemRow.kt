@@ -114,6 +114,7 @@ fun LazyItemScope.OnlineSearchItemRow(
                     key =
                         when (item) {
                             is AlbumItem -> "album-${item.id}"
+                            is ArtistItem -> "artist-${item.id}"
                             is PlaylistItem -> "playlist-${item.id}"
                             else -> null
                         },
