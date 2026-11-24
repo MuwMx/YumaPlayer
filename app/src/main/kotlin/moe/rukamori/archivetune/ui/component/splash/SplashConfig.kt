@@ -1,7 +1,6 @@
 package moe.rukamori.archivetune.ui.component.splash
 
 object SplashConfig {
-    var AUTO_BURST: Boolean = true
     var SLOTS_LOGO: Int = 28
     var SLOTS_BOLT: Int = 24
     var SLOTS_CROSS: Int = 24
@@ -40,7 +39,6 @@ object SplashConfig {
     }
 
     object Wave {
-        var FRAMES_TO_CROSS: Float = 65f
         var STROKE_WIDTH_DP: Float = 2.0f
         var FADE_END_RATIO: Float = 0.55f
         var FADE_POWER: Float = 2.0f
@@ -50,23 +48,19 @@ object SplashConfig {
         var SPRING_K_NORMAL: Float = 0.42f
         var SPRING_K_TRANSIT: Float = 0.48f
         var DAMPING_FORMING: Float = 0.80f
-        var DAMPING_BURST: Float = 0.985f
+        var DAMPING_BURST: Float = 0.965f
         var DAMPING_FREE: Float = 0.972f
 
         var SPEED_CLAMP_FORMING: Float = 20f
-        var SPEED_CLAMP_BURST: Float = 45f
+        var SPEED_CLAMP_BURST: Float = 48f
         var SPEED_CLAMP_TRANSIT: Float = 15f
         var SPEED_CLAMP_PROCESSING: Float = 10f
         var SPEED_CLAMP_FREE: Float = 9f
 
-        var FORM_CROSS: Float = 0.85f
         var FORM_GATHER: Float = 0.15f
-        var DAMP_ON_RESHAPE: Float = 0.65f
-        var DAMP_ON_REGATHER: Float = 0.5f
         var SWIRL_FACTOR: Float = 0.14f
         var SWIRL_MIN_DIST: Float = 8f
         var BURST_DEPTH_DAMP_FACTOR: Float = 0.018f
-
         var wD: Float = 0.055f
         var gD: Float = 0.05f
         var vD: Float = 0.0022f
@@ -80,33 +74,21 @@ object SplashConfig {
     }
 
     object Burst {
-        var EXPLODE_POWER: Float = 13.5f
+        var EXPLODE_POWER: Float = 17f
         var MEMBER_BOOST: Float = 1.6f
         var FLOATER_BOOST: Float = 0.85f
-        var SCALE_GROWTH: Float = 0.25f
-        var LINK_FADE_MULT: Float = 2.5f
+        var SCALE_GROWTH: Float = 0.3f
+        var LINK_FADE_MULT: Float = 2.8f
         var POST_BURST_FRAMES: Int = 130
 
-        var SHOCKWAVE_SPEED: Float = 20f
         var SHOCKWAVE_RADIUS_FACTOR: Float = 1.2f
-        var SHOCKWAVE_ALPHA_BOLT: Float = 0.75f
-        var SHOCKWAVE_ALPHA_CROSS: Float = 0.85f
         var SHOCKWAVE_ALPHA_BURST: Float = 1.0f
-
-        var SCREEN_FLASH_BURST: Float = 0.18f
-        var SCREEN_FLASH_IGNITE: Float = 0.08f
-        var SCREEN_FLASH_DECAY: Float = 0.012f
-
-        var SNAP_SCALE: Float = 0.85f
-        var SNAP_MS: Float = 40f
     }
 
     object Effects {
         var PULSE_WAVE_SPEED: Float = 0.32f
         var STAR_STAGGER_MS: Float = 60f
         var STAR_STAGGER_SHORT_MS: Float = 34f
-        var STAR_SIZE_DP: Float = 24f
-        var PINCH_FACTOR: Float = 0.14f
 
         var SWING_ANGLE_DEG: Float = 3.6f
         var SWING_SPEED: Float = 1.6f
@@ -128,7 +110,6 @@ object SplashConfig {
             var RAW_ALPHA_FACTOR: Float = 0.72f
             var WAVE_DIST_FACTOR: Float = 0.12f
             var WAVE_BOOST_BIN: Float = 0.4f
-            var WAVE_BOOST_ALPHA: Float = 0.9f
             var WAVE_BOOST_WIDTH: Float = 1.6f
         }
 
@@ -152,7 +133,6 @@ object SplashConfig {
             var FLOATER_ALPHA_BASE: Float = 0.4f
             var GLOW_MIX_BASE: Float = 0.45f
             var GLOW_MIX_FACTOR: Float = 0.55f
-            var FAIL_GLOW_THRESHOLD: Float = 0.4f
             var CORE_WAVE_BOOST_THRESHOLD: Float = 0.12f
         }
 

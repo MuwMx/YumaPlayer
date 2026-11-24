@@ -150,7 +150,7 @@ class SplashRenderer {
             rotate(degrees = swingDeg, pivot = center) {
                 scale(scale = breathScale, pivot = center) {
                     drawFormationLinks(engine, contentColor)
-                    drawParticles(engine, isDark, contentColor)
+                    drawParticles(engine, contentColor)
                     if (engine.phase == "ignite") {
                         drawIgnite(engine, isDark, contentColor, primaryColor)
                     }
@@ -300,7 +300,6 @@ class SplashRenderer {
 
     fun DrawScope.drawParticles(
         engine: SplashEngine,
-        isDark: Boolean = true,
         contentColor: Color = Color.White
     ) {
         val particles = engine.particles
@@ -478,16 +477,16 @@ class SplashRenderer {
     ) {
         val sw = shockwave ?: return
         if (sw.radius <= 0f || sw.maxRadius <= 0f) return
-        val fadeLimit = (sw.maxRadius * SplashConfig.Wave.FADE_END_RATIO).coerceAtLeast(1f)
-        val progress = (sw.radius / fadeLimit).coerceIn(0f, 1f)
-        val fade = (1f - progress).pow(SplashConfig.Wave.FADE_POWER)
+        val t = (sw.elapsedMs / sw.durationMs).coerceIn(0f, 1f)
+        val fade = (1f - t).pow(SplashConfig.Wave.FADE_POWER)
         val effectiveAlpha = (sw.alpha * fade).coerceIn(0f, 1f)
         if (effectiveAlpha <= SplashConfig.Look.Cutoffs.PARTICLE_ALPHA) return
+        val strokePx = (0.8f + (1f - t) * 2.4f) * density
         drawCircle(
             color = color.copy(alpha = effectiveAlpha),
             radius = sw.radius,
             center = Offset(sw.x, sw.y),
-            style = shockwaveStroke,
+            style = Stroke(width = strokePx),
         )
     }
 
@@ -498,7 +497,7 @@ class SplashRenderer {
     ) {
         if (engine.currentPhase != SplashPhase.Burst || engine.phaseElapsedMs > SplashConfig.Look.Flash.DURATION_MS) return
         val progress = (engine.phaseElapsedMs / SplashConfig.Look.Flash.DURATION_MS).coerceIn(0f, 1f)
-        val alpha = SplashConfig.Look.Flash.MAX_ALPHA * (1f - progress)
+        val alpha = SplashConfig.Look.Flash.MAX_ALPHA * (1f - progress).pow(3)
         if (alpha <= SplashConfig.Look.Cutoffs.FLASH_ALPHA) return
         val radius = flashRadiusPx
         val flashColor = if (isDark) Color.White else primaryColor

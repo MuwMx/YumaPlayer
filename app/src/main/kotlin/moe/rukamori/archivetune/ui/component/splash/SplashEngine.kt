@@ -3,7 +3,6 @@ package moe.rukamori.archivetune.ui.component.splash
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.hypot
 import kotlin.math.min
-import kotlin.math.sin
 
 class SplashEngine {
     val particles = ArrayList<SplashParticle>(MAX_MEMBERS)
@@ -154,7 +153,19 @@ class SplashEngine {
             SplashPhase.Ignite -> {
                 formStrength = 1f
                 val igniteLimit = if (isShort) SplashConfig.Timings.IGNITE_SHORT_MS else SplashConfig.Timings.IGNITE_FULL_MS
-                gleamProgress = (phaseElapsedMs / igniteLimit).coerceIn(0f, 1f)
+                val igniteProgress = (phaseElapsedMs / igniteLimit).coerceIn(0f, 1f)
+                gleamProgress = (igniteProgress / 0.75f).coerceIn(0f, 1f)
+                val pinchT = ((igniteProgress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                val pinch = 1f - (pinchT * pinchT) * 0.18f
+                val c = SplashSlots.center(width, height)
+                for (i in particles.indices) {
+                    val p = particles[i]
+                    if (p.isMember && p.slotIndex in slots.indices) {
+                        val baseSlot = slots[p.slotIndex]
+                        p.targetX = c.x + (baseSlot.x - c.x) * pinch
+                        p.targetY = c.y + (baseSlot.y - c.y) * pinch
+                    }
+                }
                 if (phaseElapsedMs >= igniteLimit) {
                     setPhase(SplashPhase.Burst)
                 }
@@ -162,8 +173,9 @@ class SplashEngine {
             SplashPhase.Burst -> {
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
+                val easeOut = 1f - (1f - progress) * (1f - progress) * (1f - progress)
                 val fade = (1f - progress) * (1f - progress)
-                particleScale = (1f - progress * 0.25f).coerceAtLeast(0.5f)
+                particleScale = 1f + easeOut * SplashConfig.Burst.SCALE_GROWTH
                 particleAlpha = fade.coerceIn(0f, 1f)
                 formStrength = (1f - progress * SplashConfig.Burst.LINK_FADE_MULT).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= burstLimit) {
@@ -188,11 +200,13 @@ class SplashEngine {
         }
 
         shockwave?.let { sw ->
-            val newR = sw.radius + sw.maxRadius / SplashConfig.Wave.FRAMES_TO_CROSS * step
-            if (newR >= sw.maxRadius * SplashConfig.Wave.FADE_END_RATIO) {
+            sw.elapsedMs += dt * 1000f
+            val t = (sw.elapsedMs / sw.durationMs).coerceIn(0f, 1f)
+            if (t >= 1f) {
                 shockwave = null
             } else {
-                sw.radius = newR
+                val eased = 1f - (1f - t) * (1f - t)
+                sw.radius = sw.maxRadius * SplashConfig.Wave.FADE_END_RATIO * eased
             }
         }
 

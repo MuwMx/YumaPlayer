@@ -10,21 +10,19 @@ fun SplashEngine.explode(
     memberBoost: Boolean = true
 ) {
     postBurstFrames = SplashConfig.Burst.POST_BURST_FRAMES
-    val box = SplashSlots.boxSize(shape, width, height, density).coerceAtLeast(1f)
     for (i in particles.indices) {
         val p = particles[i]
-        val dx = center.x - p.x
-        val dy = center.y - p.y
+        val dx = p.x - center.x
+        val dy = p.y - center.y
         val dist = hypot(dx, dy) + 0.1f
         val nx = dx / dist
         val ny = dy / dist
-        val centerRatio = (dist / (box * 0.5f)).coerceIn(0f, 1f)
-        val dir = if (centerRatio < 0.28f) -0.35f else 1f
-        val mult = if (memberBoost && p.isMember) 0.35f else 0.2f
-        val m = power * mult * (0.6f + Random.nextFloat() * 0.6f) * (0.4f + centerRatio * 0.6f)
-        val swirl = (Random.nextFloat() - 0.5f) * 1.8f
-        p.vx = nx * m * dir - ny * swirl
-        p.vy = ny * m * dir + nx * swirl
+        val mult = if (memberBoost && p.isMember) SplashConfig.Burst.MEMBER_BOOST else SplashConfig.Burst.FLOATER_BOOST
+        val depthScale = 0.8f + p.depth * 0.45f
+        val m = power * mult * depthScale * (0.7f + Random.nextFloat() * 0.7f)
+        val swirl = (Random.nextFloat() - 0.5f) * m * 0.12f
+        p.vx = nx * m - ny * swirl
+        p.vy = ny * m + nx * swirl
     }
 }
 
