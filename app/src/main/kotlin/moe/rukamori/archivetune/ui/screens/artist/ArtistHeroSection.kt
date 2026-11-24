@@ -116,7 +116,7 @@ fun ArtistHeroContent(
                 .padding(top = topPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.height(expandedHeight * 0.6f))
+        Spacer(modifier = Modifier.height(expandedHeight * 0.36f))
 
         // Artist Name
         Text(

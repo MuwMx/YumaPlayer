@@ -19,21 +19,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -42,7 +39,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -138,48 +134,21 @@ fun YumaMorphingHeader(
             )
 
             if (type.showBottomGradient) {
-                val immersiveAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
-                if (!disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && immersiveAlpha > 0.01f) {
-                    AsyncImage(
-                        model = if (type == HeaderType.ARTIST) {
-                            imageUrl?.resize(1080, 1080).orEmpty()
-                        } else {
-                            imageUrl.orEmpty()
-                        },
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = immersiveAlpha
-                                compositingStrategy = CompositingStrategy.Offscreen
-                                renderEffect = BlurEffectCache.get(28f)
-                            }
-                            .drawWithContent {
-                                drawContent()
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        0.55f to Color.Transparent,
-                                        0.85f to Color.Black,
-                                        1.0f to Color.Black,
-                                    ),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            }
-                    )
-                }
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(138.dp)
                         .align(Alignment.BottomCenter)
-                        .graphicsLayer { alpha = immersiveAlpha }
+                        .graphicsLayer {
+                            alpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                            if (!disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                renderEffect = BlurEffectCache.get(20f)
+                            }
+                        }
                         .background(
                             Brush.verticalGradient(
                                 0.0f to Color.Transparent,
-                                0.55f to surfaceColor.copy(alpha = 0.7f),
+                                0.45f to surfaceColor.copy(alpha = 0.75f),
                                 1.0f to surfaceColor
                             )
                         )
@@ -201,30 +170,6 @@ fun YumaMorphingHeader(
 }
 
 
-
-/**
- * Единый расчет сжатия шапки с быстрой и отзывчивой динамикой (как на экране артиста).
- */
-@Composable
-fun rememberCollapseFraction(
-    lazyListState: LazyListState,
-    maxScrollDistance: Dp = 420.dp // Дистанция быстрого схлопывания с артиста
-): State<Float> {
-    val density = LocalDensity.current
-    return remember(lazyListState, maxScrollDistance) {
-        derivedStateOf {
-            val maxScrollPx = with(density) { maxScrollDistance.toPx() }
-            if (maxScrollPx <= 0f) {
-                1f
-            } else if (lazyListState.firstVisibleItemIndex > 0) {
-                1f
-            } else {
-                (lazyListState.firstVisibleItemScrollOffset / maxScrollPx).coerceIn(0f, 1f)
-            }
-        }
-    }
-}
-
 private val EaseOutQuint = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private const val BREAKAWAY_THRESHOLD = 0.33f
 private const val RUBBER_BAND_FACTOR = 0.5f
@@ -239,7 +184,7 @@ class ArtistHeaderMorphState(
     private val view: android.view.View,
     private val coroutineScope: CoroutineScope,
 ) {
-    private val pullOffset = Animatable(0f)
+    private var pullPx by mutableFloatStateOf(0f)
     private val expandAnimator = Animatable(0f)
     var isPulledDown by mutableStateOf(false)
         private set
@@ -256,7 +201,7 @@ class ArtistHeaderMorphState(
 
     private val immersiveValue by derivedStateOf {
         val pullProgress = if (maxPullPx > 0f) {
-            (pullOffset.value / maxPullPx).coerceIn(0f, BREAKAWAY_THRESHOLD)
+            (pullPx / maxPullPx).coerceIn(0f, BREAKAWAY_THRESHOLD)
         } else {
             0f
         }
@@ -274,7 +219,9 @@ class ArtistHeaderMorphState(
         }
     }
 
-    val contentTranslationY: Float = 0f
+    val contentTranslationY: Float by derivedStateOf {
+        immersiveValue * extraExpandPx
+    }
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -282,62 +229,38 @@ class ArtistHeaderMorphState(
                 lazyListState.firstVisibleItemScrollOffset == 0
 
             if (available.y > 0f) {
-                if (!isAtTop || source != NestedScrollSource.UserInput) {
+                if (!isAtTop || source != NestedScrollSource.UserInput || isPulledDown || maxPullPx <= 0f) {
                     return Offset.Zero
                 }
-                if (!isPulledDown && maxPullPx > 0f) {
-                    val delta = available.y * RUBBER_BAND_FACTOR
-                    val nextPull = (pullOffset.value + delta).coerceIn(0f, maxPullPx)
-                    val expandProgress = (nextPull / maxPullPx).coerceIn(0f, 1f)
-                    if (expandProgress >= BREAKAWAY_THRESHOLD) {
-                        isPulledDown = true
-                        runCatching {
-                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        }
-                        coroutineScope.launch {
-                            pullOffset.snapTo(nextPull)
-                            expandAnimator.snapTo(expandProgress)
-                            expandAnimator.animateTo(
-                                targetValue = 1f,
-                                animationSpec = tween(
-                                    durationMillis = if (animationsDisabled) 0 else 250,
-                                    easing = EaseOutQuint,
-                                ),
-                            )
-                        }
-                    } else {
-                        coroutineScope.launch {
-                            pullOffset.snapTo(nextPull)
-                        }
+                val nextPull = (pullPx + available.y * RUBBER_BAND_FACTOR).coerceIn(0f, maxPullPx)
+                pullPx = nextPull
+                val expandProgress = (nextPull / maxPullPx).coerceIn(0f, 1f)
+                if (expandProgress >= BREAKAWAY_THRESHOLD) {
+                    isPulledDown = true
+                    runCatching {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     }
-                    return Offset(0f, available.y)
+                    coroutineScope.launch {
+                        expandAnimator.snapTo(expandProgress)
+                        expandAnimator.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(
+                                durationMillis = if (animationsDisabled) 0 else 250,
+                                easing = EaseOutQuint,
+                            ),
+                        )
+                    }
                 }
-                return if (isPulledDown) Offset(0f, available.y) else Offset.Zero
+                return Offset(0f, available.y)
             }
 
             if (available.y < 0f) {
-                if (!isPulledDown && pullOffset.value == 0f) {
+                if (isPulledDown) {
+                    collapseImmersive()
                     return Offset.Zero
                 }
-                if (isPulledDown) {
-                    val nextPull = (pullOffset.value + available.y).coerceAtLeast(0f)
-                    val expandProgress = if (maxPullPx > 0f) (nextPull / maxPullPx).coerceIn(0f, 1f) else 0f
-                    if (expandProgress < BREAKAWAY_THRESHOLD) {
-                        collapseImmersive()
-                    } else {
-                        coroutineScope.launch {
-                            pullOffset.snapTo(nextPull)
-                        }
-                    }
-                    return Offset(0f, available.y)
-                } else {
-                    val currentPull = pullOffset.value
-                    val nextPull = (currentPull + available.y).coerceAtLeast(0f)
-                    val consumedY = nextPull - currentPull
-                    coroutineScope.launch {
-                        pullOffset.snapTo(nextPull)
-                    }
-                    return Offset(0f, consumedY)
+                if (pullPx > 0f) {
+                    pullPx = (pullPx + available.y).coerceAtLeast(0f)
                 }
             }
 
@@ -346,53 +269,23 @@ class ArtistHeaderMorphState(
 
         override suspend fun onPreFling(available: Velocity): Velocity {
             if (isPulledDown) {
-                if (available.y < -500f) {
+                if (available.y < -300f) {
                     collapseImmersive()
-                    return Velocity(0f, available.y)
-                }
-                if (expandAnimator.value < 1f) {
-                    expandAnimator.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(
-                            durationMillis = if (animationsDisabled) 0 else 250,
-                            easing = EaseOutQuint,
-                        ),
-                    )
                 }
                 return Velocity.Zero
             }
 
-            if (pullOffset.value > 0f) {
-                pullOffset.animateTo(
+            if (pullPx > 0f) {
+                val anim = Animatable(pullPx)
+                anim.animateTo(
                     targetValue = 0f,
                     animationSpec = tween(
                         durationMillis = if (animationsDisabled) 0 else 250,
                         easing = EaseOutQuint,
                     ),
-                )
-                return if (available.y > 0f) Velocity(0f, available.y) else Velocity.Zero
-            }
-
-            return Velocity.Zero
-        }
-
-        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-            if (!isPulledDown && pullOffset.value > 0f) {
-                pullOffset.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = if (animationsDisabled) 0 else 250,
-                        easing = EaseOutQuint,
-                    ),
-                )
-            } else if (isPulledDown && expandAnimator.value < 1f && !expandAnimator.isRunning) {
-                expandAnimator.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = if (animationsDisabled) 0 else 250,
-                        easing = EaseOutQuint,
-                    ),
-                )
+                ) {
+                    pullPx = value
+                }
             }
             return Velocity.Zero
         }
@@ -400,6 +293,7 @@ class ArtistHeaderMorphState(
 
     private fun collapseImmersive() {
         isPulledDown = false
+        pullPx = 0f
         runCatching {
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
@@ -409,9 +303,6 @@ class ArtistHeaderMorphState(
         )
         coroutineScope.launch {
             expandAnimator.animateTo(0f, spec)
-        }
-        coroutineScope.launch {
-            pullOffset.animateTo(0f, spec)
         }
     }
 }
@@ -425,7 +316,7 @@ fun rememberArtistHeaderMorphState(
     val view = LocalView.current
     val coroutineScope = rememberCoroutineScope()
     val screenWidthPx = LocalWindowInfo.current.containerSize.width.toFloat()
-    val extraExpandPx = screenWidthPx * HeaderType.ARTIST.heightRatio * 0.4f
+    val extraExpandPx = screenWidthPx * HeaderType.ARTIST.heightRatio * 0.24f
     val maxPullPx = with(density) { 160.dp.toPx() }
     val collapseDistancePx = with(density) { 240.dp.toPx() }
 
