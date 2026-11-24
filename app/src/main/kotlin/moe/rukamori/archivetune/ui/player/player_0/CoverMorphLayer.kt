@@ -54,10 +54,8 @@ import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
-import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 
 internal val LocalCoverMorphState = staticCompositionLocalOf<CoverMorphState?> { null }
@@ -217,6 +215,14 @@ internal fun rememberCoverMorphState(
     return morphState
 }
 
+private fun sideEdgeFade(p: Float): Float = when {
+    p <= 0f -> 0f
+    p < 0.28f -> (p / 0.28f).coerceIn(0f, 1f)
+    p <= 0.55f -> 1f
+    p < 0.90f -> (1f - (p - 0.55f) / 0.35f).coerceIn(0f, 1f)
+    else -> 0f
+}
+
 private class MorphRoundedRectShape : Shape {
     var cornerRadiusPx: Float = 0f
 
@@ -361,8 +367,8 @@ internal fun CoverMorphLayer(
                     val easedAlign = FastOutSlowInEasing.transform(alignT)
                     rotationZ = norm * (1f - easedAlign)
 
-                    val sideFade = sin(p * PI.toFloat()).coerceIn(0f, 1f)
-                    val bottomFade = if (immersive) p else 0f
+                    val sideFade = sideEdgeFade(p)
+                    val bottomFade = if (immersive) ((p - 0.5f) / 0.45f).coerceIn(0f, 1f) else 0f
                     compositingStrategy = if (sideFade > 0.001f || bottomFade > 0.001f) {
                         CompositingStrategy.Offscreen
                     } else {
@@ -374,15 +380,14 @@ internal fun CoverMorphLayer(
                     drawContent()
 
                     val p = morphState.expansionFraction().coerceIn(0f, 1f)
-                    val sideFade = sin(p * PI.toFloat()).coerceIn(0f, 1f)
+                    val sideFade = sideEdgeFade(p)
                     if (sideFade > 0.001f) {
-                        val edgeAlpha = sideFade * 0.35f
                         drawRect(
                             brush = Brush.horizontalGradient(
-                                0.0f to Color.Black.copy(alpha = edgeAlpha),
-                                0.12f to Color.Transparent,
-                                0.88f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = edgeAlpha),
+                                0.0f to Color.Black.copy(alpha = sideFade),
+                                0.20f to Color.Transparent,
+                                0.80f to Color.Transparent,
+                                1.0f to Color.Black.copy(alpha = sideFade),
                                 startX = 0f,
                                 endX = size.width,
                             ),
@@ -390,13 +395,16 @@ internal fun CoverMorphLayer(
                         )
                     }
 
-                    if (morphState.isImmersive() && p > 0.001f) {
+                    val bottomFade = if (morphState.isImmersive()) {
+                        ((p - 0.5f) / 0.45f).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    if (bottomFade > 0.001f) {
                         drawRect(
                             brush = Brush.verticalGradient(
-                                0.0f to Color.Transparent,
-                                0.45f to Color.Transparent,
-                                0.75f to Color.Black.copy(alpha = 0.6f * p),
-                                1.0f to Color.Black.copy(alpha = p),
+                                0.80f to Color.Transparent,
+                                1.0f to Color.Black.copy(alpha = bottomFade),
                                 startY = 0f,
                                 endY = size.height,
                             ),

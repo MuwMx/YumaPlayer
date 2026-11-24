@@ -135,7 +135,9 @@ fun UnifiedPlayerSheetV2(
             isReady = state.isReady,
             isImmersive = { state.isImmersiveEnabled },
             expansionFraction = { motionScope.expansionFraction.value },
-            collapsedYProvider = { motionScope.collapsedY },
+            collapsedYProvider = remember(motionScope, dropState, density) {
+                { motionScope.collapsedY + with(density) { dropState.slideOffset.toPx() } }
+            },
             collapsedHorizontalInsetPx = with(density) { collapsedHorizontalInset.toPx() },
             screenWidthPx = motionScope.screenWidthPx,
             screenHeightPx = motionScope.screenHeightPx,

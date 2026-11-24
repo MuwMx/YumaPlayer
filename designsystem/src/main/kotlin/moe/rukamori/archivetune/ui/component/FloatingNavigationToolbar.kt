@@ -103,6 +103,8 @@ fun FloatingNavigationToolbar(
         label = "FloatingToolbarVisibility",
     )
 
+    if (animatedVisibilityFactor <= 0.01f) return
+
     val gestureState = rememberNavigationBarGestureState(
         items = items,
         isSelected = isSelected,

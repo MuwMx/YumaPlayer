@@ -7,8 +7,10 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.ui.player.host.PlayerDockGeometry
 import moe.rukamori.archivetune.ui.player.player_0.scoped.FullPlayerVisualState
@@ -42,6 +45,11 @@ import moe.rukamori.archivetune.ui.player.player_0.scoped.rememberSheetVisualSta
 import moe.rukamori.archivetune.ui.state.PlayerSheetState
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.YdsInsets
+
+private val TapSheetAnimationSpec: AnimationSpec<Float> = spring(
+    dampingRatio = 0.92f,
+    stiffness = 240f,
+)
 
 @Stable
 internal class PlayerSheetMotionScope(
@@ -74,7 +82,11 @@ internal class PlayerSheetMotionScope(
     val handleCloseQueue: () -> Unit,
     val onOpenQueue: () -> Unit,
     val onCloseQueueClick: () -> Unit,
+    private val animationsDisabled: Boolean = false,
 ) {
+    private val tapAnimationSpec: AnimationSpec<Float>
+        get() = if (animationsDisabled) snap() else TapSheetAnimationSpec
+
     var currentSheetState: PlayerSheetState
         get() = currentSheetStateState.value
         set(value) {
@@ -98,7 +110,7 @@ internal class PlayerSheetMotionScope(
             if (isSheetSettlingState.value) return@launch
             isSheetSettlingState.value = true
             try {
-                motionController.animateTo(false, true, collapsedY)
+                motionController.animateTo(false, true, collapsedY, animationSpec = tapAnimationSpec)
                 currentSheetState = PlayerSheetState.COLLAPSED
             } finally {
                 isSheetSettlingState.value = false
@@ -111,7 +123,7 @@ internal class PlayerSheetMotionScope(
             if (isSheetSettlingState.value) return@launch
             isSheetSettlingState.value = true
             try {
-                motionController.animateTo(true, true, collapsedY)
+                motionController.animateTo(true, true, collapsedY, animationSpec = tapAnimationSpec)
                 currentSheetState = PlayerSheetState.EXPANDED
             } finally {
                 isSheetSettlingState.value = false
@@ -135,6 +147,7 @@ internal fun rememberPlayerSheetMotionScope(
     onCloseQueueClick: () -> Unit,
 ): PlayerSheetMotionScope {
     val currentState by rememberUpdatedState(state)
+    val animationsDisabled = LocalAnimationsDisabled.current
     val currentOnExpansionFractionChanged by rememberUpdatedState(onExpansionFractionChanged)
     val currentOnCloseLyricsClick by rememberUpdatedState(onCloseLyricsClick)
     val currentOnOpenQueue by rememberUpdatedState(onOpenQueue)
@@ -290,7 +303,8 @@ internal fun rememberPlayerSheetMotionScope(
         if (state.isSheetCollapseRequested) {
             if (currentSheetState == PlayerSheetState.EXPANDED || expansionFraction.value > 0.01f) {
                 scope.launch {
-                    motionController.animateTo(false, true, collapsedY)
+                    val spec = if (animationsDisabled) snap() else TapSheetAnimationSpec
+                    motionController.animateTo(false, true, collapsedY, animationSpec = spec)
                     currentSheetState = PlayerSheetState.COLLAPSED
                 }
             }
@@ -336,6 +350,7 @@ internal fun rememberPlayerSheetMotionScope(
         motionController,
         sheetVisualState,
         fullPlayerVisualState,
+        animationsDisabled,
     ) {
         PlayerSheetMotionScope(
             density = density,
@@ -367,6 +382,7 @@ internal fun rememberPlayerSheetMotionScope(
             handleCloseQueue = handleCloseQueue,
             onOpenQueue = { currentOnOpenQueue() },
             onCloseQueueClick = { currentOnCloseQueueClick() },
+            animationsDisabled = animationsDisabled,
         )
     }
 }
