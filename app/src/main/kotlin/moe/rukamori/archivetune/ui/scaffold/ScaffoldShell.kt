@@ -131,14 +131,6 @@ fun ScaffoldShell(
                 isVisible = LocalGlobalVisibility.current && contentVisible,
                 modifier = Modifier.fillMaxSize(),
             )
-            if (splashEnabled) {
-                SplashOverlay(
-                    isDark = useDarkTheme,
-                    onBurstStart = onBurstStart,
-                    onPrewarmStart = onPrewarmStart,
-                    onDismiss = onSplashDismiss,
-                )
-            }
             if (contentMounted || !splashEnabled) {
                 Row(
                     modifier = Modifier
@@ -233,6 +225,14 @@ fun ScaffoldShell(
                         )
                     }
                 }
+            }
+            if (splashEnabled) {
+                SplashOverlay(
+                    isDark = useDarkTheme,
+                    onBurstStart = onBurstStart,
+                    onPrewarmStart = onPrewarmStart,
+                    onDismiss = onSplashDismiss,
+                )
             }
         }
     }

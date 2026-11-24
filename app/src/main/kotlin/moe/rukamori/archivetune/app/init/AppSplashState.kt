@@ -12,11 +12,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import moe.rukamori.archivetune.App
 import moe.rukamori.archivetune.constants.SplashOverlayEnabledKey
 import moe.rukamori.archivetune.ui.component.splash.SplashConfig
 import moe.rukamori.archivetune.ui.component.splash.SplashSlots
@@ -50,16 +48,8 @@ fun rememberAppSplashState(
         }
         val isEnabled = snapshotFlow { splashEnabled }.first()
         if (isEnabled) {
-            withTimeoutOrNull(1500.milliseconds) {
+            withTimeoutOrNull(600.milliseconds) {
                 snapshotFlow { SplashSlots.vectorVersion }.first { it > 0 }
-            }
-        }
-        val app = activity.application as? App
-        if (app != null) {
-            withTimeoutOrNull(3000.milliseconds) {
-                while (!app.isInitialized) {
-                    delay(16.milliseconds)
-                }
             }
         }
         onReadyChange(true)

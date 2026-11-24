@@ -171,11 +171,7 @@ fun AutoPlaylistScreen(
         }
     }
 
-    val headerItems by remember {
-        derivedStateOf {
-            if (songs.isNotEmpty() && !searchState.isSearching) 2 else 0
-        }
-    }
+    val headerItems = if (songs.isNotEmpty() && !searchState.isSearching) 2 else 0
     val hasHeader = headerItems > 0
     val firstSongThumbnail = songs.firstOrNull()?.song?.thumbnailUrl
     val hasArtworkBackdrop = (isLoading && !searchState.isSearching) || (hasHeader && !firstSongThumbnail.isNullOrBlank())

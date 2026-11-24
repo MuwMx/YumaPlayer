@@ -104,10 +104,13 @@ fun SplashOverlay(
 
         LaunchedEffect(showSplash, isReady) {
             if (!showSplash || !isReady) return@LaunchedEffect
+            while (isActive && !isInitialized) {
+                withFrameNanos { }
+            }
+            repeat(2) { withFrameNanos { } }
             var lastTime = 0L
             while (isActive) {
                 val now = withFrameNanos { it }
-                if (!isInitialized) continue
                 if (lastTime == 0L) {
                     lastTime = now
                     continue
