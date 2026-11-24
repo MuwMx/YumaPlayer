@@ -41,10 +41,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,20 +51,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -122,13 +112,10 @@ fun LibraryScreen(
 
     val currentFilter = libraryFilters.getOrElse(pagerState.currentPage) { LibraryFilter.LIBRARY }
 
-    val density = LocalDensity.current
-    val headerState = rememberLibraryCollapsingHeaderState(LibraryHeaderHeight)
-
     BindHeaderScroll(
         connection = scrollBehavior?.nestedScrollConnection,
         hasCollapsibleHeader = false,
-        progressProvider = { (1f - headerState.progress).coerceIn(0f, 1f) },
+        progressProvider = { 0f },
     )
 
     Box(
@@ -139,20 +126,13 @@ fun LibraryScreen(
                 Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = AppBarHeight)
-                    .nestedScroll(headerState.nestedScrollConnection),
+                    .padding(top = AppBarHeight),
         ) {
-            LibraryCollapsingHeader(currentFilter = currentFilter, state = headerState)
-
             LaunchedEffect(defaultFilter, libraryFilters) {
                 val selectedPage = libraryFilters.indexOf(defaultFilter).coerceAtLeast(0)
                 if (pagerState.currentPage != selectedPage) {
                     pagerState.scrollToPage(selectedPage)
                 }
-            }
-
-            LaunchedEffect(pagerState.currentPage) {
-                headerState.reset()
             }
 
             LibraryFilterChipBar(
@@ -408,128 +388,6 @@ private fun PlaylistTagFilterChip(
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
             color = contentColor,
-        )
-    }
-}
-
-private val LibraryHeaderHeight = 90.dp
-
-@Stable
-private class LibraryCollapsingHeaderState(
-    private val maxHeaderOffsetPx: Float,
-) {
-    var headerOffsetPx by mutableFloatStateOf(0f)
-        private set
-
-    val progress: Float
-        get() = 1f + (headerOffsetPx / maxHeaderOffsetPx)
-
-    val nestedScrollConnection =
-        object : NestedScrollConnection {
-            override fun onPreScroll(
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                val delta = available.y
-                // Scrolling down the page (dragging finger up, delta < 0): collapse header first
-                if (delta < 0) {
-                    val newOffset = headerOffsetPx + delta
-                    val oldOffset = headerOffsetPx
-                    headerOffsetPx = newOffset.coerceIn(-maxHeaderOffsetPx, 0f)
-                    val consumedY = headerOffsetPx - oldOffset
-                    return Offset(0f, consumedY)
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                val delta = available.y
-                // Scrolling up the page (dragging finger down, delta > 0): expand header ONLY if list is at top
-                if (delta > 0) {
-                    val newOffset = headerOffsetPx + delta
-                    val oldOffset = headerOffsetPx
-                    headerOffsetPx = newOffset.coerceIn(-maxHeaderOffsetPx, 0f)
-                    val consumedY = headerOffsetPx - oldOffset
-                    return Offset(0f, consumedY)
-                }
-                return Offset.Zero
-            }
-        }
-
-    fun reset() {
-        headerOffsetPx = 0f
-    }
-}
-
-@Composable
-private fun rememberLibraryCollapsingHeaderState(maxHeaderHeight: Dp): LibraryCollapsingHeaderState {
-    val density = LocalDensity.current
-    val maxHeaderOffsetPx = with(density) { maxHeaderHeight.toPx() }
-    return remember(maxHeaderOffsetPx) {
-        LibraryCollapsingHeaderState(maxHeaderOffsetPx = maxHeaderOffsetPx)
-    }
-}
-
-@Composable
-private fun LibraryCollapsingHeader(
-    currentFilter: LibraryFilter,
-    state: LibraryCollapsingHeaderState,
-    modifier: Modifier = Modifier,
-) {
-    val density = LocalDensity.current
-    val headerHeight = LibraryHeaderHeight + with(density) { state.headerOffsetPx.toDp() }
-
-    val headerTitle =
-        when (currentFilter) {
-            LibraryFilter.LIBRARY -> stringResource(R.string.library_title)
-            LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
-            LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
-            LibraryFilter.SONGS -> stringResource(R.string.songs)
-            LibraryFilter.ARTISTS -> stringResource(R.string.artists)
-            LibraryFilter.ALBUMS -> stringResource(R.string.albums)
-            else -> stringResource(R.string.library_title)
-        }
-
-    val headerSubtitle =
-        when (currentFilter) {
-            LibraryFilter.LIBRARY -> stringResource(R.string.library_subtitle)
-            LibraryFilter.PLAYLISTS -> stringResource(R.string.library_playlists_subtitle)
-            LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_show_playlist_desc)
-            LibraryFilter.SONGS -> stringResource(R.string.library_songs_subtitle)
-            LibraryFilter.ARTISTS -> stringResource(R.string.library_artists_subtitle)
-            LibraryFilter.ALBUMS -> stringResource(R.string.library_albums_subtitle)
-            else -> stringResource(R.string.library_subtitle)
-        }
-
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(headerHeight)
-                .clipToBounds()
-                .graphicsLayer { alpha = state.progress }
-                .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = headerTitle,
-            style =
-                MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                ),
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = headerSubtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
         )
     }
 }

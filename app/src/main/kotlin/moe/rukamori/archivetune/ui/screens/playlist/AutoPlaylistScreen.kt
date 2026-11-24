@@ -178,7 +178,7 @@ fun AutoPlaylistScreen(
     }
     val hasHeader = headerItems > 0
     val firstSongThumbnail = songs.firstOrNull()?.song?.thumbnailUrl
-    val hasArtworkBackdrop = hasHeader && !firstSongThumbnail.isNullOrBlank()
+    val hasArtworkBackdrop = (isLoading && !searchState.isSearching) || (hasHeader && !firstSongThumbnail.isNullOrBlank())
     val headerProgress = rememberHeaderScrollProgress(
         lazyListState = lazyListState,
         hasCollapsibleHeader = hasArtworkBackdrop,
