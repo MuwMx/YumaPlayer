@@ -40,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -54,6 +56,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
@@ -66,7 +69,7 @@ import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.asScrollContract
-import moe.rukamori.archivetune.ui.component.rememberCollapseFraction
+import moe.rukamori.archivetune.ui.component.rememberArtistHeaderMorphState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
@@ -146,7 +149,11 @@ fun ArtistScreen(
         }
     }
 
-    val collapseFraction by rememberCollapseFraction(lazyListState)
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val morphState = rememberArtistHeaderMorphState(
+        lazyListState = lazyListState,
+        animationsDisabled = animationsDisabled,
+    )
     val fabHazeState = remember { HazeState() }
 
     Box(
@@ -164,14 +171,19 @@ fun ArtistScreen(
 
         ArtistMorphingHeader(
             imageUrl = thumbnail,
-            collapseFraction = collapseFraction,
+            collapseFraction = morphState.collapseFraction,
             disableBlur = disableBlur,
         )
 
         LazyColumn(
             state = lazyListState,
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
-            modifier = Modifier.fillMaxSize().hazeSource(fabHazeState),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .nestedScroll(morphState.nestedScrollConnection)
+                    .graphicsLayer { translationY = morphState.contentTranslationY }
+                    .hazeSource(fabHazeState),
         ) {
             if (uiState.artistPage == null && !uiState.showLocal && viewModel.loadFailed) {
                 item(key = "artist_error") {
@@ -237,7 +249,7 @@ fun ArtistScreen(
         }
 
         HeaderHazeBackdrop(
-            progress = { collapseFraction },
+            progress = { morphState.collapseFraction },
             hasCollapsibleHeader = true,
             hazeState = fabHazeState,
             modifier = Modifier.align(Alignment.TopCenter),
