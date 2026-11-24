@@ -48,6 +48,9 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.ArtistItem
+import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.pages.ArtistItemsPageLayout
 import moe.rukamori.archivetune.playback.queues.ListQueue
@@ -58,6 +61,7 @@ import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.album.AlbumErrorContent
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
@@ -170,6 +174,16 @@ fun ArtistItemsScreen(
                         },
                         modifier =
                             Modifier
+                                .containerTransformSource(
+                                    key =
+                                        when (item) {
+                                            is AlbumItem -> "album-${item.id}"
+                                            is ArtistItem -> "artist-${item.id}"
+                                            is PlaylistItem -> "playlist-${item.id}"
+                                            else -> null
+                                        },
+                                    coverUrl = item.thumbnail,
+                                )
                                 .clickable {
                                     if (item is SongItem) {
                                         if (item.id == mediaMetadata?.id) {
@@ -229,6 +243,16 @@ fun ArtistItemsScreen(
                         coroutineScope = coroutineScope,
                         modifier =
                             Modifier
+                                .containerTransformSource(
+                                    key =
+                                        when (item) {
+                                            is AlbumItem -> "album-${item.id}"
+                                            is ArtistItem -> "artist-${item.id}"
+                                            is PlaylistItem -> "playlist-${item.id}"
+                                            else -> null
+                                        },
+                                    coverUrl = item.thumbnail,
+                                )
                                 .combinedClickable(
                                     onClick = {
                                         onYTItemClick(

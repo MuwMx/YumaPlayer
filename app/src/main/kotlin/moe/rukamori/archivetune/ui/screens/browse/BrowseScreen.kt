@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
@@ -99,7 +100,18 @@ fun BrowseScreen(
                             isPlaying = isPlaying,
                             fillMaxWidth = true,
                             coroutineScope = coroutineScope,
-                            modifier = Modifier.combinedClickable(
+                            modifier = Modifier
+                                .containerTransformSource(
+                                    key =
+                                        when (item) {
+                                            is AlbumItem -> "album-${item.id}"
+                                            is ArtistItem -> "artist-${item.id}"
+                                            is PlaylistItem -> "playlist-${item.id}"
+                                            else -> null
+                                        },
+                                    coverUrl = item.thumbnail,
+                                )
+                                .combinedClickable(
                                 onClick = {
                                     when (item) {
                                         is AlbumItem -> navController.navigate("album/${item.id}")

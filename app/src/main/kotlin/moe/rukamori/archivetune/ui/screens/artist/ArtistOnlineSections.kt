@@ -29,6 +29,7 @@ import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_LIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_SONG
 import moe.rukamori.archivetune.extensions.togglePlayPause
+import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
@@ -42,6 +43,7 @@ import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.home.HomeLayoutConfig
 import timber.log.Timber
 
@@ -168,6 +170,16 @@ fun LazyListScope.artistOnlineSections(
                                 coroutineScope = coroutineScope,
                                 modifier =
                                     Modifier
+                                        .containerTransformSource(
+                                            key =
+                                                when (item) {
+                                                    is AlbumItem -> "album-${item.id}"
+                                                    is ArtistItem -> "artist-${item.id}"
+                                                    is PlaylistItem -> "playlist-${item.id}"
+                                                    else -> null
+                                                },
+                                            coverUrl = item.thumbnail,
+                                        )
                                         .combinedClickable(
                                             onClick = {
                                                 onYTItemClick(

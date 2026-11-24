@@ -61,6 +61,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.screens.charts.CONTENT_TYPE_CHARTS_HEADER
 import moe.rukamori.archivetune.ui.screens.charts.CONTENT_TYPE_CHARTS_ROW
@@ -261,7 +262,18 @@ fun ChartsScreen(
                                                 isPlaying = false,
                                                 coroutineScope = coroutineScope,
                                                 modifier =
-                                                    Modifier.combinedClickable(
+                                                    Modifier
+                                                        .containerTransformSource(
+                                                            key =
+                                                                when (item) {
+                                                                    is PlaylistItem -> "playlist-${item.id}"
+                                                                    is ArtistItem -> "artist-${item.id}"
+                                                                    is AlbumItem -> "album-${item.id}"
+                                                                    else -> null
+                                                                },
+                                                            coverUrl = item.thumbnail,
+                                                        )
+                                                        .combinedClickable(
                                                         onClick = {
                                                             when (item) {
                                                                 is PlaylistItem -> navController.navigate("online_playlist/${item.id}")

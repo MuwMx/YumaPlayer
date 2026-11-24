@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -70,6 +71,10 @@ internal fun LazyListScope.statsArtistsSection(
                     modifier =
                         Modifier
                             .weight(1f)
+                            .containerTransformSource(
+                                key = "artist-${artist.id}",
+                                coverUrl = artist.artist.thumbnailUrl,
+                            )
                             .combinedClickable(
                                 onClick = { navController.navigate("artist/${artist.id}") },
                                 onLongClick = {

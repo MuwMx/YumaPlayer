@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
@@ -257,6 +258,16 @@ fun YouTubeBrowseScreen(
                                                     coroutineScope = coroutineScope,
                                                     modifier =
                                                         Modifier
+                                                            .containerTransformSource(
+                                                                key =
+                                                                    when (item) {
+                                                                        is AlbumItem -> "album-${item.id}"
+                                                                        is ArtistItem -> "artist-${item.id}"
+                                                                        is PlaylistItem -> "playlist-${item.id}"
+                                                                        else -> null
+                                                                    },
+                                                                coverUrl = item.thumbnail,
+                                                            )
                                                             .combinedClickable(
                                                                 onClick = {
                                                                     when (item) {

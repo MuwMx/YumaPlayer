@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
@@ -169,7 +170,12 @@ fun AccountScreen(
                             YouTubeGridItem(
                                 item = item,
                                 fillMaxWidth = true,
-                                modifier = Modifier.combinedClickable(
+                                modifier = Modifier
+                                    .containerTransformSource(
+                                        key = "playlist-${item.id}",
+                                        coverUrl = item.thumbnail,
+                                    )
+                                    .combinedClickable(
                                     onClick = {
                                         navController.navigate("online_playlist/${item.id}")
                                     },
@@ -196,7 +202,12 @@ fun AccountScreen(
                             YouTubeGridItem(
                                 item = item,
                                 fillMaxWidth = true,
-                                modifier = Modifier.combinedClickable(
+                                modifier = Modifier
+                                    .containerTransformSource(
+                                        key = "album-${item.id}",
+                                        coverUrl = item.thumbnail,
+                                    )
+                                    .combinedClickable(
                                     onClick = {
                                         navController.navigate("album/${item.id}")
                                     },
@@ -223,7 +234,12 @@ fun AccountScreen(
                             YouTubeGridItem(
                                 item = item,
                                 fillMaxWidth = true,
-                                modifier = Modifier.combinedClickable(
+                                modifier = Modifier
+                                    .containerTransformSource(
+                                        key = "artist-${item.id}",
+                                        coverUrl = item.thumbnail,
+                                    )
+                                    .combinedClickable(
                                     onClick = {
                                         navController.navigate("artist/${item.id}")
                                     },

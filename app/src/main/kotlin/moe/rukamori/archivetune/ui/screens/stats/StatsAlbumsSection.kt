@@ -26,6 +26,7 @@ import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.haptics.YumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -74,6 +75,10 @@ internal fun LazyListScope.statsAlbumsSection(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .containerTransformSource(
+                                    key = "album-${album.id}",
+                                    coverUrl = album.album.thumbnailUrl,
+                                )
                                 .combinedClickable(
                                     onClick = { navController.navigate("album/${album.id}") },
                                     onLongClick = {

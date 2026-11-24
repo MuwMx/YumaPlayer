@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -66,6 +67,12 @@ internal fun StatsHighlightsSection(
                 imageUrl = topArtist.artist.thumbnailUrl,
                 useCircleShape = true,
                 onClick = { navController.navigate("artist/${topArtist.id}") },
+                modifier =
+                    Modifier.containerTransformSource(
+                        key = "artist-${topArtist.id}",
+                        cornerRadius = SettingsDimensions.GroupCardCornerRadius,
+                        coverUrl = topArtist.artist.thumbnailUrl,
+                    ),
             )
         }
         if (topSong != null && topSongEntity != null) {
@@ -93,9 +100,10 @@ private fun StatsHighlightCard(
     imageUrl: String?,
     useCircleShape: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .yumaGlassCard(shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius))
             .clickable(onClick = onClick),

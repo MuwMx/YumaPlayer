@@ -47,6 +47,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ButtonPlaceholder
 import moe.rukamori.archivetune.ui.component.shimmer.ListItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.home.HomeLayoutConfig
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -87,6 +88,10 @@ fun LazyListScope.albumOtherVersionsSection(
                             coroutineScope = coroutineScope,
                             modifier =
                                 Modifier
+                                    .containerTransformSource(
+                                        key = "album-${item.id}",
+                                        coverUrl = item.thumbnail,
+                                    )
                                     .combinedClickable(
                                         onClick = { onAlbumClick(item.id) },
                                         onLongClick = {

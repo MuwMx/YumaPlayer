@@ -42,6 +42,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.newrelease.NewReleaseContent
 
 @Immutable
@@ -167,6 +168,10 @@ internal fun NewReleaseGridContent(
                     coroutineScope = coroutineScope,
                     modifier =
                         Modifier
+                            .containerTransformSource(
+                                key = "album-${album.id}",
+                                coverUrl = album.thumbnail,
+                            )
                             .animateItem()
                             .combinedClickable(
                                 onClick = { onReleaseClick(album) },
