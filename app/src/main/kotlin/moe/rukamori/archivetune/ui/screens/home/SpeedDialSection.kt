@@ -154,6 +154,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -378,11 +379,27 @@ fun SpeedDialSection(
                                                 }
                                             val songIndex =
                                                 if (localItem is Song) speedDialSongIndexById[localItem.id] ?: 0 else 0
+                                            val transformKey =
+                                                when (localItem) {
+                                                    is Album -> "album-${localItem.id}"
+                                                    is Playlist -> "playlist-${localItem.id}"
+                                                    else -> null
+                                                }
+                                            val coverUrl =
+                                                when (localItem) {
+                                                    is Album -> localItem.album.thumbnailUrl
+                                                    is Playlist -> localItem.thumbnails.firstOrNull()
+                                                    else -> null
+                                                }
 
                                             Box(
                                                 modifier =
                                                     Modifier
                                                         .size(tileSize)
+                                                        .containerTransformSource(
+                                                            key = transformKey,
+                                                            coverUrl = coverUrl,
+                                                        )
                                                         .clip(MaterialTheme.shapes.large)
                                                         .focusable()
                                                         .combinedClickable(

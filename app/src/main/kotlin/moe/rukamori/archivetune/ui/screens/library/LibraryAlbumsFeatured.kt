@@ -48,6 +48,7 @@ import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -69,6 +70,11 @@ fun FeaturedAlbumCard(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = "album-${album.id}",
+                    cornerRadius = SettingsDimensions.LibrarySheetRadius,
+                    coverUrl = album.album.thumbnailUrl,
+                )
                 .yumaClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,

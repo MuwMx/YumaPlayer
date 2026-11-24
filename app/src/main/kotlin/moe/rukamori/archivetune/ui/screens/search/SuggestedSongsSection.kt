@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.screens.home.HomeLayoutConfig
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -174,6 +175,10 @@ internal fun TrendingAlbumsSection(
                     coroutineScope = coroutineScope,
                     modifier =
                         Modifier
+                            .containerTransformSource(
+                                key = "album-${album.id}",
+                                coverUrl = album.thumbnail,
+                            )
                             .combinedClickable(
                                 onClick = {
                                     navController.navigate("album/${album.id}")

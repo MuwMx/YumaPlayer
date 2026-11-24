@@ -51,6 +51,7 @@ import moe.rukamori.archivetune.ui.component.LibraryEmptyState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -70,6 +71,11 @@ fun AlbumGridItem(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = "album-${album.id}",
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                    coverUrl = album.album.thumbnailUrl,
+                )
                 .clip(RoundedCornerShape(SettingsDimensions.LibraryCardRadius))
                 .yumaCombinedClickable(
                     pressedScale = SettingsAnimations.PressScale,
@@ -177,6 +183,11 @@ fun AlbumListRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = "album-${album.id}",
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                    coverUrl = album.album.thumbnailUrl,
+                )
                 .yumaCombinedClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,

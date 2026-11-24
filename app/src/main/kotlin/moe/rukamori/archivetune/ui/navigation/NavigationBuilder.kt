@@ -13,7 +13,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import moe.rukamori.archivetune.constants.SpotifySpDcKey
 import moe.rukamori.archivetune.constants.UseSpotifyHomeKey
@@ -51,7 +50,7 @@ fun NavGraphBuilder.navigationBuilder(
     homeScrollConnection: NestedScrollConnection? = null,
     searchScrollConnection: NestedScrollConnection? = null,
 ) {
-    composable(Screens.Home.route) {
+    yumaComposable(Screens.Home.route) {
         val useSpotify by rememberPreference(UseSpotifyHomeKey, defaultValue = false)
         val spDc by rememberPreference(SpotifySpDcKey, defaultValue = "")
         if (useSpotify && spDc.isNotBlank()) {
@@ -61,10 +60,10 @@ fun NavGraphBuilder.navigationBuilder(
         }
     }
 
-    composable(Screens.Library.route) {
+    yumaComposable(Screens.Library.route) {
         LibraryScreen(navController, scrollBehavior = scrollBehavior)
     }
-    composable(Screens.Search.route) {
+    yumaComposable(Screens.Search.route) {
         SearchScreen(
             navController = navController,
             onSearchClick = {
@@ -75,19 +74,19 @@ fun NavGraphBuilder.navigationBuilder(
             headerScrollConnection = searchScrollConnection,
         )
     }
-    composable("local_songs") {
+    yumaComposable("local_songs") {
         LocalSongScreen(navController)
     }
-    composable("history") {
+    yumaComposable("history") {
         HistoryScreen(navController)
     }
-    composable("stats") {
+    yumaComposable("stats") {
         StatsScreen(navController)
     }
-    composable("news") {
+    yumaComposable("news") {
         NewsScreen(navController)
     }
-    composable(
+    yumaComposable(
         route = "view_news/{newsId}",
         arguments =
             listOf(
@@ -96,7 +95,7 @@ fun NavGraphBuilder.navigationBuilder(
     ) {
         ViewNewsScreen(navController)
     }
-    composable(
+    yumaComposable(
         route = "year_in_music?year={year}",
         arguments =
             listOf(
@@ -112,22 +111,22 @@ fun NavGraphBuilder.navigationBuilder(
             initialYear = selectedYear,
         )
     }
-    composable(MusicRecognitionRoute) {
+    yumaComposable(MusicRecognitionRoute) {
         MusicRecognitionScreen(navController)
     }
-    composable(Screens.MoodAndGenres.route) {
+    yumaComposable(Screens.MoodAndGenres.route) {
         MoodAndGenresScreen(navController)
     }
-    composable("account") {
+    yumaComposable("account") {
         AccountScreen(navController, scrollBehavior)
     }
-    composable("new_release") {
+    yumaComposable("new_release") {
         NewReleaseScreen(navController, scrollBehavior)
     }
-    composable("charts_screen") {
+    yumaComposable("charts_screen") {
         ChartsScreen(navController)
     }
-    composable(
+    yumaComposable(
         route = "browse/{browseId}?params={params}",
         arguments =
             listOf(
@@ -147,7 +146,7 @@ fun NavGraphBuilder.navigationBuilder(
             it.arguments?.getString("browseId"),
         )
     }
-    composable(
+    yumaComposable(
         route = OnlineSearchResultRoute,
         arguments =
             listOf(

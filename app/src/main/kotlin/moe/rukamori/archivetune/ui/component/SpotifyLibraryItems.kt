@@ -45,6 +45,7 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -70,6 +71,11 @@ fun SpotifyLibraryPlaylistListItem(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = "playlist-${playlist.id}",
+                    cornerRadius = SettingsDimensions.LibrarySheetRadius,
+                    coverUrl = thumbnailUrl,
+                )
                 .yumaClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = { navController.navigate("spotify_playlist/${playlist.id}") },

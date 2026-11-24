@@ -45,6 +45,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -79,6 +80,15 @@ internal fun YouTubeGridItemWrapper(
         thumbnailHeight = thumbnailHeight,
         modifier =
             modifier
+                .containerTransformSource(
+                    key =
+                        when (item) {
+                            is AlbumItem -> "album-${item.id}"
+                            is PlaylistItem -> "playlist-${item.id}"
+                            else -> null
+                        },
+                    coverUrl = item.thumbnail,
+                )
                 .focusable()
                 .combinedClickable(
                     onClick = {
@@ -204,6 +214,10 @@ internal fun LocalGridItem(
                 modifier =
                     modifier
                         .fillMaxWidth()
+                        .containerTransformSource(
+                            key = "album-${item.id}",
+                            coverUrl = item.album.thumbnailUrl,
+                        )
                         .focusable()
                         .combinedClickable(
                             onClick = { navController.navigate("album/${item.id}") },

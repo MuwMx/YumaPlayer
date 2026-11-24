@@ -11,7 +11,6 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import moe.rukamori.archivetune.ui.screens.album.AlbumScreen
 import moe.rukamori.archivetune.ui.screens.album.SpotifyAlbumScreen
@@ -60,7 +59,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     navController: NavHostController,
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
-    composable(
+    yumaComposable(
         route = "album/{albumId}",
         arguments =
             listOf(
@@ -72,7 +71,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         AlbumScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "artist/{artistId}",
         arguments =
             listOf(
@@ -83,7 +82,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     ) {
         ArtistScreen(navController, scrollBehavior)
     }
-    composable(
+    yumaComposable(
         route = "artist/{artistId}/songs",
         arguments =
             listOf(
@@ -94,7 +93,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     ) {
         ArtistSongsScreen(navController, scrollBehavior)
     }
-    composable(
+    yumaComposable(
         route = "artist/{artistId}/albums",
         arguments =
             listOf(
@@ -105,7 +104,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     ) {
         ArtistAlbumsScreen(navController, scrollBehavior)
     }
-    composable(
+    yumaComposable(
         route = "artist/{artistId}/items?browseId={browseId}&params={params}",
         arguments =
             listOf(
@@ -125,7 +124,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         ArtistItemsScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "online_playlist/{playlistId}",
         arguments =
             listOf(
@@ -137,7 +136,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         OnlinePlaylistScreen(navController)
     }
 
-    composable(
+    yumaComposable(
         route = "local_playlist/{playlistId}",
         arguments =
             listOf(
@@ -149,7 +148,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         LocalPlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "spotify_playlist/{playlistId}",
         arguments =
             listOf(
@@ -161,7 +160,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         SpotifyPlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "spotify_album/{albumId}",
         arguments =
             listOf(
@@ -173,11 +172,11 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         SpotifyAlbumScreen(navController, scrollBehavior)
     }
 
-    composable("spotify_liked_songs") {
+    yumaComposable("spotify_liked_songs") {
         SpotifyLikedSongsScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "auto_playlist/{playlist}?tab={tab}",
         arguments =
             listOf(
@@ -194,7 +193,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         AutoPlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "cache_playlist/{playlist}",
         arguments =
             listOf(
@@ -206,7 +205,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         CachePlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "top_playlist/{top}",
         arguments =
             listOf(
@@ -218,7 +217,7 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         TopPlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    yumaComposable(
         route = "youtube_browse/{browseId}?params={params}",
         arguments =
             listOf(

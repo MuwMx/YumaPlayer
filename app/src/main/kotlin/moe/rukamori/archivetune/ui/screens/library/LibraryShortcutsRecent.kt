@@ -69,6 +69,7 @@ fun LazyListScope.shortcutsSection(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     iconColor = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f),
+                    transformKey = "playlist-liked",
                     onClick = onOpenLiked,
                 )
 
@@ -79,6 +80,7 @@ fun LazyListScope.shortcutsSection(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     iconColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
+                    transformKey = "playlist-downloaded",
                     onClick = onOpenDownloads,
                 )
             }
@@ -94,6 +96,7 @@ fun LazyListScope.shortcutsSection(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     iconColor = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.weight(1f),
+                    transformKey = "playlist-cached",
                     onClick = onOpenCache,
                 )
 

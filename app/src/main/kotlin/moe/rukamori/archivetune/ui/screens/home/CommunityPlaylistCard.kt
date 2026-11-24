@@ -63,6 +63,7 @@ import moe.rukamori.archivetune.ui.component.PlaylistThumbnail
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.theme.TestThemeWrapper
 import moe.rukamori.archivetune.ui.theme.ThemePreviews
 
@@ -196,7 +197,12 @@ internal fun CommunityPlaylistCard(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)),
-        modifier = modifier,
+        modifier =
+            modifier.containerTransformSource(
+                key = "playlist-${card.id}",
+                cornerRadius = 28.dp,
+                coverUrl = card.thumbnail,
+            ),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),

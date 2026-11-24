@@ -31,6 +31,7 @@ import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 
 @Composable
 fun LibraryArtistListItem(
@@ -130,6 +131,10 @@ fun LibraryAlbumListItem(
     modifier =
         modifier
             .fillMaxWidth()
+            .containerTransformSource(
+                key = "album-${album.id}",
+                coverUrl = album.album.thumbnailUrl,
+            )
             .clickable {
                 navController.navigate("album/${album.id}")
             },
@@ -154,6 +159,10 @@ fun LibraryAlbumGridItem(
     modifier =
         modifier
             .fillMaxWidth()
+            .containerTransformSource(
+                key = "album-${album.id}",
+                coverUrl = album.album.thumbnailUrl,
+            )
             .combinedClickable(
                 onClick = {
                     navController.navigate("album/${album.id}")
@@ -244,12 +253,19 @@ fun LibraryPlaylistListItem(
         }
     }
 
-    val openPlaylist: () -> Unit = {
-        if (
-            !playlist.playlist.isEditable &&
+    val isOnlinePlaylist =
+        !playlist.playlist.isEditable &&
             playlist.playlist.browseId?.startsWith("VL") == true &&
             (playlist.songCount == 0 || playlist.playlist.remoteSongCount == 0)
-        ) {
+    val transformKey =
+        if (isOnlinePlaylist) {
+            "playlist-${playlist.playlist.browseId}"
+        } else {
+            "playlist-${playlist.id}"
+        }
+
+    val openPlaylist: () -> Unit = {
+        if (isOnlinePlaylist) {
             navController.navigate("online_playlist/${playlist.playlist.browseId}")
         } else {
             navController.navigate("local_playlist/${playlist.id}")
@@ -263,6 +279,10 @@ fun LibraryPlaylistListItem(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = transformKey,
+                    cornerRadius = 26.dp,
+                )
                 .focusable()
                 .clickable(onClick = openPlaylist),
     )

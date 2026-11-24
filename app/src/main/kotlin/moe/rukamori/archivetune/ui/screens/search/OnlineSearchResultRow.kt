@@ -15,9 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.ui.component.YouTubeListItem
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,6 +47,15 @@ internal fun LazyItemScope.OnlineSearchResultRow(
         },
         modifier =
             modifier
+                .containerTransformSource(
+                    key =
+                        when (item) {
+                            is AlbumItem -> "album-${item.id}"
+                            is PlaylistItem -> "playlist-${item.id}"
+                            else -> null
+                        },
+                    coverUrl = item.thumbnail,
+                )
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = {

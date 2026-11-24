@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.PlaylistListItem
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 
 internal fun LazyListScope.localSearchArtistBranch(
     artists: List<Artist>,
@@ -160,6 +161,10 @@ internal fun LazyItemScope.LocalSearchAlbumItem(
         isPlaying = isPlaying,
         modifier =
             Modifier
+                .containerTransformSource(
+                    key = "album-${album.id}",
+                    coverUrl = album.album.thumbnailUrl,
+                )
                 .clickable {
                     onDismiss()
                     navController.navigate("album/${album.id}")
@@ -192,6 +197,10 @@ internal fun LazyItemScope.LocalSearchPlaylistItem(
         playlist = playlist,
         modifier =
             Modifier
+                .containerTransformSource(
+                    key = "playlist-${playlist.id}",
+                    coverUrl = playlist.thumbnails.firstOrNull(),
+                )
                 .clickable {
                     onDismiss()
                     navController.navigate("local_playlist/${playlist.id}")

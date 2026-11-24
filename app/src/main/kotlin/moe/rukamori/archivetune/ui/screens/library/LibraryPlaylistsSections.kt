@@ -77,6 +77,7 @@ import moe.rukamori.archivetune.models.playlistSource
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.menu.PlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.LocalYumaColors
@@ -581,11 +582,26 @@ fun PlaylistListCard(
 ) {
     val yumaColors = LocalYumaColors.current
     val hiddenAlpha = if (playlist.playlist.isHidden) 0.45f else 1f
+    val isOnlinePlaylist =
+        !playlist.playlist.isEditable &&
+            playlist.playlist.browseId?.startsWith("VL") == true &&
+            (playlist.songCount == 0 || playlist.playlist.remoteSongCount == 0)
+    val transformKey =
+        if (isOnlinePlaylist) {
+            "playlist-${playlist.playlist.browseId}"
+        } else {
+            "playlist-${playlist.id}"
+        }
 
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = transformKey,
+                    cornerRadius = SettingsDimensions.LibrarySheetRadius,
+                    coverUrl = playlist.thumbnails.getOrNull(0),
+                )
                 .graphicsLayer {
                     alpha = hiddenAlpha
                 }
@@ -737,11 +753,26 @@ fun PlaylistGridCard(
 ) {
     val yumaColors = LocalYumaColors.current
     val hiddenAlpha = if (playlist.playlist.isHidden) 0.45f else 1f
+    val isOnlinePlaylist =
+        !playlist.playlist.isEditable &&
+            playlist.playlist.browseId?.startsWith("VL") == true &&
+            (playlist.songCount == 0 || playlist.playlist.remoteSongCount == 0)
+    val transformKey =
+        if (isOnlinePlaylist) {
+            "playlist-${playlist.playlist.browseId}"
+        } else {
+            "playlist-${playlist.id}"
+        }
 
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
+                .containerTransformSource(
+                    key = transformKey,
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                    coverUrl = playlist.thumbnails.getOrNull(0),
+                )
                 .graphicsLayer {
                     alpha = hiddenAlpha
                 }

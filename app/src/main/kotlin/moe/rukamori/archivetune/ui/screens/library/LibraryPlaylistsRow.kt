@@ -42,6 +42,7 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
@@ -102,10 +103,25 @@ fun LazyListScope.playlistsRowSection(
                         key = { playlist -> "playlist_${playlist.id}" },
                         contentType = { "library_playlist" },
                     ) { playlist ->
+                        val isOnlinePlaylist =
+                            !playlist.playlist.isEditable &&
+                                playlist.playlist.browseId?.startsWith("VL") == true &&
+                                (playlist.songCount == 0 || playlist.playlist.remoteSongCount == 0)
+                        val transformKey =
+                            if (isOnlinePlaylist) {
+                                "playlist-${playlist.playlist.browseId}"
+                            } else {
+                                "playlist-${playlist.id}"
+                            }
                         Column(
                             modifier =
                                 Modifier
                                     .width(130.dp)
+                                    .containerTransformSource(
+                                        key = transformKey,
+                                        cornerRadius = SettingsDimensions.LibraryCardRadius,
+                                        coverUrl = playlist.thumbnails.getOrNull(0),
+                                    )
                                     .yumaClickable(
                                         pressedScale = SettingsAnimations.PressScale,
                                         onClick = { onOpenPlaylist(playlist) },

@@ -36,6 +36,7 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
@@ -54,6 +55,11 @@ internal fun SpotifyPlaylistCompactCard(
         modifier =
             modifier
                 .width(130.dp)
+                .containerTransformSource(
+                    key = "playlist-${playlist.id}",
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                    coverUrl = thumbnailUrl,
+                )
                 .yumaClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,

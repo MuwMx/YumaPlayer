@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
@@ -41,6 +42,7 @@ fun ShortcutCard(
     containerColor: Color,
     iconColor: Color,
     modifier: Modifier = Modifier,
+    transformKey: String? = null,
     onClick: () -> Unit,
 ) {
     val isDark =
@@ -60,6 +62,10 @@ fun ShortcutCard(
     Box(
         modifier =
             modifier
+                .containerTransformSource(
+                    key = transformKey,
+                    cornerRadius = SettingsDimensions.LibraryCardRadius,
+                )
                 .yumaClickable(
                     pressedScale = SettingsAnimations.PressScale,
                     onClick = onClick,

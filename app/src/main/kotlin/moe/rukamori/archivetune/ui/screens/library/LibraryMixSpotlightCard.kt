@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsAnimations
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
@@ -65,6 +66,11 @@ internal fun MostPlayedAlbumSpotlightCard(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                .containerTransformSource(
+                    key = "album-${album.id}",
+                    cornerRadius = SettingsDimensions.SegmentedCornerLarge,
+                    coverUrl = album.thumbnailUrl,
+                )
                 .yumaGlassCard(
                     shape = RoundedCornerShape(SettingsDimensions.SegmentedCornerLarge),
                     position = YumaSegmentPosition.Single,

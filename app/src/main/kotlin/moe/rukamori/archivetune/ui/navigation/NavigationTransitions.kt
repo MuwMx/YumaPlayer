@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.navigation.NavBackStackEntry
 
 internal object NavigationTransitions {
@@ -85,10 +86,10 @@ internal object NavigationTransitions {
         if (disableAnimations) return ImmediateFadeIn
         val initialRoute = scope.initialState.destination.route
         val targetRoute = scope.targetState.destination.route
-        return if (isTopLevelTransition(initialRoute, targetRoute, topLevelScreens)) {
-            TopLevelFadeIn
-        } else {
-            StackEnter
+        return when {
+            isTopLevelTransition(initialRoute, targetRoute, topLevelScreens) -> TopLevelFadeIn
+            isArtworkDetailRoute(targetRoute) -> fadeIn(tween(300))
+            else -> StackEnter
         }
     }
 
@@ -100,10 +101,17 @@ internal object NavigationTransitions {
         if (disableAnimations) return ImmediateFadeOut
         val initialRoute = scope.initialState.destination.route
         val targetRoute = scope.targetState.destination.route
-        return if (isTopLevelTransition(initialRoute, targetRoute, topLevelScreens)) {
-            TopLevelFadeOut
-        } else {
-            StackExit
+        return when {
+            isTopLevelTransition(initialRoute, targetRoute, topLevelScreens) -> TopLevelFadeOut
+            isArtworkDetailRoute(targetRoute) ->
+                scaleOut(
+                    ContainerTransformTokens.RecedeSpring,
+                    targetScale = ContainerTransformTokens.RecedeScale,
+                ) + fadeOut(
+                    ContainerTransformTokens.RecedeSpring,
+                    targetAlpha = ContainerTransformTokens.RecedeAlpha,
+                )
+            else -> StackExit
         }
     }
 
@@ -115,10 +123,17 @@ internal object NavigationTransitions {
         if (disableAnimations) return ImmediateFadeIn
         val initialRoute = scope.initialState.destination.route
         val targetRoute = scope.targetState.destination.route
-        return if (isTopLevelTransition(initialRoute, targetRoute, topLevelScreens)) {
-            TopLevelFadeIn
-        } else {
-            StackPopEnter
+        return when {
+            isTopLevelTransition(initialRoute, targetRoute, topLevelScreens) -> TopLevelFadeIn
+            isArtworkDetailRoute(initialRoute) ->
+                scaleIn(
+                    ContainerTransformTokens.ReturnSpec,
+                    initialScale = ContainerTransformTokens.RecedeScale,
+                ) + fadeIn(
+                    ContainerTransformTokens.ReturnSpec,
+                    initialAlpha = ContainerTransformTokens.RecedeAlpha,
+                )
+            else -> StackPopEnter
         }
     }
 
@@ -130,10 +145,15 @@ internal object NavigationTransitions {
         if (disableAnimations) return ImmediateFadeOut
         val initialRoute = scope.initialState.destination.route
         val targetRoute = scope.targetState.destination.route
-        return if (isTopLevelTransition(initialRoute, targetRoute, topLevelScreens)) {
-            TopLevelFadeOut
-        } else {
-            StackPopExit
+        return when {
+            isTopLevelTransition(initialRoute, targetRoute, topLevelScreens) -> TopLevelFadeOut
+            isArtworkDetailRoute(initialRoute) ->
+                scaleOut(
+                    tween(260),
+                    targetScale = 0.82f,
+                    transformOrigin = TransformOrigin(0.5f, 0.22f),
+                ) + fadeOut(tween(180))
+            else -> StackPopExit
         }
     }
 }
