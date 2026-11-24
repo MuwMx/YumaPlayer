@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.menu.SelectionSongMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.playlist.auto.AutoPlaylistHeader
@@ -97,7 +98,9 @@ fun AutoPlaylistScreen(
     val playlist =
         if (viewModel.playlist == "liked") stringResource(R.string.liked) else stringResource(R.string.offline)
 
-    val songs by viewModel.likedSongs.collectAsStateWithLifecycle()
+    val songsState by viewModel.likedSongs.collectAsStateWithLifecycle()
+    val isLoading = songsState == null
+    val songs = songsState.orEmpty()
 
     val (ytmSync) = rememberPreference(YtmSyncKey, true)
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
@@ -191,7 +194,8 @@ fun AutoPlaylistScreen(
     }
     val contentPadding = contentInsets.union(imeInsets).asPaddingValues()
 
-    val artworkBackground = rememberArtworkBackground(firstSongThumbnail)
+    val fallbackCover = remember(viewModel.playlist) { containerTransformCover("playlist-${viewModel.playlist}") }
+    val artworkBackground = rememberArtworkBackground(firstSongThumbnail ?: fallbackCover)
 
     Box(
         modifier =
@@ -245,7 +249,9 @@ fun AutoPlaylistScreen(
             }
 
             if (songs.isEmpty()) {
-                autoPlaylistEmptyState()
+                if (!isLoading) {
+                    autoPlaylistEmptyState()
+                }
             } else {
                 autoPlaylistRuleCards(
                     sortType = sortType,

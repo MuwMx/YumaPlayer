@@ -17,13 +17,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortDescendingKey
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
@@ -70,7 +73,7 @@ class AutoPlaylistViewModel
             }
 
         @OptIn(ExperimentalCoroutinesApi::class)
-        val likedSongs =
+        val likedSongs: StateFlow<List<Song>?> =
             context.dataStore.data
                 .map {
                     Pair(
@@ -136,7 +139,12 @@ class AutoPlaylistViewModel
                             MutableStateFlow(emptyList())
                         }
                     }
-                }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+                }.onEach { lastShown = playlist to it }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.WhileSubscribed(5_000),
+                    lastShown?.takeIf { it.first == playlist }?.second,
+                )
 
         fun refresh() {
             if (_isRefreshing.value) return
@@ -159,5 +167,10 @@ class AutoPlaylistViewModel
 
         fun syncLikedSongs() {
             refresh()
+        }
+
+        private companion object {
+            @Volatile
+            var lastShown: Pair<String, List<Song>>? = null
         }
     }

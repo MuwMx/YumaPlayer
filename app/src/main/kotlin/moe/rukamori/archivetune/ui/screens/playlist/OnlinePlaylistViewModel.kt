@@ -39,7 +39,7 @@ class OnlinePlaylistViewModel
         savedStateHandle: SavedStateHandle,
         private val database: MusicDatabase,
     ) : ViewModel() {
-        private val playlistId = savedStateHandle.get<String>("playlistId")!!
+        val playlistId = savedStateHandle.get<String>("playlistId")!!
 
         private val _playlist = MutableStateFlow<PlaylistItem?>(null)
         val playlist = _playlist.asStateFlow()

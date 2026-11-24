@@ -54,6 +54,7 @@ import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -162,7 +163,8 @@ fun OnlinePlaylistScreen(
     }
     val contentPadding = contentInsets.union(imeInsets).asPaddingValues()
 
-    val artworkBackground = rememberArtworkBackground(uiState.playlist?.thumbnail)
+    val fallbackCover = remember(viewModel.playlistId) { containerTransformCover("playlist-${viewModel.playlistId}") }
+    val artworkBackground = rememberArtworkBackground(uiState.playlist?.thumbnail ?: fallbackCover)
 
     ExpressivePullToRefreshBox(
         isRefreshing = uiState.isRefreshing,

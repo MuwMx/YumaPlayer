@@ -64,6 +64,7 @@ import moe.rukamori.archivetune.ui.component.ProvideArtworkSurface
 import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -184,7 +185,8 @@ fun LocalPlaylistScreen(
         onResetDragInfo = { dragInfo = null },
     )
 
-    val artworkModel = remember(playlist) { playlist?.thumbnails?.firstOrNull() }
+    val fallbackCover = remember(viewModel.playlistId) { containerTransformCover("playlist-${viewModel.playlistId}") }
+    val artworkModel = remember(playlist, fallbackCover) { playlist?.thumbnails?.firstOrNull() ?: fallbackCover }
     val artworkBackground = rememberArtworkBackground(artworkModel)
 
     ExpressivePullToRefreshBox(

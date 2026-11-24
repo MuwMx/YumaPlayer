@@ -50,6 +50,7 @@ import moe.rukamori.archivetune.ui.component.artworkBackground
 import moe.rukamori.archivetune.ui.component.rememberArtworkBackground
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
+import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.ui.scaffold.rememberHeaderScrollProgress
 import moe.rukamori.archivetune.ui.screens.album.AlbumDownloadProgressToolbar
@@ -136,7 +137,8 @@ fun AlbumScreen(
     val contentPadding = contentInsets.asPaddingValues()
 
     val showTopBarTitle by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
-    val artworkBackground = rememberArtworkBackground(currentAlbumWithSongs?.album?.thumbnailUrl)
+    val fallbackCover = remember(viewModel.albumId) { containerTransformCover("album-${viewModel.albumId}") }
+    val artworkBackground = rememberArtworkBackground(currentAlbumWithSongs?.album?.thumbnailUrl ?: fallbackCover)
 
     Box(
         modifier =
