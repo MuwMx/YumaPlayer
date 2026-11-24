@@ -284,7 +284,7 @@ class SplashRenderer {
                         boxSize = boxSize,
                         gleamProgress = engine.gleamProgress,
                     )
-                    val waveBoost = max(pulseBoost, gleamBoost * 1.25f)
+                    val waveBoost = max(pulseBoost, gleamBoost * 1.4f)
 
                     val bin = ((rawAlpha + waveBoost * SplashConfig.Look.Links.WAVE_BOOST_BIN).coerceIn(0f, 1f) * LINK_BINS).toInt().coerceIn(0, LINK_BINS - 1)
                     drawLine(

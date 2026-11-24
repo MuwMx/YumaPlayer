@@ -150,7 +150,7 @@ fun SplashOverlay(
             modifier = modifier
                 .fillMaxSize()
                 .clickable(
-                    enabled = showSplash,
+                    enabled = showSplash && !burstTriggered,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = {},
