@@ -50,6 +50,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
 import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
 import moe.rukamori.archivetune.audiodsp.shouldUseLegacyPath
@@ -361,6 +362,8 @@ class MusicServiceLifecycle(
 
     fun onCreate() {
         ioScope.launch {
+            SplashGate.awaitSplashDone(5000L)
+            delay(4000L)
             runCatching { delegate.downloadCache.keys }.getOrNull()?.forEach { key ->
                 delegate.registerCacheListener(key)
             }
@@ -606,6 +609,8 @@ class MusicServiceLifecycle(
             .collectLatest(ioScope) { (enabled, maxSongCacheSizeMb) ->
                 if (!enabled) return@collectLatest
                 if (maxSongCacheSizeMb <= 0 || maxSongCacheSizeMb == -1) return@collectLatest
+                SplashGate.awaitSplashDone(5000L)
+                delay(4000L)
                 val bytesPerMb = 1024L * 1024L
                 val safeSizeMb = maxSongCacheSizeMb.toLong().coerceAtMost(Long.MAX_VALUE / bytesPerMb)
                 val limitBytes = safeSizeMb * bytesPerMb

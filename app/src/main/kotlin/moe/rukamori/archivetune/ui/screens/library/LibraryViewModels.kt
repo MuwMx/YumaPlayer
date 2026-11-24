@@ -21,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.constants.AiApiKeyKey
 import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
@@ -267,6 +269,8 @@ class LibraryArtistsViewModel
 
         init {
             viewModelScope.launch(Dispatchers.IO) {
+                SplashGate.awaitSplashDone(5000L)
+                delay(2000L)
                 allArtists.collect { artists ->
                     artists
                         .map { it.artist }
@@ -389,6 +393,8 @@ class LibraryAlbumsViewModel
 
         init {
             viewModelScope.launch(Dispatchers.IO) {
+                SplashGate.awaitSplashDone(5000L)
+                delay(2000L)
                 allAlbums.collect { albums ->
                     albums
                         .filter {
@@ -510,7 +516,6 @@ class LibraryMixViewModel
         private val _topMixInitialError = MutableStateFlow<String?>(null)
         private val _topMixEvents = MutableSharedFlow<String>()
         val topMixEvents = _topMixEvents.asSharedFlow()
-        private var hasRequestedInitialTopMixGeneration = false
 
         private val isTopMixAiAvailable =
             context.dataStore.data
@@ -531,7 +536,7 @@ class LibraryMixViewModel
                     reportException(throwable)
                     _topMixInitialError.value = context.getString(R.string.library_top_mixes_failed)
                     emit(emptyList())
-                }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+                }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
         val topMixesUiState =
             combine(
@@ -615,23 +620,6 @@ class LibraryMixViewModel
                     emit(MostPlayedAlbumUiState.Error(context.getString(R.string.error_unknown)))
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MostPlayedAlbumUiState.Loading)
 
-        init {
-            viewModelScope.launch(Dispatchers.IO) {
-                syncUtils.trySpotifyAutoSync()
-            }
-            viewModelScope.launch {
-                combine(observedTopMixes, isTopMixAiAvailable) { mixes, isAiAvailable ->
-                    mixes != null && mixes.isEmpty() && isAiAvailable
-                }.distinctUntilChanged()
-                    .collect { shouldGenerate ->
-                        if (shouldGenerate && !hasRequestedInitialTopMixGeneration) {
-                            hasRequestedInitialTopMixGeneration = true
-                            refreshTopMixesInternal(isInitialGeneration = true)
-                        }
-                    }
-            }
-        }
-
         fun syncAllLibrary() {
             if (_isRefreshing.value) return
             _isRefreshing.value = true
@@ -649,7 +637,6 @@ class LibraryMixViewModel
         }
 
         fun refreshTopMixes() {
-            hasRequestedInitialTopMixGeneration = true
             refreshTopMixesInternal(isInitialGeneration = false)
         }
 
@@ -743,6 +730,8 @@ class LibraryMixViewModel
 
         init {
             viewModelScope.launch(Dispatchers.IO) {
+                SplashGate.awaitSplashDone(5000L)
+                delay(2000L)
                 albums.collect { albums ->
                     albums
                         .filter {
@@ -766,6 +755,8 @@ class LibraryMixViewModel
                 }
             }
             viewModelScope.launch(Dispatchers.IO) {
+                SplashGate.awaitSplashDone(5000L)
+                delay(2000L)
                 artists.collect { artists ->
                     artists
                         .map { it.artist }
