@@ -149,12 +149,6 @@ fun SplashOverlay(
             exit = fadeOut(animationSpec = tween(durationMillis = SplashConfig.Reveal.FADE_MS)),
             modifier = modifier
                 .fillMaxSize()
-                .clickable(
-                    enabled = showSplash && !burstTriggered,
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {},
-                ),
         ) {
             Spacer(
                 modifier = Modifier
