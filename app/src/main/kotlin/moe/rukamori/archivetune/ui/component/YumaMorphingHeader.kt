@@ -28,9 +28,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -135,21 +138,48 @@ fun YumaMorphingHeader(
             )
 
             if (type.showBottomGradient) {
+                val immersiveAlpha = (1f - fraction * 2f).coerceIn(0f, 1f)
+                if (!disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && immersiveAlpha > 0.01f) {
+                    AsyncImage(
+                        model = if (type == HeaderType.ARTIST) {
+                            imageUrl?.resize(1080, 1080).orEmpty()
+                        } else {
+                            imageUrl.orEmpty()
+                        },
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = immersiveAlpha
+                                compositingStrategy = CompositingStrategy.Offscreen
+                                renderEffect = BlurEffectCache.get(28f)
+                            }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        0.55f to Color.Transparent,
+                                        0.85f to Color.Black,
+                                        1.0f to Color.Black,
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(138.dp)
                         .align(Alignment.BottomCenter)
-                        .graphicsLayer {
-                            alpha = (1f - fraction * 2f).coerceIn(0f, 1f)
-                            if (!disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                renderEffect = BlurEffectCache.get(20f)
-                            }
-                        }
+                        .graphicsLayer { alpha = immersiveAlpha }
                         .background(
                             Brush.verticalGradient(
                                 0.0f to Color.Transparent,
-                                0.45f to surfaceColor.copy(alpha = 0.75f),
+                                0.55f to surfaceColor.copy(alpha = 0.7f),
                                 1.0f to surfaceColor
                             )
                         )
@@ -244,9 +274,7 @@ class ArtistHeaderMorphState(
         }
     }
 
-    val contentTranslationY: Float by derivedStateOf {
-        immersiveValue * extraExpandPx
-    }
+    val contentTranslationY: Float = 0f
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
