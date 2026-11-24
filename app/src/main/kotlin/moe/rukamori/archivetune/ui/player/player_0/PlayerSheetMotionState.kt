@@ -47,8 +47,8 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.theme.YdsInsets
 
 private val TapSheetAnimationSpec: AnimationSpec<Float> = spring(
-    dampingRatio = 0.92f,
-    stiffness = 240f,
+    dampingRatio = 0.78f,
+    stiffness = Spring.StiffnessMediumLow,
 )
 
 @Stable

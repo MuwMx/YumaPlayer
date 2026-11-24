@@ -186,6 +186,7 @@ fun PlayerToolbar(
                                 interactionSource = collapseInteractionSource,
                                 indication = null
                             ) {
+                                haptics.click()
                                 onCollapseClick()
                             }
                         } else Modifier

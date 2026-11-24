@@ -46,6 +46,7 @@ import coil3.request.allowHardware
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.ui.component.MarqueeText
+import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.player_0.buttons.MiniPlayerButtons
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
@@ -63,6 +64,7 @@ internal fun MiniPlayerContentInternal(
     isVisible: Boolean = true
 ) {
     val context = LocalContext.current
+    val haptics = rememberYumaHaptics()
     var progressMs by remember { mutableLongStateOf(playbackProgress.value) }
 
     LaunchedEffect(isVisible, playbackProgress) {
@@ -81,7 +83,10 @@ internal fun MiniPlayerContentInternal(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onMediaAreaClick
+                onClick = {
+                    haptics.click()
+                    onMediaAreaClick()
+                }
             )
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
