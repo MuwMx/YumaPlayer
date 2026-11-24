@@ -62,6 +62,7 @@ fun SplashOverlay(
         val currentOnDismiss by rememberUpdatedState(onDismiss)
         var isInitialized by remember { mutableStateOf(false) }
         var burstTriggered by remember { mutableStateOf(false) }
+        var prewarmTriggered by remember { mutableStateOf(false) }
 
         val density = LocalDensity.current.density
         val engine = remember { SplashEngine() }
@@ -92,7 +93,6 @@ fun SplashOverlay(
 
         LaunchedEffect(isReady) {
             if (isReady) {
-                currentOnPrewarmStart()
                 if (engine.width > 0f && engine.height > 0f && !isInitialized) {
                     engine.density = density
                     engine.shape = initialShape
@@ -121,8 +121,17 @@ fun SplashOverlay(
                 engine.update(dt, now / 1_000_000)
                 frameTick = now
 
+                if (engine.currentPhase == SplashPhase.Ignite && !prewarmTriggered) {
+                    prewarmTriggered = true
+                    currentOnPrewarmStart()
+                }
+
                 val burstLimit = if (engine.isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 if (engine.currentPhase == SplashPhase.Burst && !burstTriggered && engine.phaseElapsedMs >= burstLimit * SplashConfig.Reveal.START_FRACTION) {
+                    if (!prewarmTriggered) {
+                        prewarmTriggered = true
+                        currentOnPrewarmStart()
+                    }
                     burstTriggered = true
                     currentOnBurstStart()
                 }

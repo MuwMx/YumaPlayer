@@ -19,7 +19,7 @@ object SplashConfig {
         var GATHER_CROSS_MS: Float = 700f
         var GATHER_SHORT_MS: Float = 400f
         var ERROR_HOLD_MS: Float = 350f
-        var IGNITE_FULL_MS: Float = 280f
+        var IGNITE_FULL_MS: Float = 420f
         var IGNITE_SHORT_MS: Float = 120f
         var BURST_FULL_MS: Float = 420f
         var BURST_SHORT_MS: Float = 280f

@@ -44,6 +44,7 @@ class SplashEngine {
     var isShort: Boolean = false
     var postBurstFrames: Int = 0
     var pulseWave: Float = 0f
+    var gleamProgress: Float = -1f
     var particleScale: Float = 1f
     var particleAlpha: Float = 1f
     var currentShapeData: SplashSlots.ShapeSlots =
@@ -81,6 +82,7 @@ class SplashEngine {
         phaseElapsedMs = 0f
         particleScale = 1f
         particleAlpha = if (newPhase == SplashPhase.Idle) 0f else 1f
+        gleamProgress = if (newPhase == SplashPhase.Ignite) 0f else -1f
         when (newPhase) {
             SplashPhase.Dust -> {
                 formStrength = 0f
@@ -152,17 +154,7 @@ class SplashEngine {
             SplashPhase.Ignite -> {
                 formStrength = 1f
                 val igniteLimit = if (isShort) SplashConfig.Timings.IGNITE_SHORT_MS else SplashConfig.Timings.IGNITE_FULL_MS
-                val igniteProgress = (phaseElapsedMs / igniteLimit).coerceIn(0f, 1f)
-                val pinch = 1f - sin(igniteProgress * Math.PI.toFloat()) * SplashConfig.Effects.PINCH_FACTOR
-                val c = SplashSlots.center(width, height)
-                for (i in particles.indices) {
-                    val p = particles[i]
-                    if (p.isMember && p.slotIndex in slots.indices) {
-                        val baseSlot = slots[p.slotIndex]
-                        p.targetX = c.x + (baseSlot.x - c.x) * pinch
-                        p.targetY = c.y + (baseSlot.y - c.y) * pinch
-                    }
-                }
+                gleamProgress = (phaseElapsedMs / igniteLimit).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= igniteLimit) {
                     setPhase(SplashPhase.Burst)
                 }
@@ -171,7 +163,7 @@ class SplashEngine {
                 val burstLimit = if (isShort) SplashConfig.Timings.BURST_SHORT_MS else SplashConfig.Timings.BURST_FULL_MS
                 val progress = (phaseElapsedMs / burstLimit).coerceIn(0f, 1f)
                 val fade = (1f - progress) * (1f - progress)
-                particleScale = 1f + progress * SplashConfig.Burst.SCALE_GROWTH
+                particleScale = (1f - progress * 0.25f).coerceAtLeast(0.5f)
                 particleAlpha = fade.coerceIn(0f, 1f)
                 formStrength = (1f - progress * SplashConfig.Burst.LINK_FADE_MULT).coerceIn(0f, 1f)
                 if (phaseElapsedMs >= burstLimit) {
