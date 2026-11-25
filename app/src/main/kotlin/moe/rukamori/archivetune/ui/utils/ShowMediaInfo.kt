@@ -4,53 +4,71 @@
  * GPL-3.0 License | Contributors: see git history
  */
 
-@file:OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    ExperimentalLayoutApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+)
 
 package moe.rukamori.archivetune.ui.utils
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
+import android.net.Uri
 import android.text.format.Formatter
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,7 +77,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -70,15 +87,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.flow.flowOf
-import moe.rukamori.archivetune.ui.main.LocalDatabase
-import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlaybackSource
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
+import moe.rukamori.archivetune.ui.main.LocalDatabase
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
+import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.reportException
 
 private enum class MediaInfoTab(
@@ -105,6 +123,11 @@ private data class MediaInfoMetric(
     val value: String,
 )
 
+private data class MediaInfoExternalLink(
+    val label: String,
+    val url: String,
+)
+
 @Composable
 fun ShowMediaInfo(videoId: String) {
     if (videoId.isBlank()) return
@@ -127,10 +150,11 @@ fun ShowMediaInfo(videoId: String) {
         database.formatForSource(videoId, selectedSource)
     }.collectAsState(initial = null)
     val currentFormat = if (isCurrentTrack) currentPlayingFormat else fallbackDbFormat
+
     var info by remember(videoId) { mutableStateOf<MediaInfo?>(null) }
     var isLoading by remember(videoId) { mutableStateOf(true) }
     var loadError by remember(videoId) { mutableStateOf(false) }
-    var retryKey by remember(videoId) { mutableStateOf(0) }
+    var retryKey by remember(videoId) { mutableIntStateOf(0) }
     var selectedTab by rememberSaveable(videoId) { mutableStateOf(MediaInfoTab.Information) }
 
     val unknownText = stringResource(R.string.unknown)
@@ -138,8 +162,6 @@ fun ShowMediaInfo(videoId: String) {
     val errorUnknownText = stringResource(R.string.error_unknown)
     val retryText = stringResource(R.string.retry)
     val copyText = stringResource(R.string.copy)
-    val shareText = stringResource(R.string.share)
-    val closeText = stringResource(R.string.close)
     val songTitleLabel = stringResource(R.string.song_title)
     val songArtistsLabel = stringResource(R.string.song_artists)
     val mediaIdLabel = stringResource(R.string.media_id)
@@ -148,14 +170,10 @@ fun ShowMediaInfo(videoId: String) {
     val bitrateLabel = stringResource(R.string.bitrate)
     val sampleRateLabel = stringResource(R.string.sample_rate)
     val loudnessLabel = stringResource(R.string.loudness)
-    val volumeLabel = stringResource(R.string.volume)
     val fileSizeLabel = stringResource(R.string.file_size)
     val descriptionLabel = stringResource(R.string.description)
     val detailsLabel = stringResource(R.string.details)
     val numbersLabel = stringResource(R.string.numbers)
-    val informationLabel = stringResource(R.string.information)
-
-    val mediaUrl = remember(videoId) { "https://music.youtube.com/watch?v=$videoId" }
 
     LaunchedEffect(videoId, retryKey) {
         isLoading = true
@@ -172,277 +190,251 @@ fun ShowMediaInfo(videoId: String) {
             }
     }
 
-    val heroTitle = song?.title ?: info?.title ?: videoId
+    val heroTitle = song?.title ?: currentMediaMetadata?.takeIf { isCurrentTrack }?.title ?: info?.title ?: videoId
     val heroSubtitle =
         song
             ?.artists
             ?.takeIf { it.isNotEmpty() }
             ?.joinToString { it.name }
+            ?: currentMediaMetadata?.takeIf { isCurrentTrack }?.artists?.takeIf { it.isNotEmpty() }?.joinToString { it.name }
             ?: info?.author
             ?: unknownText
-    val artworkModel = song?.thumbnailUrl ?: info?.authorThumbnail
-    val playbackVolume = playerConnection?.let { "${(it.player.volume * 100).toInt()}%" }
+    val artworkModel = song?.thumbnailUrl ?: currentMediaMetadata?.takeIf { isCurrentTrack }?.thumbnailUrl ?: info?.authorThumbnail
+    val albumTitle = song?.album?.title ?: song?.song?.albumName ?: currentMediaMetadata?.takeIf { isCurrentTrack }?.album?.title
+    val durationSec = song?.song?.duration?.takeIf { it > 0 } ?: currentMediaMetadata?.takeIf { isCurrentTrack }?.duration?.takeIf { it > 0 }
+    val durationText = durationSec?.let { makeTimeString(it * 1000L, context) }
+    val uploadDateText = info?.uploadDate?.takeIf { it.isNotBlank() }
 
-    val overviewDetails =
-        buildList {
-            add(MediaInfoDetail(label = songTitleLabel, value = song?.title ?: info?.title ?: unknownText))
-            add(
-                MediaInfoDetail(
-                    label = songArtistsLabel,
-                    value =
-                        song
-                            ?.artists
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.joinToString { it.name }
-                            ?: info?.author
-                            ?: unknownText,
-                ),
-            )
-            add(MediaInfoDetail(label = mediaIdLabel, value = videoId))
+    val overviewDetails = buildList {
+        add(MediaInfoDetail(label = songTitleLabel, value = heroTitle))
+        add(MediaInfoDetail(label = songArtistsLabel, value = heroSubtitle))
+        albumTitle?.takeIf { it.isNotBlank() }?.let {
+            add(MediaInfoDetail(label = "Album", value = it))
         }
-
-    val technicalDetails =
-        buildList {
-            currentFormat?.itag?.toString()?.let { add(MediaInfoDetail(label = stringResource(R.string.media_info_itag), value = it)) }
-            currentFormat
-                ?.mimeType
-                ?.takeIf { it.isNotBlank() }
-                ?.let { add(MediaInfoDetail(label = mimeTypeLabel, value = it)) }
-            currentFormat
-                ?.codecs
-                ?.takeIf { it.isNotBlank() }
-                ?.let { add(MediaInfoDetail(label = codecsLabel, value = it)) }
-            currentFormat
-                ?.bitrate
-                ?.takeIf { it > 0 }
-                ?.let { add(MediaInfoDetail(label = bitrateLabel, value = "${it / 1000} Kbps")) }
-            currentFormat
-                ?.sampleRate
-                ?.takeIf { it > 0 }
-                ?.let { add(MediaInfoDetail(label = sampleRateLabel, value = "$it Hz")) }
-            currentFormat?.loudnessDb?.let { add(MediaInfoDetail(label = loudnessLabel, value = "$it dB")) }
-            playbackVolume?.let { add(MediaInfoDetail(label = volumeLabel, value = it)) }
-            currentFormat
-                ?.contentLength
-                ?.takeIf { it > 0 }
-                ?.let {
-                    add(
-                        MediaInfoDetail(
-                            label = fileSizeLabel,
-                            value = Formatter.formatShortFileSize(context, it),
-                        ),
-                    )
-                }
+        uploadDateText?.let {
+            add(MediaInfoDetail(label = "Released", value = it))
         }
-
-    val quickFacts =
-        buildList {
-            currentFormat
-                ?.mimeType
-                ?.substringBefore(';')
-                ?.takeIf { it.isNotBlank() }
-                ?.let { add(MediaInfoQuickFact(iconRes = R.drawable.graphic_eq, text = it)) }
-            currentFormat
-                ?.bitrate
-                ?.takeIf { it > 0 }
-                ?.let { add(MediaInfoQuickFact(iconRes = R.drawable.waves, text = "${it / 1000} Kbps")) }
-            currentFormat
-                ?.contentLength
-                ?.takeIf { it > 0 }
-                ?.let {
-                    add(
-                        MediaInfoQuickFact(
-                            iconRes = R.drawable.storage,
-                            text = Formatter.formatShortFileSize(context, it),
-                        ),
-                    )
-                }
-            info
-                ?.subscribers
-                ?.takeIf { it.isNotBlank() }
-                ?.let { add(MediaInfoQuickFact(iconRes = R.drawable.person, text = it)) }
+        durationText?.let {
+            add(MediaInfoDetail(label = "Length", value = it))
         }
+        add(MediaInfoDetail(label = mediaIdLabel, value = videoId))
+    }
 
-    val metrics =
-        if (info != null) {
-            listOf(
-                MediaInfoMetric(R.string.subscribers, info?.subscribers ?: unknownText),
-                MediaInfoMetric(R.string.views, info?.viewCount?.let(::numberFormatter) ?: unknownText),
-                MediaInfoMetric(R.string.likes, info?.like?.let(::numberFormatter) ?: unknownText),
-                MediaInfoMetric(R.string.dislikes, info?.dislike?.let(::numberFormatter) ?: unknownText),
-            )
-        } else {
-            emptyList()
+    val technicalDetails = buildList {
+        currentFormat?.itag?.toString()?.let {
+            add(MediaInfoDetail(label = stringResource(R.string.media_info_itag), value = it))
         }
+        currentFormat?.mimeType?.takeIf { it.isNotBlank() }?.let {
+            add(MediaInfoDetail(label = mimeTypeLabel, value = it))
+        }
+        currentFormat?.codecs?.takeIf { it.isNotBlank() }?.let {
+            add(MediaInfoDetail(label = codecsLabel, value = it))
+        }
+        currentFormat?.bitrate?.takeIf { it > 0 }?.let {
+            add(MediaInfoDetail(label = bitrateLabel, value = "${it / 1000} Kbps"))
+        }
+        currentFormat?.sampleRate?.takeIf { it > 0 }?.let {
+            add(MediaInfoDetail(label = sampleRateLabel, value = "$it Hz"))
+        }
+        currentFormat?.loudnessDb?.let {
+            add(MediaInfoDetail(label = loudnessLabel, value = "$it dB"))
+        }
+        currentFormat?.contentLength?.takeIf { it > 0 }?.let {
+            add(MediaInfoDetail(label = fileSizeLabel, value = Formatter.formatShortFileSize(context, it)))
+        }
+    }
 
-    LazyColumn(
-        state = rememberLazyListState(),
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    val quickFacts = buildList {
+        val codecLabel = currentFormat?.codecs?.takeIf { it.isNotBlank() }
+            ?: currentFormat?.mimeType?.substringBefore(';')?.takeIf { it.isNotBlank() }
+        codecLabel?.let { add(MediaInfoQuickFact(iconRes = R.drawable.graphic_eq, text = it)) }
+        currentFormat?.bitrate?.takeIf { it > 0 }?.let {
+            add(MediaInfoQuickFact(iconRes = R.drawable.waves, text = "${it / 1000} Kbps"))
+        }
+        currentFormat?.contentLength?.takeIf { it > 0 }?.let {
+            add(MediaInfoQuickFact(iconRes = R.drawable.storage, text = Formatter.formatShortFileSize(context, it)))
+        }
+    }
+
+    val metrics = if (info != null) {
+        listOf(
+            MediaInfoMetric(R.string.views, info?.viewCount?.let(::numberFormatter) ?: unknownText),
+            MediaInfoMetric(R.string.likes, info?.like?.let(::numberFormatter) ?: unknownText),
+            MediaInfoMetric(R.string.dislikes, info?.dislike?.let(::numberFormatter) ?: unknownText),
+        )
+    } else {
+        emptyList()
+    }
+
+    val encodedQuery = remember(heroTitle, heroSubtitle) {
+        val raw = if (heroSubtitle != unknownText) "$heroTitle $heroSubtitle" else heroTitle
+        Uri.encode(raw)
+    }
+
+    val externalLinks = remember(videoId, encodedQuery) {
+        listOf(
+            MediaInfoExternalLink("YouTube Music", "https://music.youtube.com/watch?v=$videoId"),
+            MediaInfoExternalLink("Spotify", "https://open.spotify.com/search/$encodedQuery"),
+            MediaInfoExternalLink("Apple Music", "https://music.apple.com/search?term=$encodedQuery"),
+            MediaInfoExternalLink("Tidal", "https://listen.tidal.com/search?q=$encodedQuery"),
+        )
+    }
+
+    val allInfoText = remember(overviewDetails, technicalDetails) {
+        (overviewDetails + technicalDetails).joinToString("\n") { "${it.label}: ${it.value}" }
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = { bottomSheetPageState.dismiss() },
+        sheetState = sheetState,
+        sheetMaxWidth = 600.dp,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        modifier = Modifier
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(top = 48.dp),
     ) {
-        item(contentType = "Hero") {
-            MediaInfoHeroCard(
-                title = heroTitle,
-                subtitle = heroSubtitle,
-                artworkModel = artworkModel,
-                sectionLabel = informationLabel,
-                isLoading = isLoading,
-                loadingText = pleaseWaitText,
-            )
-        }
+        LazyColumn(
+            state = rememberLazyListState(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 600.dp)
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item(contentType = "Header") {
+                MediaInfoCompactHeader(
+                    title = heroTitle,
+                    subtitle = heroSubtitle,
+                    artworkModel = artworkModel,
+                    isLoading = isLoading,
+                    copyContentDescription = copyText,
+                    onCopyAll = { copyToClipboard(context, allInfoText) },
+                )
+            }
 
-        item(contentType = "Actions") {
-            MediaInfoActionButton(
-                text = copyText,
-                iconRes = R.drawable.copy,
-                onClick = { copyToClipboard(context, videoId) },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        if (quickFacts.isNotEmpty()) {
-            item(contentType = "QuickFacts") {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    quickFacts.forEach { fact ->
-                        AssistChip(
-                            onClick = { copyToClipboard(context, fact.text) },
-                            label = {
-                                Text(
-                                    text = fact.text,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 12.sp,
-                                    fontFamily = LocalArchiveTuneFontFamily.current,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(fact.iconRes),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                                labelColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                            border = AssistChipDefaults.assistChipBorder(
-                                enabled = true,
-                                borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
+            if (quickFacts.isNotEmpty()) {
+                item(contentType = "QuickFacts") {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        quickFacts.forEach { fact ->
+                            MediaInfoTonalChip(
+                                text = fact.text,
+                                iconRes = fact.iconRes,
+                                onClick = { copyToClipboard(context, fact.text) },
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        item(contentType = "Tabs") {
-            MediaInfoTabSelector(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
-        }
+            item(contentType = "Tabs") {
+                MediaInfoTabSelector(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                )
+            }
 
-        item(contentType = "SelectedContent") {
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "mediaInfoTab",
-            ) { tab ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                ) {
-                    when (tab) {
-                        MediaInfoTab.Information -> {
-                            MediaInfoDetailCard(
-                                items = overviewDetails,
-                                copyContentDescription = copyText,
-                                onCopy = { copyToClipboard(context, it) },
-                            )
-
-                            when {
-                                isLoading && info == null -> {
-                                    MediaInfoPendingCard(
-                                        title = descriptionLabel,
-                                        message = pleaseWaitText,
-                                    )
-                                }
-
-                                loadError && info == null -> {
-                                    MediaInfoErrorCard(
-                                        title = descriptionLabel,
-                                        message = errorUnknownText,
-                                        retryText = retryText,
-                                        onRetry = { retryKey++ },
-                                    )
-                                }
-
-                                else -> {
-                                    MediaInfoNarrativeCard(
-                                        title = descriptionLabel,
-                                        body = info?.description?.takeIf { it.isNotBlank() } ?: unknownText,
-                                        copyText = copyText,
-                                        onCopy = {
-                                            info
-                                                ?.description
-                                                ?.takeIf { value -> value.isNotBlank() }
-                                                ?.let { copyToClipboard(context, it) }
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        MediaInfoTab.Details -> {
-                            if (technicalDetails.isEmpty()) {
-                                if (isLoading) {
-                                    MediaInfoPendingCard(
-                                        title = detailsLabel,
-                                        message = pleaseWaitText,
-                                    )
-                                } else {
-                                    MediaInfoErrorCard(
-                                        title = detailsLabel,
-                                        message = unknownText,
-                                    )
-                                }
-                            } else {
-                                MediaInfoDetailCard(
-                                    items = technicalDetails,
+            item(contentType = "SelectedContent") {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "mediaInfoTab",
+                ) { tab ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize(),
+                    ) {
+                        when (tab) {
+                            MediaInfoTab.Information -> {
+                                MediaInfoDetailList(
+                                    items = overviewDetails,
                                     copyContentDescription = copyText,
                                     onCopy = { copyToClipboard(context, it) },
                                 )
-                            }
-                        }
 
-                        MediaInfoTab.Numbers -> {
-                            if (metrics.isEmpty()) {
-                                if (isLoading) {
-                                    MediaInfoPendingCard(
-                                        title = numbersLabel,
-                                        message = pleaseWaitText,
-                                    )
+                                when {
+                                    isLoading && info == null -> {
+                                        MediaInfoPendingCard(
+                                            title = descriptionLabel,
+                                            message = pleaseWaitText,
+                                        )
+                                    }
+
+                                    loadError && info == null -> {
+                                        MediaInfoErrorCard(
+                                            title = descriptionLabel,
+                                            message = errorUnknownText,
+                                            retryText = retryText,
+                                            onRetry = { retryKey++ },
+                                        )
+                                    }
+
+                                    else -> {
+                                        MediaInfoNarrativeCard(
+                                            title = descriptionLabel,
+                                            body = info?.description?.takeIf { it.isNotBlank() } ?: unknownText,
+                                            copyContentDescription = copyText,
+                                            onCopy = {
+                                                info
+                                                    ?.description
+                                                    ?.takeIf { value -> value.isNotBlank() }
+                                                    ?.let { copyToClipboard(context, it) }
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+
+                            MediaInfoTab.Details -> {
+                                if (technicalDetails.isEmpty()) {
+                                    if (isLoading) {
+                                        MediaInfoPendingCard(
+                                            title = detailsLabel,
+                                            message = pleaseWaitText,
+                                        )
+                                    } else {
+                                        MediaInfoErrorCard(
+                                            title = detailsLabel,
+                                            message = unknownText,
+                                        )
+                                    }
                                 } else {
-                                    MediaInfoErrorCard(
-                                        title = numbersLabel,
-                                        message = errorUnknownText,
-                                        retryText = retryText,
-                                        onRetry = { retryKey++ },
+                                    MediaInfoDetailList(
+                                        items = technicalDetails,
+                                        copyContentDescription = copyText,
+                                        onCopy = { copyToClipboard(context, it) },
                                     )
                                 }
-                            } else {
-                                MediaInfoMetricsGrid(metrics = metrics)
+                            }
+
+                            MediaInfoTab.Numbers -> {
+                                if (metrics.isEmpty()) {
+                                    if (isLoading) {
+                                        MediaInfoPendingCard(
+                                            title = numbersLabel,
+                                            message = pleaseWaitText,
+                                        )
+                                    } else {
+                                        MediaInfoErrorCard(
+                                            title = numbersLabel,
+                                            message = errorUnknownText,
+                                            retryText = retryText,
+                                            onRetry = { retryKey++ },
+                                        )
+                                    }
+                                } else {
+                                    MediaInfoMetricsGrid(metrics = metrics)
+                                }
                             }
                         }
                     }
@@ -452,78 +444,153 @@ fun ShowMediaInfo(videoId: String) {
     }
 }
 
-/**
- * Фирменная стильная кнопка действия YumaPlayer с правильной иконкой 18dp
- */
 @Composable
-private fun MediaInfoActionButton(
-    text: String,
-    iconRes: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+private fun MediaInfoCompactHeader(
+    title: String,
+    subtitle: String,
+    artworkModel: String?,
+    isLoading: Boolean,
+    copyContentDescription: String,
+    onCopyAll: () -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-        label = "ActionButtonBounce"
-    )
-
-    Box(
-        modifier = modifier
-            .height(42.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 12.dp)
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.size(52.dp),
         ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = text,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp) // 👈 Фиксированный аккуратный размер иконки
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+            if (artworkModel != null) {
+                AsyncImage(
+                    model = artworkModel,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp)),
+                )
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(R.drawable.music_note),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.weight(1f),
+        ) {
             Text(
-                text = text,
+                text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = LocalArchiveTuneFontFamily.current
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = LocalArchiveTuneFontFamily.current,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = subtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (isLoading) {
+                    CircularWavyProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+
+        IconButton(onClick = onCopyAll) {
+            Icon(
+                painter = painterResource(R.drawable.copy),
+                contentDescription = copyContentDescription,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
 }
 
-/**
- * Переключатель вкладок в дизайне YumaPlayer
- */
+@Composable
+private fun MediaInfoTonalChip(
+    text: String,
+    @DrawableRes iconRes: Int,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = text,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = LocalArchiveTuneFontFamily.current,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun MediaInfoTabSelector(
     selectedTab: MediaInfoTab,
     onTabSelected: (MediaInfoTab) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         MediaInfoTab.entries.forEach { tab ->
             val isSelected = selectedTab == tab
@@ -532,25 +599,29 @@ private fun MediaInfoTabSelector(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                     )
                     .clickable(
                         interactionSource = tabInteraction,
-                        indication = null
+                        indication = null,
                     ) { onTabSelected(tab) },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(tab.labelRes),
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                     fontFamily = LocalArchiveTuneFontFamily.current,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -558,166 +629,58 @@ private fun MediaInfoTabSelector(
 }
 
 @Composable
-private fun MediaInfoHeroCard(
-    title: String,
-    subtitle: String,
-    artworkModel: String?,
-    sectionLabel: String,
-    isLoading: Boolean,
-    loadingText: String,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-            .padding(16.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.size(80.dp),
-            ) {
-                if (artworkModel != null) {
-                    AsyncImage(
-                        model = artworkModel,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(16.dp)),
-                    )
-                } else {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(R.drawable.music_note),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = sectionLabel,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    fontFamily = LocalArchiveTuneFontFamily.current
-                )
-                Text(
-                    text = title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = LocalArchiveTuneFontFamily.current,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                    fontFamily = LocalArchiveTuneFontFamily.current,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                if (isLoading) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        CircularWavyProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = loadingText,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontFamily = LocalArchiveTuneFontFamily.current
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaInfoDetailCard(
+private fun MediaInfoDetailList(
     items: List<MediaInfoDetail>,
     copyContentDescription: String,
     onCopy: (String) -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             items.forEachIndexed { index, item ->
-                ListItem(
-                    overlineContent = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCopy(item.value) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
                         Text(
                             text = item.label,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
-                            fontFamily = LocalArchiveTuneFontFamily.current
+                            fontFamily = LocalArchiveTuneFontFamily.current,
                         )
-                    },
-                    trailingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.copy),
-                            contentDescription = copyContentDescription,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp) // 👈 Фиксированный аккуратный размер иконки
+                        Text(
+                            text = item.value,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = LocalArchiveTuneFontFamily.current,
+                            maxLines = if (item.multiline) Int.MAX_VALUE else 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { onCopy(item.value) },
-                ) {
-                    Text(
-                        text = item.value,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = LocalArchiveTuneFontFamily.current,
-                        maxLines = if (item.multiline) Int.MAX_VALUE else 2,
-                        overflow = TextOverflow.Ellipsis,
+                    }
+                    Icon(
+                        painter = painterResource(R.drawable.copy),
+                        contentDescription = copyContentDescription,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
 
                 if (index != items.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                     )
                 }
             }
@@ -729,20 +692,19 @@ private fun MediaInfoDetailCard(
 private fun MediaInfoNarrativeCard(
     title: String,
     body: String,
-    copyText: String,
+    copyContentDescription: String,
     onCopy: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-            .padding(16.dp)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -752,15 +714,21 @@ private fun MediaInfoNarrativeCard(
                 Text(
                     text = title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = LocalArchiveTuneFontFamily.current
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = LocalArchiveTuneFontFamily.current,
                 )
-                MediaInfoActionButton(
-                    text = copyText,
-                    iconRes = R.drawable.copy,
-                    onClick = onCopy
-                )
+                IconButton(
+                    onClick = onCopy,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.copy),
+                        contentDescription = copyContentDescription,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
 
             Text(
@@ -768,7 +736,7 @@ private fun MediaInfoNarrativeCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 fontFamily = LocalArchiveTuneFontFamily.current,
-                lineHeight = 18.sp
+                lineHeight = 19.sp,
             )
         }
     }
@@ -786,30 +754,29 @@ private fun MediaInfoMetricsGrid(metrics: List<MediaInfoMetric>) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 rowMetrics.forEach { metric ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-                            .padding(14.dp)
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.weight(1f),
                     ) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
                         ) {
                             Text(
                                 text = stringResource(metric.labelRes),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp,
-                                fontFamily = LocalArchiveTuneFontFamily.current
+                                fontFamily = LocalArchiveTuneFontFamily.current,
                             )
                             Text(
                                 text = metric.value,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = LocalArchiveTuneFontFamily.current
+                                fontFamily = LocalArchiveTuneFontFamily.current,
                             )
                         }
                     }
@@ -828,32 +795,34 @@ private fun MediaInfoPendingCard(
     title: String,
     message: String,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-            .padding(20.dp)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
         ) {
-            LoadingIndicator(modifier = Modifier.size(36.dp), color = MaterialTheme.colorScheme.primary)
+            LoadingIndicator(
+                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LocalArchiveTuneFontFamily.current
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = LocalArchiveTuneFontFamily.current,
             )
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
-                fontFamily = LocalArchiveTuneFontFamily.current
+                fontFamily = LocalArchiveTuneFontFamily.current,
             )
         }
     }
@@ -866,44 +835,50 @@ private fun MediaInfoErrorCard(
     retryText: String? = null,
     onRetry: (() -> Unit)? = null,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
-            .padding(20.dp)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
         ) {
             Icon(
                 painter = painterResource(R.drawable.error),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(26.dp),
             )
             Text(
                 text = title,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LocalArchiveTuneFontFamily.current
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = LocalArchiveTuneFontFamily.current,
             )
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
-                fontFamily = LocalArchiveTuneFontFamily.current
+                fontFamily = LocalArchiveTuneFontFamily.current,
             )
             if (retryText != null && onRetry != null) {
-                MediaInfoActionButton(
-                    text = retryText,
-                    iconRes = R.drawable.ic_refresh,
-                    onClick = onRetry,
-                )
+                TextButton(onClick = onRetry) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_refresh),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = retryText,
+                        fontFamily = LocalArchiveTuneFontFamily.current,
+                    )
+                }
             }
         }
     }
@@ -916,16 +891,4 @@ private fun copyToClipboard(
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboardManager.setPrimaryClip(ClipData.newPlainText("text", value))
     Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
-}
-
-private fun shareMediaLink(
-    context: Context,
-    mediaUrl: String,
-) {
-    val shareIntent =
-        Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, mediaUrl)
-        }
-    context.startActivity(Intent.createChooser(shareIntent, null))
 }

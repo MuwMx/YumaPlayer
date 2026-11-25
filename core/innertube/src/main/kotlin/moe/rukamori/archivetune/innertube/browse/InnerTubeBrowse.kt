@@ -108,7 +108,7 @@ internal class InnerTubeBrowse(private val http: InnerTubeHttp) {
         authState: PlaybackAuthState,
         queueLocale: YouTubeLocale,
     ): HttpResponse = http.withRetry {
-        http.client.post("next") {
+        http.client.post(client.requestApiUrl("next")) {
             with(http) {
                 ytClient(client, setLogin = true, authState = authState)
             }

@@ -11,11 +11,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -99,15 +100,14 @@ fun BottomSheetMenu(
             contentColor = MaterialTheme.colorScheme.onSurface,
             dragHandle = null,
             modifier = modifier
-                .fillMaxHeight()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 48.dp)
                 .onSizeChanged { fullHeight = it.height.toFloat() },
         ) {
             Surface(
                 modifier = modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 20.dp)
-                    .navigationBarsPadding(),
+                    .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(SettingsDimensions.BottomSheetCornerRadius),
                 color = background,
                 border = BorderStroke(
