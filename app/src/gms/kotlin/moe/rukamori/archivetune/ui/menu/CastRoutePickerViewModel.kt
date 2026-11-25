@@ -18,6 +18,8 @@ import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastState
 import com.google.android.gms.cast.framework.CastStateListener
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
+import java.util.concurrent.Executors
 
 internal enum class CastEmptyReason {
     NO_DEVICES,
@@ -68,6 +72,8 @@ internal class CastRoutePickerViewModel(
     val castState: StateFlow<Int> = _castState.asStateFlow()
 
     private var castContext: CastContext? = null
+    private var isDiscoveryActive = false
+    private var isInitializingCastContext = false
     private var selector: MediaRouteSelector? = null
     private var callback: MediaRouter.Callback? = null
     private var emptyStateJob: Job? = null
@@ -75,9 +81,11 @@ internal class CastRoutePickerViewModel(
     val screenState: StateFlow<CastRoutePickerScreenState> = _screenState.asStateFlow()
 
     private val castStateListener = CastStateListener { state ->
-        _castState.value = state
-        Timber.tag("Cast").d("Cast state changed: $state")
-        refreshRoutes()
+        runCatching {
+            _castState.value = state
+            Timber.tag("Cast").d("Cast state changed: $state")
+            refreshRoutes()
+        }.onFailure(::reportException)
     }
 
     private fun isNetworkConnected(): Boolean =
@@ -89,6 +97,7 @@ internal class CastRoutePickerViewModel(
         }.getOrDefault(true)
 
     fun startDiscovery() {
+        isDiscoveryActive = true
         if (callback != null) {
             refreshRoutes()
             return
@@ -99,24 +108,63 @@ internal class CastRoutePickerViewModel(
             return
         }
 
-        val context =
-            runCatching { CastContext.getSharedInstance(getApplication<Application>()) }
-                .onFailure { Timber.tag("Cast").w(it, "Unable to start Cast route discovery") }
-                .getOrNull()
-
-        if (context == null) {
+        val app = getApplication<Application>()
+        if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(app) != ConnectionResult.SUCCESS) {
             _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
             return
         }
 
+        val existingContext = castContext
+        if (existingContext != null) {
+            attachCastContext(existingContext)
+            return
+        }
+
+        if (isInitializingCastContext) return
+        isInitializingCastContext = true
+
+        runCatching {
+            CastContext
+                .getSharedInstance(app, Executors.newSingleThreadExecutor())
+                .addOnSuccessListener { context ->
+                    isInitializingCastContext = false
+                    if (!isDiscoveryActive) return@addOnSuccessListener
+                    runCatching {
+                        attachCastContext(context)
+                    }.onFailure { error ->
+                        reportException(error)
+                        Timber.tag("Cast").w(error, "Unable to start Cast route discovery")
+                        _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
+                    }
+                }.addOnFailureListener { error ->
+                    isInitializingCastContext = false
+                    reportException(error)
+                    Timber.tag("Cast").w(error, "Unable to start Cast route discovery")
+                    _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
+                }
+        }.onFailure { error ->
+            isInitializingCastContext = false
+            reportException(error)
+            Timber.tag("Cast").w(error, "Unable to start Cast route discovery")
+            _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
+        }
+    }
+
+    private fun attachCastContext(context: CastContext) {
+        if (callback != null) {
+            refreshRoutes()
+            return
+        }
         castContext = context
         context.addCastStateListener(castStateListener)
         _castState.value = context.castState
 
         val castSelector =
             runCatching { context.mergedSelector }
-                .onFailure { Timber.tag("Cast").w(it, "Unable to get Cast mergedSelector") }
-                .getOrNull()
+                .onFailure {
+                    reportException(it)
+                    Timber.tag("Cast").w(it, "Unable to get Cast mergedSelector")
+                }.getOrNull()
 
         if (castSelector == null) {
             _screenState.value = CastRoutePickerScreenState.Empty(CastEmptyReason.NO_PLAY_SERVICES)
@@ -164,6 +212,7 @@ internal class CastRoutePickerViewModel(
     }
 
     fun stopDiscovery() {
+        isDiscoveryActive = false
         castContext?.removeCastStateListener(castStateListener)
         castContext = null
         emptyStateJob?.cancel()

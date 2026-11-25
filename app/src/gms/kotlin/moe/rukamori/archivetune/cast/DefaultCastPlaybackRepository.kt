@@ -25,6 +25,8 @@ import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -41,6 +43,8 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -53,6 +57,7 @@ import java.net.URL
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
 import com.google.android.gms.cast.MediaMetadata as CastMetadata
@@ -74,6 +79,7 @@ class DefaultCastPlaybackRepository(
             ),
         )
     private var castContext: CastContext? = null
+    private var castContextInitializing = false
     private var listenerRegistered = false
 
     override val screenState: StateFlow<CastScreenState> = mutableScreenState
@@ -83,12 +89,12 @@ class DefaultCastPlaybackRepository(
         localPlayer: ExoPlayer,
         mediaItemResolver: CastMediaItemResolver,
     ): Player {
-        val contextResult = castContext(context)
-        if (contextResult == null) {
+        val targetContext = context.applicationContext
+        if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(targetContext) != ConnectionResult.SUCCESS) {
             mutableScreenState.value = CastScreenState.Empty
             return localPlayer
         }
-        registerSessionListener(contextResult)
+        initCastContext(targetContext)
         val converter =
             GmsCastMediaItemConverter(
                 mediaItemResolver = mediaItemResolver,
@@ -96,110 +102,160 @@ class DefaultCastPlaybackRepository(
             )
         val remotePlayer =
             RemoteCastPlayer
-                .Builder(context.applicationContext)
+                .Builder(targetContext)
                 .setMediaItemConverter(converter)
                 .build()
         return CastPlayer
-            .Builder(context.applicationContext)
+            .Builder(targetContext)
             .setLocalPlayer(localPlayer)
             .setRemotePlayer(remotePlayer)
             .build()
     }
 
     override fun disconnect() {
-        castContext?.sessionManager?.endCurrentSession(true)
+        runCatching {
+            castContext?.sessionManager?.endCurrentSession(true)
+        }.onFailure(::reportException)
     }
 
     override fun setVolume(volume: Float) {
         castContext?.sessionManager?.currentCastSession?.let { session ->
             runCatching { session.setVolume(volume.coerceIn(0f, 1f).toDouble()) }
-                .onFailure { Timber.tag("Cast").w(it, "Unable to set Cast volume") }
+                .onFailure {
+                    reportException(it)
+                    Timber.tag("Cast").w(it, "Unable to set Cast volume")
+                }
         }
     }
 
-    private fun castContext(context: Context): CastContext? =
-        castContext ?: runCatching {
-            CastContext.getSharedInstance(context.applicationContext)
-        }.onFailure {
-            Timber.tag("Cast").w(it, "Unable to initialize CastContext")
-        }.getOrNull()
-            ?.also { castContext = it }
+    private fun initCastContext(context: Context) {
+        val existing = castContext
+        if (existing != null) {
+            registerSessionListener(existing)
+            return
+        }
+        if (castContextInitializing) return
+        castContextInitializing = true
+        runCatching {
+            CastContext
+                .getSharedInstance(context.applicationContext, Executors.newSingleThreadExecutor())
+                .addOnSuccessListener { contextResult ->
+                    castContextInitializing = false
+                    runCatching {
+                        castContext = contextResult
+                        registerSessionListener(contextResult)
+                    }.onFailure(::reportException)
+                }.addOnFailureListener { error ->
+                    castContextInitializing = false
+                    reportException(error)
+                    Timber.tag("Cast").w(error, "Unable to initialize CastContext")
+                    mutableScreenState.value = CastScreenState.Empty
+                }
+        }.onFailure { error ->
+            castContextInitializing = false
+            reportException(error)
+            Timber.tag("Cast").w(error, "Unable to initialize CastContext")
+            mutableScreenState.value = CastScreenState.Empty
+        }
+    }
 
     private fun registerSessionListener(context: CastContext) {
         if (listenerRegistered) return
-        context.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
-        listenerRegistered = true
-        updateState(context.sessionManager.currentCastSession)
+        runCatching {
+            context.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
+            listenerRegistered = true
+            updateState(context.sessionManager.currentCastSession)
+        }.onFailure(::reportException)
     }
 
     private val sessionListener =
         object : SessionManagerListener<CastSession> {
-            override fun onSessionStarting(session: CastSession) = updateState(session)
+            override fun onSessionStarting(session: CastSession) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
 
             override fun onSessionStarted(
                 session: CastSession,
                 sessionId: String,
-            ) = updateState(session)
+            ) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
 
             override fun onSessionStartFailed(
                 session: CastSession,
                 error: Int,
             ) {
-                localMediaServer.stop()
-                updateState(null)
+                runCatching {
+                    localMediaServer.stop()
+                    mutableScreenState.value = CastScreenState.Error(R.string.cast_route_picker_unavailable)
+                }.onFailure(::reportException)
             }
 
-            override fun onSessionEnding(session: CastSession) = updateState(session)
+            override fun onSessionEnding(session: CastSession) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
 
             override fun onSessionEnded(
                 session: CastSession,
                 error: Int,
             ) {
-                localMediaServer.stop()
-                updateState(null)
+                runCatching {
+                    localMediaServer.stop()
+                    updateState(null)
+                }.onFailure(::reportException)
             }
 
             override fun onSessionResuming(
                 session: CastSession,
                 sessionId: String,
-            ) = updateState(session)
+            ) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
 
             override fun onSessionResumed(
                 session: CastSession,
                 wasSuspended: Boolean,
-            ) = updateState(session)
+            ) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
 
             override fun onSessionResumeFailed(
                 session: CastSession,
                 error: Int,
             ) {
-                localMediaServer.stop()
-                updateState(null)
+                runCatching {
+                    localMediaServer.stop()
+                    mutableScreenState.value = CastScreenState.Error(R.string.cast_route_picker_unavailable)
+                }.onFailure(::reportException)
             }
 
             override fun onSessionSuspended(
                 session: CastSession,
                 reason: Int,
-            ) = updateState(session)
+            ) {
+                runCatching { updateState(session) }.onFailure(::reportException)
+            }
         }
 
     private fun updateState(session: CastSession?) {
-        val device = session?.castDevice
-        mutableScreenState.value =
-            CastScreenState.Success(
-                CastUiState(
-                    isAvailable = true,
-                    isConnected = session?.isConnected == true,
-                    device =
-                        device?.friendlyName?.let { name ->
-                            CastDeviceUiModel(
-                                id = device.deviceId ?: name,
-                                name = name,
-                            )
-                        },
-                    volume = session?.volume?.toFloat()?.coerceIn(0f, 1f) ?: 1f,
-                ),
-            )
+        runCatching {
+            val device = session?.castDevice
+            mutableScreenState.value =
+                CastScreenState.Success(
+                    CastUiState(
+                        isAvailable = true,
+                        isConnected = session?.isConnected == true,
+                        device =
+                            device?.friendlyName?.let { name ->
+                                CastDeviceUiModel(
+                                    id = device.deviceId ?: name,
+                                    name = name,
+                                )
+                            },
+                        volume = session?.volume?.toFloat()?.coerceIn(0f, 1f) ?: 1f,
+                    ),
+                )
+        }.onFailure(::reportException)
     }
 }
 
@@ -207,6 +263,10 @@ private class GmsCastMediaItemConverter(
     private val mediaItemResolver: CastMediaItemResolver,
     private val localMediaServer: LocalCastMediaServer,
 ) : MediaItemConverter {
+    private companion object {
+        const val DEFAULT_AUDIO_MIME_TYPE = "audio/mp4"
+    }
+
     private val delegate = DefaultMediaItemConverter()
 
     override fun toMediaQueueItem(mediaItem: MediaItem): MediaQueueItem {
@@ -233,12 +293,28 @@ private class GmsCastMediaItemConverter(
 
     private fun MediaItem.resolveForReceiver(): MediaItem {
         val uri = localConfiguration?.uri ?: return this
-        if (uri.isHttpUrl()) return this
         if (uri.isLocalFileUrl()) {
-            localMediaServer.prepare(this)?.let { return it }
+            return localMediaServer.prepare(this) ?: this
         }
-        localMediaServer.prepare(this, mediaItemResolver)?.let { return it }
-        return mediaItemResolver.resolveForCast(this)
+        val resolvedItem =
+            runCatching { mediaItemResolver.resolveForCast(this) }
+                .onFailure(::reportException)
+                .getOrDefault(this)
+        val resolvedUri = resolvedItem.localConfiguration?.uri ?: return resolvedItem
+        if (resolvedUri.isLocalFileUrl()) {
+            return localMediaServer.prepare(resolvedItem) ?: resolvedItem
+        }
+        if (resolvedUri.isHttpUrl()) {
+            return if (resolvedItem.localConfiguration?.mimeType != null) {
+                resolvedItem
+            } else {
+                resolvedItem
+                    .buildUpon()
+                    .setMimeType(DEFAULT_AUDIO_MIME_TYPE)
+                    .build()
+            }
+        }
+        return resolvedItem
     }
 
     private fun Uri.isHttpUrl(): Boolean {
