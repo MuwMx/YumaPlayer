@@ -38,6 +38,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -151,47 +156,30 @@ fun QueueOptionsMenu(
 
     val panelShape = remember { RoundedCornerShape(SettingsDimensions.BottomSheetCornerRadius) }
 
-    if (alpha > 0f) {
-        Box(
+    if (isVisible) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            sheetMaxWidth = QueueMenuMaxWidth,
+            containerColor = Color.Transparent,
+            contentColor = Color.White,
+            dragHandle = null,
             modifier = modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = alpha * 0.6f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = requestDismiss,
-                ),
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 48.dp),
         ) {
-            BoxWithConstraints(
+            Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding)
-                    .padding(bottom = SettingsDimensions.BottomSheetBottomPadding),
-                contentAlignment = Alignment.BottomCenter,
+                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding),
+                shape = panelShape,
+                color = Color(state.darkMutedColor).copy(alpha = 1f),
+                shadowElevation = 10.dp,
             ) {
-                val panelMaxHeight = maxHeight * 0.75f
                 Box(
                     modifier = Modifier
-                        .widthIn(max = QueueMenuMaxWidth)
                         .fillMaxWidth()
-                        .heightIn(max = panelMaxHeight)
-                        .graphicsLayer {
-                            this.translationY = panelOffsetPx
-                            this.alpha = alpha
-                        }
-                        .yumaGlassCard(
-                            shape = panelShape,
-                            backgroundColor = Color(state.darkMutedColor).copy(alpha = 1f),
-                            borderColor = LocalYumaColors.current.glassBorder,
-                            strokeWidth = SettingsDimensions.GlassBorderThickness,
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        )
                         .padding(horizontal = SettingsDimensions.BottomSheetContentPaddingH)
                         .padding(
                             top = SettingsDimensions.BottomSheetContentPaddingTop,
@@ -208,35 +196,7 @@ fun QueueOptionsMenu(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(QueueMenuHeaderDragHeight)
-                                        .pointerInput(isVisible, dismissThresholdPx) {
-                                            if (!currentVisible) return@pointerInput
-                                            detectVerticalDragGestures(
-                                                onDragStart = {
-                                                    if (currentVisible && !dismissRequested) {
-                                                        offsetAnimationJob?.cancel()
-                                                    }
-                                                },
-                                                onVerticalDrag = { _, dragAmount ->
-                                                    if (currentVisible && !dismissRequested) {
-                                                        panelOffsetPx =
-                                                            (panelOffsetPx + dragAmount).coerceAtLeast(0f)
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    when {
-                                                        !currentVisible || dismissRequested -> Unit
-                                                        panelOffsetPx >= dismissThresholdPx -> requestDismiss()
-                                                        else -> animatePanelOffsetTo(0f)
-                                                    }
-                                                },
-                                                onDragCancel = {
-                                                    if (currentVisible && !dismissRequested) {
-                                                        animatePanelOffsetTo(0f)
-                                                    }
-                                                },
-                                            )
-                                        },
+                                        .padding(bottom = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Box(

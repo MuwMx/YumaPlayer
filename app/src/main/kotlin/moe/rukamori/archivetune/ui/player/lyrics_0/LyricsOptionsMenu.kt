@@ -29,6 +29,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -108,53 +114,41 @@ fun LyricsOptionsMenu(
         }
     }
 
-    if (alpha > 0f) {
-        Box(
+    if (isVisible) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = {
+                currentScreen = LyricsMenuScreen.MAIN
+                onDismiss()
+            },
+            sheetState = sheetState,
+            sheetMaxWidth = LyricsMenuMaxWidth,
+            containerColor = Color.Transparent,
+            contentColor = Color.White,
+            dragHandle = null,
+            properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
             modifier = modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = alpha * 0.6f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {
-                        if (currentScreen == LyricsMenuScreen.MAIN) {
-                            menuState.requestDismiss()
-                        } else {
-                            currentScreen = LyricsMenuScreen.MAIN
-                        }
-                    }
-                ),
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 48.dp),
         ) {
-            BoxWithConstraints(
+            BackHandler {
+                if (currentScreen == LyricsMenuScreen.MAIN) {
+                    onDismiss()
+                } else {
+                    currentScreen = LyricsMenuScreen.MAIN
+                }
+            }
+            Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding)
-                    .padding(bottom = SettingsDimensions.BottomSheetBottomPadding),
-                contentAlignment = Alignment.BottomCenter
+                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding),
+                shape = panelShape,
+                color = Color(state.darkMutedColor).copy(alpha = 1f),
+                shadowElevation = 10.dp,
             ) {
-                val panelMaxHeight = maxHeight * 0.75f
                 Box(
                     modifier = Modifier
-                        .widthIn(max = LyricsMenuMaxWidth)
                         .fillMaxWidth()
-                        .heightIn(max = panelMaxHeight)
-                        .graphicsLayer {
-                            this.translationY = menuState.panelOffsetPx.value
-                            this.alpha = alpha
-                        }
-                        .yumaGlassCard(
-                            shape = panelShape,
-                            backgroundColor = Color(state.darkMutedColor).copy(alpha = 1f),
-                            borderColor = LocalYumaColors.current.glassBorder,
-                            strokeWidth = SettingsDimensions.GlassBorderThickness,
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {}
-                        )
                         .padding(horizontal = SettingsDimensions.BottomSheetContentPaddingH)
                         .padding(
                             top = SettingsDimensions.BottomSheetContentPaddingTop,

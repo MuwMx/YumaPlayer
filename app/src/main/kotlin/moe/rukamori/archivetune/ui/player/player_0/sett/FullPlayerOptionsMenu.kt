@@ -15,6 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -136,43 +142,47 @@ fun FullPlayerOptionsMenu(
 
     val panelShape = remember { RoundedCornerShape(SettingsDimensions.BottomSheetCornerRadius) }
 
-    if (alpha > 0f) {
-        Box(
+    if (expanded) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = {
+                currentScreen = PlayerMenuScreen.SETTINGS
+                requestDismiss()
+            },
+            sheetState = sheetState,
+            sheetMaxWidth = OptionsMenuMaxWidth,
+            containerColor = Color.Transparent,
+            contentColor = Color.White,
+            dragHandle = null,
+            properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
             modifier = modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = alpha * 0.6f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = requestDismiss
-                )
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 48.dp),
         ) {
-            BoxWithConstraints(
+            BackHandler {
+                when {
+                    currentScreen == PlayerMenuScreen.DETAILS ||
+                    currentScreen == PlayerMenuScreen.CUSTOMIZATION ||
+                    currentScreen == PlayerMenuScreen.SLEEP_TIMER ||
+                    currentScreen == PlayerMenuScreen.DOWNLOAD ||
+                    currentScreen == PlayerMenuScreen.ABOUT -> currentScreen = PlayerMenuScreen.SETTINGS
+                    else -> {
+                        currentScreen = PlayerMenuScreen.SETTINGS
+                        requestDismiss()
+                    }
+                }
+            }
+            Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding)
-                    .padding(bottom = SettingsDimensions.BottomSheetBottomPadding),
-                contentAlignment = Alignment.BottomCenter
+                    .padding(horizontal = SettingsDimensions.BottomSheetHorizontalPadding),
+                shape = panelShape,
+                color = Color(state.darkMutedColor).copy(alpha = 1f),
+                shadowElevation = 10.dp,
             ) {
-                val panelMaxHeight = maxHeight * 0.75f
                 Box(
                     modifier = Modifier
-                        .widthIn(max = OptionsMenuMaxWidth)
                         .fillMaxWidth()
-                        .heightIn(max = panelMaxHeight)
-                        .graphicsLayer {
-                            this.translationY = panelOffsetPx
-                            this.alpha = alpha
-                        }
-                        .yumaGlassCard(
-                            shape = panelShape,
-                            backgroundColor = Color(state.darkMutedColor).copy(alpha = 1f),
-                            borderColor = LocalYumaColors.current.glassBorder,
-                            strokeWidth = SettingsDimensions.GlassBorderThickness,
-                        )
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
                         .padding(horizontal = SettingsDimensions.BottomSheetContentPaddingH)
                         .padding(
                             top = SettingsDimensions.BottomSheetContentPaddingTop,
@@ -189,35 +199,7 @@ fun FullPlayerOptionsMenu(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(MenuHeaderDragHeight)
-                                        .pointerInput(expanded, dismissThresholdPx) {
-                                            if (!currentExpanded) return@pointerInput
-                                            detectVerticalDragGestures(
-                                                onDragStart = {
-                                                    if (currentExpanded && !dismissRequested) {
-                                                        offsetAnimationJob?.cancel()
-                                                    }
-                                                },
-                                                onVerticalDrag = { _, dragAmount ->
-                                                    if (currentExpanded && !dismissRequested) {
-                                                        panelOffsetPx =
-                                                            (panelOffsetPx + dragAmount).coerceAtLeast(0f)
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    when {
-                                                        !currentExpanded || dismissRequested -> Unit
-                                                        panelOffsetPx >= dismissThresholdPx -> requestDismiss()
-                                                        else -> animatePanelOffsetTo(0f)
-                                                    }
-                                                },
-                                                onDragCancel = {
-                                                    if (currentExpanded && !dismissRequested) {
-                                                        animatePanelOffsetTo(0f)
-                                                    }
-                                                },
-                                            )
-                                        },
+                                        .padding(bottom = 12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Box(
@@ -337,7 +319,10 @@ fun FullPlayerOptionsMenu(
                                                         .fillMaxWidth()
                                                         .heightIn(max = 460.dp)
                                                 ) {
-                                                    ShowMediaInfo(videoId = songId)
+                                                    ShowMediaInfo(
+                                                        videoId = songId,
+                                                        onDismiss = requestDismiss,
+                                                    )
                                                 }
                                             }
                                         }

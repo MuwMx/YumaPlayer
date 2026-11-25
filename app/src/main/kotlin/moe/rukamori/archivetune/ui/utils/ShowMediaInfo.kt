@@ -97,6 +97,14 @@ import moe.rukamori.archivetune.ui.main.LocalDatabase
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 import moe.rukamori.archivetune.utils.makeTimeString
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.utils.reportException
 
 private enum class MediaInfoTab(
@@ -129,7 +137,10 @@ private data class MediaInfoExternalLink(
 )
 
 @Composable
-fun ShowMediaInfo(videoId: String) {
+fun ShowMediaInfo(
+    videoId: String,
+    onDismiss: (() -> Unit)? = null,
+) {
     if (videoId.isBlank()) return
 
     val context = LocalContext.current
@@ -287,25 +298,49 @@ fun ShowMediaInfo(videoId: String) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = { bottomSheetPageState.dismiss() },
+        onDismissRequest = {
+            if (onDismiss != null) onDismiss() else bottomSheetPageState.dismiss()
+        },
         sheetState = sheetState,
         sheetMaxWidth = 600.dp,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
+        dragHandle = null,
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 48.dp),
     ) {
-        LazyColumn(
-            state = rememberLazyListState(),
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 600.dp)
-                .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(SettingsDimensions.BottomSheetCornerRadius),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(
+                width = SettingsDimensions.GlassBorderThickness,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            ),
+            tonalElevation = 6.dp,
+            shadowElevation = 10.dp,
         ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 14.dp, bottom = 10.dp)
+                        .size(width = 40.dp, height = 4.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)),
+                )
+                LazyColumn(
+                    state = rememberLazyListState(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
             item(contentType = "Header") {
                 MediaInfoCompactHeader(
                     title = heroTitle,
@@ -439,6 +474,8 @@ fun ShowMediaInfo(videoId: String) {
                         }
                     }
                 }
+            }
+        }
             }
         }
     }
@@ -584,45 +621,72 @@ private fun MediaInfoTabSelector(
     onTabSelected: (MediaInfoTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        MediaInfoTab.entries.forEach { tab ->
-            val isSelected = selectedTab == tab
-            val tabInteraction = remember { MutableInteractionSource() }
+    val tabs = MediaInfoTab.entries
+    val selectedIndex = tabs.indexOf(selectedTab).coerceAtLeast(0)
+    val indicatorOffset by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "MediaInfoTabIndicator",
+    )
 
-            Box(
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+        ),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+        ) {
+            val tabWidth = maxWidth / tabs.size
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    )
-                    .clickable(
-                        interactionSource = tabInteraction,
-                        indication = null,
-                    ) { onTabSelected(tab) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(tab.labelRes),
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    fontFamily = LocalArchiveTuneFontFamily.current,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                    .size(width = tabWidth, height = 36.dp)
+                    .offset(x = tabWidth * indicatorOffset),
+            ) {}
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                tabs.forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    val tabInteraction = remember { MutableInteractionSource() }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(
+                                interactionSource = tabInteraction,
+                                indication = null,
+                            ) { onTabSelected(tab) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(tab.labelRes),
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontFamily = LocalArchiveTuneFontFamily.current,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
     }
