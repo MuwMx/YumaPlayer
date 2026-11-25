@@ -30,6 +30,7 @@ private val brokenSAppendRegex = Regex("-s\\d+")
 fun String.resize(
     width: Int? = null,
     height: Int? = null,
+    smartCrop: Boolean = true,
 ): String {
     if (width == null && height == null) return this
 
@@ -45,7 +46,8 @@ fun String.resize(
         }
 
         wHParamRegex.find(this)?.let {
-            return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
+            val cropFlag = if (smartCrop) "p" else "c"
+            return "${split("=w")[0]}=w$w-h$h-$cropFlag-l90-rj"
         }
 
         sParamRegex.find(this)?.let { match ->

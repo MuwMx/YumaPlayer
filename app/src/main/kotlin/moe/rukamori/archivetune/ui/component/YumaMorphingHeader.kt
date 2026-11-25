@@ -1,11 +1,6 @@
 package moe.rukamori.archivetune.ui.component
 
 import android.os.Build
-import android.view.HapticFeedbackConstants
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -18,32 +13,21 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.core.common.math.lerp
 import moe.rukamori.archivetune.core.common.math.lerp3
 import moe.rukamori.archivetune.ui.utils.resize
@@ -54,12 +38,13 @@ import moe.rukamori.archivetune.ui.utils.resize
  */
 enum class HeaderType(
     val heightRatio: Float,
-    val showBottomGradient: Boolean
+    val showBottomGradient: Boolean,
+    val midScale: Float = 0.44f,
 ) {
-    ARTIST(heightRatio = 1.45f, showBottomGradient = true),
+    ARTIST(heightRatio = 1.45f, showBottomGradient = true, midScale = 0.64f),
     ALBUM(heightRatio = 1.35f, showBottomGradient = true),
     PLAYLIST(heightRatio = 1.35f, showBottomGradient = true),
-    SPOTIFY(heightRatio = 1.0f, showBottomGradient = false)
+    SPOTIFY(heightRatio = 1.0f, showBottomGradient = false),
 }
 
 @Composable
@@ -97,13 +82,13 @@ fun YumaMorphingHeader(
                 .graphicsLayer {
                     transformOrigin = TransformOrigin(0.5f, 0.5f)
 
-                    val currentScale = lerp3(start = 1f, mid = 0.44f, end = 0f, fraction = fraction)
+                    val currentScale = lerp3(start = 1f, mid = type.midScale, end = 0f, fraction = fraction)
                     scaleX = currentScale
                     scaleY = currentScale
 
                     translationY = lerp3(start = 0f, mid = 0f, end = endOffset, fraction = fraction)
 
-                    val cornerPercent = lerp3(start = 0f, mid = 32f, end = 50f, fraction = fraction).toInt()
+                    val cornerPercent = lerp3(start = 0f, mid = 18f, end = 50f, fraction = fraction).toInt()
                     shape = RoundedCornerShape(percent = cornerPercent)
                     clip = true
 
@@ -123,7 +108,7 @@ fun YumaMorphingHeader(
         ) {
             AsyncImage(
                 model = if (type == HeaderType.ARTIST) {
-                    imageUrl?.resize(1080, 1080).orEmpty()
+                    imageUrl?.resize(1080, 1080, smartCrop = false).orEmpty()
                 } else {
                     imageUrl.orEmpty()
                 },
@@ -170,165 +155,21 @@ fun YumaMorphingHeader(
 }
 
 
-private val EaseOutQuint = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-private const val BREAKAWAY_THRESHOLD = 0.33f
-private const val RUBBER_BAND_FACTOR = 0.5f
-
-@Stable
-class ArtistHeaderMorphState(
-    private val lazyListState: LazyListState,
-    private val maxPullPx: Float,
-    private val extraExpandPx: Float,
-    private val collapseDistancePx: Float,
-    private val animationsDisabled: Boolean,
-    private val view: android.view.View,
-    private val coroutineScope: CoroutineScope,
-) {
-    private var pullPx by mutableFloatStateOf(0f)
-    private val expandAnimator = Animatable(0f)
-    var isPulledDown by mutableStateOf(false)
-        private set
-
-    private val scrollCollapse by derivedStateOf {
-        if (collapseDistancePx <= 0f) {
-            1f
-        } else if (lazyListState.firstVisibleItemIndex > 0) {
-            1f
-        } else {
-            (lazyListState.firstVisibleItemScrollOffset / collapseDistancePx).coerceIn(0f, 1f)
-        }
-    }
-
-    private val immersiveValue by derivedStateOf {
-        val pullProgress = if (maxPullPx > 0f) {
-            (pullPx / maxPullPx).coerceIn(0f, BREAKAWAY_THRESHOLD)
-        } else {
-            0f
-        }
-        maxOf(
-            expandAnimator.value,
-            if (isPulledDown) BREAKAWAY_THRESHOLD else pullProgress,
-        )
-    }
-
-    val collapseFraction: Float by derivedStateOf {
-        if (immersiveValue > 0f) {
-            0.5f * (1f - immersiveValue)
-        } else {
-            0.5f + 0.5f * scrollCollapse
-        }
-    }
-
-    val contentTranslationY: Float by derivedStateOf {
-        immersiveValue * extraExpandPx
-    }
-
-    val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            val isAtTop = lazyListState.firstVisibleItemIndex == 0 &&
-                lazyListState.firstVisibleItemScrollOffset == 0
-
-            if (available.y > 0f) {
-                if (!isAtTop || source != NestedScrollSource.UserInput || isPulledDown || maxPullPx <= 0f) {
-                    return Offset.Zero
-                }
-                val nextPull = (pullPx + available.y * RUBBER_BAND_FACTOR).coerceIn(0f, maxPullPx)
-                pullPx = nextPull
-                val expandProgress = (nextPull / maxPullPx).coerceIn(0f, 1f)
-                if (expandProgress >= BREAKAWAY_THRESHOLD) {
-                    isPulledDown = true
-                    runCatching {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    }
-                    coroutineScope.launch {
-                        expandAnimator.snapTo(expandProgress)
-                        expandAnimator.animateTo(
-                            targetValue = 1f,
-                            animationSpec = tween(
-                                durationMillis = if (animationsDisabled) 0 else 250,
-                                easing = EaseOutQuint,
-                            ),
-                        )
-                    }
-                }
-                return Offset(0f, available.y)
-            }
-
-            if (available.y < 0f) {
-                if (isPulledDown) {
-                    collapseImmersive()
-                    return Offset.Zero
-                }
-                if (pullPx > 0f) {
-                    pullPx = (pullPx + available.y).coerceAtLeast(0f)
-                }
-            }
-
-            return Offset.Zero
-        }
-
-        override suspend fun onPreFling(available: Velocity): Velocity {
-            if (isPulledDown) {
-                if (available.y < -300f) {
-                    collapseImmersive()
-                }
-                return Velocity.Zero
-            }
-
-            if (pullPx > 0f) {
-                val anim = Animatable(pullPx)
-                anim.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = if (animationsDisabled) 0 else 250,
-                        easing = EaseOutQuint,
-                    ),
-                ) {
-                    pullPx = value
-                }
-            }
-            return Velocity.Zero
-        }
-    }
-
-    private fun collapseImmersive() {
-        isPulledDown = false
-        pullPx = 0f
-        runCatching {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        }
-        val spec = tween<Float>(
-            durationMillis = if (animationsDisabled) 0 else 250,
-            easing = FastOutSlowInEasing,
-        )
-        coroutineScope.launch {
-            expandAnimator.animateTo(0f, spec)
-        }
-    }
-}
-
 @Composable
-fun rememberArtistHeaderMorphState(
+fun rememberArtistCollapseFraction(
     lazyListState: LazyListState,
-    animationsDisabled: Boolean = false,
-): ArtistHeaderMorphState {
+    collapseDistance: Dp = 240.dp,
+): State<Float> {
     val density = LocalDensity.current
-    val view = LocalView.current
-    val coroutineScope = rememberCoroutineScope()
-    val screenWidthPx = LocalWindowInfo.current.containerSize.width.toFloat()
-    val extraExpandPx = screenWidthPx * HeaderType.ARTIST.heightRatio * 0.24f
-    val maxPullPx = with(density) { 160.dp.toPx() }
-    val collapseDistancePx = with(density) { 240.dp.toPx() }
-
-    return remember(lazyListState, maxPullPx, extraExpandPx, collapseDistancePx, animationsDisabled, view) {
-        ArtistHeaderMorphState(
-            lazyListState = lazyListState,
-            maxPullPx = maxPullPx,
-            extraExpandPx = extraExpandPx,
-            collapseDistancePx = collapseDistancePx,
-            animationsDisabled = animationsDisabled,
-            view = view,
-            coroutineScope = coroutineScope,
-        )
+    return remember(lazyListState, collapseDistance) {
+        derivedStateOf {
+            val maxScrollPx = with(density) { collapseDistance.toPx() }
+            val scrollProgress = when {
+                maxScrollPx <= 0f -> 1f
+                lazyListState.firstVisibleItemIndex > 0 -> 1f
+                else -> (lazyListState.firstVisibleItemScrollOffset / maxScrollPx).coerceIn(0f, 1f)
+            }
+            0.5f + 0.5f * scrollProgress
+        }
     }
 }

@@ -69,12 +69,11 @@ import moe.rukamori.archivetune.ui.component.HideOnScrollFAB
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.asScrollContract
-import moe.rukamori.archivetune.ui.component.rememberArtistHeaderMorphState
+import moe.rukamori.archivetune.ui.component.rememberArtistCollapseFraction
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.navigation.containerTransformCover
 import moe.rukamori.archivetune.ui.scaffold.HeaderHazeBackdrop
 import moe.rukamori.archivetune.utils.rememberPreference
-import moe.rukamori.archivetune.ui.screens.artist.ArtistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,10 +148,8 @@ fun ArtistScreen(
         }
     }
 
-    val animationsDisabled = LocalAnimationsDisabled.current
-    val morphState = rememberArtistHeaderMorphState(
+    val collapseFraction by rememberArtistCollapseFraction(
         lazyListState = lazyListState,
-        animationsDisabled = animationsDisabled,
     )
     val fabHazeState = remember { HazeState() }
 
@@ -171,7 +168,7 @@ fun ArtistScreen(
 
         ArtistMorphingHeader(
             imageUrl = thumbnail,
-            collapseFraction = morphState.collapseFraction,
+            collapseFraction = collapseFraction,
             disableBlur = disableBlur,
         )
 
@@ -181,8 +178,6 @@ fun ArtistScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .nestedScroll(morphState.nestedScrollConnection)
-                    .graphicsLayer { translationY = morphState.contentTranslationY }
                     .hazeSource(fabHazeState),
         ) {
             if (uiState.artistPage == null && !uiState.showLocal && viewModel.loadFailed) {
@@ -249,7 +244,7 @@ fun ArtistScreen(
         }
 
         HeaderHazeBackdrop(
-            progress = { morphState.collapseFraction },
+            progress = { collapseFraction },
             hasCollapsibleHeader = true,
             hazeState = fabHazeState,
             modifier = Modifier.align(Alignment.TopCenter),
