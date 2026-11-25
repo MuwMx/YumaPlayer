@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -136,9 +137,10 @@ internal fun AlbumHeroTitleMeta(
 
             val totalDuration = albumWithSongs.songs.sumOf { it.song.duration }
             if (totalDuration > 0) {
+                val context = LocalContext.current
                 MetadataChip(
                     icon = R.drawable.timer,
-                    text = makeTimeString(totalDuration * 1000L),
+                    text = makeTimeString(totalDuration * 1000L, context),
                 )
             }
         }

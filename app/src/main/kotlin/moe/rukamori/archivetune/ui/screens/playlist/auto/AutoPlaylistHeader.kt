@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -171,9 +172,10 @@ internal fun AutoPlaylistHeader(
                     modifier = Modifier.weight(1f, fill = false),
                 )
 
+                val context = LocalContext.current
                 MetadataChip(
                     icon = R.drawable.timer,
-                    text = makeTimeString(likeLength * 1000L),
+                    text = makeTimeString(likeLength * 1000L, context),
                     modifier = Modifier.weight(1f, fill = false),
                 )
             }

@@ -2329,4 +2329,6 @@
     <string name="transitions_player_summary_crossfade">Crossfade · %1$d s</string>
     <string name="transitions_player_summary_automix">Automix · %1$d s</string>
     <string name="transitions_player_summary_crossmix">Crossmix</string>
+    <string name="duration_days_hours_minutes_seconds">%1$dd %2$dh %3$dm %4$ds</string>
+    <string name="duration_hours_minutes_seconds">%1$dh %2$dm %3$ds</string>
 </resources>

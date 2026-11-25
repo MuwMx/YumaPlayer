@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,13 +83,14 @@ internal fun LazyListScope.statsSongsSection(
             }
         val progressBarColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         val songEntity = mostPlayedSongs.firstOrNull { it.id == song.id }
+        val context = LocalContext.current
 
         ListItem(
             title = "${index + 1}. ${song.title}",
             subtitle =
                 joinByBullet(
                     pluralStringResource(R.plurals.n_time, song.songCountListened, song.songCountListened),
-                    makeTimeString(song.timeListened),
+                    makeTimeString(song.timeListened, context),
                 ),
             thumbnailContent = {
                 Box {

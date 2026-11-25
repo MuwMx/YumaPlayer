@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -109,12 +110,13 @@ internal fun DownloadChildEntryRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 child.durationSeconds?.let { durationSeconds ->
+                    val context = LocalContext.current
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     ) {
                         Text(
-                            text = makeTimeString(durationSeconds * 1_000L),
+                            text = makeTimeString(durationSeconds * 1_000L, context),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

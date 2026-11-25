@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -60,12 +61,13 @@ internal fun LazyListScope.statsArtistsSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             rowArtists.forEach { artist ->
+                val context = LocalContext.current
                 LocalArtistsGrid(
                     title = artist.artist.name,
                     subtitle =
                         joinByBullet(
                             pluralStringResource(R.plurals.n_time, artist.songCount, artist.songCount),
-                            makeTimeString(artist.timeListened?.toLong()),
+                            makeTimeString(artist.timeListened?.toLong(), context),
                         ),
                     thumbnailUrl = artist.artist.thumbnailUrl,
                     modifier =

@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.search.LoadSearchDiscoveryUseCase
 import moe.rukamori.archivetune.search.SearchDiscoveryUiModel
+import moe.rukamori.archivetune.utils.reportException
 import javax.inject.Inject
 
 sealed interface SearchDiscoveryScreenState {
@@ -85,11 +86,13 @@ class SearchDiscoveryViewModel
                                         }
                                     },
                                     onFailure = {
+                                        reportException(it)
                                         SearchDiscoveryScreenState.Error(R.string.error_unknown)
                                     },
                                 )
                         } catch (throwable: Throwable) {
                             if (throwable is CancellationException) throw throwable
+                            reportException(throwable)
                             SearchDiscoveryScreenState.Error(R.string.error_unknown)
                         }
                 }

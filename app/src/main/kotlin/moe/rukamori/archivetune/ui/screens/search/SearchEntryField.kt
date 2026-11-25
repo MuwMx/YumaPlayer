@@ -128,6 +128,8 @@ internal fun SearchMoodAndGenresGrid(
     navController: NavController,
     modifier: Modifier = Modifier,
 ) {
+    if (data.moodAndGenres.isEmpty()) return
+
     BoxWithConstraints(
         modifier =
             modifier

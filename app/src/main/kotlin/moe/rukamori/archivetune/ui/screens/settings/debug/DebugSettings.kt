@@ -244,8 +244,9 @@ fun DebugSettings(navController: NavController) {
 private fun DiscordDebugSection() {
     val lastStartTs: Long? by DiscordPresenceManager.lastRpcStartTimeFlow.collectAsState(initial = null)
     val lastEndTs: Long? by DiscordPresenceManager.lastRpcEndTimeFlow.collectAsState(initial = null)
-    val lastStart: String = lastStartTs?.let { makeTimeString(it) } ?: "—"
-    val lastEnd: String = lastEndTs?.let { makeTimeString(it) } ?: "—"
+    val context = LocalContext.current
+    val lastStart: String = lastStartTs?.let { makeTimeString(it, context) } ?: "—"
+    val lastEnd: String = lastEndTs?.let { makeTimeString(it, context) } ?: "—"
     val isRunning = DiscordPresenceManager.isRunning()
 
     Card(

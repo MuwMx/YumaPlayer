@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -99,7 +100,8 @@ internal fun QueueSheetHeader(
     val queueDurationMs = queueState.queueDurationMs.takeIf { it != 0L } ?: windowsDurationMs
     val queueTitle = queueState.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.queue)
     val songPlural = pluralStringResource(R.plurals.n_song, songCount, songCount)
-    val subtitle = remember(songPlural, queueDurationMs) { "$songPlural  •  ${makeTimeString(queueDurationMs)}" }
+    val context = LocalContext.current
+    val subtitle = remember(songPlural, queueDurationMs, context) { "$songPlural  •  ${makeTimeString(queueDurationMs, context)}" }
 
     OverlayCapsuleShell(
         isBlurBackgroundEnabled = state.isBlurBackgroundEnabled,

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -158,6 +159,7 @@ internal fun YouTubePlaylistErrorDialog(
     onDismiss: () -> Unit,
 ) {
     if (!isVisible) return
+    val context = LocalContext.current
     ListDialog(
         onDismiss = onDismiss,
     ) {
@@ -199,7 +201,7 @@ internal fun YouTubePlaylistErrorDialog(
                         text =
                             joinByBullet(
                                 song.artists.joinToString { it.name },
-                                makeTimeString(song.duration * 1000L),
+                                makeTimeString(song.duration * 1000L, context),
                             ),
                     )
                 },

@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -182,12 +183,13 @@ internal fun DownloadEntry(
                         }
                     }
                     entry.durationSeconds?.let { durationSeconds ->
+                        val context = LocalContext.current
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
                         ) {
                             Text(
-                                text = makeTimeString(durationSeconds * 1_000L),
+                                text = makeTimeString(durationSeconds * 1_000L, context),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -134,8 +135,9 @@ internal fun RankedArtistRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            val context = LocalContext.current
             Text(
-                text = makeTimeString(artist.timeListened?.toLong()),
+                text = makeTimeString(artist.timeListened?.toLong(), context),
                 style = MaterialTheme.typography.labelSmall,
                 color = RecapCream.copy(alpha = 0.58f),
                 maxLines = 1,
@@ -155,6 +157,7 @@ internal fun RankedAlbumRow(
     album: Album,
 ) {
     val imageModel = rememberShareSafeImageRequest(album.thumbnailUrl)
+    val context = LocalContext.current
     val artistNames =
         remember(album.artists) {
             album.artists.take(2).joinToString(" / ") { it.name }
@@ -184,7 +187,7 @@ internal fun RankedAlbumRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = artistNames.ifBlank { makeTimeString(album.timeListened) },
+                text = artistNames.ifBlank { makeTimeString(album.timeListened, context) },
                 style = MaterialTheme.typography.labelSmall,
                 color = RecapCream.copy(alpha = 0.58f),
                 maxLines = 1,
@@ -192,7 +195,7 @@ internal fun RankedAlbumRow(
             )
         }
         Text(
-            text = makeTimeString(album.timeListened),
+            text = makeTimeString(album.timeListened, context),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = RecapYellow,

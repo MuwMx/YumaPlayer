@@ -736,9 +736,10 @@ private fun TopPlaylistHeroSection(
                 )
 
                 if (likeLength > 0) {
+                    val context = LocalContext.current
                     MetadataChip(
                         icon = R.drawable.timer,
-                        text = makeTimeString(likeLength * 1000L),
+                        text = makeTimeString(likeLength * 1000L, context),
                         modifier = Modifier.weight(1f, fill = false),
                     )
                 }

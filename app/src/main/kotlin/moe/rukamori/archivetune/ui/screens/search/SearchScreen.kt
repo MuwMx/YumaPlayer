@@ -160,24 +160,26 @@ fun SearchScreen(
                 is SearchDiscoveryScreenState.Success -> {
                     when (selectedTab) {
                         SearchDiscoveryTab.EXPLORE -> {
-                            item(
-                                key = "search_explore_moods_title",
-                                contentType = "section_title",
-                            ) {
-                                NavigationTitle(
-                                    title = stringResource(R.string.mood_and_genres),
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
-                            item(
-                                key = "search_explore_moods",
-                                contentType = "mood_genres_grid",
-                            ) {
-                                SearchMoodAndGenresGrid(
-                                    data = currentState.data,
-                                    navController = navController,
-                                    modifier = Modifier.animateItem(),
-                                )
+                            if (currentState.data.moodAndGenres.isNotEmpty()) {
+                                item(
+                                    key = "search_explore_moods_title",
+                                    contentType = "section_title",
+                                ) {
+                                    NavigationTitle(
+                                        title = stringResource(R.string.mood_and_genres),
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                                item(
+                                    key = "search_explore_moods",
+                                    contentType = "mood_genres_grid",
+                                ) {
+                                    SearchMoodAndGenresGrid(
+                                        data = currentState.data,
+                                        navController = navController,
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
                             }
                         }
 

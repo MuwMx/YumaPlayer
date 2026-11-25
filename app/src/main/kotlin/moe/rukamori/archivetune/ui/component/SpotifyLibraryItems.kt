@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -299,11 +300,12 @@ fun SpotifyTrackListItem(
     showSongIconPlaceholder: Boolean = true,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
+    val context = LocalContext.current
     val duration =
         track.durationMs
             .takeIf { it > 0 }
             ?.toLong()
-            ?.let(::makeTimeString)
+            ?.let { makeTimeString(it, context) }
     val subtitle =
         joinByBullet(
             track.artists.joinToString { it.name },

@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -91,6 +92,7 @@ fun SongListItem(
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
     val resolvedSwipeContentBackgroundColor = swipeContentBackgroundColor ?: MaterialTheme.colorScheme.surface
+    val context = LocalContext.current
 
     val content: @Composable () -> Unit = {
         ListItem(
@@ -98,7 +100,7 @@ fun SongListItem(
             subtitle =
                 joinByBullet(
                     song.artists.joinToString { it.name },
-                    makeTimeString(song.song.duration * 1000L),
+                    makeTimeString(song.song.duration * 1000L, context),
                     viewCountText,
                 ),
             badges = badges,
@@ -185,11 +187,12 @@ fun SongGridItem(
         )
     },
     subtitle = {
+        val context = LocalContext.current
         MarqueeText(
             text =
                 joinByBullet(
                     song.artists.joinToString { it.name },
-                    makeTimeString(song.song.duration * 1000L),
+                    makeTimeString(song.song.duration * 1000L, context),
                 ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.secondary,
@@ -228,12 +231,13 @@ fun MediaMetadataListItem(
     cropToSquare: Boolean? = null,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
+    val context = LocalContext.current
     ListItem(
         title = mediaMetadata.title,
         subtitle =
             joinByBullet(
                 mediaMetadata.artists.joinToString { it.name },
-                makeTimeString(mediaMetadata.duration * 1000L),
+                makeTimeString(mediaMetadata.duration * 1000L, context),
             ),
         thumbnailContent = {
             ItemThumbnail(
@@ -286,6 +290,7 @@ fun YouTubeListItem(
     },
 ) {
     val swipeEnabled by rememberPreference(SwipeToSongKey, defaultValue = false)
+    val context = LocalContext.current
 
     val content: @Composable () -> Unit = {
         ListItem(
@@ -295,7 +300,7 @@ fun YouTubeListItem(
                     is SongItem -> {
                         joinByBullet(
                             item.artists.joinToString { it.name },
-                            makeTimeString(item.duration?.times(1000L)),
+                            makeTimeString(item.duration?.times(1000L), context),
                             viewCountText,
                         )
                     }
@@ -392,9 +397,10 @@ fun YouTubeGridItem(
         )
     },
     subtitle = {
+        val context = LocalContext.current
         val subtitle =
             when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L), context))
                 is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
                 is ArtistItem -> null
                 is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)

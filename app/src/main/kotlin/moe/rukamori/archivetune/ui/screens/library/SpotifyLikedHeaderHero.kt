@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -139,9 +140,10 @@ fun SpotifyLikedHeaderHero(
             )
 
             if (loadedDurationMs > 0L) {
+                val context = LocalContext.current
                 MetadataChip(
                     icon = R.drawable.timer,
-                    text = makeTimeString(loadedDurationMs),
+                    text = makeTimeString(loadedDurationMs, context),
                 )
             }
         }

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,7 @@ internal fun YouTubeSongMenuHeader(
     database: MusicDatabase,
     syncUtils: SyncUtils,
 ) {
+    val context = LocalContext.current
     Surface(
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -69,7 +71,7 @@ internal fun YouTubeSongMenuHeader(
                     text =
                         joinByBullet(
                             song.artists.joinToString { it.name },
-                            song.duration?.let { makeTimeString(it * 1000L) },
+                            song.duration?.let { makeTimeString(it * 1000L, context) },
                         ),
                 )
             },

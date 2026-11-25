@@ -24,6 +24,7 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
+import moe.rukamori.archivetune.utils.reportException
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,8 +49,8 @@ class SearchDiscoveryRepository
                 val startTime = System.currentTimeMillis()
                 try {
                     coroutineScope {
-                        val explorePageDeferred = async { YouTube.explore().getOrThrow() }
-                        val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
+                        val exploreResultDeferred = async { YouTube.explore() }
+                        val chartsResultDeferred = async { YouTube.getChartsPage() }
                         val suggestedSongsDeferred = async { loadSuggestedSongs() }
                         val searchedAlbumsDeferred =
                             async {
@@ -60,21 +61,50 @@ class SearchDiscoveryRepository
                             }
                         val suggestedArtistsDeferred = async { loadSuggestedArtists() }
 
-                        val explorePage = explorePageDeferred.await()
-                        val chartsPage = chartsPageDeferred.await()
-                        val duration = System.currentTimeMillis() - startTime
-                        Timber.d("SearchDiscoveryRepository: loadDiscovery completed in ${duration}ms")
+                        val exploreResult = exploreResultDeferred.await()
+                        val chartsResult = chartsResultDeferred.await()
+                        exploreResult.onFailure {
+                            if (it is CancellationException) throw it
+                            reportException(it)
+                            Timber.w(it, "SearchDiscoveryRepository: explore failed")
+                        }
+                        chartsResult.onFailure {
+                            if (it is CancellationException) throw it
+                            reportException(it)
+                            Timber.w(it, "SearchDiscoveryRepository: charts failed")
+                        }
 
-                        Result.success(
-                            SearchDiscoveryData(
-                                moodAndGenres = explorePage.moodAndGenres,
-                                newReleaseAlbums = explorePage.newReleaseAlbums,
-                                chartSections = chartsPage.sections,
-                                suggestedSongs = suggestedSongsDeferred.await(),
-                                searchedAlbums = searchedAlbumsDeferred.await(),
-                                suggestedArtists = suggestedArtistsDeferred.await(),
-                            ),
-                        )
+                        val suggestedSongs = suggestedSongsDeferred.await()
+                        val searchedAlbums = searchedAlbumsDeferred.await()
+                        val suggestedArtists = suggestedArtistsDeferred.await()
+
+                        val firstFailure = exploreResult.exceptionOrNull() ?: chartsResult.exceptionOrNull()
+                        if (
+                            exploreResult.isFailure &&
+                            chartsResult.isFailure &&
+                            suggestedSongs.isEmpty() &&
+                            searchedAlbums.isEmpty() &&
+                            suggestedArtists.isEmpty() &&
+                            firstFailure != null
+                        ) {
+                            Result.failure(firstFailure)
+                        } else {
+                            val explorePage = exploreResult.getOrNull()
+                            val chartsPage = chartsResult.getOrNull()
+                            val duration = System.currentTimeMillis() - startTime
+                            Timber.d("SearchDiscoveryRepository: loadDiscovery completed in ${duration}ms")
+
+                            Result.success(
+                                SearchDiscoveryData(
+                                    moodAndGenres = explorePage?.moodAndGenres.orEmpty(),
+                                    newReleaseAlbums = explorePage?.newReleaseAlbums.orEmpty(),
+                                    chartSections = chartsPage?.sections.orEmpty(),
+                                    suggestedSongs = suggestedSongs,
+                                    searchedAlbums = searchedAlbums,
+                                    suggestedArtists = suggestedArtists,
+                                ),
+                            )
+                        }
                     }
                 } catch (throwable: Throwable) {
                     if (throwable is CancellationException) throw throwable

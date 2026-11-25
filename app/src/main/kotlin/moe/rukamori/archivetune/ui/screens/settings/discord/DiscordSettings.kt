@@ -1296,15 +1296,16 @@ fun SongProgressBar(
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
         )
+        val context = LocalContext.current
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = makeTimeString(displayedTime),
+                text = makeTimeString(displayedTime, context),
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Start,
                 style = MaterialTheme.typography.labelSmall,
             )
             Text(
-                text = makeTimeString(durationMillis),
+                text = makeTimeString(durationMillis, context),
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End,
                 style = MaterialTheme.typography.labelSmall,

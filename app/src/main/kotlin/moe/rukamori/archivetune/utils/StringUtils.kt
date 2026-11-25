@@ -6,10 +6,38 @@
 
 package moe.rukamori.archivetune.utils
 
+import android.content.Context
+import moe.rukamori.archivetune.R
 import java.math.BigInteger
 import java.security.MessageDigest
 
-fun makeTimeString(duration: Long?): String {
+fun makeTimeString(duration: Long?): String =
+    formatTimeString(duration) { day, hour, minute, sec ->
+        when {
+            day > 0 -> "%dd %dh %dm %ds".format(day, hour, minute, sec)
+            hour > 0 -> "%dh %dm %ds".format(hour, minute, sec)
+            minute > 0 -> "%d:%02d".format(minute, sec)
+            else -> "%d:%02d".format(0, sec)
+        }
+    }
+
+fun makeTimeString(
+    duration: Long?,
+    context: Context,
+): String =
+    formatTimeString(duration) { day, hour, minute, sec ->
+        when {
+            day > 0 -> context.getString(R.string.duration_days_hours_minutes_seconds, day, hour, minute, sec)
+            hour > 0 -> context.getString(R.string.duration_hours_minutes_seconds, hour, minute, sec)
+            minute > 0 -> "%d:%02d".format(minute, sec)
+            else -> "%d:%02d".format(0, sec)
+        }
+    }
+
+private inline fun formatTimeString(
+    duration: Long?,
+    formatDuration: (day: Long, hour: Long, minute: Long, sec: Long) -> String,
+): String {
     if (duration == null || duration < 0) return ""
 
     // Heuristic: if the value looks like an epoch millis (greater than ~1e12),
@@ -29,13 +57,7 @@ fun makeTimeString(duration: Long?): String {
     val minute = sec / 60
     sec %= 60
 
-    // More human-friendly duration strings:
-    return when {
-        day > 0 -> "%dd %dh %dm %ds".format(day, hour, minute, sec)
-        hour > 0 -> "%dh %dm %ds".format(hour, minute, sec)
-        minute > 0 -> "%d:%02d".format(minute, sec)
-        else -> "%d:%02d".format(0, sec)
-    }
+    return formatDuration(day, hour, minute, sec)
 }
 
 fun md5(str: String): String {

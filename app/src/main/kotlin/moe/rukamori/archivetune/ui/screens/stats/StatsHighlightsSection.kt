@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,7 @@ internal fun StatsHighlightsSection(
 ) {
     if (topArtist == null && topSong == null) return
 
+    val context = LocalContext.current
     Column(
         modifier =
             Modifier
@@ -63,7 +65,7 @@ internal fun StatsHighlightsSection(
                     R.plurals.n_song,
                     topArtist.songCount,
                     topArtist.songCount,
-                )} • ${makeTimeString(topArtist.timeListened?.toLong())}",
+                )} • ${makeTimeString(topArtist.timeListened?.toLong(), context)}",
                 imageUrl = topArtist.artist.thumbnailUrl,
                 useCircleShape = true,
                 onClick = { navController.navigate("artist/${topArtist.id}") },
@@ -83,7 +85,7 @@ internal fun StatsHighlightsSection(
                     R.plurals.n_time,
                     topSong.songCountListened,
                     topSong.songCountListened,
-                )} • ${makeTimeString(topSong.timeListened)}",
+                )} • ${makeTimeString(topSong.timeListened, context)}",
                 imageUrl = topSong.thumbnailUrl,
                 useCircleShape = false,
                 onClick = {},

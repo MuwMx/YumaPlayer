@@ -685,9 +685,10 @@ private fun CachePlaylistHeroSection(
                 )
 
                 if (totalDuration > 0) {
+                    val context = LocalContext.current
                     MetadataChip(
                         icon = R.drawable.timer,
-                        text = makeTimeString(totalDuration * 1000L),
+                        text = makeTimeString(totalDuration * 1000L, context),
                         modifier = Modifier.weight(1f, fill = false),
                     )
                 }

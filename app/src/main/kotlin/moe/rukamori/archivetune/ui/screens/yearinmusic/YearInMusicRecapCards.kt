@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -225,8 +226,9 @@ internal fun TotalsRecapCard(
                 color = RecapCream,
                 lineHeight = 36.sp,
             )
+            val context = LocalContext.current
             Text(
-                text = makeTimeString(card.totalListeningTime),
+                text = makeTimeString(card.totalListeningTime, context),
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 60.sp),
                 fontWeight = FontWeight.Black,
                 color = RecapYellow,
@@ -347,9 +349,10 @@ internal fun TopSongRecapCard(
                         ),
                     color = RecapRed,
                 )
+                val context = LocalContext.current
                 RecapChip(
                     icon = R.drawable.timer,
-                    text = makeTimeString(card.song.timeListened),
+                    text = makeTimeString(card.song.timeListened, context),
                     color = RecapYellow,
                 )
             }

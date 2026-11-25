@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -273,9 +274,10 @@ fun LocalPlaylistHeroSection(
             )
 
             if (playlistLength > 0) {
+                val context = LocalContext.current
                 MetadataChip(
                     icon = R.drawable.timer,
-                    text = makeTimeString(playlistLength * 1000L),
+                    text = makeTimeString(playlistLength * 1000L, context),
                     modifier = Modifier.weight(1f, fill = false),
                 )
             }

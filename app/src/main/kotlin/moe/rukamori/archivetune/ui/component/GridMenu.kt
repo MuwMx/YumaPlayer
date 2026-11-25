@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -193,10 +194,11 @@ fun LazyGridScope.SleepTimerGridMenu(
                     )
                 },
             )
+            val context = LocalContext.current
             Text(
                 text =
                     if (enabled) {
-                        makeTimeString(sleepTimerTimeLeft)
+                        makeTimeString(sleepTimerTimeLeft, context)
                     } else {
                         stringResource(
                             id = R.string.sleep_timer,
