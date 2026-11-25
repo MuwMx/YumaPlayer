@@ -487,7 +487,7 @@
     <string name="change_playlist_cover">Cambia la copertina della playlist</string>
     <string name="music_recognition">Riconoscimento musicale</string>
     <string name="pin_to_speed_dial">Aggiungi a Riproduzione Veloce</string>
-    <string name="remove_from_speed_dial">Rimuovi da riproduzione veloce</string>
+    <string name="remove_from_speed_dial">Rimuovi dai preferiti</string>
     <string name="together_participants">Partecipanti</string>
     <string name="together_connected_count">%1$d connesso</string>
     <string name="together_role_host">Host</string>
