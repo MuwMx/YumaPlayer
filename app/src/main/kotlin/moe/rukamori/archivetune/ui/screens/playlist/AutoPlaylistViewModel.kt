@@ -96,7 +96,7 @@ class AutoPlaylistViewModel
                     val songSortType = sortType.toSongSortType()
                     when (playlist) {
                         "liked" -> {
-                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else null
+                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else LikeSource.YTM
                             database.likedSongs(songSortType, descending, hideVideo, source).map { it.filterExplicit(hideExplicit) }
                         }
 

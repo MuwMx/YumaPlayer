@@ -420,7 +420,19 @@ class PlayerConnection(
                     if (mediaMetadata.value?.id != mediaId) return@launch
 
                     if (isLossless && formatEntity != null) {
-                        audioFormat.value = "${formatEntity.codecLabel()} | ${formatEntity.formattedQuality()}"
+                        val quality = formatEntity.formattedQuality()
+                        audioFormat.value = when {
+                            quality != "Unknown" -> "${formatEntity.codecLabel()} | $quality"
+                            foundBitrate > 0 -> {
+                                val bitrateKbps = if (foundBitrate > 2000) foundBitrate / 1000 else foundBitrate
+                                "${formatEntity.codecLabel()} | $bitrateKbps kbps"
+                            }
+                            foundSampleRate > 0 -> {
+                                val khz = (foundSampleRate / 100.0).roundToInt() / 10.0
+                                "${formatEntity.codecLabel()} | $khz kHz"
+                            }
+                            else -> formatEntity.codecLabel()
+                        }
                     } else if (isLossless && formatEntity == null) {
                         if (foundSampleRate > 0) {
                             val khz = (foundSampleRate / 100.0).roundToInt() / 10.0

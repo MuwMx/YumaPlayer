@@ -197,7 +197,11 @@ class PlaybackStateHolder(
                             } else {
                                 dbFormat.formattedBitrate()
                             }
-                            "${dbFormat.codecLabel()} | $quality"
+                            if (isLossless && quality == "Unknown" && !liveFormat.isNullOrBlank() && liveFormat != "UNKNOWN") {
+                                liveFormat
+                            } else {
+                                "${dbFormat.codecLabel()} | $quality"
+                            }
                         } else if (!liveFormat.isNullOrBlank() && liveFormat != "UNKNOWN") {
                             liveFormat
                         } else {

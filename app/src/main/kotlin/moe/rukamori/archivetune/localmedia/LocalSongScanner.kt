@@ -190,7 +190,7 @@ class LocalSongScanner
                                 itag = -1,
                                 mimeType = track.mimeType,
                                 codecs = "",
-                                bitrate = 0,
+                                bitrate = track.bitrate,
                                 sampleRate = null,
                                 contentLength = track.sizeBytes,
                                 loudnessDb = null,
@@ -284,6 +284,9 @@ class LocalSongScanner
                     add(MediaStore.Audio.Media.DATE_MODIFIED)
                     add(MediaStore.Audio.Media.SIZE)
                     add(MediaStore.Audio.Media.MIME_TYPE)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        add(MediaStore.Audio.Media.BITRATE)
+                    }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         add(MediaStore.MediaColumns.RELATIVE_PATH)
                     } else {
@@ -331,6 +334,12 @@ class LocalSongScanner
                     val dateModifiedIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
                     val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
                     val mimeTypeIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+                    val bitrateIndex =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE)
+                        } else {
+                            -1
+                        }
                     val relativePathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                     val dataPathIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
 
@@ -390,6 +399,17 @@ class LocalSongScanner
                                     mimeType = mimeType,
                                 )?.let(LrcParser::lyricsOrNotFound)
                                 ?.takeIf { lyrics -> lyrics != LyricsEntity.LYRICS_NOT_FOUND }
+                        val durationSeconds =
+                            (cursor.getLong(durationIndex).coerceAtLeast(0L) / 1000L)
+                                .coerceAtMost(Int.MAX_VALUE.toLong())
+                                .toInt()
+                        val mediaStoreBitrate = cursor.getIntOrNull(bitrateIndex) ?: 0
+                        val bitrate =
+                            when {
+                                mediaStoreBitrate > 0 -> mediaStoreBitrate
+                                sizeBytes > 0L && durationSeconds > 0 -> ((sizeBytes * 8L) / durationSeconds).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                                else -> 0
+                            }
                         tracks +=
                             LocalTrackRecord(
                                 id = contentUri.toString(),
@@ -404,16 +424,14 @@ class LocalSongScanner
                                         )
                                     },
                                 albumName = albumName,
-                                durationSeconds =
-                                    (cursor.getLong(durationIndex).coerceAtLeast(0L) / 1000L)
-                                        .coerceAtMost(Int.MAX_VALUE.toLong())
-                                        .toInt(),
+                                durationSeconds = durationSeconds,
                                 year = cursor.getIntOrNull(yearIndex)?.takeIf { it > 0 },
                                 dateModified =
                                     dateModifiedSeconds
                                         .takeIf { it > 0L }
                                         ?.let { LocalDateTime.ofInstant(Instant.ofEpochSecond(it), ZoneId.systemDefault()) },
                                 sizeBytes = sizeBytes,
+                                bitrate = bitrate,
                                 mimeType = mimeType,
                                 thumbnailUrl = thumbnailUrl,
                                 embeddedLyrics = embeddedLyrics,
@@ -702,6 +720,7 @@ class LocalSongScanner
             val year: Int?,
             val dateModified: LocalDateTime?,
             val sizeBytes: Long,
+            val bitrate: Int,
             val mimeType: String,
             val thumbnailUrl: String?,
             val embeddedLyrics: String?,

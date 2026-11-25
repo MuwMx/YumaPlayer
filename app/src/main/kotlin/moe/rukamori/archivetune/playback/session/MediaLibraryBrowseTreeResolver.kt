@@ -112,7 +112,7 @@ internal class MediaLibraryBrowseTreeResolver
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
-                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
+                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else LikeSource.YTM,
                                 ).first()
                                 .map { itemFactory.toLibraryMediaItem(it, parentId) }
                         }

@@ -147,7 +147,7 @@ class LibrarySongsViewModel
                         }
 
                         SongFilter.LIKED -> {
-                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else null
+                            val source = if (hideYtmLikedSongs) LikeSource.SPOTIFY else LikeSource.YTM
                             database.likedSongs(sortType, descending, hideVideo, source = source).map { it.filterExplicit(hideExplicit) }
                         }
 

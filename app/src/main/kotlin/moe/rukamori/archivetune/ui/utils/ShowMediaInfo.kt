@@ -78,8 +78,8 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
-
 import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
+import moe.rukamori.archivetune.utils.reportException
 
 private enum class MediaInfoTab(
     @StringRes val labelRes: Int,
@@ -128,10 +128,15 @@ fun ShowMediaInfo(videoId: String) {
     }.collectAsState(initial = null)
     val currentFormat = if (isCurrentTrack) currentPlayingFormat else fallbackDbFormat
     var info by remember(videoId) { mutableStateOf<MediaInfo?>(null) }
+    var isLoading by remember(videoId) { mutableStateOf(true) }
+    var loadError by remember(videoId) { mutableStateOf(false) }
+    var retryKey by remember(videoId) { mutableStateOf(0) }
     var selectedTab by rememberSaveable(videoId) { mutableStateOf(MediaInfoTab.Information) }
 
     val unknownText = stringResource(R.string.unknown)
     val pleaseWaitText = stringResource(R.string.please_wait)
+    val errorUnknownText = stringResource(R.string.error_unknown)
+    val retryText = stringResource(R.string.retry)
     val copyText = stringResource(R.string.copy)
     val shareText = stringResource(R.string.share)
     val closeText = stringResource(R.string.close)
@@ -152,8 +157,19 @@ fun ShowMediaInfo(videoId: String) {
 
     val mediaUrl = remember(videoId) { "https://music.youtube.com/watch?v=$videoId" }
 
-    LaunchedEffect(videoId) {
-        info = YouTube.getMediaInfo(videoId).getOrNull()
+    LaunchedEffect(videoId, retryKey) {
+        isLoading = true
+        loadError = false
+        YouTube.getMediaInfo(videoId)
+            .onSuccess {
+                info = it
+                isLoading = false
+            }
+            .onFailure {
+                reportException(it)
+                isLoading = false
+                loadError = true
+            }
     }
 
     val heroTitle = song?.title ?: info?.title ?: videoId
@@ -271,7 +287,7 @@ fun ShowMediaInfo(videoId: String) {
                 subtitle = heroSubtitle,
                 artworkModel = artworkModel,
                 sectionLabel = informationLabel,
-                isLoading = info == null,
+                isLoading = isLoading,
                 loadingText = pleaseWaitText,
             )
         }
@@ -355,32 +371,52 @@ fun ShowMediaInfo(videoId: String) {
                                 onCopy = { copyToClipboard(context, it) },
                             )
 
-                            if (info == null) {
-                                MediaInfoPendingCard(
-                                    title = descriptionLabel,
-                                    message = pleaseWaitText,
-                                )
-                            } else {
-                                MediaInfoNarrativeCard(
-                                    title = descriptionLabel,
-                                    body = info?.description?.takeIf { it.isNotBlank() } ?: unknownText,
-                                    copyText = copyText,
-                                    onCopy = {
-                                        info
-                                            ?.description
-                                            ?.takeIf { value -> value.isNotBlank() }
-                                            ?.let { copyToClipboard(context, it) }
-                                    },
-                                )
+                            when {
+                                isLoading && info == null -> {
+                                    MediaInfoPendingCard(
+                                        title = descriptionLabel,
+                                        message = pleaseWaitText,
+                                    )
+                                }
+
+                                loadError && info == null -> {
+                                    MediaInfoErrorCard(
+                                        title = descriptionLabel,
+                                        message = errorUnknownText,
+                                        retryText = retryText,
+                                        onRetry = { retryKey++ },
+                                    )
+                                }
+
+                                else -> {
+                                    MediaInfoNarrativeCard(
+                                        title = descriptionLabel,
+                                        body = info?.description?.takeIf { it.isNotBlank() } ?: unknownText,
+                                        copyText = copyText,
+                                        onCopy = {
+                                            info
+                                                ?.description
+                                                ?.takeIf { value -> value.isNotBlank() }
+                                                ?.let { copyToClipboard(context, it) }
+                                        },
+                                    )
+                                }
                             }
                         }
 
                         MediaInfoTab.Details -> {
                             if (technicalDetails.isEmpty()) {
-                                MediaInfoPendingCard(
-                                    title = detailsLabel,
-                                    message = pleaseWaitText,
-                                )
+                                if (isLoading) {
+                                    MediaInfoPendingCard(
+                                        title = detailsLabel,
+                                        message = pleaseWaitText,
+                                    )
+                                } else {
+                                    MediaInfoErrorCard(
+                                        title = detailsLabel,
+                                        message = unknownText,
+                                    )
+                                }
                             } else {
                                 MediaInfoDetailCard(
                                     items = technicalDetails,
@@ -392,10 +428,19 @@ fun ShowMediaInfo(videoId: String) {
 
                         MediaInfoTab.Numbers -> {
                             if (metrics.isEmpty()) {
-                                MediaInfoPendingCard(
-                                    title = numbersLabel,
-                                    message = pleaseWaitText,
-                                )
+                                if (isLoading) {
+                                    MediaInfoPendingCard(
+                                        title = numbersLabel,
+                                        message = pleaseWaitText,
+                                    )
+                                } else {
+                                    MediaInfoErrorCard(
+                                        title = numbersLabel,
+                                        message = errorUnknownText,
+                                        retryText = retryText,
+                                        onRetry = { retryKey++ },
+                                    )
+                                }
                             } else {
                                 MediaInfoMetricsGrid(metrics = metrics)
                             }
@@ -810,6 +855,56 @@ private fun MediaInfoPendingCard(
                 fontSize = 12.sp,
                 fontFamily = LocalArchiveTuneFontFamily.current
             )
+        }
+    }
+}
+
+@Composable
+private fun MediaInfoErrorCard(
+    title: String,
+    message: String,
+    retryText: String? = null,
+    onRetry: (() -> Unit)? = null,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
+            .padding(20.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.error),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = LocalArchiveTuneFontFamily.current
+            )
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                fontFamily = LocalArchiveTuneFontFamily.current
+            )
+            if (retryText != null && onRetry != null) {
+                MediaInfoActionButton(
+                    text = retryText,
+                    iconRes = R.drawable.ic_refresh,
+                    onClick = onRetry,
+                )
+            }
         }
     }
 }

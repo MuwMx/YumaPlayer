@@ -99,6 +99,7 @@ internal fun SelectionSongPrimaryMenuItems(
                         updatedSongs +=
                             song.copy(
                                 liked = shouldAdd,
+                                likedYtm = shouldAdd,
                                 likedDate = if (shouldAdd) now else null,
                                 inLibrary = if (shouldAdd) now else null,
                             )

@@ -47,7 +47,10 @@ object MediaInfoResolver {
                     it?.videoPrimaryInfoRenderer != null
                 }?.videoPrimaryInfoRenderer
 
-        val returnYouTubeDislikeResponse = DislikeClient.getDislikes(innerTube.http, videoId)
+        val returnYouTubeDislikeResponse =
+            runCatching {
+                DislikeClient.getDislikes(innerTube.http, videoId)
+            }.getOrNull()
 
         MediaInfo(
             videoId = videoId,
@@ -92,9 +95,9 @@ object MediaInfoResolver {
                     ?.split(" ")
                     ?.firstOrNull(),
             uploadDate = baseForTitle?.dateText?.simpleText,
-            viewCount = returnYouTubeDislikeResponse.viewCount,
-            like = returnYouTubeDislikeResponse.likes,
-            dislike = returnYouTubeDislikeResponse.dislikes,
+            viewCount = returnYouTubeDislikeResponse?.viewCount,
+            like = returnYouTubeDislikeResponse?.likes,
+            dislike = returnYouTubeDislikeResponse?.dislikes,
         )
     }
 }

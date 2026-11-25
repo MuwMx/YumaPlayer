@@ -180,7 +180,7 @@ internal class MediaLibraryPlaybackItemResolver
                                 .likedSongs(
                                     SongSortType.CREATE_DATE,
                                     descending = true,
-                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
+                                    source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else LikeSource.YTM,
                                 ).first()
                         songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }

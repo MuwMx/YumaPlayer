@@ -272,7 +272,7 @@ internal class MediaLibraryPlaylistBrowseResolver
                         .likedSongs(
                             songSortType,
                             descending = sortOption?.descending ?: true,
-                            source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
+                            source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else LikeSource.YTM,
                         ).first()
                 }
 

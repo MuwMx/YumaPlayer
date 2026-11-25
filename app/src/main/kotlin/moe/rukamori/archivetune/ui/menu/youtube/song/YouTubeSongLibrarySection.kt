@@ -90,6 +90,7 @@ internal fun YouTubeSongLibraryAndSpeedDialSection(
                         update(
                             base.copy(
                                 liked = shouldAdd,
+                                likedYtm = shouldAdd,
                                 likedDate = if (shouldAdd) now else null,
                                 inLibrary = if (shouldAdd) now else null,
                             ),
