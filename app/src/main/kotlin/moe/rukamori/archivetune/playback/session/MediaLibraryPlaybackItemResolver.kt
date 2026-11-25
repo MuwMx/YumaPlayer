@@ -295,6 +295,42 @@ internal class MediaLibraryPlaybackItemResolver
                         )
                     }
 
+                    MediaLibraryTreeConstants.ONLINE_ALBUM -> {
+                        val browseId = path.getOrNull(1) ?: return@future defaultResult
+                        val action = path.getOrNull(2)
+                        val selectedSongId =
+                            if (action == PLAYLIST_ACTION_SHUFFLE) path.getOrNull(3) else path.getOrNull(2)
+                        val songs =
+                            homeBrowseResolver.onlineAlbumSongs(browseId).let { albumSongList ->
+                                if (action == PLAYLIST_ACTION_SHUFFLE) albumSongList.shuffled() else albumSongList
+                            }
+                        if (action == PLAYLIST_ACTION_SHUFFLE) {
+                            withContext(Dispatchers.Main.immediate) {
+                                mediaSession.player.shuffleModeEnabled = true
+                            }
+                        }
+                        songs.map { it.toMediaItem() }
+                            .toMediaItemsWithStartPosition(selectedSongId, startPositionMs, currentMediaId)
+                    }
+
+                    MediaLibraryTreeConstants.ONLINE_ARTIST -> {
+                        val artistId = path.getOrNull(1) ?: return@future defaultResult
+                        val action = path.getOrNull(2)
+                        val selectedSongId =
+                            if (action == PLAYLIST_ACTION_SHUFFLE) path.getOrNull(3) else path.getOrNull(2)
+                        val songs =
+                            homeBrowseResolver.onlineArtistSongs(artistId).let { artistSongList ->
+                                if (action == PLAYLIST_ACTION_SHUFFLE) artistSongList.shuffled() else artistSongList
+                            }
+                        if (action == PLAYLIST_ACTION_SHUFFLE) {
+                            withContext(Dispatchers.Main.immediate) {
+                                mediaSession.player.shuffleModeEnabled = true
+                            }
+                        }
+                        songs.map { it.toMediaItem() }
+                            .toMediaItemsWithStartPosition(selectedSongId, startPositionMs, currentMediaId)
+                    }
+
                     else -> {
                         val directMediaId = firstItem.mediaId.trim()
                         if (directMediaId.isNotBlank() && !directMediaId.contains("/")) {

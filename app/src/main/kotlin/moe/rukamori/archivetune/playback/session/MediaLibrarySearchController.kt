@@ -25,6 +25,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
@@ -36,6 +38,8 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.download.DownloadUtil
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.AlbumItem
+import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.playback.engine.extractMediaIdFromCacheKey
 import timber.log.Timber
@@ -154,6 +158,12 @@ internal class MediaLibrarySearchController
                 LibraryResult.ofItemList(items.subList(from, to), params)
             }
 
+        private data class OnlineSearchResults(
+            val songs: List<MediaItem>,
+            val albums: List<MediaItem>,
+            val artists: List<MediaItem>,
+        )
+
         suspend fun executeSearch(
             query: String,
             requested: Int,
@@ -167,16 +177,23 @@ internal class MediaLibrarySearchController
             val existingSongIds =
                 offlineSongs.items
                     .mapTo(HashSet(offlineSongs.items.size * 2), ::searchSongIdentity)
+            val onlineResults = searchOnline(q, songLimit = requested)
             val onlineSongs =
-                searchOnlineSongs(q, previewSize = requested).filter { onlineItem ->
+                onlineResults.songs.filter { onlineItem ->
                     existingSongIds.add(searchSongIdentity(onlineItem))
                 }
             onlineSongs.forEach { onlineSearchItemCache[it.mediaId] = it }
+            onlineResults.albums.forEach { onlineSearchItemCache[it.mediaId] = it }
+            onlineResults.artists.forEach { onlineSearchItemCache[it.mediaId] = it }
+            val songBudget = (requested - onlineResults.albums.size - onlineResults.artists.size).coerceAtLeast(0)
             items +=
                 interleaveMediaItems(
                     first = offlineSongs.items,
                     second = onlineSongs,
-                ).take(requested)
+                ).take(songBudget)
+
+            items += onlineResults.albums
+            items += onlineResults.artists
 
             if (items.size < requested) {
                 val remaining = requested - items.size
@@ -337,6 +354,76 @@ internal class MediaLibrarySearchController
 
         fun searchSongIdentity(item: MediaItem): String = item.mediaId.removePrefix("${MediaLibraryTreeConstants.SONG}/")
 
+        private suspend fun searchOnline(
+            query: String,
+            songLimit: Int,
+            albumLimit: Int = ONLINE_ALBUM_ARTIST_LIMIT,
+            artistLimit: Int = ONLINE_ALBUM_ARTIST_LIMIT,
+        ): OnlineSearchResults {
+            if (query.isBlank() || songLimit <= 0) {
+                return OnlineSearchResults(emptyList(), emptyList(), emptyList())
+            }
+            return withTimeoutOrNull(6_000L.milliseconds) {
+                coroutineScope {
+                    val songsDeferred =
+                        async {
+                            runCatching {
+                                YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                            }.getOrDefault(emptyList())
+                                .asSequence()
+                                .filterIsInstance<SongItem>()
+                                .distinctBy { it.id }
+                                .take(songLimit)
+                                .map { itemFactory.toLibraryMediaItem(it) }
+                                .toList()
+                        }
+                    val albumsDeferred =
+                        async {
+                            runCatching {
+                                YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM).getOrNull()?.items.orEmpty()
+                            }.getOrDefault(emptyList())
+                                .asSequence()
+                                .filterIsInstance<AlbumItem>()
+                                .distinctBy { it.browseId }
+                                .take(albumLimit)
+                                .map { album ->
+                                    itemFactory.browsableMediaItem(
+                                        id = "${MediaLibraryTreeConstants.ONLINE_ALBUM}/${album.browseId}",
+                                        title = album.title,
+                                        subtitle = album.artists?.joinToString { it.name },
+                                        iconUri = album.thumbnail.toUri(),
+                                        mediaType = MediaMetadata.MEDIA_TYPE_ALBUM,
+                                    )
+                                }.toList()
+                        }
+                    val artistsDeferred =
+                        async {
+                            runCatching {
+                                YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST).getOrNull()?.items.orEmpty()
+                            }.getOrDefault(emptyList())
+                                .asSequence()
+                                .filterIsInstance<ArtistItem>()
+                                .distinctBy { it.id }
+                                .take(artistLimit)
+                                .map { artist ->
+                                    itemFactory.browsableMediaItem(
+                                        id = "${MediaLibraryTreeConstants.ONLINE_ARTIST}/${artist.id}",
+                                        title = artist.title,
+                                        subtitle = artist.monthlyListenerCountText ?: artist.subscriberCountText,
+                                        iconUri = artist.thumbnail?.toUri(),
+                                        mediaType = MediaMetadata.MEDIA_TYPE_ARTIST,
+                                    )
+                                }.toList()
+                        }
+                    OnlineSearchResults(
+                        songs = songsDeferred.await(),
+                        albums = albumsDeferred.await(),
+                        artists = artistsDeferred.await(),
+                    )
+                }
+            } ?: OnlineSearchResults(emptyList(), emptyList(), emptyList())
+        }
+
         suspend fun searchOnlineSongs(
             query: String,
             previewSize: Int,
@@ -360,5 +447,6 @@ internal class MediaLibrarySearchController
 
         companion object {
             private const val SEARCH_CACHE_TTL_MS = 30_000L
+            private const val ONLINE_ALBUM_ARTIST_LIMIT = 6
         }
     }

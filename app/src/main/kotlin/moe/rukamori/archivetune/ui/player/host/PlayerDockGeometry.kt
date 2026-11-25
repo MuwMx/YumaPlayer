@@ -18,7 +18,6 @@ internal object PlayerDockGeometry {
         availableWidth: Dp,
         useRail: Boolean,
     ): Dp {
-        if (useRail) return FloatingToolbarHorizontalPadding
         val centeredInset = (availableWidth - NavigationBarMaxWidth) / 2 + FloatingToolbarHorizontalPadding
         return maxOf(FloatingToolbarHorizontalPadding, centeredInset)
     }

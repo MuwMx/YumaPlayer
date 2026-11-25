@@ -23,4 +23,6 @@ object MediaLibraryTreeConstants {
     const val ALBUM = "album"
     const val PLAYLIST = "playlist"
     const val ONLINE_PLAYLIST = "online_playlist"
+    const val ONLINE_ALBUM = "online_album"
+    const val ONLINE_ARTIST = "online_artist"
 }

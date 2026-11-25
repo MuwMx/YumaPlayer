@@ -19,6 +19,7 @@ import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
@@ -200,16 +201,219 @@ internal class MediaLibraryHomeBrowseResolver
             songId: String,
             parentId: String,
         ): MediaItem? =
+            resolveOnlineSongItem(songId, parentId) { onlinePlaylistSongs(playlistId) }
+
+        suspend fun onlineAlbumChildren(parentId: String): List<MediaItem> {
+            val path = parentId.pathSegments()
+            val browseId = path.getOrNull(1) ?: return emptyList()
+            return when (path.getOrNull(2)) {
+                null -> {
+                    listOf(
+                        itemFactory.queueMediaItem(
+                            "$parentId/$PLAYLIST_ACTION_SHUFFLE",
+                            context.getString(R.string.shuffle),
+                            null,
+                            itemFactory.drawableUri(R.drawable.shuffle),
+                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                        ),
+                    ) + onlineAlbumSongs(browseId).map { itemFactory.toLibraryMediaItem(it, parentId) }
+                }
+
+                PLAYLIST_ACTION_SHUFFLE -> {
+                    onlineAlbumSongs(browseId).map { itemFactory.toLibraryMediaItem(it, parentId) }
+                }
+
+                else -> {
+                    emptyList()
+                }
+            }
+        }
+
+        suspend fun onlineAlbumItem(mediaId: String): MediaItem? {
+            val path = mediaId.pathSegments()
+            val browseId = path.getOrNull(1) ?: return null
+            return when (path.getOrNull(2)) {
+                null -> {
+                    val album = YouTube.album(browseId, withSongs = false).getOrNull()?.album
+                    itemFactory.browsableMediaItem(
+                        "${MediaLibraryTreeConstants.ONLINE_ALBUM}/$browseId",
+                        album?.title ?: browseId,
+                        album?.artists?.joinToString { it.name },
+                        album?.thumbnail?.toUri(),
+                        MediaMetadata.MEDIA_TYPE_ALBUM,
+                    )
+                }
+
+                PLAYLIST_ACTION_SHUFFLE -> {
+                    if (path.size == 3) {
+                        itemFactory.queueMediaItem(
+                            mediaId,
+                            context.getString(R.string.shuffle),
+                            null,
+                            itemFactory.drawableUri(R.drawable.shuffle),
+                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                        )
+                    } else {
+                        path.getOrNull(3)?.let { songId ->
+                            resolveOnlineSongItem(
+                                songId = songId,
+                                parentId = mediaId.substringBeforeLast('/'),
+                            ) { onlineAlbumSongs(browseId) }
+                        }
+                    }
+                }
+
+                else -> {
+                    val songId = path.getOrNull(2) ?: return null
+                    resolveOnlineSongItem(
+                        songId = songId,
+                        parentId = mediaId.substringBeforeLast('/'),
+                    ) { onlineAlbumSongs(browseId) }
+                }
+            }
+        }
+
+        suspend fun onlineAlbumSongs(browseId: String): List<SongItem> =
+            YouTube
+                .album(browseId)
+                .getOrNull()
+                ?.songs
+                .orEmpty()
+                .distinctBy { it.id }
+                .take(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT)
+                .onEach { searchController.putOnlineItem(it.id, itemFactory.toLibraryMediaItem(it)) }
+
+        suspend fun onlineArtistChildren(parentId: String): List<MediaItem> {
+            val path = parentId.pathSegments()
+            val artistId = path.getOrNull(1) ?: return emptyList()
+            return when (path.getOrNull(2)) {
+                null -> {
+                    val allItems =
+                        YouTube
+                            .artist(artistId)
+                            .getOrNull()
+                            ?.sections
+                            .orEmpty()
+                            .flatMap { it.items }
+                    val songs =
+                        allItems
+                            .filterIsInstance<SongItem>()
+                            .distinctBy { it.id }
+                            .take(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT)
+                            .onEach { searchController.putOnlineItem(it.id, itemFactory.toLibraryMediaItem(it)) }
+                    val albums =
+                        allItems
+                            .filterIsInstance<AlbumItem>()
+                            .distinctBy { it.browseId }
+                            .take(AUTO_ARTIST_ALBUM_LIMIT)
+                            .map { album ->
+                                itemFactory.browsableMediaItem(
+                                    "${MediaLibraryTreeConstants.ONLINE_ALBUM}/${album.browseId}",
+                                    album.title,
+                                    album.artists?.joinToString { it.name },
+                                    album.thumbnail.toUri(),
+                                    MediaMetadata.MEDIA_TYPE_ALBUM,
+                                )
+                            }
+                    val shuffleItem =
+                        if (songs.isNotEmpty()) {
+                            listOf(
+                                itemFactory.queueMediaItem(
+                                    "$parentId/$PLAYLIST_ACTION_SHUFFLE",
+                                    context.getString(R.string.shuffle),
+                                    null,
+                                    itemFactory.drawableUri(R.drawable.shuffle),
+                                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                ),
+                            )
+                        } else {
+                            emptyList()
+                        }
+                    shuffleItem + songs.map { itemFactory.toLibraryMediaItem(it, parentId) } + albums
+                }
+
+                PLAYLIST_ACTION_SHUFFLE -> {
+                    onlineArtistSongs(artistId).map { itemFactory.toLibraryMediaItem(it, parentId) }
+                }
+
+                else -> {
+                    emptyList()
+                }
+            }
+        }
+
+        suspend fun onlineArtistItem(mediaId: String): MediaItem? {
+            val path = mediaId.pathSegments()
+            val artistId = path.getOrNull(1) ?: return null
+            return when (path.getOrNull(2)) {
+                null -> {
+                    val artist = YouTube.artist(artistId).getOrNull()?.artist
+                    itemFactory.browsableMediaItem(
+                        "${MediaLibraryTreeConstants.ONLINE_ARTIST}/$artistId",
+                        artist?.title ?: artistId,
+                        artist?.monthlyListenerCountText ?: artist?.subscriberCountText,
+                        artist?.thumbnail?.toUri(),
+                        MediaMetadata.MEDIA_TYPE_ARTIST,
+                    )
+                }
+
+                PLAYLIST_ACTION_SHUFFLE -> {
+                    if (path.size == 3) {
+                        itemFactory.queueMediaItem(
+                            mediaId,
+                            context.getString(R.string.shuffle),
+                            null,
+                            itemFactory.drawableUri(R.drawable.shuffle),
+                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                        )
+                    } else {
+                        path.getOrNull(3)?.let { songId ->
+                            resolveOnlineSongItem(
+                                songId = songId,
+                                parentId = mediaId.substringBeforeLast('/'),
+                            ) { onlineArtistSongs(artistId) }
+                        }
+                    }
+                }
+
+                else -> {
+                    val songId = path.getOrNull(2) ?: return null
+                    resolveOnlineSongItem(
+                        songId = songId,
+                        parentId = mediaId.substringBeforeLast('/'),
+                    ) { onlineArtistSongs(artistId) }
+                }
+            }
+        }
+
+        suspend fun onlineArtistSongs(artistId: String): List<SongItem> =
+            YouTube
+                .artist(artistId)
+                .getOrNull()
+                ?.sections
+                .orEmpty()
+                .flatMap { it.items }
+                .filterIsInstance<SongItem>()
+                .distinctBy { it.id }
+                .take(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT)
+                .onEach { searchController.putOnlineItem(it.id, itemFactory.toLibraryMediaItem(it)) }
+
+        private suspend fun resolveOnlineSongItem(
+            songId: String,
+            parentId: String,
+            loadSongs: suspend () -> List<SongItem>,
+        ): MediaItem? =
             searchController.getOnlineItem(songId)
                 ?.buildUpon()
                 ?.setMediaId("$parentId/$songId")
                 ?.build()
-                ?: onlinePlaylistSongs(playlistId)
+                ?: loadSongs()
                     .firstOrNull { it.id == songId }
                     ?.let { itemFactory.toLibraryMediaItem(it, parentId) }
 
         companion object {
             private const val AUTO_HOME_PLAYLIST_LIMIT = 20
+            private const val AUTO_ARTIST_ALBUM_LIMIT = 10
             private const val HOME_RECENT_WINDOW_MS = 86400000L * 14L
         }
     }

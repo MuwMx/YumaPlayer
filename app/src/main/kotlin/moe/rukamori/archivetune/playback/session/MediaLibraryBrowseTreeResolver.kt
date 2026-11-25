@@ -169,6 +169,12 @@ internal class MediaLibraryBrowseTreeResolver
                                 parentId.startsWith("${MediaLibraryTreeConstants.ONLINE_PLAYLIST}/") -> {
                                     homeBrowseResolver.onlinePlaylistChildren(parentId)
                                 }
+                                parentId.startsWith("${MediaLibraryTreeConstants.ONLINE_ALBUM}/") -> {
+                                    homeBrowseResolver.onlineAlbumChildren(parentId)
+                                }
+                                parentId.startsWith("${MediaLibraryTreeConstants.ONLINE_ARTIST}/") -> {
+                                    homeBrowseResolver.onlineArtistChildren(parentId)
+                                }
                                 else -> emptyList()
                             }
                         }
@@ -246,28 +252,28 @@ internal class MediaLibraryBrowseTreeResolver
 
         private fun homeChildren(): List<MediaItem> =
             listOf(
-                itemFactory.queueMediaItem(
+                itemFactory.browsableMediaItem(
                     MediaLibraryTreeConstants.HOME_QUICK_PICKS,
                     context.getString(R.string.quick_picks),
                     null,
                     itemFactory.drawableUri(R.drawable.playlist_play),
                     MediaMetadata.MEDIA_TYPE_PLAYLIST,
                 ),
-                itemFactory.queueMediaItem(
+                itemFactory.browsableMediaItem(
                     MediaLibraryTreeConstants.HOME_FORGOTTEN_FAVORITES,
                     context.getString(R.string.forgotten_favorites),
                     null,
                     itemFactory.drawableUri(R.drawable.favorite),
                     MediaMetadata.MEDIA_TYPE_PLAYLIST,
                 ),
-                itemFactory.queueMediaItem(
+                itemFactory.browsableMediaItem(
                     MediaLibraryTreeConstants.HOME_KEEP_LISTENING,
                     context.getString(R.string.keep_listening),
                     null,
                     itemFactory.drawableUri(R.drawable.history),
                     MediaMetadata.MEDIA_TYPE_PLAYLIST,
                 ),
-                itemFactory.queueMediaItem(
+                itemFactory.browsableMediaItem(
                     MediaLibraryTreeConstants.HOME_SUGGESTED_SONGS,
                     context.getString(R.string.android_auto_suggested_songs),
                     null,
@@ -347,6 +353,16 @@ internal class MediaLibraryBrowseTreeResolver
                 when {
                     mediaId.startsWith("${MediaLibraryTreeConstants.ONLINE_PLAYLIST}/") -> {
                         homeBrowseResolver.onlinePlaylistItem(mediaId)?.let {
+                            LibraryResult.ofItem(itemFactory.ensureLibraryMediaItem(it), null)
+                        } ?: LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
+                    }
+                    mediaId.startsWith("${MediaLibraryTreeConstants.ONLINE_ALBUM}/") -> {
+                        homeBrowseResolver.onlineAlbumItem(mediaId)?.let {
+                            LibraryResult.ofItem(itemFactory.ensureLibraryMediaItem(it), null)
+                        } ?: LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
+                    }
+                    mediaId.startsWith("${MediaLibraryTreeConstants.ONLINE_ARTIST}/") -> {
+                        homeBrowseResolver.onlineArtistItem(mediaId)?.let {
                             LibraryResult.ofItem(itemFactory.ensureLibraryMediaItem(it), null)
                         } ?: LibraryResult.ofError(SessionError.ERROR_UNKNOWN)
                     }
