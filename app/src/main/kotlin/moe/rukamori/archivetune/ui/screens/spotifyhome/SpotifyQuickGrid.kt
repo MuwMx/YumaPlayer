@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import moe.rukamori.archivetune.ui.theme.glassBorder
 import moe.rukamori.archivetune.ui.theme.yumaClickable
@@ -85,7 +86,8 @@ internal fun SpotifyQuickGridCell(
     title: String,
     imageUrl: String?,
     onClick: () -> Unit,
-    isArtist: Boolean
+    isArtist: Boolean,
+    transformKey: String? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -104,6 +106,11 @@ internal fun SpotifyQuickGridCell(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .containerTransformSource(
+                key = transformKey,
+                cornerRadius = SettingsDimensions.BadgeCornerRadius,
+                coverUrl = imageUrl,
+            )
             .yumaClickable(onClick = onClick)
             .clip(cardShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))

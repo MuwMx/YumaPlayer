@@ -51,6 +51,7 @@ import moe.rukamori.archivetune.spotify.models.SpotifyTrack
 import moe.rukamori.archivetune.utils.isTrackLiked
 import moe.rukamori.archivetune.ui.component.SpotifyTrackListItem
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
+import moe.rukamori.archivetune.ui.navigation.containerTransformSource
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 
 @Composable
@@ -139,6 +140,10 @@ internal fun SpotifyArtistSectionRow(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .width(140.dp)
+                    .containerTransformSource(
+                        key = "artist-${artist.id}",
+                        coverUrl = thumbnail,
+                    )
                     .yumaClickable(onClick = { onArtistClick(artist) }),
             ) {
                 AsyncImage(
@@ -195,6 +200,10 @@ internal fun SpotifyAlbumSectionRow(
                 fillMaxWidth = true,
                 modifier = Modifier
                     .width(150.dp)
+                    .containerTransformSource(
+                        key = "album-${album.id}",
+                        coverUrl = albumItem.thumbnail,
+                    )
                     .yumaClickable(onClick = { onAlbumClick(album) }),
             )
         }
@@ -237,6 +246,10 @@ internal fun SpotifyPlaylistSectionRow(
                 fillMaxWidth = true,
                 modifier = Modifier
                     .width(150.dp)
+                    .containerTransformSource(
+                        key = "playlist-${playlist.id}",
+                        coverUrl = playlistItem.thumbnail,
+                    )
                     .yumaClickable(onClick = { onPlaylistClick(playlist) }),
             )
         }

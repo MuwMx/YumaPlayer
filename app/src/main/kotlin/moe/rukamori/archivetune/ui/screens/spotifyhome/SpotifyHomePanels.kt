@@ -109,7 +109,8 @@ internal fun SpotifyRecentPanel(
                             title = item.title,
                             imageUrl = item.thumbnailUrl,
                             onClick = { onPlaylistClick(item) },
-                            isArtist = false
+                            isArtist = false,
+                            transformKey = "playlist-${item.id}",
                         )
                     }
                     is SpotifyRecentItem.Album -> {
@@ -117,7 +118,8 @@ internal fun SpotifyRecentPanel(
                             title = item.title,
                             imageUrl = item.thumbnailUrl,
                             onClick = { onAlbumClick(item) },
-                            isArtist = false
+                            isArtist = false,
+                            transformKey = "album-${item.id}",
                         )
                     }
                 }
@@ -141,7 +143,8 @@ internal fun SpotifyRecentPanel(
                     title = artist.name,
                     imageUrl = thumbnail,
                     onClick = { onArtistClick(artist) },
-                    isArtist = true
+                    isArtist = true,
+                    transformKey = "artist-${artist.id}",
                 )
             }
         }

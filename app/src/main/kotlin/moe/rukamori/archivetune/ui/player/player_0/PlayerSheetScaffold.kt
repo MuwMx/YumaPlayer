@@ -52,14 +52,6 @@ internal fun PlayerSheetScaffold(
                 translationX = if (currentSheetState == PlayerSheetState.COLLAPSED || expansionFraction.value < 0.01f) offsetAnimatable.value else 0f
                 scaleY = visualOvershootScaleY.value
             }
-            .miniPlayerDismissHorizontalGesture(
-                enabled = currentSheetState == PlayerSheetState.COLLAPSED,
-                handler = miniDismissGestureHandler
-            )
-            .playerSheetVerticalDragGesture(
-                enabled = true,
-                handler = dragHandler
-            )
     ) {
         Box(
             modifier = Modifier
@@ -81,6 +73,14 @@ internal fun PlayerSheetScaffold(
                     shape = pillShape
                     clip = expansionFraction.value < 0.99f
                 }
+                .miniPlayerDismissHorizontalGesture(
+                    enabled = currentSheetState == PlayerSheetState.COLLAPSED,
+                    handler = miniDismissGestureHandler
+                )
+                .playerSheetVerticalDragGesture(
+                    enabled = true,
+                    handler = dragHandler
+                )
                 .layout { measurable, constraints ->
                     val targetContentHeightPx = screenHeightPx.roundToInt()
                     val startPaddingPx = sheetVisualState.currentHorizontalPaddingStartPxProvider().toInt()
