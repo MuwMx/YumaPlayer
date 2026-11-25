@@ -120,6 +120,7 @@ class PlayerConnection(
         }
 
     val queueTitle = MutableStateFlow<String?>(null)
+    val queueOriginRoute = MutableStateFlow<String?>(null)
     val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
     val currentMediaItemIndex = MutableStateFlow(-1)
     val currentWindowIndex = MutableStateFlow(-1)
@@ -144,6 +145,7 @@ class PlayerConnection(
         playWhenReady.value = player.playWhenReady
         playbackParameters.value = player.playbackParameters
         queueTitle.value = service.queueTitle
+        queueOriginRoute.value = service.queueOriginRoute
         queueWindows.value = player.getQueueWindows()
         currentWindowIndex.value = player.getCurrentQueueIndex()
         currentMediaItemIndex.value = player.currentMediaItemIndex
@@ -318,6 +320,7 @@ class PlayerConnection(
     ) {
         queueWindows.value = player.getQueueWindows()
         queueTitle.value = service.queueTitle
+        queueOriginRoute.value = service.queueOriginRoute
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()

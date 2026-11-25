@@ -53,6 +53,7 @@ sealed interface PlayerAction {
     // Навигация по метаданным и функции плеера
     object OpenAlbum : PlayerAction
     object OpenArtist : PlayerAction
+    data class OpenQueueOrigin(val route: String) : PlayerAction
     object StartRadio : PlayerAction
     object AddToPlaylist : PlayerAction
     object TogglePin : PlayerAction

@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerToolbar
 import moe.rukamori.archivetune.ui.player.player_0.sett.PlayerMenuScreen
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -34,6 +35,7 @@ internal fun FullPlayerToolbarSlot(
     onOpenSettingsMenu: (PlayerMenuScreen) -> Unit,
     onPositionedInRoot: (top: Float, bottom: Float) -> Unit,
     modifier: Modifier = Modifier,
+    onAction: (PlayerAction) -> Unit = {},
 ) {
     val isToolbarInteractive by remember(queueFractionProvider) {
         derivedStateOf { queueFractionProvider() < 0.94f }
@@ -45,6 +47,7 @@ internal fun FullPlayerToolbarSlot(
         onBackgroundStyleChanged = onBackgroundStyleChanged,
         onMoreClick = { onOpenSettingsMenu(PlayerMenuScreen.SETTINGS) },
         onTimerBadgeClick = { onOpenSettingsMenu(PlayerMenuScreen.SLEEP_TIMER) },
+        onAction = onAction,
         hasUpdate = updateState is UpdateState.SoftUpdate,
         enabled = isToolbarInteractive,
         modifier = modifier

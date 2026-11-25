@@ -54,6 +54,7 @@ class YouTubeAlbumRadio(
                         .orEmpty(),
                 items = albumSongs.map { it.toMediaItem() },
                 mediaItemIndex = 0,
+                originRoute = "online_playlist/$playlistId",
             )
         }
 

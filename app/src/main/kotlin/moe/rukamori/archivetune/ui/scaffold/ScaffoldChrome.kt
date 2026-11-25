@@ -11,12 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import dev.chrisbanes.haze.HazeState
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 
 @Composable
 internal fun ScaffoldNavigationRailChrome(
     appState: ScaffoldAppState,
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
     disableAnimations: Boolean = LocalAnimationsDisabled.current,
     pureBlack: Boolean = false,
 ) {
@@ -36,6 +38,7 @@ internal fun ScaffoldNavigationRailChrome(
         searchBarFocusRequester = appState.searchState.searchBarFocusRequester,
         contentAreaFocusRequester = appState.searchState.contentAreaFocusRequester,
         onPrimaryNavigationClick = appState.handlePrimaryNavigationClick,
+        hazeState = hazeState,
         modifier = modifier,
     )
 }

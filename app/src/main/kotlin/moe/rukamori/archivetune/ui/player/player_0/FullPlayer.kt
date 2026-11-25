@@ -96,6 +96,7 @@ fun FullPlayer(
                         onCollapseClick = onCollapseClick,
                         onBackgroundStyleChanged = onBackgroundStyleChanged,
                         onOpenSettingsMenu = onOpenSettingsMenu,
+                        onAction = onAction,
                         onPositionedInRoot = { top, bottom ->
                             toolbarTopInRoot = top
                             toolbarBottomInRoot = bottom

@@ -47,6 +47,7 @@ internal class PlaybackQueueManager(
     interface QueueHolder {
         var currentQueue: Queue
         var queueTitle: String?
+        var queueOriginRoute: String?
     }
 
     interface Delegate : ReadOnlyTimelineDelegate, TogetherGuestCoordinator.Delegate {

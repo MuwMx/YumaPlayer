@@ -384,6 +384,7 @@ class MusicService :
 
     internal var currentQueue: Queue = EmptyQueue
     var queueTitle: String? = null
+    var queueOriginRoute: String? = null
     @Volatile
     internal var isInitializingQueue = false
 

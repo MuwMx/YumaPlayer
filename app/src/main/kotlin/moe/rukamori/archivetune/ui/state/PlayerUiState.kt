@@ -17,6 +17,7 @@ data class PlayerUiState(
     val artist: String = "Playback...",
     val album: String? = null,
     val queueTitle: String? = null,
+    val queueOriginRoute: String? = null,
     val coverUrl: String = "",
     val trackUrl: String = "",
 

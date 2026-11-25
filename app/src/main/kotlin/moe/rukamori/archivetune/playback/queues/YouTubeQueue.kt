@@ -38,6 +38,7 @@ class YouTubeQueue(
             title = nextResult.title,
             items = nextResult.items.map { it.toMediaItem() },
             mediaItemIndex = nextResult.currentIndex ?: 0,
+            originRoute = endpoint.playlistId?.let { "online_playlist/$it" },
         )
     }
 

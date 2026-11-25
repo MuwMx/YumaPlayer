@@ -36,11 +36,13 @@ class QueueStateHolder(
                             connection.queueWindows,
                             connection.currentWindowIndex,
                             connection.queueTitle,
-                        ) { windows, index, title ->
+                            connection.queueOriginRoute,
+                        ) { windows, index, title, originRoute ->
                             QueueUiState(
                                 queueWindows = windows,
                                 currentWindowIndex = index,
                                 title = title,
+                                originRoute = originRoute,
                                 songCount = windows.size,
                                 queueDurationMs = windows.sumOf { (it.mediaItem.metadata?.duration ?: 0).toLong() } * 1000L,
                             )
@@ -51,7 +53,7 @@ class QueueStateHolder(
                 }
                 .collect { state ->
                     _queueState.value = state
-                    updateUiState { it.copy(queueTitle = state.title) }
+                    updateUiState { it.copy(queueTitle = state.title, queueOriginRoute = state.originRoute) }
                 }
         }
     }

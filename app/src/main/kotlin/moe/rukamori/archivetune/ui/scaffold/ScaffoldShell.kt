@@ -148,14 +148,15 @@ fun ScaffoldShell(
                             }
                         },
                 ) {
+                    val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = appState.blurNavBar)
+                    val barScrollVisibility = rememberBarScrollVisibility()
+
                     ScaffoldNavigationRailChrome(
                         appState = appState,
+                        hazeState = scaffoldHazeState.effectiveHazeState,
                         disableAnimations = disableAnimations,
                         pureBlack = pureBlack,
                     )
-
-                    val scaffoldHazeState = rememberScaffoldHazeState(blurNavBar = appState.blurNavBar)
-                    val barScrollVisibility = rememberBarScrollVisibility()
 
                     Box(
                         modifier = Modifier.fillMaxSize().nestedScroll(barScrollVisibility.nestedScrollConnection),

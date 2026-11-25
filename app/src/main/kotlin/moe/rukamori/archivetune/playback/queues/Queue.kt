@@ -33,6 +33,7 @@ interface Queue {
         val items: List<MediaItem>,
         val mediaItemIndex: Int,
         val position: Long = 0L,
+        val originRoute: String? = null,
     ) {
         fun filterExplicit(enabled: Boolean = true) =
             if (enabled) {

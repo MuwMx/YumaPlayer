@@ -86,6 +86,7 @@ internal class QueuePlayOrchestrator(
 
     internal var currentQueue: Queue = queueHolder.currentQueue
     internal var queueTitle: String? = queueHolder.queueTitle
+    internal var queueOriginRoute: String? = queueHolder.queueOriginRoute
     private var playQueueJob: Job? = null
     @Volatile
     private var playGeneration = 0L
@@ -100,6 +101,7 @@ internal class QueuePlayOrchestrator(
         if (queueHolder.currentQueue !== currentQueue && queueHolder.currentQueue != EmptyQueue) {
             currentQueue = queueHolder.currentQueue
             queueTitle = queueHolder.queueTitle
+            queueOriginRoute = queueHolder.queueOriginRoute
         }
         return currentQueue
     }
@@ -107,8 +109,10 @@ internal class QueuePlayOrchestrator(
     fun resetQueueHolders() {
         currentQueue = EmptyQueue
         queueTitle = null
+        queueOriginRoute = null
         queueHolder.currentQueue = EmptyQueue
         queueHolder.queueTitle = null
+        queueHolder.queueOriginRoute = null
     }
 
     private fun setInitializingQueue(initializing: Boolean) {
@@ -154,7 +158,9 @@ internal class QueuePlayOrchestrator(
         currentQueue = queue
         queueHolder.currentQueue = queue
         queueTitle = null
+        queueOriginRoute = null
         queueHolder.queueTitle = null
+        queueHolder.queueOriginRoute = null
         val permanentShuffle = dataStore.get(PermanentShuffleKey, false)
         if (!permanentShuffle) {
             delegate.setShuffleModeEnabled(false)
@@ -209,6 +215,8 @@ internal class QueuePlayOrchestrator(
                     queueTitle = initialStatus.title
                     queueHolder.queueTitle = initialStatus.title
                 }
+                queueOriginRoute = initialStatus.originRoute
+                queueHolder.queueOriginRoute = initialStatus.originRoute
                 if (initialStatus.items.isEmpty()) {
                     if (queue.preloadItem != null && !isPreloadBlocked) {
                         delegate.clearMediaItems()

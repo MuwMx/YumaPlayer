@@ -61,6 +61,11 @@ private fun MusicService.createPlaybackQueueManager(): PlaybackQueueManager {
             set(value) {
                 service.queueTitle = value
             }
+        override var queueOriginRoute: String?
+            get() = service.queueOriginRoute
+            set(value) {
+                service.queueOriginRoute = value
+            }
     }
     return PlaybackQueueManager(
         queueHolder = queueHolder,

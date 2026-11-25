@@ -38,6 +38,7 @@ class LocalAlbumRadio(
                 title = albumWithSongs.album.title,
                 items = albumWithSongs.songs.map { it.toMediaItem() },
                 mediaItemIndex = startIndex,
+                originRoute = "album/${albumWithSongs.album.id}",
             )
         }
 

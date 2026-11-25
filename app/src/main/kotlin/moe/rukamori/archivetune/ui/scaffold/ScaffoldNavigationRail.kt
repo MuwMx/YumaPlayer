@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hierarchy
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
@@ -49,6 +51,7 @@ fun ScaffoldNavigationRail(
     contentAreaFocusRequester: FocusRequester,
     onPrimaryNavigationClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
 ) {
     LaunchedEffect(isTvDevice, useRail, visible, active, currentRoute) {
         if (isTvDevice && useRail && visible && !active && currentRoute in topLevelScreens) {
@@ -87,6 +90,7 @@ fun ScaffoldNavigationRail(
             )
         } else {
             NavigationRail(
+                modifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier,
                 containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                 header = { Spacer(Modifier.height(24.dp)) },

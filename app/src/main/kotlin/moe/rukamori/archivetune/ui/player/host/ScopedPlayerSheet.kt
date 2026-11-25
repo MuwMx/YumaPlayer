@@ -114,6 +114,10 @@ internal fun ScopedPlayerSheet(
                         }
                     }
                 }
+                is PlayerAction.OpenQueueOrigin -> {
+                    playerViewModel.requestSheetCollapse()
+                    navController.navigate(action.route)
+                }
                 else -> playerViewModel.handleAction(action)
             }
         },

@@ -15,6 +15,7 @@ class ListQueue(
     val items: List<MediaItem>,
     val startIndex: Int = 0,
     val position: Long = 0L,
+    val originRoute: String? = null,
 ) : Queue {
     override val preloadItem: MediaMetadata?
         get() = items.getOrNull(startIndex)?.metadata
@@ -27,7 +28,7 @@ class ListQueue(
                 startIndex.coerceIn(items.indices)
             }
 
-        return Queue.Status(title, items, safeStartIndex, position)
+        return Queue.Status(title, items, safeStartIndex, position, originRoute)
     }
 
     override fun hasNextPage(): Boolean = false

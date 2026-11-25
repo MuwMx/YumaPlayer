@@ -128,6 +128,10 @@ internal class MediaLibraryPlaybackItemResolver
                         )
                     }
                 }
+                val currentMediaId =
+                    withContext(Dispatchers.Main.immediate) {
+                        mediaSession.player.currentMediaItem?.mediaId
+                    }
                 val path = firstItem.mediaId.pathSegments()
                 when (path.firstOrNull()) {
                     MediaLibraryTreeConstants.HOME_QUICK_PICKS -> {
@@ -137,7 +141,7 @@ internal class MediaLibraryPlaybackItemResolver
                                 .first()
                                 .shuffled()
                                 .take(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT)
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.HOME_FORGOTTEN_FAVORITES -> {
@@ -147,27 +151,27 @@ internal class MediaLibraryPlaybackItemResolver
                                 .first()
                                 .shuffled()
                                 .take(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT)
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.HOME_KEEP_LISTENING -> {
                         val songs = homeBrowseResolver.homeKeepListeningSongs()
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.HOME_SUGGESTED_SONGS -> {
                         val songs = homeBrowseResolver.homeSuggestedSongs().map { it.toMediaItem() }
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.QUICK_PICKS -> {
                         val songs = database.quickPicks().first()
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.RECENT -> {
                         val songs = database.recentSongs(MediaLibraryItemFactory.AUTO_BROWSE_LIMIT).first()
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.LIKED -> {
@@ -178,12 +182,12 @@ internal class MediaLibraryPlaybackItemResolver
                                     descending = true,
                                     source = if (context.dataStore.getAsync(HideYtmLikedSongsKey, false)) LikeSource.SPOTIFY else null,
                                 ).first()
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.DOWNLOADED -> {
                         val songs = playlistBrowseResolver.downloadedSongs().first()
-                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs)
+                        songs.toMediaItemsWithStartPosition(path.getOrNull(1), startPositionMs, currentMediaId)
                     }
 
                     MediaLibraryTreeConstants.SONG -> {
@@ -258,6 +262,8 @@ internal class MediaLibraryPlaybackItemResolver
                             songs.map { it.toMediaItem() },
                             selectedSongId?.let { songId ->
                                 songs.indexOfFirst { it.id == songId }.takeIf { it != -1 }
+                            } ?: currentMediaId?.let { mediaId ->
+                                songs.indexOfFirst { it.id == mediaId }.takeIf { it != -1 }
                             } ?: 0,
                             startPositionMs,
                         )
@@ -282,6 +288,8 @@ internal class MediaLibraryPlaybackItemResolver
                             mediaItemsList,
                             selectedSongId?.let { songId ->
                                 mediaItemsList.indexOfFirst { it.mediaId == songId }.takeIf { it != -1 }
+                            } ?: currentMediaId?.let { mediaId ->
+                                mediaItemsList.indexOfFirst { it.mediaId == mediaId }.takeIf { it != -1 }
                             } ?: 0,
                             startPositionMs,
                         )
@@ -349,9 +357,12 @@ internal class MediaLibraryPlaybackItemResolver
         private fun List<Song>.toMediaItemsWithStartPosition(
             selectedSongId: String?,
             startPositionMs: Long,
+            fallbackMediaId: String? = null,
         ) = MediaSession.MediaItemsWithStartPosition(
             map { it.toMediaItem() },
             selectedSongId?.let { id ->
+                indexOfFirst { it.id == id }.takeIf { it != -1 }
+            } ?: fallbackMediaId?.let { id ->
                 indexOfFirst { it.id == id }.takeIf { it != -1 }
             } ?: 0,
             startPositionMs,
@@ -361,9 +372,12 @@ internal class MediaLibraryPlaybackItemResolver
         private fun List<MediaItem>.toMediaItemsWithStartPosition(
             selectedMediaId: String?,
             startPositionMs: Long,
+            fallbackMediaId: String? = null,
         ) = MediaSession.MediaItemsWithStartPosition(
             this,
             selectedMediaId?.let { mediaId ->
+                indexOfFirst { it.mediaId == mediaId }.takeIf { it != -1 }
+            } ?: fallbackMediaId?.let { mediaId ->
                 indexOfFirst { it.mediaId == mediaId }.takeIf { it != -1 }
             } ?: 0,
             startPositionMs,

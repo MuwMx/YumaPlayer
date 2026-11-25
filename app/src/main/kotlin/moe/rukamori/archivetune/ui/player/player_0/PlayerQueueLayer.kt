@@ -105,6 +105,7 @@ internal fun PlayerQueueLayer(
                     isAutoMixEnabled = state.isAutoMixEnabled,
                     state = state,
                     isVisible = true,
+                    onAction = onAction,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }

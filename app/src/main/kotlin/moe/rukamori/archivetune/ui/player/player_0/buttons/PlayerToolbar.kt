@@ -45,7 +45,8 @@ fun PlayerToolbar(
     onBackgroundStyleChanged: (Boolean) -> Unit,
     hasUpdate: Boolean = false,
     enabled: Boolean = true,
-    colorScheme: ColorScheme = MaterialTheme.colorScheme
+    colorScheme: ColorScheme = MaterialTheme.colorScheme,
+    onAction: (PlayerAction) -> Unit = {},
 ) {
     val haptics = rememberYumaHaptics()
 
@@ -96,6 +97,7 @@ fun PlayerToolbar(
                     modifier = Modifier.graphicsLayer { alpha = 0.6f }
                 )
                 if (subtitle != null) {
+                    val originRoute = state.queueOriginRoute?.takeIf { it.isNotBlank() }
                     Text(
                         text = subtitle,
                         color = Color.White,
@@ -105,7 +107,18 @@ fun PlayerToolbar(
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { alpha = 0.9f }
+                        modifier = Modifier
+                            .graphicsLayer { alpha = 0.9f }
+                            .then(
+                                if (enabled && originRoute != null) {
+                                    Modifier.clickable {
+                                        haptics.click()
+                                        onAction(PlayerAction.OpenQueueOrigin(originRoute))
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
                 }
             }

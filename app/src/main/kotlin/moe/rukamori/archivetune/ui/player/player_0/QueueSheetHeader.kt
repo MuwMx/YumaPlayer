@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
+import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.state.PlayerUiState
 import moe.rukamori.archivetune.ui.state.QueueUiState
 import moe.rukamori.archivetune.ui.theme.SoftTextShadow
@@ -70,6 +71,7 @@ internal fun QueueSheetHeader(
     state: PlayerUiState,
     isVisible: Boolean,
     modifier: Modifier = Modifier,
+    onAction: (PlayerAction) -> Unit = {},
 ) {
     val haptics = rememberYumaHaptics()
 
@@ -136,6 +138,7 @@ internal fun QueueSheetHeader(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.Center
             ) {
+                val originRoute = queueState.originRoute?.takeIf { it.isNotBlank() }
                 Text(
                     text = queueTitle,
                     color = Color.White,
@@ -143,7 +146,15 @@ internal fun QueueSheetHeader(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(shadow = SoftTextShadow)
+                    style = TextStyle(shadow = SoftTextShadow),
+                    modifier = if (originRoute != null) {
+                        Modifier.clickable {
+                            haptics.click()
+                            onAction(PlayerAction.OpenQueueOrigin(originRoute))
+                        }
+                    } else {
+                        Modifier
+                    }
                 )
                 Text(
                     text = subtitle,
