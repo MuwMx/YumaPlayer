@@ -48,6 +48,14 @@ sealed interface TogetherServerEvent {
         val request: AddTrackRequest,
     ) : TogetherServerEvent
 
+    data class ChatReceived(
+        val message: ChatMessage,
+    ) : TogetherServerEvent
+
+    data class ChatTypingReceived(
+        val typing: ChatTyping,
+    ) : TogetherServerEvent
+
     data class RoomStateReceived(
         val state: TogetherRoomState,
     ) : TogetherServerEvent
@@ -88,9 +96,13 @@ class TogetherServer(
 
     private val clients = ConcurrentHashMap<String, Client>()
 
+    private val chat = TogetherChatTranscript(sessionId = sessionId)
+
     var onEvent: ((TogetherServerEvent) -> Unit)? = null
 
     fun currentParticipants(): List<TogetherParticipant> = lastParticipants
+
+    fun chatHistory(): List<ChatMessage> = chat.history()
 
     suspend fun currentSettings(): TogetherRoomSettings = mutex.withLock { settings }
 
@@ -123,11 +135,91 @@ class TogetherServer(
         clients.clear()
 
         runCatching { eng.stop(1000, 2000) }
+        chat.clear()
     }
 
     suspend fun updateSettings(newSettings: TogetherRoomSettings) {
         mutex.withLock {
             settings = newSettings
+        }
+    }
+
+    /**
+     * Publishes a message authored by the local host so the guest clients, the host transcript and
+     * every participant keep the exact same ordering.
+     */
+    suspend fun postHostChat(
+        text: String,
+        track: TogetherTrack?,
+    ): ChatMessage {
+        val message =
+            chat.acceptLocal(
+                text = text,
+                senderName = hostDisplayName,
+                participantId = hostParticipantId,
+                track = track,
+            )
+        broadcastChatMessage(message)
+        onEvent?.invoke(TogetherServerEvent.ChatReceived(message))
+        return message
+    }
+
+    suspend fun postHostTyping(isTyping: Boolean) {
+        broadcastTyping(
+            ChatTyping(
+                sessionId = sessionId,
+                participantId = hostParticipantId,
+                displayName = hostDisplayName,
+                isTyping = isTyping,
+            ),
+        )
+    }
+
+    private suspend fun broadcastChatMessage(
+        message: ChatMessage,
+        excludeParticipantId: String? = null,
+    ) {
+        val text = TogetherJson.json.encodeToString(TogetherMessage.serializer(), message)
+        clients.values.forEach { client ->
+            if (client.pending) return@forEach
+            if (excludeParticipantId != null && client.participantId == excludeParticipantId) return@forEach
+            runCatching { client.session.send(text) }
+        }
+    }
+
+    private suspend fun broadcastTyping(
+        typing: ChatTyping,
+        excludeParticipantId: String? = null,
+    ) {
+        val text = TogetherJson.json.encodeToString(TogetherMessage.serializer(), typing)
+        clients.values.forEach { client ->
+            if (client.pending) return@forEach
+            if (excludeParticipantId != null && client.participantId == excludeParticipantId) return@forEach
+            runCatching { client.session.send(text) }
+        }
+    }
+
+    private suspend fun recordSystemChat(
+        event: ChatSystemEvent,
+        participantName: String,
+    ) {
+        if (!currentSettings().allowChat) return
+        val message = chat.recordSystem(event = event, participantName = participantName)
+        broadcastChatMessage(message)
+        onEvent?.invoke(TogetherServerEvent.ChatReceived(message))
+    }
+
+    private suspend fun sendChatHistory(client: Client) {
+        if (client.pending) return
+        val history = chat.history()
+        if (history.isEmpty()) return
+        runCatching {
+            client.session.send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    ChatHistory(sessionId = sessionId, messages = history),
+                ),
+            )
         }
     }
 
@@ -139,6 +231,53 @@ class TogetherServer(
         }
         broadcastHostTransferred(participantId)
         onEvent?.invoke(TogetherServerEvent.HostTransferred(participantId))
+    }
+
+    private suspend fun WebSocketSession.handleIncomingChat(
+        candidate: ChatMessage,
+        client: Client,
+    ) {
+        if (!currentSettings().allowChat) {
+            sendChatError(TogetherChatDisabledCode, "Chat is disabled by the host")
+            return
+        }
+        when (
+            val result =
+                chat.acceptIncoming(
+                    candidate = candidate,
+                    senderName = client.name,
+                    participantId = client.participantId,
+                )
+        ) {
+            is TogetherChatResult.Accepted -> {
+                broadcastChatMessage(result.message)
+                onEvent?.invoke(TogetherServerEvent.ChatReceived(result.message))
+            }
+
+            TogetherChatResult.TooFrequent ->
+                sendChatError(TogetherChatRateLimitedCode, "You are sending messages too fast")
+
+            TogetherChatResult.Invalid ->
+                sendChatError(TogetherChatInvalidCode, "Message is too long")
+
+            TogetherChatResult.Empty -> {
+                Unit
+            }
+        }
+    }
+
+    private suspend fun WebSocketSession.sendChatError(
+        code: String,
+        message: String,
+    ) {
+        runCatching {
+            send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    ServerError(sessionId = sessionId, message = message, code = code),
+                ),
+            )
+        }
     }
 
     suspend fun approveParticipant(
@@ -172,6 +311,8 @@ class TogetherServer(
                 ),
             )
         }
+        sendChatHistory(client)
+        recordSystemChat(ChatSystemEvent.PARTICIPANT_JOINED, client.name)
         onEvent?.invoke(
             TogetherServerEvent.ParticipantJoined(
                 TogetherParticipant(
@@ -360,6 +501,10 @@ class TogetherServer(
         onEvent?.invoke(
             if (isPending) TogetherServerEvent.JoinRequested(participant) else TogetherServerEvent.ParticipantJoined(participant),
         )
+        if (!isPending) {
+            sendChatHistory(client)
+            recordSystemChat(ChatSystemEvent.PARTICIPANT_JOINED, client.name)
+        }
 
         try {
             for (frame in incoming) {
@@ -418,6 +563,20 @@ class TogetherServer(
                         }
                     }
 
+                    is ChatMessage -> {
+                        if (!client.pending) {
+                            handleIncomingChat(message, client)
+                        }
+                    }
+
+                    is ChatTyping -> {
+                        if (!client.pending && currentSettings().allowChat) {
+                            val normalized = message.copy(participantId = participantId, displayName = client.name)
+                            broadcastTyping(normalized, excludeParticipantId = participantId)
+                            onEvent?.invoke(TogetherServerEvent.ChatTypingReceived(normalized))
+                        }
+                    }
+
                     is HostTransfer -> {
                         val canTransfer = mutex.withLock { authorityParticipantId == participantId }
                         if (canTransfer && message.sessionId == sessionId) {
@@ -434,6 +593,7 @@ class TogetherServer(
             onEvent?.invoke(TogetherServerEvent.Error("Client loop failed", t))
         } finally {
             clients.remove(participantId)
+            recordSystemChat(ChatSystemEvent.PARTICIPANT_LEFT, client.name)
             onEvent?.invoke(TogetherServerEvent.ParticipantLeft(participantId, "Disconnected"))
             runCatching { close() }
         }

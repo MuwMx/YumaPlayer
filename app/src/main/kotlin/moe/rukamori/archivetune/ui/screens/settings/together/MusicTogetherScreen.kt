@@ -290,6 +290,11 @@ private fun MusicTogetherContent(
                 item(contentType = "playback") {
                     PlaybackCard(playback = model.playback)
                 }
+                if (model.chat.visible) {
+                    item(contentType = "chat") {
+                        TogetherChatCard(chat = model.chat, viewModel = viewModel)
+                    }
+                }
                 if (model.host.visible) {
                     item(contentType = "host") {
                         HostControlsCard(host = model.host, viewModel = viewModel)
@@ -356,6 +361,11 @@ private fun MusicTogetherContent(
             }
             item(contentType = "playback") {
                 PlaybackCard(playback = model.playback)
+            }
+            if (model.chat.visible) {
+                item(contentType = "chat") {
+                    TogetherChatCard(chat = model.chat, viewModel = viewModel)
+                }
             }
             if (model.host.visible) {
                 item(contentType = "host") {
@@ -758,6 +768,12 @@ private fun HostControlsCard(
             checked = host.requireHostApprovalToJoin,
             onCheckedChange = viewModel::setRequireHostApprovalToJoin,
         )
+        ToggleRow(
+            iconResId = R.drawable.queue_music,
+            titleResId = R.string.together_allow_chat,
+            checked = host.allowChat,
+            onCheckedChange = viewModel::setAllowChat,
+        )
         Button(
             enabled = host.startEnabled,
             onClick = viewModel::startSession,
@@ -1093,7 +1109,7 @@ private fun activityMessage(item: MusicTogetherActivityLogItemUiModel): String =
     }
 
 @Composable
-private fun SectionCard(
+internal fun SectionCard(
     @androidx.annotation.DrawableRes iconResId: Int,
     @StringRes titleResId: Int,
     accent: Color,
@@ -1271,7 +1287,7 @@ private fun InfoPill(text: String) {
 }
 
 @Composable
-private fun EmptyPanel(
+internal fun EmptyPanel(
     @androidx.annotation.DrawableRes iconResId: Int,
     @StringRes titleResId: Int,
     @StringRes bodyResId: Int,
@@ -1512,7 +1528,7 @@ private fun ConfirmParticipantDialog(
     )
 }
 
-private object MusicTogetherSpacing {
+internal object MusicTogetherSpacing {
     val xxs = 4.dp
     val xs = 8.dp
     val sm = 16.dp

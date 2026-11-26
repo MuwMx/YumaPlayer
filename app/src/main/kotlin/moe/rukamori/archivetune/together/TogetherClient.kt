@@ -56,6 +56,18 @@ sealed interface TogetherClientEvent {
         val request: AddTrackRequest,
     ) : TogetherClientEvent
 
+    data class ChatReceived(
+        val message: ChatMessage,
+    ) : TogetherClientEvent
+
+    data class ChatHistoryReceived(
+        val messages: List<ChatMessage>,
+    ) : TogetherClientEvent
+
+    data class ChatTypingReceived(
+        val typing: ChatTyping,
+    ) : TogetherClientEvent
+
     data class ServerIssue(
         val message: String,
         val code: String? = null,
@@ -326,6 +338,54 @@ class TogetherClient(
         }
     }
 
+    fun sendChat(
+        sessionId: String,
+        text: String,
+        track: TogetherTrack? = null,
+        messageId: String = UUID.randomUUID().toString(),
+    ) {
+        val pid = selfParticipantId ?: return
+        val message =
+            ChatMessage(
+                sessionId = sessionId,
+                participantId = pid,
+                messageId = messageId,
+                text = text,
+                track = track,
+                kind = if (track != null) ChatMessageKind.TRACK else ChatMessageKind.TEXT,
+                sentAtEpochMs = System.currentTimeMillis(),
+            )
+        scope.launch {
+            session?.send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    message,
+                ),
+            )
+        }
+    }
+
+    fun sendChatTyping(
+        sessionId: String,
+        displayName: String,
+        isTyping: Boolean,
+    ) {
+        val pid = selfParticipantId ?: return
+        scope.launch {
+            session?.send(
+                TogetherJson.json.encodeToString(
+                    TogetherMessage.serializer(),
+                    ChatTyping(
+                        sessionId = sessionId,
+                        participantId = pid,
+                        displayName = displayName,
+                        isTyping = isTyping,
+                    ),
+                ),
+            )
+        }
+    }
+
     fun transferHostOwnership(
         sessionId: String,
         participantId: String,
@@ -452,6 +512,24 @@ class TogetherClient(
                             is AddTrackRequest -> {
                                 if (message.sessionId == sessionId) {
                                     _events.tryEmit(TogetherClientEvent.AddTrackRequested(message))
+                                }
+                            }
+
+                            is ChatMessage -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.ChatReceived(message))
+                                }
+                            }
+
+                            is ChatHistory -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.ChatHistoryReceived(message.messages))
+                                }
+                            }
+
+                            is ChatTyping -> {
+                                if (message.sessionId == sessionId) {
+                                    _events.tryEmit(TogetherClientEvent.ChatTypingReceived(message))
                                 }
                             }
 

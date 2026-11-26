@@ -35,6 +35,15 @@ class ObserveMusicTogetherStateUseCase
             }
     }
 
+/** Streams the live room conversation so the Together screen stays a pure projection of state. */
+class ObserveMusicTogetherChatUseCase
+    @Inject
+    constructor(
+        private val repository: MusicTogetherRepository,
+    ) {
+        operator fun invoke(): Flow<MusicTogetherChatSnapshot> = repository.chat
+    }
+
 class UpdateMusicTogetherPreferencesUseCase
     @Inject
     constructor(
@@ -58,6 +67,10 @@ class UpdateMusicTogetherPreferencesUseCase
 
         suspend fun setRequireHostApprovalToJoin(value: Boolean) {
             repository.setRequireHostApprovalToJoin(value)
+        }
+
+        suspend fun setAllowChat(value: Boolean) {
+            repository.setAllowChat(value)
         }
 
         suspend fun setLastJoinLink(value: String) {
@@ -125,5 +138,28 @@ class MusicTogetherSessionActionsUseCase
 
         fun transferHostOwnership(participantId: String) {
             repository.transferHostOwnership(participantId)
+        }
+
+        fun sendChat(
+            text: String,
+            track: TogetherTrack?,
+        ) {
+            repository.sendChat(text = text, track = track)
+        }
+
+        fun sendTyping(
+            displayName: String,
+            isTyping: Boolean,
+        ) {
+            repository.sendTyping(displayName = displayName, isTyping = isTyping)
+        }
+
+        fun shareCurrentlyPlayingTrack(): Boolean = repository.shareCurrentlyPlayingTrack()
+
+        fun playSharedTrack(
+            track: TogetherTrack,
+            mode: AddTrackMode,
+        ) {
+            repository.playSharedTrack(track = track, mode = mode)
         }
     }
