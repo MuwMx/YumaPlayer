@@ -39,19 +39,20 @@ class SpotifySearchScorer(private val matcher: TrackMatcher) {
         val passers = candidates.filter { cand ->
             passesGeneric(track, titleOf(cand), artistsOf(cand), durationMsOf(cand))
         }
+        val targetDurationMs = track.durationMs
         val best = passers.minWithOrNull(
             compareBy<T> { !isCreditedTo(track.artist, artistsOf(it)) }
                 .thenBy { !explicitOf(it) }
-                .thenBy { abs(track.durationMs!! - durationMsOf(it)) / 1000 }
+                .thenBy { targetDurationMs?.let { target -> abs(target - durationMsOf(it)) / 1000 } ?: 0L }
                 .thenByDescending { effectiveTitleSim(track.title, titleOf(it)) },
         ) ?: return CandidateDecision(null, 0.0, "no candidate passed gates")
         val bestCredited = isCreditedTo(track.artist, artistsOf(best))
 
-        val bestDur = abs(track.durationMs!! - durationMsOf(best)) / 1000
+        val bestDur = targetDurationMs?.let { abs(it - durationMsOf(best)) / 1000 } ?: 0L
         val bestSim = effectiveTitleSim(track.title, titleOf(best))
 
         val ambiguous = passers.any { other ->
-            val otherDur = abs(track.durationMs - durationMsOf(other)) / 1000
+            val otherDur = targetDurationMs?.let { abs(it - durationMsOf(other)) / 1000 } ?: 0L
             val otherSim = effectiveTitleSim(track.title, titleOf(other))
             other !== best &&
                 isCreditedTo(track.artist, artistsOf(other)) == bestCredited &&

@@ -294,4 +294,63 @@ class SpotifySearchScorerTest {
     fun `a stored match by a different artist is not plausible even with the same title`() {
         assertEquals(false, scorer.isPlausibleMatch("Song", listOf("Artist"), 200, "Song", listOf("Somebody Else"), 200))
     }
+
+    @Test
+    fun `pickGeneric handles null duration without throwing`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = null)
+        val candidate = SpotifyTrack(id = "t1", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 200_000)
+
+        val decision =
+            scorer.pickGeneric(
+                query,
+                listOf(candidate),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertNull(decision.accepted)
+    }
+
+    @Test
+    fun `pickGeneric handles zero duration and empty candidates`() {
+        val query = TrackQuery(artist = "Artist", title = "Song", durationMs = 0L)
+        val candidate = SpotifyTrack(id = "t1", name = "Song", artists = listOf(SpotifySimpleArtist(name = "Artist")), durationMs = 0)
+
+        assertNull(
+            scorer.pickGeneric(
+                query,
+                emptyList<SpotifyTrack>(),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            ).accepted,
+        )
+
+        val decision =
+            scorer.pickGeneric(
+                query,
+                listOf(candidate),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertNull(decision.accepted)
+    }
+
+    @Test
+    fun `pickGeneric handles missing artist metadata and duration tolerance`() {
+        val query = TrackQuery(artist = "", title = "Unique Instrumental", durationMs = 200_000L)
+        val withinTolerance = SpotifyTrack(id = "close", name = "Unique Instrumental", artists = emptyList(), durationMs = 202_000)
+        val outOfTolerance = SpotifyTrack(id = "far", name = "Unique Instrumental", artists = emptyList(), durationMs = 260_000)
+
+        val decision =
+            scorer.pickGeneric(
+                query,
+                listOf(outOfTolerance, withinTolerance),
+                titleOf = { it.name },
+                artistsOf = { it.artists.map { artist -> artist.name } },
+                durationMsOf = { it.durationMs.toLong() },
+            )
+        assertNull(decision.accepted)
+    }
 }

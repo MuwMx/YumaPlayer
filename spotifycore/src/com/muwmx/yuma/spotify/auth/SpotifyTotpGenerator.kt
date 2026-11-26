@@ -85,7 +85,8 @@ object SpotifyTotpGenerator {
                 }
 
             if (body == null) {
-                return cached!!.nuance
+                return cached?.nuance
+                    ?: throw Spotify.SpotifyException(503, "Failed to fetch TOTP secret from gist and cache is empty")
             }
 
             val nuances = json.decodeFromString<List<Nuance>>(body)

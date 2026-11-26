@@ -440,7 +440,7 @@ abstract class InternalDatabase : RoomDatabase() {
         fun newInstance(context: Context): MusicDatabase {
             val universalMigrations =
                 (2 until CURRENT_VERSION)
-                    .filter { it !in 33..35 && it != 38 }
+                    .filter { it !in 33..38 }
                     .map { from -> UniversalMigration(context, from, CURRENT_VERSION) }
                     .toTypedArray()
 
@@ -452,10 +452,11 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_33_34,
                         MIGRATION_34_35,
                         MIGRATION_35_36,
+                        MIGRATION_36_37,
+                        MIGRATION_37_38,
                         MIGRATION_38_39,
                         *universalMigrations,
                     ).addCallback(DatabaseCallback())
-                    .fallbackToDestructiveMigration()
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                     .setTransactionExecutor(
@@ -489,8 +490,13 @@ abstract class InternalDatabase : RoomDatabase() {
 
                 db = build()
                 runCatching { db.openHelper.writableDatabase }.getOrElse { openError ->
-                    Log.e(TAG, "Database still failed to open after schema repair=$repaired, recreating database", openError)
+                    Log.e(TAG, "Database still failed to open after schema repair=$repaired, attempting backup before recreate", openError)
                     runCatching { db.close() }
+                    val backedUp = backupCorruptDatabase(context, DB_NAME)
+                    if (!backedUp) {
+                        Log.e(TAG, "Refusing to delete $DB_NAME because corrupt backup failed")
+                        throw openError
+                    }
                     runCatching { context.deleteDatabase(DB_NAME) }
                     db = build()
                     db.openHelper.writableDatabase
@@ -1214,6 +1220,94 @@ private val MIGRATION_35_36 =
                 WHERE liked != 0 AND NOT EXISTS (SELECT 1 FROM spotify_match WHERE spotify_match.youtubeId = song.id)
                 """.trimIndent(),
             )
+        }
+    }
+
+private fun backupCorruptDatabase(
+    context: Context,
+    dbName: String,
+): Boolean =
+    runCatching {
+        val dbFile = context.getDatabasePath(dbName)
+        backupCorruptDatabaseFiles(dbFile)
+    }.onFailure { e ->
+        Log.e(TAG, "Failed to back up corrupt database", e)
+    }.getOrDefault(false)
+
+internal fun backupCorruptDatabaseFiles(dbFile: java.io.File): Boolean {
+    if (!dbFile.exists() || !dbFile.isFile) return false
+    val parent = dbFile.parentFile ?: return false
+    val dbName = dbFile.name
+    val timestamp = System.currentTimeMillis()
+    val suffixes = listOf("", "-wal", "-shm")
+    var suffixIndex = 0
+    var backupBase = java.io.File(parent, "$dbName.corrupt.$timestamp")
+    while (suffixes.any { s ->
+            java.io.File(parent, "${backupBase.name}$s").exists() ||
+                java.io.File(parent, "${backupBase.name}.tmp$s").exists()
+        }
+    ) {
+        suffixIndex++
+        backupBase = java.io.File(parent, "$dbName.corrupt.$timestamp.$suffixIndex")
+    }
+
+    val stagedFiles = mutableListOf<Pair<java.io.File, java.io.File>>()
+    val finalizedFiles = mutableListOf<java.io.File>()
+    return try {
+        for (suffix in suffixes) {
+            val src = java.io.File(parent, "$dbName$suffix")
+            if (!src.exists()) continue
+            val tmp = java.io.File(parent, "${backupBase.name}.tmp$suffix")
+            val dst = java.io.File(parent, "${backupBase.name}$suffix")
+            src.copyTo(tmp, overwrite = true)
+            if (!tmp.exists() || tmp.length() != src.length()) {
+                throw java.io.IOException("Backup size mismatch for ${src.name}")
+            }
+            stagedFiles.add(tmp to dst)
+        }
+        if (stagedFiles.isEmpty()) return false
+        for ((tmp, dst) in stagedFiles) {
+            if (!tmp.renameTo(dst)) {
+                throw java.io.IOException("Failed to finalize backup file ${dst.name}")
+            }
+            finalizedFiles.add(dst)
+        }
+        true
+    } catch (e: Throwable) {
+        Log.e(TAG, "Corrupt database backup failed; cleaning up partial backup files", e)
+        stagedFiles.forEach { (tmp, _) -> runCatching { tmp.delete() } }
+        finalizedFiles.forEach { dst -> runCatching { dst.delete() } }
+        false
+    }
+}
+
+private val MIGRATION_36_37 =
+    object : Migration(36, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `track_analysis` (
+                    `trackId` TEXT NOT NULL,
+                    `bpm` REAL NOT NULL,
+                    `beatInterval` REAL NOT NULL,
+                    `firstBeat` REAL NOT NULL,
+                    `mixInTime` REAL NOT NULL,
+                    `mixOutTime` REAL NOT NULL,
+                    `contentEndTime` REAL NOT NULL,
+                    `dynamicRangeDb` REAL NOT NULL,
+                    `loudnessLufs` REAL NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`trackId`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
+private val MIGRATION_37_38 =
+    object : Migration(37, 38) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE playlist ADD COLUMN spotifySourceId TEXT DEFAULT NULL")
         }
     }
 
