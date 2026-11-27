@@ -64,7 +64,12 @@ data class ColorExtractionConfig(
 private data class ScoredHct(val hct: Hct, val score: Double)
 private data class RepresentativeArtworkColor(val argb: Int, val hct: Hct)
 
-private val extractedColorCache = LruCache<Int, Color>(32)
+private val extractedColorCache = LruCache<String, Color>(64)
+
+fun getCachedSeedColor(
+    cacheKey: String,
+    config: ColorExtractionConfig = ColorExtractionConfig(),
+): Color? = extractedColorCache.get("$cacheKey:${config.hashCode()}")
 
 // ============================================================================
 // ПУБЛИЧНЫЕ МЕТОДЫ
@@ -73,9 +78,15 @@ private val extractedColorCache = LruCache<Int, Color>(32)
 /**
  * Извлекает доминантный, сбалансированный цвет из обложки трека.
  */
-fun extractSeedColor(bitmap: Bitmap, config: ColorExtractionConfig = ColorExtractionConfig()): Color {
-    val cacheKey = 31 * bitmap.hashCode() + config.hashCode()
-    extractedColorCache.get(cacheKey)?.let { return it }
+fun extractSeedColor(
+    bitmap: Bitmap,
+    config: ColorExtractionConfig = ColorExtractionConfig(),
+    cacheKey: String? = null,
+): Color {
+    val resolvedCacheKey = cacheKey?.let { "$it:${config.hashCode()}" }
+    if (resolvedCacheKey != null) {
+        extractedColorCache.get(resolvedCacheKey)?.let { return it }
+    }
 
     val workingBitmap = resizeForExtraction(bitmap, config.downscaleMaxDimension)
 
@@ -91,7 +102,9 @@ fun extractSeedColor(bitmap: Bitmap, config: ColorExtractionConfig = ColorExtrac
         }
     }
 
-    extractedColorCache.put(cacheKey, seedColor)
+    if (resolvedCacheKey != null) {
+        extractedColorCache.put(resolvedCacheKey, seedColor)
+    }
     return seedColor
 }
 

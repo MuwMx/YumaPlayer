@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -72,13 +73,22 @@ internal fun PlayerImmersiveCoverCarousel(
         for (slot in carousel.slots) {
             key(slot.uid) {
                 val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
-                val slotRequest = remember(slotUrl) {
+                var holdOverUrl by remember { mutableStateOf(slotUrl) }
+                LaunchedEffect(slotUrl) {
+                    if (slotUrl != null) {
+                        holdOverUrl = slotUrl
+                    }
+                }
+                val slotRequest = remember(slotUrl, holdOverUrl) {
                     ImageRequest.Builder(context)
                         .data(slotUrl)
                         .apply {
                             if (slotUrl != null) {
                                 memoryCacheKey(slotUrl)
                                 diskCacheKey(slotUrl)
+                            }
+                            if (holdOverUrl != null && holdOverUrl != slotUrl) {
+                                placeholderMemoryCacheKey(holdOverUrl)
                             }
                         }
                         .build()

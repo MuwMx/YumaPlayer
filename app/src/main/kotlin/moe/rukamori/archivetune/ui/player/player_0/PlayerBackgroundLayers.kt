@@ -89,14 +89,29 @@ fun PlayerBackgroundLayers(
     )
 
     val carousel = LocalSongCarousel.current
-    val closestSlot = carousel?.slots?.minByOrNull { abs(carousel.offsetOf(it)) }
-    val targetUrl = closestSlot?.artworkUri?.trim()?.takeIf(String::isNotBlank)
-        ?: state.coverUrl.trim().takeIf(String::isNotBlank)
+    val currentCoverUrl by rememberUpdatedState(state.coverUrl)
+    val targetUrl by remember(carousel) {
+        derivedStateOf {
+            val closestSlot = carousel?.slots?.minByOrNull { abs(carousel.offsetOf(it)) }
+            closestSlot?.artworkUri?.trim()?.takeIf(String::isNotBlank)
+                ?: currentCoverUrl.trim().takeIf(String::isNotBlank)
+        }
+    }
+    val nextTargetUrl by remember(carousel) {
+        derivedStateOf {
+            carousel?.slots
+                ?.firstOrNull { it.step == carousel.step + 1 }
+                ?.artworkUri
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        }
+    }
 
     key(state.trackUrl) {
         PlayerPaletteExtractor(
             targetUrl = targetUrl,
             trackUrl = state.trackUrl,
+            nextUrl = nextTargetUrl,
             onColorsExtracted = onColorsExtracted
         )
     }

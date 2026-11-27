@@ -91,14 +91,23 @@ fun PlayerCoverCard(
     var activeVibrantColor by remember { mutableStateOf(Color.Transparent) }
 
     val cleanUrl = coverUrl?.trim()?.takeIf(String::isNotBlank)
+    var holdOverCleanUrl by remember { mutableStateOf(cleanUrl) }
+    LaunchedEffect(cleanUrl) {
+        if (cleanUrl != null) {
+            holdOverCleanUrl = cleanUrl
+        }
+    }
 
-    val request = remember(cleanUrl) {
+    val request = remember(cleanUrl, holdOverCleanUrl) {
         ImageRequest.Builder(context)
             .data(cleanUrl)
             .apply {
                 if (cleanUrl != null) {
                     memoryCacheKey(cleanUrl)
                     diskCacheKey(cleanUrl)
+                }
+                if (holdOverCleanUrl != null && holdOverCleanUrl != cleanUrl) {
+                    placeholderMemoryCacheKey(holdOverCleanUrl)
                 }
             }
             .build()
@@ -254,7 +263,13 @@ fun PlayerCoverCard(
             for (slot in carousel.slots) {
                 key(slot.uid) {
                     val slotUrl = slot.artworkUri?.trim()?.takeIf(String::isNotBlank)
-                    val slotRequest = remember(slotUrl) {
+                    var holdOverSlotUrl by remember { mutableStateOf(slotUrl) }
+                    LaunchedEffect(slotUrl) {
+                        if (slotUrl != null) {
+                            holdOverSlotUrl = slotUrl
+                        }
+                    }
+                    val slotRequest = remember(slotUrl, holdOverSlotUrl) {
                         ImageRequest.Builder(context)
                             .data(slotUrl)
                             .placeholder(placeholderResId)
@@ -263,6 +278,9 @@ fun PlayerCoverCard(
                                 if (slotUrl != null) {
                                     memoryCacheKey(slotUrl)
                                     diskCacheKey(slotUrl)
+                                }
+                                if (holdOverSlotUrl != null && holdOverSlotUrl != slotUrl) {
+                                    placeholderMemoryCacheKey(holdOverSlotUrl)
                                 }
                             }
                             .build()

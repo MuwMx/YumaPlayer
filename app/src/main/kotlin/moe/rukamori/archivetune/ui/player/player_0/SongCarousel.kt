@@ -354,13 +354,22 @@ fun rememberSongCarousel(
         }
     }
 
-    carousel.onQueue(
-        queue = queueState,
-        trackUrl = playerUiState.trackUrl,
-        title = playerUiState.title,
-        artist = playerUiState.artist,
-        coverUrl = playerUiState.coverUrl,
-    )
+    LaunchedEffect(
+        carousel,
+        queueState,
+        playerUiState.trackUrl,
+        playerUiState.title,
+        playerUiState.artist,
+        playerUiState.coverUrl,
+    ) {
+        carousel.onQueue(
+            queue = queueState,
+            trackUrl = playerUiState.trackUrl,
+            title = playerUiState.title,
+            artist = playerUiState.artist,
+            coverUrl = playerUiState.coverUrl,
+        )
+    }
 
     LaunchedEffect(carousel, carousel.step) {
         carousel.settle()

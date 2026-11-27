@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -58,8 +60,11 @@ internal fun PlayerBlurBackdrop(
                             targetUrl = slotUrl,
                             needsBlur = needsBlur
                         )
+                        val isSlotVisible by remember(carousel, slot) {
+                            derivedStateOf { carousel.crossfadeAlpha(slot) > 0f }
+                        }
                         val blurPainter = slotPainters.currentBlurPainter
-                        if (blurPainter != null) {
+                        if (isSlotVisible && blurPainter != null) {
                             Image(
                                 painter = blurPainter,
                                 contentDescription = null,

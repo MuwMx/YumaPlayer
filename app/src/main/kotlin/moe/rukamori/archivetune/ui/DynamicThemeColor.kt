@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.Color
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -25,6 +26,7 @@ import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
 import moe.rukamori.archivetune.ui.theme.extractSeedColor
+import moe.rukamori.archivetune.ui.theme.getCachedSeedColor
 
 data class DynamicThemeColorState(
     val themeColor: Color,
@@ -74,41 +76,48 @@ fun rememberDynamicThemeColor(
         }
         playerConnection.service.currentMediaMetadata.collectLatest { song ->
             if (song != null) {
-                withContext(Dispatchers.Default) {
-                    try {
-                        val result =
-                            activity.imageLoader.execute(
-                                ImageRequest
-                                    .Builder(activity.applicationContext)
-                                    .data(song.thumbnailUrl)
-                                    .allowHardware(false)
-                                    .build(),
-                            )
-                        val bitmap = result.image?.toBitmap()
-                        if (bitmap != null) {
-                            val accurateSeed = extractSeedColor(bitmap)
-                            withContext(Dispatchers.Main) {
-                                themeColor = accurateSeed
-                            }
+                val thumbnailUrl = song.thumbnailUrl?.trim()?.takeIf(String::isNotBlank)
+                val resolvedColor =
+                    withContext(Dispatchers.Default) {
+                        if (thumbnailUrl == null) {
+                            DefaultThemeColor
                         } else {
-                            withContext(Dispatchers.Main) {
-                                themeColor = DefaultThemeColor
+                            getCachedSeedColor(thumbnailUrl) ?: try {
+                                val result =
+                                    activity.imageLoader.execute(
+                                        ImageRequest
+                                            .Builder(activity.applicationContext)
+                                            .data(thumbnailUrl)
+                                            .size(128, 128)
+                                            .memoryCacheKey("dynamic-theme:$thumbnailUrl")
+                                            .diskCacheKey(thumbnailUrl)
+                                            .allowHardware(false)
+                                            .build(),
+                                    )
+                                val bitmap = result.image?.toBitmap()
+                                if (bitmap != null) {
+                                    extractSeedColor(bitmap, cacheKey = thumbnailUrl)
+                                } else {
+                                    DefaultThemeColor
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                DefaultThemeColor
                             }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            themeColor = DefaultThemeColor
                         }
                     }
-                }
+                withFrameNanos { }
+                themeColor = resolvedColor
             } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    themeColor = DefaultThemeColor
-                } else {
-                    themeColor = customThemeColor
-                }
+                val fallback =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        DefaultThemeColor
+                    } else {
+                        customThemeColor
+                    }
+                withFrameNanos { }
+                themeColor = fallback
             }
         }
     }
