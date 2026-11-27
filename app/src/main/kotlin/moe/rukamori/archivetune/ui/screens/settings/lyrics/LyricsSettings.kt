@@ -38,6 +38,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
+import moe.rukamori.archivetune.constants.EnablePortatoLyricsKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
@@ -80,6 +81,8 @@ fun LyricsSettings(
     val (enableLrclib, onEnableLrclibChange) = rememberPreference(key = EnableLrcLibKey, defaultValue = true)
     val (enableKugou, onEnableKugouChange) = rememberPreference(key = EnableKugouKey, defaultValue = true)
     val (enableBetterLyrics, onEnableBetterLyricsChange) = rememberPreference(key = EnableBetterLyricsKey, defaultValue = true)
+    val (enablePortatoLyrics, onEnablePortatoLyricsChange) =
+        rememberPreference(key = EnablePortatoLyricsKey, defaultValue = true)
     val (enableYouLyPlusLyrics, onEnableYouLyPlusLyricsChange) =
         rememberPreference(key = EnableYouLyPlusLyricsKey, defaultValue = true)
     val (enableSimpMusicLyrics, onEnableSimpMusicLyricsChange) =
@@ -171,6 +174,7 @@ fun LyricsSettings(
             lyricsTextSize = lyricsTextSize,
             lyricsLineSpacing = lyricsLineSpacing,
             enableBetterLyrics = enableBetterLyrics,
+            enablePortatoLyrics = enablePortatoLyrics,
             enableYouLyPlusLyrics = enableYouLyPlusLyrics,
             enableLrclib = enableLrclib,
             enableKugou = enableKugou,
@@ -198,6 +202,7 @@ fun LyricsSettings(
             onOpenTextSizeDialog = { showLyricsTextSizeDialog = true },
             onOpenLineSpacingDialog = { showLyricsLineSpacingDialog = true },
             onEnableBetterLyricsChange = onEnableBetterLyricsChange,
+            onEnablePortatoLyricsChange = onEnablePortatoLyricsChange,
             onEnableYouLyPlusLyricsChange = onEnableYouLyPlusLyricsChange,
             onEnableLrclibChange = onEnableLrclibChange,
             onEnableKugouChange = onEnableKugouChange,

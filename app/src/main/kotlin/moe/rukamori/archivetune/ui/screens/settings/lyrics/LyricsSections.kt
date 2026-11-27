@@ -169,6 +169,8 @@ internal fun LyricsSettingsContent(
         LyricsProvidersSection(
             enableBetterLyrics = state.enableBetterLyrics,
             onEnableBetterLyricsChange = actions.onEnableBetterLyricsChange,
+            enablePortatoLyrics = state.enablePortatoLyrics,
+            onEnablePortatoLyricsChange = actions.onEnablePortatoLyricsChange,
             enableYouLyPlusLyrics = state.enableYouLyPlusLyrics,
             onEnableYouLyPlusLyricsChange = actions.onEnableYouLyPlusLyricsChange,
             enableLrclib = state.enableLrclib,

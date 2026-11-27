@@ -337,6 +337,7 @@
     <string name="enable_proxy">Включить прокси</string>
     <string name="proxy_type">Тип прокси</string>
     <string name="enable_betterlyrics">Включить BetterLyrics</string>
+    <string name="enable_portato_lyrics">Включить Better Lyrics Portato</string>
     <string name="enable_simpmusic_lyrics">Включить SimpMusic lyrics</string>
     <string name="player_and_audio">Плеер и аудио</string>
     <string name="audio_quality">Качество аудио</string>

@@ -15,6 +15,7 @@ import moe.rukamori.archivetune.lyrics.parsing.LrcParser
 import moe.rukamori.archivetune.lyrics.providers.BetterLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.PortatoLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.UnisonLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.YouLyPlusLyricsProvider
@@ -48,6 +49,7 @@ object LyricsCandidatesManager {
     fun resolveProvider(provider: PreferredLyricsProvider): LyricsProvider =
         when (provider) {
             PreferredLyricsProvider.BETTER_LYRICS -> BetterLyricsProvider
+            PreferredLyricsProvider.PORTATO -> PortatoLyricsProvider
             PreferredLyricsProvider.YOULY_PLUS -> YouLyPlusLyricsProvider
             PreferredLyricsProvider.LRCLIB -> LrcLibLyricsProvider
             PreferredLyricsProvider.KUGOU -> KuGouLyricsProvider

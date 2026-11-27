@@ -10,6 +10,7 @@ import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
+import moe.rukamori.archivetune.constants.EnablePortatoLyricsKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
@@ -40,6 +41,7 @@ internal object LyricsContract {
     val TextSizeKey = LyricsTextSizeKey
     val LineSpacingKey = LyricsLineSpacingKey
     val BetterLyricsKey = EnableBetterLyricsKey
+    val PortatoLyricsKey = EnablePortatoLyricsKey
     val YouLyPlusKey = EnableYouLyPlusLyricsKey
     val LrcLibKey = EnableLrcLibKey
     val KugouKey = EnableKugouKey
@@ -61,6 +63,7 @@ internal fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.LRCLIB -> "LrcLib"
         PreferredLyricsProvider.KUGOU -> "KuGou"
         PreferredLyricsProvider.BETTER_LYRICS -> "BetterLyrics"
+        PreferredLyricsProvider.PORTATO -> "Better Lyrics Portato"
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
         PreferredLyricsProvider.UNISON -> "Unison"
@@ -74,6 +77,7 @@ data class LyricsSettingsUiState(
     val lyricsTextSize: Float = LyricsContract.DEFAULT_TEXT_SIZE,
     val lyricsLineSpacing: Float = LyricsContract.DEFAULT_LINE_SPACING,
     val enableBetterLyrics: Boolean = true,
+    val enablePortatoLyrics: Boolean = true,
     val enableYouLyPlusLyrics: Boolean = true,
     val enableLrclib: Boolean = true,
     val enableKugou: Boolean = true,
@@ -103,6 +107,7 @@ data class LyricsSettingsUiActions(
     val onOpenTextSizeDialog: () -> Unit = {},
     val onOpenLineSpacingDialog: () -> Unit = {},
     val onEnableBetterLyricsChange: (Boolean) -> Unit = {},
+    val onEnablePortatoLyricsChange: (Boolean) -> Unit = {},
     val onEnableYouLyPlusLyricsChange: (Boolean) -> Unit = {},
     val onEnableLrclibChange: (Boolean) -> Unit = {},
     val onEnableKugouChange: (Boolean) -> Unit = {},

@@ -16,6 +16,7 @@ import moe.rukamori.archivetune.lyrics.parsing.LrcParser
 import moe.rukamori.archivetune.lyrics.providers.BetterLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.PortatoLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.UnisonLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.YouLyPlusLyricsProvider
@@ -52,6 +53,7 @@ import moe.rukamori.archivetune.betterlyrics.BetterLyrics
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
+import moe.rukamori.archivetune.constants.EnablePortatoLyricsKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
@@ -91,6 +93,7 @@ class LyricsHelper
         private val baseProviders =
             listOf(
                 BetterLyricsProvider,
+                PortatoLyricsProvider,
                 YouLyPlusLyricsProvider,
                 LrcLibLyricsProvider,
                 KuGouLyricsProvider,
@@ -103,6 +106,7 @@ class LyricsHelper
         private val providerPreferenceKeys: Map<LyricsProvider, Preferences.Key<Boolean>> =
             mapOf(
                 BetterLyricsProvider to EnableBetterLyricsKey,
+                PortatoLyricsProvider to EnablePortatoLyricsKey,
                 YouLyPlusLyricsProvider to EnableYouLyPlusLyricsKey,
                 LrcLibLyricsProvider to EnableLrcLibKey,
                 KuGouLyricsProvider to EnableKugouKey,
@@ -405,6 +409,7 @@ class LyricsHelper
                     PreferredLyricsProvider.LRCLIB to LrcLibLyricsProvider,
                     PreferredLyricsProvider.KUGOU to KuGouLyricsProvider,
                     PreferredLyricsProvider.BETTER_LYRICS to BetterLyricsProvider,
+                    PreferredLyricsProvider.PORTATO to PortatoLyricsProvider,
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
                     PreferredLyricsProvider.UNISON to UnisonLyricsProvider,

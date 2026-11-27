@@ -151,6 +151,8 @@ internal fun LyricsProviderOrderDialog(
 internal fun LyricsProvidersSection(
     enableBetterLyrics: Boolean,
     onEnableBetterLyricsChange: (Boolean) -> Unit,
+    enablePortatoLyrics: Boolean,
+    onEnablePortatoLyricsChange: (Boolean) -> Unit,
     enableYouLyPlusLyrics: Boolean,
     onEnableYouLyPlusLyricsChange: (Boolean) -> Unit,
     enableLrclib: Boolean,
@@ -171,6 +173,15 @@ internal fun LyricsProvidersSection(
                 icon = { Icon(painterResource(R.drawable.lyrics), null) },
                 checked = enableBetterLyrics,
                 onCheckedChange = onEnableBetterLyricsChange,
+            )
+        }
+
+        item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.enable_portato_lyrics)) },
+                icon = { Icon(painterResource(R.drawable.lyrics), null) },
+                checked = enablePortatoLyrics,
+                onCheckedChange = onEnablePortatoLyricsChange,
             )
         }
 

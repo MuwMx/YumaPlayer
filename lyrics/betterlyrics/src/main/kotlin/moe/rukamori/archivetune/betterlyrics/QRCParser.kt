@@ -55,40 +55,126 @@ object QRCParser {
         setOf(
             "词",
             "作词",
+            "填词",
             "曲",
             "作曲",
+            "谱曲",
             "编曲",
             "和声",
+            "和声编写",
             "混音",
+            "混音师",
+            "母带",
+            "母带处理",
+            "母带工程",
             "吉他",
+            "贝斯",
+            "鼓",
+            "钢琴",
+            "键盘",
+            "弦乐",
+            "制作",
             "制作人",
+            "配唱",
+            "配唱制作人",
+            "执行制作",
+            "监制",
+            "统筹",
             "演唱",
             "原唱",
             "翻唱",
+            "歌手",
             "后期",
             "和音",
             "录音",
+            "录音师",
+            "录音室",
             "策划",
+            "企划",
+            "宣传",
+            "文案",
             "伴奏",
             "美工",
             "海报",
+            "封面",
             "旁白",
+            "翻译",
+            "译词",
+            "校对",
+            "鸣谢",
+            "特别鸣谢",
+            "出品",
+            "出品人",
+            "发行",
+            "版权",
+            "op",
+            "sp",
+            "opsp",
             "writtenby",
             "producedby",
             "composedby",
             "arrangedby",
+            "lyricsby",
+            "musicby",
+            "mixedby",
+            "masteredby",
+            "recordedby",
+            "performedby",
             "mixing",
             "mastering",
+            "recording",
+            "arrangement",
+            "production",
             "vocal",
             "vocals",
+            "backingvocals",
             "guitar",
             "bass",
             "drums",
+            "piano",
+            "keys",
+            "keyboards",
+            "strings",
             "producer",
+            "executiveproducer",
             "lyricist",
+            "lyrics",
+            "lyric",
+            "music",
             "composer",
             "arranger",
-            "lyricsby",
+            "engineer",
+            "translator",
+            "translation",
+            "publisher",
+            "copyright",
+        )
+    private val colonlessCreditPrefixes =
+        listOf(
+            "作词",
+            "作曲",
+            "编曲",
+            "填词",
+            "谱曲",
+            "制作人",
+            "演唱",
+            "原唱",
+            "混音",
+            "母带",
+            "written by",
+            "composed by",
+            "produced by",
+            "arranged by",
+            "lyrics by",
+            "music by",
+            "mixed by",
+            "mastered by",
+            "recorded by",
+            "performed by",
+            "lyricist",
+            "composer",
+            "producer",
+            "arranger",
         )
 
     fun isQrc(content: String): Boolean {
@@ -140,9 +226,15 @@ object QRCParser {
                     words = words,
                 )
 
+            if (parsedLines.isEmpty() && isCreditLineWithoutColon(parsedLine.text)) return@forEach
+
             if (extractSinger(parsedLine, context, parsedLines.size < 5, metadata)) {
                 parsedLines += parsedLine
             }
+        }
+
+        while (parsedLines.isNotEmpty() && isTrailingCreditOrMetadata(parsedLines.last(), metadata)) {
+            parsedLines.removeAt(parsedLines.lastIndex)
         }
 
         return parsedLines.mapIndexed { index, line ->
@@ -269,6 +361,21 @@ object QRCParser {
             line.words.all { word ->
                 kotlin.math.abs(word.durationMs - line.words.first().durationMs) < 10L
             }
+    }
+
+    private fun isTrailingCreditOrMetadata(
+        line: MutableParsedLine,
+        metadata: TrackMetadata,
+    ): Boolean = isCreditLineWithoutColon(line.text) || isMetadataLine(line, metadata)
+
+    private fun isCreditLineWithoutColon(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return true
+        val lower = trimmed.lowercase()
+        return colonlessCreditPrefixes.any { prefix ->
+            lower == prefix ||
+                (lower.startsWith(prefix) && lower.getOrNull(prefix.length)?.isWhitespace() == true)
+        }
     }
 
     private fun isMetadataPrefix(value: String): Boolean {

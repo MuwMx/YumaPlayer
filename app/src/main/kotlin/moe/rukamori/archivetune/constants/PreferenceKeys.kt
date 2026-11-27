@@ -168,6 +168,7 @@ val PlaylistSuggestionSourceKey = stringPreferencesKey("playlistSuggestionSource
 val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
+val EnablePortatoLyricsKey = booleanPreferencesKey("enablePortatoLyrics")
 val EnableYouLyPlusLyricsKey = booleanPreferencesKey("enableYouLyPlusLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
 val EnableUnisonLyricsKey = booleanPreferencesKey("enableUnisonLyrics")
@@ -598,6 +599,7 @@ enum class QuickPicks {
 
 enum class PreferredLyricsProvider {
     BETTER_LYRICS,
+    PORTATO,
     YOULY_PLUS,
     LRCLIB,
     KUGOU,
@@ -608,6 +610,7 @@ enum class PreferredLyricsProvider {
 val DefaultLyricsProviderOrder =
     listOf(
         PreferredLyricsProvider.BETTER_LYRICS,
+        PreferredLyricsProvider.PORTATO,
         PreferredLyricsProvider.YOULY_PLUS,
         PreferredLyricsProvider.LRCLIB,
         PreferredLyricsProvider.KUGOU,
