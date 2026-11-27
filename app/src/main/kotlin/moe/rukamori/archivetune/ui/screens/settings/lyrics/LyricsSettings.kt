@@ -55,6 +55,7 @@ import moe.rukamori.archivetune.constants.LyricsScrollKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.PreloadQueueLyricsEnabledKey
 import moe.rukamori.archivetune.constants.QueueLyricsPreloadCountKey
+import moe.rukamori.archivetune.constants.UseNativeLyricsRendererKey
 import moe.rukamori.archivetune.constants.deserializeLyricsProviderOrder
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
@@ -99,6 +100,8 @@ fun LyricsSettings(
             deserializeLyricsProviderOrder(providerOrderStr)
         }
     val (lyricsLineBlur, onLyricsLineBlurChange) = rememberPreference(LyricsLineBlurKey, defaultValue = true)
+    val (useNativeLyricsRenderer, onUseNativeLyricsRendererChange) =
+        rememberPreference(UseNativeLyricsRendererKey, defaultValue = false)
     val (lyricsRomanizeJapanese, onLyricsRomanizeJapaneseChange) =
         rememberPreference(LyricsRomanizeJapaneseKey, defaultValue = true)
     val (lyricsRomanizeKorean, onLyricsRomanizeKoreanChange) =
@@ -171,6 +174,7 @@ fun LyricsSettings(
             lyricsClick = lyricsClick,
             lyricsScroll = lyricsScroll,
             lyricsLineBlur = lyricsLineBlur,
+            useNativeLyricsRenderer = useNativeLyricsRenderer,
             lyricsTextSize = lyricsTextSize,
             lyricsLineSpacing = lyricsLineSpacing,
             enableBetterLyrics = enableBetterLyrics,
@@ -197,6 +201,7 @@ fun LyricsSettings(
             onLyricsClickChange = onLyricsClickChange,
             onLyricsScrollChange = onLyricsScrollChange,
             onLyricsLineBlurChange = onLyricsLineBlurChange,
+            onUseNativeLyricsRendererChange = onUseNativeLyricsRendererChange,
             onLyricsTextSizeChange = onLyricsTextSizeChange,
             onLyricsLineSpacingChange = onLyricsLineSpacingChange,
             onOpenTextSizeDialog = { showLyricsTextSizeDialog = true },

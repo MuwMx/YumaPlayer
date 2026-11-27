@@ -35,8 +35,10 @@ internal fun LyricsRomanizationEffect(
     romanizationPreferences: LyricsRomanizationPreferences,
     isReadyToParse: Boolean,
     onEnrichedLyrics: (SyncedLyrics) -> Unit,
+    onRomanizationMap: (Map<Int, List<String?>>) -> Unit = {},
 ) {
     val latestOnEnrichedLyrics = rememberUpdatedState(onEnrichedLyrics)
+    val latestOnRomanizationMap = rememberUpdatedState(onRomanizationMap)
     var appliedRomanizationKey by remember(lyricsEntries, isTtmlFormat) {
         mutableStateOf<Any?>(null)
     }
@@ -102,10 +104,11 @@ internal fun LyricsRomanizationEffect(
                 jobs.awaitAll().forEach { (index, romanized) ->
                     tempMap[index] = romanized
                 }
-                buildSyncedLyrics(boundedEntries, isTtmlFormat, tempMap)
+                tempMap to buildSyncedLyrics(boundedEntries, isTtmlFormat, tempMap)
             } ?: return@LaunchedEffect
 
         appliedRomanizationKey = romanizationKey
-        latestOnEnrichedLyrics.value(enriched)
+        latestOnRomanizationMap.value(enriched.first)
+        latestOnEnrichedLyrics.value(enriched.second)
     }
 }

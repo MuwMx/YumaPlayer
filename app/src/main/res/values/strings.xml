@@ -1566,6 +1566,9 @@
     <string name="lyrics_share_background_blur">Background blur</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">Blur lyrics lines</string>
+    <string name="use_native_lyrics_renderer">Native Compose lyrics renderer</string>
+    <string name="use_native_lyrics_renderer_desc">Use experimental YumaKaraoke renderer instead of legacy view</string>
+    <string name="written_by">Written by %1$s</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>

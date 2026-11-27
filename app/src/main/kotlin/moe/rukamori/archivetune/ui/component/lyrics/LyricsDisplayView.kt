@@ -59,6 +59,12 @@ internal fun LyricsDisplayView(
     onPlainLinePressed: (String) -> Unit,
     onKaraokeLineClicked: (ISyncedLine) -> Unit,
     onKaraokeLinePressed: (ISyncedLine) -> Unit,
+    useNativeLyricsRenderer: Boolean = false,
+    yumaDocument: YumaLyricsDocument = YumaLyricsDocument(emptyList()),
+    yumaPositionMsProvider: () -> Long = { 0L },
+    yumaStyle: YumaLyricsStyle = YumaLyricsStyle(),
+    autoScrollEnabled: Boolean = true,
+    onYumaSeek: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -81,7 +87,7 @@ internal fun LyricsDisplayView(
                 ShimmerHost { repeat(6) { TextPlaceholder() } }
             }
 
-            isSynced && syncedLyrics.lines.isEmpty() -> {
+            isSynced && (if (useNativeLyricsRenderer) yumaDocument.lines.isEmpty() else syncedLyrics.lines.isEmpty()) -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.lyrics_not_found),
@@ -117,30 +123,44 @@ internal fun LyricsDisplayView(
             }
 
             else -> {
-                BoxWithConstraints(
-                    modifier = Modifier.fillMaxSize().nestedScroll(timingState.nestedScrollConnection),
-                ) {
-                    val lyricsViewportOffset = remember(maxHeight) { maxHeight * 0.32f }
+                if (useNativeLyricsRenderer) {
+                    YumaKaraokeView(
+                        document = yumaDocument,
+                        positionMsProvider = yumaPositionMsProvider,
+                        style = yumaStyle,
+                        autoScrollEnabled = autoScrollEnabled,
+                        resumeAutoscrollLabel = stringResource(R.string.resume_autoscroll),
+                        writtenByFormat = stringResource(R.string.written_by),
+                        listState = listState,
+                        onSeek = onYumaSeek,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                    )
+                } else {
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxSize().nestedScroll(timingState.nestedScrollConnection),
+                    ) {
+                        val lyricsViewportOffset = remember(maxHeight) { maxHeight * 0.32f }
 
-                    key(lyricsSessionKey, syncedLyricsRenderVersion, lyricsTextSize, lyricsLineSpacing) {
-                        KaraokeLyricsView(
-                            listState = listState,
-                            lyrics = syncedLyrics,
-                            currentPosition = timingState.playbackSyncPosition,
-                            onLineClicked = onKaraokeLineClicked,
-                            onLinePressed = onKaraokeLinePressed,
-                            textColor = textColor,
-                            normalLineTextStyle = normalTextStyle,
-                            accompanimentLineTextStyle = accompanimentTextStyle,
-                            phoneticTextStyle = phoneticTextStyle,
-                            blendMode = BlendMode.SrcOver,
-                            useBlurEffect = lyricsLineBlur && isReadyToParse,
-                            showTranslation = showTranslations,
-                            showPhonetic = romanizationPreferences.isEnabled,
-                            offset = lyricsViewportOffset,
-                            keepAliveZone = 72.dp,
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                        )
+                        key(lyricsSessionKey, syncedLyricsRenderVersion, lyricsTextSize, lyricsLineSpacing) {
+                            KaraokeLyricsView(
+                                listState = listState,
+                                lyrics = syncedLyrics,
+                                currentPosition = timingState.playbackSyncPosition,
+                                onLineClicked = onKaraokeLineClicked,
+                                onLinePressed = onKaraokeLinePressed,
+                                textColor = textColor,
+                                normalLineTextStyle = normalTextStyle,
+                                accompanimentLineTextStyle = accompanimentTextStyle,
+                                phoneticTextStyle = phoneticTextStyle,
+                                blendMode = BlendMode.SrcOver,
+                                useBlurEffect = lyricsLineBlur && isReadyToParse,
+                                showTranslation = showTranslations,
+                                showPhonetic = romanizationPreferences.isEnabled,
+                                offset = lyricsViewportOffset,
+                                keepAliveZone = 72.dp,
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                            )
+                        }
                     }
                 }
             }

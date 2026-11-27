@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.constants.LyricsClickKey
@@ -23,9 +24,11 @@ import moe.rukamori.archivetune.constants.LyricsRomanizeHindiKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeJapaneseKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeKoreanKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeOtherLanguagesKey
+import moe.rukamori.archivetune.constants.LyricsScrollKey
 import moe.rukamori.archivetune.constants.LyricsTextSizeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
+import moe.rukamori.archivetune.constants.UseNativeLyricsRendererKey
 import moe.rukamori.archivetune.lyrics.language.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -34,9 +37,12 @@ import moe.rukamori.archivetune.utils.rememberPreference
 @Stable
 internal class LyricsStyleState(
     val lyricsClick: Boolean,
+    val lyricsScroll: Boolean,
+    val useNativeLyricsRenderer: Boolean,
     val lyricsTextSize: Float,
     val lyricsLineSpacing: Float,
     val lyricsLineBlur: Boolean,
+    val lyricsFontFamily: FontFamily?,
     val romanizationPreferences: LyricsRomanizationPreferences,
     val textColor: Color,
     val normalTextStyle: TextStyle,
@@ -50,6 +56,8 @@ internal fun rememberLyricsStyleState(
     lyricsLineBlurOverride: Boolean?,
 ): LyricsStyleState {
     val (lyricsClick) = rememberPreference(LyricsClickKey, defaultValue = true)
+    val (lyricsScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
+    val (useNativeLyricsRenderer) = rememberPreference(UseNativeLyricsRendererKey, defaultValue = false)
     val (lyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
     val (lyricsLineSpacing) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
     val (lyricsLineBlurPreference) = rememberPreference(LyricsLineBlurKey, defaultValue = true)
@@ -115,9 +123,12 @@ internal fun rememberLyricsStyleState(
 
     return remember(
         lyricsClick,
+        lyricsScroll,
+        useNativeLyricsRenderer,
         lyricsTextSize,
         lyricsLineSpacing,
         lyricsLineBlur,
+        lyricsFontFamily,
         romanizationPreferences,
         textColor,
         normalTextStyle,
@@ -126,9 +137,12 @@ internal fun rememberLyricsStyleState(
     ) {
         LyricsStyleState(
             lyricsClick = lyricsClick,
+            lyricsScroll = lyricsScroll,
+            useNativeLyricsRenderer = useNativeLyricsRenderer,
             lyricsTextSize = lyricsTextSize,
             lyricsLineSpacing = lyricsLineSpacing,
             lyricsLineBlur = lyricsLineBlur,
+            lyricsFontFamily = lyricsFontFamily,
             romanizationPreferences = romanizationPreferences,
             textColor = textColor,
             normalTextStyle = normalTextStyle,

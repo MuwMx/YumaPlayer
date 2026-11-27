@@ -183,6 +183,8 @@ internal fun LyricsDisplaySection(
     onLyricsScrollChange: (Boolean) -> Unit,
     lyricsLineBlur: Boolean,
     onLyricsLineBlurChange: (Boolean) -> Unit,
+    useNativeLyricsRenderer: Boolean,
+    onUseNativeLyricsRendererChange: (Boolean) -> Unit,
     lyricsTextSize: Float,
     lyricsLineSpacing: Float,
     onOpenTextSizeDialog: () -> Unit,
@@ -213,6 +215,16 @@ internal fun LyricsDisplaySection(
                 icon = { Icon(painterResource(R.drawable.lyrics), null) },
                 checked = lyricsLineBlur,
                 onCheckedChange = onLyricsLineBlurChange,
+            )
+        }
+
+        item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.use_native_lyrics_renderer)) },
+                description = stringResource(R.string.use_native_lyrics_renderer_desc),
+                icon = { Icon(painterResource(R.drawable.lyrics), null) },
+                checked = useNativeLyricsRenderer,
+                onCheckedChange = onUseNativeLyricsRendererChange,
             )
         }
 

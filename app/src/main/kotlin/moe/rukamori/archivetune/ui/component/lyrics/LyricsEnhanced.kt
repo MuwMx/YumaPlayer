@@ -63,6 +63,7 @@ fun LyricsEnhanced(
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val playbackParameters by playerConnection.playbackParameters.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsState()
 
     val styleState = rememberLyricsStyleState(
         textColorOverride = textColorOverride,
@@ -110,6 +111,7 @@ fun LyricsEnhanced(
 
     var syncedLyrics by remember(lyricsSessionKey) { mutableStateOf(SyncedLyrics(emptyList())) }
     var syncedLyricsRenderVersion by remember(lyricsSessionKey) { mutableIntStateOf(0) }
+    var romanizedLines by remember(lyricsSessionKey) { mutableStateOf<Map<Int, List<String?>>>(emptyMap()) }
 
     LaunchedEffect(lyricsEntries, isTtmlFormat) {
         syncedLyrics = if (lyricsEntries.isEmpty()) {
@@ -127,6 +129,9 @@ fun LyricsEnhanced(
         onEnrichedLyrics = { enriched ->
             syncedLyrics = enriched
             syncedLyricsRenderVersion += 1
+        },
+        onRomanizationMap = { map ->
+            romanizedLines = map
         },
     )
 
@@ -169,7 +174,7 @@ fun LyricsEnhanced(
         listState = listState,
         syncedLyrics = syncedLyrics,
         lyricsSessionKey = lyricsSessionKey,
-        isSynced = isSynced,
+        isSynced = isSynced && !styleState.useNativeLyricsRenderer,
         isTtmlFormat = isTtmlFormat,
         isReadyToParse = isReadyToParse,
         isLyricsVisible = isLyricsVisible,
@@ -177,6 +182,57 @@ fun LyricsEnhanced(
         isSelectionModeActive = selectionState.isSelectionModeActive,
         lineFocusPosition = timingState.lineFocusPosition,
     )
+
+    val yumaDocument =
+        remember(
+            styleState.useNativeLyricsRenderer,
+            lyricsEntries,
+            styleState.romanizationPreferences,
+            romanizedLines,
+        ) {
+            if (styleState.useNativeLyricsRenderer) {
+                lyricsEntries.toYumaLyricsDocument(
+                    romanizationPreferences = styleState.romanizationPreferences,
+                    romanizedLines = romanizedLines,
+                )
+            } else {
+                YumaLyricsDocument(emptyList())
+            }
+        }
+
+    val yumaPositionMs by rememberYumaLyricsPositionMs(
+        currentPositionProvider = { sliderPositionProvider() ?: player.currentPosition },
+        isPlaying = styleState.useNativeLyricsRenderer && isPlaying && isReadyToParse && isLyricsVisible,
+        isWordSynced = yumaDocument.isWordSynced,
+        playbackSpeed = playbackParameters.speed,
+        syncOffsetMs = lyricsSyncOffset,
+        sessionKey = lyricsSessionKey,
+        animationsDisabled = animationsDisabled,
+    )
+
+    val yumaStyle =
+        remember(
+            styleState.lyricsTextSize,
+            styleState.lyricsLineBlur,
+            isReadyToParse,
+            showTranslations,
+            styleState.romanizationPreferences.isEnabled,
+            styleState.textColor,
+            styleState.lyricsFontFamily,
+            styleState.lyricsLineSpacing,
+            isTtmlFormat,
+        ) {
+            YumaLyricsStyle(
+                textScale = (styleState.lyricsTextSize / 26f).coerceIn(0.6f, 1.5f),
+                alignment = if (isTtmlFormat) YumaLyricsAlignment.AutoByAgent else YumaLyricsAlignment.Start,
+                blurEnabled = styleState.lyricsLineBlur && isReadyToParse,
+                showTranslation = showTranslations,
+                showRomanization = styleState.romanizationPreferences.isEnabled,
+                textColor = styleState.textColor,
+                fontFamily = styleState.lyricsFontFamily,
+                lineSpacingMultiplier = styleState.lyricsLineSpacing,
+            )
+        }
 
     val activity = context as? Activity
     DisposableEffect(Unit) {
@@ -210,6 +266,16 @@ fun LyricsEnhanced(
         onPlainLinePressed = selectionState.onPlainLinePressed,
         onKaraokeLineClicked = selectionState.onKaraokeLineClicked,
         onKaraokeLinePressed = selectionState.onKaraokeLinePressed,
+        useNativeLyricsRenderer = styleState.useNativeLyricsRenderer,
+        yumaDocument = yumaDocument,
+        yumaPositionMsProvider = { yumaPositionMs },
+        yumaStyle = yumaStyle,
+        autoScrollEnabled = styleState.lyricsScroll,
+        onYumaSeek = { positionMs ->
+            if (styleState.lyricsClick) {
+                timingState.seekTo(positionMs)
+            }
+        },
         modifier = modifier,
     )
 
