@@ -87,6 +87,7 @@ class ExoDeckController(
                     p.addListener(service.secondaryCrossfadeListener)
                     p.setOffloadEnabled(false)
                     p.skipSilenceEnabled = activeDeck.player.skipSilenceEnabled
+                    p.pauseAtEndOfMediaItems = true
                     reserveDeck = null
                     p to it.djFilter
                 } ?: run {
@@ -190,14 +191,14 @@ class ExoDeckController(
             Timber.tag("ShuffleDiag").e(error, "completeHandoff: failed to set shuffle order on incoming player")
         }
 
-        dualForwardingPlayer.attachPlayer(incomingPlayer)
-
         activeDeck = incomingDeck
         transitionDeck = null
         secondaryCrossfadeTarget = null
         dualPlayerRoleHolder.reset()
 
         service.localPlayer = incomingPlayer
+
+        dualForwardingPlayer.attachPlayer(incomingPlayer)
 
         outgoingPlayer.playWhenReady = false
         outgoingPlayer.volume = 0f

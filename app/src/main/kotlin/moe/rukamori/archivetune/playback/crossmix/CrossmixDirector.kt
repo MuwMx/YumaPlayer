@@ -608,9 +608,11 @@ class CrossmixDirector(
     // the old song is gone now, so a next song still held silent by its renderer (a clock that never lined up) plays on plainly instead of staying mute until a seek
     private fun letIncomingThrough(session: Running) {
         val processor = session.inProcessor
+        if (processor.idle) return
         val beat = processor.currentBeat
-        if (processor.idle || (!beat.isNaN() && beat >= session.plan.swapBeat)) return
-        android.util.Log.w(Tag, "the next song was still held silent at beat $beat when the old one ended, letting it through")
+        if (beat.isNaN() || beat < session.plan.swapBeat) {
+            android.util.Log.w(Tag, "the next song was still held silent at beat $beat when the old one ended, letting it through")
+        }
         processor.finish()
     }
 
