@@ -63,7 +63,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.spotify.SpotifyAuth
-import moe.rukamori.archivetune.utils.getCleanChromeUserAgent
 import moe.rukamori.archivetune.utils.keepScrollGestures
 import moe.rukamori.archivetune.utils.resetAuthWebViewSession
 import androidx.webkit.WebSettingsCompat
@@ -313,12 +312,12 @@ private fun WebView.destroySpotifyLoginWebView() {
 
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.configureSpotifyLoginWebView() {
-    val cleanUa = getCleanChromeUserAgent(context)
     keepScrollGestures()
 
     settings.apply {
         javaScriptEnabled = true
         domStorageEnabled = true
+        databaseEnabled = true
         javaScriptCanOpenWindowsAutomatically = true
         setSupportMultipleWindows(true)
         setSupportZoom(true)
@@ -326,7 +325,9 @@ private fun WebView.configureSpotifyLoginWebView() {
         displayZoomControls = false
         mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         cacheMode = WebSettings.LOAD_DEFAULT
-        userAgentString = cleanUa
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(this, emptySet())
+        }
     }
 }
 
@@ -342,7 +343,8 @@ private class SpotifyLoginWebChromeClient(
         isUserGesture: Boolean,
         resultMsg: Message,
     ): Boolean {
-        closePopupWebViews()
+        val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
+        closePopupsAbove(view)
 
         val popupWebView =
             WebView(view.context).apply {
@@ -393,13 +395,12 @@ private class SpotifyLoginWebChromeClient(
                 webChromeClient =
                     SpotifyLoginWebChromeClient(
                         container = container,
-                        parentWebView = parentWebView,
+                        parentWebView = view,
                         captureCookies = captureCookies,
                         onActiveWebViewChanged = onActiveWebViewChanged,
                     )
             }
 
-        val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
         container.addView(
             popupWebView,
             FrameLayout.LayoutParams(
@@ -417,17 +418,20 @@ private class SpotifyLoginWebChromeClient(
 
     override fun onCloseWindow(window: WebView) {
         window.destroySpotifyLoginWebView()
-        onActiveWebViewChanged(parentWebView)
+        val topWebView =
+            (container.childCount - 1 downTo 0)
+                .firstNotNullOfOrNull { index -> container.getChildAt(index) as? WebView }
+                ?: parentWebView
+        onActiveWebViewChanged(topWebView)
     }
 
-    private fun closePopupWebViews() {
-        for (index in container.childCount - 1 downTo 0) {
+    private fun closePopupsAbove(opener: WebView) {
+        val openerIndex = container.indexOfChild(opener)
+        if (openerIndex < 0) return
+        for (index in container.childCount - 1 downTo openerIndex + 1) {
             val child = container.getChildAt(index) as? WebView ?: continue
-            if (child !== parentWebView) {
-                child.destroySpotifyLoginWebView()
-            }
+            child.destroySpotifyLoginWebView()
         }
-        onActiveWebViewChanged(parentWebView)
     }
 }
 
