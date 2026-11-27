@@ -84,15 +84,30 @@ object LyricsCandidatesManager {
 
         val syncKind = when {
             validLyrics == null -> LyricsSyncKind.NONE
-            LrcParser.hasWordSyncedLyrics(validLyrics) || LrcParser.isTtml(validLyrics) -> LyricsSyncKind.WORD
-            LrcParser.isLineSyncedLrc(validLyrics) -> LyricsSyncKind.LINE
+            LrcParser.isTtml(validLyrics) -> {
+                val parsed = runCatching { LrcParser.parseTtml(validLyrics) }.getOrNull().orEmpty()
+                val hasText = parsed.any { !it.isInstrumental && it.text.isNotBlank() }
+                when {
+                    !hasText -> LyricsSyncKind.NONE
+                    parsed.any { !it.words.isNullOrEmpty() } -> LyricsSyncKind.WORD
+                    else -> LyricsSyncKind.LINE
+                }
+            }
+            LrcParser.hasWordSyncedLyrics(validLyrics) -> {
+                val parsed = runCatching { LrcParser.parseLyrics(validLyrics) }.getOrNull().orEmpty()
+                if (parsed.any { !it.isInstrumental && it.text.isNotBlank() }) LyricsSyncKind.WORD else LyricsSyncKind.NONE
+            }
+            LrcParser.isLineSyncedLrc(validLyrics) -> {
+                val parsed = runCatching { LrcParser.parseLyrics(validLyrics) }.getOrNull().orEmpty()
+                if (parsed.any { !it.isInstrumental && it.text.isNotBlank() }) LyricsSyncKind.LINE else LyricsSyncKind.NONE
+            }
             LrcParser.hasMeaningfulLyricsContent(validLyrics) -> LyricsSyncKind.PLAIN
             else -> LyricsSyncKind.NONE
         }
 
         return CandidateState(
             isChecking = false,
-            lyrics = validLyrics,
+            lyrics = if (syncKind == LyricsSyncKind.NONE) null else validLyrics,
             syncKind = syncKind,
         )
     }
