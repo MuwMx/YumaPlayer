@@ -8,6 +8,7 @@ package moe.rukamori.archivetune.lyrics
 
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -53,54 +54,55 @@ class LyricsPreloadManager
             currentIndex: Int,
             queue: List<MediaMetadata>,
         ) {
-            // Cancel any existing preload job
             preloadJob?.cancel()
 
-            // Check if pre-load is enabled
-            scope.launch {
-                try {
-                    val preferences = context.dataStore.data.first()
-                    val isEnabled = preferences[PreloadQueueLyricsEnabledKey] ?: true
+            preloadJob =
+                scope.launch {
+                    try {
+                        val preferences = context.dataStore.data.first()
+                        val isEnabled = preferences[PreloadQueueLyricsEnabledKey] ?: true
 
-                    if (!isEnabled) {
-                        Log.d(TAG, "Queue lyrics pre-load is disabled")
-                        return@launch
-                    }
-
-                    // Check network connectivity
-                    val isNetworkAvailable =
-                        try {
-                            networkConnectivity.isCurrentlyConnected()
-                        } catch (e: Exception) {
-                            true
+                        if (!isEnabled) {
+                            Log.d(TAG, "Queue lyrics pre-load is disabled")
+                            return@launch
                         }
 
-                    if (!isNetworkAvailable) {
-                        Log.w(TAG, "Network unavailable, skipping lyrics pre-load")
-                        return@launch
+                        // Check network connectivity
+                        val isNetworkAvailable =
+                            try {
+                                networkConnectivity.isCurrentlyConnected()
+                            } catch (e: Exception) {
+                                true
+                            }
+
+                        if (!isNetworkAvailable) {
+                            Log.w(TAG, "Network unavailable, skipping lyrics pre-load")
+                            return@launch
+                        }
+
+                        if (context.isLowDataModeActive(preferences[LowDataModeKey] ?: true)) {
+                            Log.d(TAG, "Low Data Mode active, skipping lyrics pre-load")
+                            return@launch
+                        }
+
+                        val preloadCount = preferences[QueueLyricsPreloadCountKey] ?: DEFAULT_PRELOAD_COUNT
+
+                        // Get next N songs after current index
+                        val nextSongs = getNextSongs(queue, currentIndex, preloadCount)
+
+                        if (nextSongs.isEmpty()) {
+                            Log.d(TAG, "No songs to pre-load")
+                            return@launch
+                        }
+
+                        Log.d(TAG, "Starting pre-load for ${nextSongs.size} songs")
+                        preloadLyrics(nextSongs)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
                     }
-
-                    if (context.isLowDataModeActive(preferences[LowDataModeKey] ?: true)) {
-                        Log.d(TAG, "Low Data Mode active, skipping lyrics pre-load")
-                        return@launch
-                    }
-
-                    val preloadCount = preferences[QueueLyricsPreloadCountKey] ?: DEFAULT_PRELOAD_COUNT
-
-                    // Get next N songs after current index
-                    val nextSongs = getNextSongs(queue, currentIndex, preloadCount)
-
-                    if (nextSongs.isEmpty()) {
-                        Log.d(TAG, "No songs to pre-load")
-                        return@launch
-                    }
-
-                    Log.d(TAG, "Starting pre-load for ${nextSongs.size} songs")
-                    preloadLyrics(nextSongs)
-                } catch (e: Exception) {
-                    reportException(e)
                 }
-            }
         }
 
         /**
@@ -129,39 +131,31 @@ class LyricsPreloadManager
          * Pre-load lyrics for the given songs.
          * Uses parallel fetching with limited concurrency.
          */
-        private fun preloadLyrics(songs: List<MediaMetadata>) {
-            preloadJob =
-                scope.launch {
-                    try {
-                        // Process songs with limited concurrency
-                        songs.forEach { song ->
-                            // Check if lyrics already exist in database
-                            val existingLyrics = database.lyrics(song.id).first()
-                            if (existingLyrics != null && existingLyrics.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                                Log.d(TAG, "Lyrics already cached for: ${song.title}")
-                                return@forEach
-                            }
-
-                            // Fetch lyrics for this song
-                            try {
-                                val lyrics = fetchLyricsForSong(song)
-                                if (lyrics != null && lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                                    database.query {
-                                        insertLyricsIfAbsent(
-                                            id = song.id,
-                                            lyrics = lyrics,
-                                        )
-                                    }
-                                    Log.d(TAG, "Pre-loaded lyrics for: ${song.title}")
-                                }
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to pre-load lyrics for ${song.title}: ${e.message}")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        reportException(e)
-                    }
+        private suspend fun preloadLyrics(songs: List<MediaMetadata>) {
+            songs.forEach { song ->
+                val existingLyrics = database.lyrics(song.id).first()
+                if (existingLyrics != null && existingLyrics.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                    Log.d(TAG, "Lyrics already cached for: ${song.title}")
+                    return@forEach
                 }
+
+                try {
+                    val lyrics = fetchLyricsForSong(song)
+                    if (lyrics != null && lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                        database.query {
+                            insertLyricsIfAbsent(
+                                id = song.id,
+                                lyrics = lyrics,
+                            )
+                        }
+                        Log.d(TAG, "Pre-loaded lyrics for: ${song.title}")
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to pre-load lyrics for ${song.title}: ${e.message}")
+                }
+            }
         }
 
         /**

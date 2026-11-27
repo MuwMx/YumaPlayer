@@ -128,8 +128,8 @@ internal fun MusicService.writePersistentObject(
 internal fun MediaItem.toPersistableMetadata(): MediaMetadata? =
     QueuePersistenceStore.toPersistableMetadata(this)
 
-internal suspend fun MusicService.saveQueueToDisk() {
-    queuePersistenceStore.saveQueueToDisk()
+internal suspend fun MusicService.saveQueueToDisk(immediate: Boolean = false) {
+    queuePersistenceStore.saveQueueToDisk(immediate = immediate)
 }
 
 internal suspend fun MusicService.restorePersistentQueue(persistedQueue: PersistQueue) {

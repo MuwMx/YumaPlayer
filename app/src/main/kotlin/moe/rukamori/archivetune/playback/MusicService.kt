@@ -417,6 +417,7 @@ class MusicService :
     val infiniteQueueLoading = MutableStateFlow(false)
     val previousQueueLoading = MutableStateFlow(false)
     internal var infiniteQueueJob: Job? = null
+    internal var listenBrainzJob: Job? = null
     override val playerInitialized = MutableStateFlow(false)
     override val currentSong: StateFlow<Song?> get() = configCollector.currentSong
     override val currentFormat: kotlinx.coroutines.flow.Flow<FormatEntity?> get() = configCollector.currentFormat
@@ -1130,7 +1131,7 @@ class MusicService :
     }
 
     override fun clearQueuePersistenceFiles() = this.clearPersistedQueueFiles()
-    override suspend fun saveQueueToStorage() = this.saveQueueToDisk()
+    override suspend fun saveQueueToStorage() = this.saveQueueToDisk(immediate = true)
     override fun startForegroundPlaybackService(): Boolean = serviceSessionHolder.startForegroundPlaybackService(this)
     override fun stopForegroundService() = serviceSessionHolder.stopForegroundService(this)
     override fun stopSelfService() = stopSelf()

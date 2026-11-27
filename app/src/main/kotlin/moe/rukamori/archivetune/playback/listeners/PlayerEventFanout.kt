@@ -174,18 +174,27 @@ internal class PlayerEventFanout(
             }
         }
 
+        var playingNowSubmittedForMediaId: String? = null
+        var playingNowSubmitted = false
+
         if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
             metadataDelegate.updateCurrentMediaMetadata(player.currentMetadata)
             metadataDelegate.requestDiscordSync(
                 reason = "timeline_or_position_discontinuity",
                 force = true,
             )
+            val discontMediaId = player.currentMediaItem?.mediaId
+            val discontMetadata = player.currentMetadata
+            val discontDuration = player.duration
+            val discontPosition = player.currentPosition
+            playingNowSubmitted = true
+            playingNowSubmittedForMediaId = discontMediaId
             scope.launch {
                 metadataDelegate.submitPlayingNow(
-                    mediaId = player.currentMediaItem?.mediaId,
-                    mediaMetadata = player.currentMetadata,
-                    durationMs = player.duration,
-                    positionMs = player.currentPosition,
+                    mediaId = discontMediaId,
+                    mediaMetadata = discontMetadata,
+                    durationMs = discontDuration,
+                    positionMs = discontPosition,
                     reason = "timeline_or_position_discontinuity",
                 )
             }
@@ -208,19 +217,21 @@ internal class PlayerEventFanout(
                 reason = "is_playing_or_media_item_transition",
                 force = true,
             )
-            val currentMediaId = player.currentMediaItem?.mediaId
-            val currentMetadata = player.currentMetadata
-            val currentPosition = player.currentPosition
-            val currentDuration = player.duration
+            val transitionMediaId = player.currentMediaItem?.mediaId
+            if (!playingNowSubmitted || transitionMediaId != playingNowSubmittedForMediaId) {
+                val currentMetadata = player.currentMetadata
+                val currentPosition = player.currentPosition
+                val currentDuration = player.duration
 
-            scope.launch {
-                metadataDelegate.submitPlayingNow(
-                    mediaId = currentMediaId,
-                    mediaMetadata = currentMetadata,
-                    durationMs = currentDuration,
-                    positionMs = currentPosition,
-                    reason = "isPlaying/mediaTransition",
-                )
+                scope.launch {
+                    metadataDelegate.submitPlayingNow(
+                        mediaId = transitionMediaId,
+                        mediaMetadata = currentMetadata,
+                        durationMs = currentDuration,
+                        positionMs = currentPosition,
+                        reason = "isPlaying/mediaTransition",
+                    )
+                }
             }
         }
 

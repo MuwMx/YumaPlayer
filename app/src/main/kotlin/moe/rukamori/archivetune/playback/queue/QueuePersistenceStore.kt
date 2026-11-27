@@ -86,6 +86,7 @@ internal class QueuePersistenceStore(
     @Volatile
     private var isHydratingRestoredQueue = false
     private var restoredQueueBackfillJob: Job? = null
+    private var saveJob: Job? = null
     @Volatile
     internal var isRestoringPersistentState = false
 
@@ -134,6 +135,8 @@ internal class QueuePersistenceStore(
     }
 
     fun clearPersistedQueueFiles() {
+        saveJob?.cancel()
+        saveJob = null
         persistentSaveGeneration.incrementAndGet()
         synchronized(persistentStateLock) {
             listOf(PERSISTENT_QUEUE_FILE, PERSISTENT_PLAYER_STATE_FILE, PERSISTENT_AUTOMIX_FILE).forEach { fileName ->
@@ -160,7 +163,22 @@ internal class QueuePersistenceStore(
         isHydratingRestoredQueue = false
     }
 
-    suspend fun saveQueueToDisk() {
+    suspend fun saveQueueToDisk(immediate: Boolean = false) {
+        saveJob?.cancel()
+        if (immediate) {
+            saveJob = null
+            performSaveQueueToDisk()
+            return
+        }
+        val job = scope.launch(SilentHandler) {
+            delay(SAVE_DEBOUNCE_MS)
+            performSaveQueueToDisk()
+        }
+        saveJob = job
+        job.join()
+    }
+
+    private suspend fun performSaveQueueToDisk() {
         val saveGeneration = persistentSaveGeneration.get()
         val snapshot = withContext(Dispatchers.Main.immediate) {
             if (
@@ -283,6 +301,7 @@ internal class QueuePersistenceStore(
 
     companion object {
         private const val TAG = "QueuePersistenceStore"
+        private const val SAVE_DEBOUNCE_MS = 500L
         const val PERSISTENT_QUEUE_FILE = "queue.bin"
         const val PERSISTENT_PLAYER_STATE_FILE = "player_state.bin"
         const val PERSISTENT_AUTOMIX_FILE = "automix.bin"

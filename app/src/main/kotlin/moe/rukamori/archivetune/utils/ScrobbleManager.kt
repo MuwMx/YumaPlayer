@@ -23,6 +23,7 @@ class ScrobbleManager(
     var scrobbleDelaySeconds: Int = 180,
 ) {
     private var scrobbleJob: Job? = null
+    private var nowPlayingJob: Job? = null
     private var scrobbleRemainingMillis: Long = 0L
     private var scrobbleTimerStartedAt: Long = 0L
     private var songStartedAt: Long = 0L
@@ -31,6 +32,8 @@ class ScrobbleManager(
 
     fun destroy() {
         scrobbleJob?.cancel()
+        nowPlayingJob?.cancel()
+        nowPlayingJob = null
         scrobbleRemainingMillis = 0L
         scrobbleTimerStartedAt = 0L
         songStartedAt = 0L
@@ -60,6 +63,8 @@ class ScrobbleManager(
 
     fun onSongStop() {
         stopScrobbleTimer()
+        nowPlayingJob?.cancel()
+        nowPlayingJob = null
         songStarted = false
     }
 
@@ -138,7 +143,9 @@ class ScrobbleManager(
     }
 
     private fun updateNowPlaying(metadata: MediaMetadata) {
-        scope.launch {
+        nowPlayingJob?.cancel()
+        nowPlayingJob = scope.launch {
+            delay(NOW_PLAYING_DEBOUNCE_MS)
             LastFM
                 .updateNowPlaying(
                     artist = metadata.artists.joinToString(", ") { artist -> artist.name },
@@ -169,5 +176,9 @@ class ScrobbleManager(
         } else {
             onSongPause()
         }
+    }
+
+    private companion object {
+        const val NOW_PLAYING_DEBOUNCE_MS = 500L
     }
 }

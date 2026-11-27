@@ -33,20 +33,16 @@ import moe.rukamori.archivetune.extensions.SilentHandler
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.playback.listeners.MusicServicePlayerListeners
 import moe.rukamori.archivetune.playback.queues.Queue
-import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterBlockedArtists
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
-import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.together.TogetherRole
 import moe.rukamori.archivetune.together.TogetherSessionState
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.playback.queue.buildAppendShuffleOrder
 import moe.rukamori.archivetune.playback.queue.songsLeftInPlayOrder
-import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 internal class PlayerTransitionHandler(
@@ -259,56 +255,6 @@ internal class PlayerTransitionHandler(
         ) {
             if (remainingTracks in 1..5 && (currentQ.hasNextPage() || currentQ.hasPendingContextItems)) {
                 triggerPagination(isPlaybackEnded = false)
-            }
-        }
-
-        if (!queueDelegate.suppressAutoPlayback &&
-            !queueDelegate.isInitializingQueue &&
-            !timelineEmpty &&
-            dataStore.get(AutoLoadMoreKey, true) &&
-            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
-            player.repeatMode == REPEAT_MODE_OFF &&
-            remainingTracks in 1..3 &&
-            !currentQ.hasNextPage() &&
-            !currentQ.isContextQueue
-        ) {
-            scope.launch(SilentHandler) {
-                if (queueDelegate.suppressAutoPlayback || queueDelegate.isInitializingQueue || player.mediaItemCount == 0) return@launch
-                if (queueDelegate.currentQueue !== currentQ) return@launch
-
-                val currentMediaMetadata = player.currentMetadata ?: return@launch
-                val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
-                if (metadataDelegate.isCurrentPlaybackItemLocal(currentMediaMetadata)) return@launch
-
-                try {
-                    val seedId = SpotifyPlaceholders.youtubeIdFor(currentMediaId)
-                    val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedId), followAutomixPreview = true)
-                    val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
-                    if (!isActive || queueDelegate.isInitializingQueue) return@launch
-                    if (queueDelegate.currentQueue !== currentQ) return@launch
-
-                    val queueIds = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
-                    val newItems = status.items.filter { it.mediaId !in queueIds }
-
-                    if (newItems.isNotEmpty()) {
-                        val shuffleOrder =
-                            if (player.shuffleModeEnabled) {
-                                buildAppendShuffleOrder(
-                                    timeline = player.currentTimeline,
-                                    addedCount = newItems.size,
-                                    currentWindowIndex = player.currentMediaItemIndex,
-                                )
-                            } else {
-                                null
-                            }
-                        player.addMediaItems(newItems)
-                        shuffleOrder?.let(playerDelegate.localPlayer::setShuffleOrder)
-                        newItems.forEach { queueDelegate.autoAddedMediaIds.add(it.mediaId) }
-                    }
-                    queueDelegate.currentQueue = radioQueue
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to inject YouTube replacement queue")
-                }
             }
         }
 

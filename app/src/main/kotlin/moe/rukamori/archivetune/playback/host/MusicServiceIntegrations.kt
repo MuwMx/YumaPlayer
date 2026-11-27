@@ -6,8 +6,10 @@ import moe.rukamori.archivetune.playback.history.*
 import moe.rukamori.archivetune.playback.MusicService
 
 import android.os.SystemClock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -176,30 +178,27 @@ internal suspend fun MusicService.handlePresenceAndListenBrainzInternal(
     positionMs: Long,
     reason: String,
 ) {
-    try {
-        val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
-        val finalSong =
-            resolvePresenceSong(
-                dbSong = song,
-                mediaMetadata = mediaMetadata,
-                durationMs = durationMs,
-            ) ?: return
-
+    listenBrainzJob?.cancel()
+    listenBrainzJob = scope.launch(Dispatchers.IO) {
         try {
-            val lbEnabled = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzEnabledKey, false) }
-            val lbToken = withContext(Dispatchers.IO) { dataStore.get(ListenBrainzTokenKey, "") }
+            delay(500L)
+            val song = if (mediaId != null) database.song(mediaId).first() else null
+            val finalSong =
+                resolvePresenceSong(
+                    dbSong = song,
+                    mediaMetadata = mediaMetadata,
+                    durationMs = durationMs,
+                ) ?: return@launch
+
+            val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
+            val lbToken = dataStore.get(ListenBrainzTokenKey, "")
             if (lbEnabled && !lbToken.isNullOrBlank()) {
-                scope.launch(Dispatchers.IO) {
-                    try {
-                        ListenBrainzManager.submitPlayingNow(this@handlePresenceAndListenBrainzInternal, lbToken, finalSong, positionMs)
-                    } catch (ie: Exception) {
-                        Timber.tag("MusicService").v(ie, "ListenBrainz playing_now submit failed for $reason")
-                    }
-                }
+                ListenBrainzManager.submitPlayingNow(this@handlePresenceAndListenBrainzInternal, lbToken, finalSong, positionMs)
             }
-        } catch (_: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("MusicService").v(e, "ListenBrainz playing_now submit failed for $reason")
         }
-    } catch (e: Exception) {
-        Timber.tag("MusicService").v(e, "presence and listenbrainz follow-up work failed for $reason")
     }
 }
