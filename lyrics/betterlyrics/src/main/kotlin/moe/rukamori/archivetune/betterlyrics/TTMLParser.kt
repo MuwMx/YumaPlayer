@@ -66,11 +66,44 @@ object TTMLParser {
                 timingMode = if (hasTimedSegments) TtmlTimingMode.WORD else TtmlTimingMode.LINE,
                 agents = agents,
                 lines = lines.sortedWith(compareBy<TtmlLine> { it.timing.startMs }.thenBy { it.sourceOrder }),
+                songwriters = extractSongwriters(root),
             )
         }.recoverCatching { throwable ->
             if (throwable is TtmlParseException) throw throwable
             throw TtmlParseException(TtmlParseFailure.MALFORMED_XML, throwable)
         }
+
+    fun parseSongwriters(ttml: String): List<String> =
+        parseDocument(ttml).getOrNull()?.songwriters.orEmpty()
+
+    private fun extractSongwriters(root: org.w3c.dom.Element): List<String> {
+        val result = linkedSetOf<String>()
+        root.descendantElements().forEach { element ->
+            when {
+                element.hasLocalName("songwriter") -> {
+                    element.textContent
+                        ?.normalizedText()
+                        ?.split(',', '&', '、')
+                        ?.map(String::trim)
+                        ?.filter(String::isNotEmpty)
+                        ?.let(result::addAll)
+                }
+                element.hasLocalName("meta") -> {
+                    val key = element.attribute("key")?.lowercase()
+                    if (key == "songwriter" || key == "songwriters") {
+                        val raw = element.attribute("value") ?: element.textContent
+                        raw
+                            ?.normalizedText()
+                            ?.split(',', '&', '、')
+                            ?.map(String::trim)
+                            ?.filter(String::isNotEmpty)
+                            ?.let(result::addAll)
+                    }
+                }
+            }
+        }
+        return result.toList()
+    }
 
     fun parseTTML(ttml: String): List<ParsedLine> =
         parseDocument(ttml)

@@ -37,6 +37,62 @@ object LrcParser {
     private const val INSTRUMENTAL_INTRO_START_MS = 1000L
     private const val INSTRUMENTAL_OUTRO_VOCAL_TAIL_MS = 2500L
 
+    private val LRC_META_TAG_REGEX = Regex("""^\[([A-Za-z]+):(.*)]$""")
+    private val SONGWRITER_META_KEYS = setOf("by", "au", "wr", "lyricist", "composer", "songwriter", "songwriters")
+    private val SONGWRITER_CREDIT_PREFIXES = listOf("written by", "lyrics by", "composed by", "作词", "作曲", "填词", "谱曲")
+
+    fun parseSongwriters(lyrics: String): List<String> {
+        val normalized = normalizeLyricsText(lyrics)
+        if (normalized.isEmpty()) return emptyList()
+        if (isTtml(normalized)) return TTMLParser.parseSongwriters(normalized)
+        if (QRCParser.isQrc(normalized)) return QRCParser.parseSongwriters(normalized)
+
+        val writers = linkedSetOf<String>()
+        normalized.lineSequence().forEach { rawLine ->
+            val trimmed = rawLine.trim()
+            if (trimmed.isEmpty()) return@forEach
+
+            val metaMatch = LRC_META_TAG_REGEX.matchEntire(trimmed)
+            if (metaMatch != null) {
+                if (metaMatch.groupValues[1].lowercase() in SONGWRITER_META_KEYS) {
+                    metaMatch.groupValues[2]
+                        .split(',', '/', '、', '&')
+                        .map(String::trim)
+                        .filter(String::isNotEmpty)
+                        .forEach(writers::add)
+                }
+                return@forEach
+            }
+
+            val lineMatch = LINE_REGEX.matchEntire(trimmed) ?: return@forEach
+            val text = cleanInlineWordTimingText(lineMatch.groupValues[3])
+            val lower = text.lowercase()
+            val colonIdx = text.indexOfFirst { it == ':' || it == '：' }
+            if (colonIdx > 0) {
+                val prefix = lower.substring(0, colonIdx).trim()
+                if (prefix in SONGWRITER_CREDIT_PREFIXES) {
+                    text.substring(colonIdx + 1)
+                        .split(',', '/', '、', '&')
+                        .map(String::trim)
+                        .filter(String::isNotEmpty)
+                        .forEach(writers::add)
+                    return@forEach
+                }
+            }
+            val matchedPrefix = SONGWRITER_CREDIT_PREFIXES.firstOrNull { prefix ->
+                lower.startsWith(prefix) && lower.getOrNull(prefix.length)?.isWhitespace() == true
+            }
+            if (matchedPrefix != null) {
+                text.substring(matchedPrefix.length)
+                    .split(',', '/', '、', '&')
+                    .map(String::trim)
+                    .filter(String::isNotEmpty)
+                    .forEach(writers::add)
+            }
+        }
+        return writers.toList()
+    }
+
     fun isTtml(lyrics: String): Boolean {
         val trimmed = normalizeLyricsText(lyrics)
         if (!trimmed.startsWith("<")) return false

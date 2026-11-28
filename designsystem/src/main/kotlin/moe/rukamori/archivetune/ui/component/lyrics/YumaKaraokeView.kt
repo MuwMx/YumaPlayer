@@ -7,8 +7,7 @@
 package moe.rukamori.archivetune.ui.component.lyrics
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,10 +17,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -55,20 +52,28 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.lerp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.ui.component.smoothFadingEdge
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 
-private const val VIEWPORT_ANCHOR_RATIO = 0.37f
-private const val AUTOSCROLL_DURATION_MS = 460
-private const val MIN_SCROLL_DELTA_PX = 6
+private const val MIN_SCROLL_DELTA_PX = 2f
+private const val MAX_SMOOTH_SCROLL_ITEM_DISTANCE = 8
+
+private class ScrollStaggerState {
+    var startNanos: Long = 0L
+    var deltaPx: Float = 0f
+    var targetIndex: Int = -1
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -87,18 +92,52 @@ fun YumaKaraokeView(
     val lines = document.lines
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val textMeasurer = rememberTextMeasurer()
 
-    var isAutoscrollPaused by remember(document) { mutableStateOf(false) }
+    val tokens = style.tokens
+    val timing = tokens.timing
+    val motion = tokens.motion
+    val visual = tokens.visual
 
-    val activeIndex by remember(lines) {
-        derivedStateOf { findActiveLineIndex(lines, positionMsProvider()) }
+    var userScrollUntilMs by remember(document) { mutableLongStateOf(0L) }
+    val isAutoscrollPaused by remember(document) {
+        derivedStateOf { userScrollUntilMs > 0L }
     }
 
-    val nestedScrollConnection = remember(document) {
+    LaunchedEffect(userScrollUntilMs) {
+        if (userScrollUntilMs <= 0L) return@LaunchedEffect
+        val remaining = userScrollUntilMs - System.currentTimeMillis()
+        if (remaining > 0L) {
+            delay(remaining)
+        }
+        userScrollUntilMs = 0L
+    }
+
+    val scrollTargetIndex by remember(lines, timing) {
+        derivedStateOf { findScrollTargetLineIndex(lines, positionMsProvider(), timing) }
+    }
+    val activeLineIndex by remember(lines) {
+        derivedStateOf { findActiveLineIndex(lines, positionMsProvider()) }
+    }
+    val creditsFocused by remember(lines, timing) {
+        derivedStateOf {
+            val lastSung = lines.indexOfLast { !it.isInstrumental }
+            if (lastSung < 0) false else positionMsProvider() + timing.scrollOffsetMs >= lines[lastSung].endTimeMs
+        }
+    }
+
+    val scrollStagger = remember(document) { ScrollStaggerState() }
+    val scrollEasing = remember(motion.scrollEase) {
+        Easing { x -> motion.scrollEase.at(x) }
+    }
+
+    val nestedScrollConnection = remember(document, timing.userScrollResumeSec) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    isAutoscrollPaused = true
+                    userScrollUntilMs = System.currentTimeMillis() + (timing.userScrollResumeSec * 1000f).toLong()
+                    scrollStagger.deltaPx = 0f
                 }
                 return Offset.Zero
             }
@@ -110,49 +149,154 @@ fun YumaKaraokeView(
             .fillMaxSize()
             .nestedScroll(nestedScrollConnection),
     ) {
-        val viewportHeightPx = with(density) { maxHeight.toPx() }
-        val anchorOffsetPx = (viewportHeightPx * VIEWPORT_ANCHOR_RATIO).roundToInt()
+        val viewportWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(40f)
+        val viewportHeightPx = with(density) { maxHeight.toPx() }.coerceAtLeast(1f)
+        val horizontalPadPx = with(density) { 16.dp.toPx() }
+        val lineFullWidthPx = (viewportWidthPx - horizontalPadPx * 2f).coerceAtLeast(40f)
+        val anchorOffsetPx = (viewportHeightPx * visual.anchorRatio).roundToInt()
+        val bottomPaddingDp = maxHeight * (1f - visual.anchorRatio)
 
-        LaunchedEffect(document, autoScrollEnabled, isAutoscrollPaused, anchorOffsetPx) {
+        val preparedLines = remember(lines, lineFullWidthPx, style, layoutDirection) {
+            lines.mapIndexed { index, line ->
+                prepareLyricsLine(
+                    line = line,
+                    lineIndex = index,
+                    lines = lines,
+                    fullWidthPx = lineFullWidthPx,
+                    style = style,
+                    textMeasurer = textMeasurer,
+                    density = density,
+                    layoutDirection = layoutDirection,
+                )
+            }
+        }
+
+        LaunchedEffect(document, autoScrollEnabled, isAutoscrollPaused, anchorOffsetPx, motion.scrollBaseSecs) {
             if (!autoScrollEnabled || isAutoscrollPaused || lines.isEmpty()) return@LaunchedEffect
-            snapshotFlow { activeIndex }
+            snapshotFlow { scrollTargetIndex }
                 .distinctUntilChanged()
                 .collectLatest { targetIndex ->
-                    if (targetIndex in lines.indices) {
-                        scrollLineToAnchor(
-                            listState = listState,
-                            targetIndex = targetIndex,
-                            anchorOffsetPx = anchorOffsetPx,
-                        )
-                    }
+                    val clamped = if (targetIndex in lines.indices) targetIndex else 0
+                    scrollLineToAnchor(
+                        listState = listState,
+                        targetIndex = clamped,
+                        anchorOffsetPx = anchorOffsetPx,
+                        durationMs = (motion.scrollBaseSecs * 1000f).roundToInt(),
+                        easing = scrollEasing,
+                        staggerState = scrollStagger,
+                    )
                 }
         }
 
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(top = 24.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 24.dp, bottom = bottomPaddingDp),
+            modifier = Modifier
+                .fillMaxSize()
+                .smoothFadingEdge(top = 40.dp, bottom = 56.dp),
         ) {
             itemsIndexed(
-                items = lines,
-                key = { index, line -> "${line.timeMs}_$index" },
-            ) { index, line ->
-                val resolvedAlignment = resolveLineAlignment(style.alignment, line.agent)
-                YumaLyricsLineItem(
-                    line = line,
-                    index = index,
-                    activeIndex = activeIndex,
-                    alignment = resolvedAlignment,
-                    style = style,
-                    onClick = {
-                        if (!line.isInstrumental && line.timeMs >= 0L) {
-                            isAutoscrollPaused = false
-                            onSeek(line.timeMs)
+                items = preparedLines,
+                key = { index, prepared -> "${lines[index].timeMs}_$index" },
+            ) { index, prepared ->
+                val line = lines[index]
+                val nextLineStartSec = lines.getOrNull(index + 1)?.let { it.timeMs / 1000.0 } ?: Double.POSITIVE_INFINITY
+                val isLineActive = index == activeLineIndex
+                val distance = if (activeLineIndex >= 0) abs(index - activeLineIndex) else index + 1
+                val distStyle = when {
+                    isLineActive -> LineDistanceStyle(alpha = visual.activeAlpha, blurFraction = 0f)
+                    activeLineIndex >= 0 && index < activeLineIndex -> ladderStyle(visual.past, distance)
+                    else -> ladderStyle(visual.upcoming, distance)
+                }
+                val targetBlurDp = if (style.blurEnabled && !isLineActive) {
+                    style.maxBlurRadiusDp * distStyle.blurFraction
+                } else {
+                    0f
+                }
+
+                val transformOrigin = when (prepared.resolvedAlignment) {
+                    YumaLyricsAlignment.Center -> TransformOrigin(0.5f, 0.5f)
+                    YumaLyricsAlignment.End -> TransformOrigin(1f, 0.5f)
+                    else -> TransformOrigin(0f, 0.5f)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !line.isInstrumental,
+                            onClick = {
+                                if (!line.isInstrumental && line.timeMs >= 0L) {
+                                    userScrollUntilMs = 0L
+                                    onSeek(line.timeMs)
+                                }
+                            },
+                            onLongClick = onLineLongPress?.let { handler -> { handler(line) } },
+                        )
+                        .padding(horizontal = 16.dp)
+                        .graphicsLayer {
+                            val posMs = positionMsProvider()
+                            val tSec = posMs / 1000.0
+                            val lineStartSec = prepared.startSec
+                            val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + 0.05)
+                            val inLine = tSec >= lineStartSec && tSec < lineEndSec
+
+                            val scale = when {
+                                inLine -> {
+                                    val p = ((tSec - lineStartSec) / motion.scaleSecs.coerceAtLeast(0.001f))
+                                        .toFloat()
+                                        .coerceIn(0f, 1f)
+                                    lerpFloat(motion.restScale, motion.activeScale, motion.ease.at(p))
+                                }
+                                tSec >= lineEndSec -> {
+                                    val p = ((tSec - lineEndSec) / motion.scaleSecs.coerceAtLeast(0.001f))
+                                        .toFloat()
+                                        .coerceIn(0f, 1f)
+                                    lerpFloat(motion.activeScale, motion.restScale, motion.ease.at(p))
+                                }
+                                else -> motion.restScale
+                            }
+
+                            var staggerDy = 0f
+                            val delta = scrollStagger.deltaPx
+                            if (abs(delta) > MIN_SCROLL_DELTA_PX && scrollStagger.startNanos > 0L) {
+                                val elapsedSec = (System.nanoTime() - scrollStagger.startNanos) / 1_000_000_000.0
+                                val rel = index - scrollStagger.targetIndex
+                                val lineDur = scrollDurationSec(rel, delta, motion.scrollBaseSecs.toDouble())
+                                val baseDur = motion.scrollBaseSecs.toDouble().coerceAtLeast(0.01)
+                                if (elapsedSec < max(lineDur, baseDur)) {
+                                    val baseP = motion.scrollEase.at((elapsedSec / baseDur).toFloat().coerceIn(0f, 1f))
+                                    val lineP = motion.scrollEase.at((elapsedSec / lineDur.coerceAtLeast(0.01)).toFloat().coerceIn(0f, 1f))
+                                    staggerDy = delta * (baseP - lineP)
+                                }
+                            }
+
+                            scaleX = scale
+                            scaleY = scale
+                            translationY = staggerDy
+                            this.transformOrigin = transformOrigin
                         }
-                    },
-                    onLongPress = onLineLongPress?.let { handler -> { handler(line) } },
-                )
+                        .then(
+                            if (targetBlurDp > 0.25f) {
+                                Modifier.blur(targetBlurDp.dp)
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    YumaLyricsLineCanvas(
+                        prepared = prepared,
+                        nextLineStartSec = nextLineStartSec,
+                        positionMsProvider = positionMsProvider,
+                        lineAlphaProvider = {
+                            if (isAutoscrollPaused) 1f else distStyle.alpha
+                        },
+                        style = style,
+                    )
+                }
             }
 
             if (document.songwriters.isNotEmpty()) {
@@ -160,13 +304,14 @@ fun YumaKaraokeView(
                     val writers = remember(document.songwriters) {
                         document.songwriters.joinToString(", ")
                     }
+                    val creditsAlpha = if (creditsFocused) visual.creditsAlphaFocused else visual.creditsAlphaRest
                     Text(
                         text = writtenByFormat.format(writers),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontFamily = style.fontFamily,
                             fontSize = (14f * style.textScale).sp,
                         ),
-                        color = style.textColor.copy(alpha = 0.55f),
+                        color = style.textColor.copy(alpha = creditsAlpha.coerceIn(0f, 1f)),
                         textAlign = when (style.alignment) {
                             YumaLyricsAlignment.Center -> TextAlign.Center
                             YumaLyricsAlignment.End -> TextAlign.End
@@ -190,13 +335,16 @@ fun YumaKaraokeView(
         ) {
             Surface(
                 onClick = {
-                    isAutoscrollPaused = false
-                    val target = activeIndex.takeIf { it in lines.indices } ?: 0
+                    userScrollUntilMs = 0L
+                    val target = scrollTargetIndex.takeIf { it in lines.indices } ?: 0
                     coroutineScope.launch {
                         scrollLineToAnchor(
                             listState = listState,
                             targetIndex = target,
                             anchorOffsetPx = anchorOffsetPx,
+                            durationMs = (motion.scrollBaseSecs * 1000f).roundToInt(),
+                            easing = scrollEasing,
+                            staggerState = scrollStagger,
                         )
                     }
                 },
@@ -214,162 +362,6 @@ fun YumaKaraokeView(
         }
     }
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun YumaLyricsLineItem(
-    line: YumaLyricsLine,
-    index: Int,
-    activeIndex: Int,
-    alignment: YumaLyricsAlignment,
-    style: YumaLyricsStyle,
-    onClick: () -> Unit,
-    onLongPress: (() -> Unit)?,
-) {
-    val isActive = index == activeIndex
-    val distance = if (activeIndex >= 0) abs(index - activeIndex) else 0
-
-    val targetAlpha = when {
-        activeIndex < 0 -> 0.78f
-        isActive -> 1f
-        distance == 1 -> lerp(style.dimAlpha, 1f, 0.35f)
-        else -> style.dimAlpha
-    }
-    val targetScale = when {
-        activeIndex < 0 -> style.inactiveScale
-        isActive -> style.activeScale
-        else -> style.inactiveScale
-    }
-    val targetBlurDp = when {
-        !style.blurEnabled || activeIndex < 0 || isActive -> 0f
-        distance == 1 -> style.maxBlurRadiusDp * 0.35f
-        else -> style.maxBlurRadiusDp * (distance.coerceAtMost(3) / 3f)
-    }
-
-    val animatedAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = tween(durationMillis = 260),
-        label = "lineAlpha",
-    )
-    val animatedScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "lineScale",
-    )
-    val animatedBlurDp by animateFloatAsState(
-        targetValue = targetBlurDp,
-        animationSpec = tween(durationMillis = 280),
-        label = "lineBlur",
-    )
-
-    val textAlign = when (alignment) {
-        YumaLyricsAlignment.Center -> TextAlign.Center
-        YumaLyricsAlignment.End -> TextAlign.End
-        else -> TextAlign.Start
-    }
-    val horizontalAlignment = when (alignment) {
-        YumaLyricsAlignment.Center -> Alignment.CenterHorizontally
-        YumaLyricsAlignment.End -> Alignment.End
-        else -> Alignment.Start
-    }
-    val transformOrigin = when (alignment) {
-        YumaLyricsAlignment.Center -> TransformOrigin(0.5f, 0.5f)
-        YumaLyricsAlignment.End -> TransformOrigin(1f, 0.5f)
-        else -> TransformOrigin(0f, 0.5f)
-    }
-
-    val baseFontSize = 26f * style.textScale
-    val lineHeight = baseFontSize * style.lineSpacingMultiplier
-
-    Column(
-        horizontalAlignment = horizontalAlignment,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = !line.isInstrumental,
-                onClick = onClick,
-                onLongClick = onLongPress,
-            )
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .graphicsLayer {
-                alpha = animatedAlpha
-                scaleX = animatedScale
-                scaleY = animatedScale
-                this.transformOrigin = transformOrigin
-            }
-            .then(
-                if (animatedBlurDp > 0.25f) {
-                    Modifier.blur(animatedBlurDp.dp)
-                } else {
-                    Modifier
-                },
-            ),
-    ) {
-        val displayText = if (line.isInstrumental && line.text.isBlank()) "•••" else line.text
-        Text(
-            text = displayText,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = baseFontSize.sp,
-                lineHeight = lineHeight.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = style.fontFamily,
-            ),
-            color = style.textColor,
-            textAlign = textAlign,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        if (style.showRomanization && !line.romanizedText.isNullOrBlank()) {
-            Text(
-                text = line.romanizedText,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = (baseFontSize * 0.55f).sp,
-                    lineHeight = (baseFontSize * 0.55f * style.lineSpacingMultiplier).sp,
-                    fontFamily = style.fontFamily,
-                ),
-                color = style.textColor.copy(alpha = 0.78f),
-                textAlign = textAlign,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-            )
-        }
-
-        if (style.showTranslation && !line.translationText.isNullOrBlank()) {
-            Text(
-                text = line.translationText,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = (baseFontSize * 0.62f).sp,
-                    lineHeight = (baseFontSize * 0.62f * style.lineSpacingMultiplier).sp,
-                    fontFamily = style.fontFamily,
-                ),
-                color = style.textColor.copy(alpha = 0.72f),
-                textAlign = textAlign,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-            )
-        }
-    }
-}
-
-private fun resolveLineAlignment(
-    styleAlignment: YumaLyricsAlignment,
-    agent: String?,
-): YumaLyricsAlignment =
-    when (styleAlignment) {
-        YumaLyricsAlignment.AutoByAgent -> {
-            if (agent.equals("v2", ignoreCase = true)) {
-                YumaLyricsAlignment.End
-            } else {
-                YumaLyricsAlignment.Start
-            }
-        }
-        else -> styleAlignment
-    }
 
 private fun findActiveLineIndex(
     lines: List<YumaLyricsLine>,
@@ -391,10 +383,41 @@ private fun findActiveLineIndex(
     return result
 }
 
+private fun findScrollTargetLineIndex(
+    lines: List<YumaLyricsLine>,
+    positionMs: Long,
+    timing: TimingTokens,
+): Int {
+    if (lines.isEmpty()) return -1
+    val scrollTimeMs = positionMs + timing.scrollOffsetMs
+    val active = ArrayList<Int>(2)
+    for (i in lines.indices) {
+        val line = lines[i]
+        val nextStart = lines.getOrNull(i + 1)?.timeMs ?: Long.MAX_VALUE
+        if (scrollTimeMs >= line.timeMs - timing.earlyScrollMs &&
+            (scrollTimeMs < nextStart || scrollTimeMs < line.endTimeMs)
+        ) {
+            active.add(i)
+        }
+    }
+    if (active.isEmpty()) {
+        return findActiveLineIndex(lines, scrollTimeMs)
+    }
+    val sung = active.filterIndexed { k, idx ->
+        scrollTimeMs < lines[idx].endTimeMs - timing.endingThresholdMs || k == active.lastIndex
+    }
+    return sung.lastOrNull { lines[it].timeMs <= scrollTimeMs && scrollTimeMs < lines[it].endTimeMs }
+        ?: sung.lastOrNull { lines[it].timeMs <= scrollTimeMs }
+        ?: sung.first()
+}
+
 private suspend fun scrollLineToAnchor(
     listState: LazyListState,
     targetIndex: Int,
     anchorOffsetPx: Int,
+    durationMs: Int,
+    easing: Easing,
+    staggerState: ScrollStaggerState,
 ) {
     val total = listState.layoutInfo.totalItemsCount
     if (total == 0) return
@@ -402,23 +425,52 @@ private suspend fun scrollLineToAnchor(
 
     var itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == clampedIndex }
     if (itemInfo == null) {
-        val distance = abs(clampedIndex - listState.firstVisibleItemIndex)
-        if (distance <= 10) {
-            listState.animateScrollToItem(clampedIndex)
-        } else {
-            listState.scrollToItem(clampedIndex)
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        val firstVisible = visibleItems.firstOrNull()
+        val lastVisible = visibleItems.lastOrNull()
+        val itemDistance = when {
+            firstVisible != null && clampedIndex < firstVisible.index -> firstVisible.index - clampedIndex
+            lastVisible != null && clampedIndex > lastVisible.index -> clampedIndex - lastVisible.index
+            else -> abs(clampedIndex - listState.firstVisibleItemIndex)
         }
+
+        if (itemDistance <= MAX_SMOOTH_SCROLL_ITEM_DISTANCE && visibleItems.isNotEmpty()) {
+            val avgItemStep = visibleItems.sumOf { it.size }.toFloat() / visibleItems.size
+            val estimatedTargetCenter = when {
+                firstVisible != null && clampedIndex < firstVisible.index ->
+                    firstVisible.offset - (firstVisible.index - clampedIndex - 0.5f) * avgItemStep
+                lastVisible != null && clampedIndex > lastVisible.index ->
+                    (lastVisible.offset + lastVisible.size) + (clampedIndex - lastVisible.index - 0.5f) * avgItemStep
+                else -> anchorOffsetPx.toFloat()
+            }
+            val estimatedDelta = estimatedTargetCenter - anchorOffsetPx
+            if (abs(estimatedDelta) > MIN_SCROLL_DELTA_PX) {
+                staggerState.startNanos = System.nanoTime()
+                staggerState.deltaPx = estimatedDelta
+                staggerState.targetIndex = clampedIndex
+                listState.animateScrollBy(
+                    value = estimatedDelta,
+                    animationSpec = tween(durationMillis = durationMs, easing = easing),
+                )
+            }
+            return
+        }
+
+        listState.scrollToItem(clampedIndex, scrollOffset = -anchorOffsetPx / 2)
         withFrameNanos { }
         itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == clampedIndex }
     }
     itemInfo ?: return
 
     val itemCenterOffset = itemInfo.offset + itemInfo.size / 2
-    val delta = itemCenterOffset - anchorOffsetPx
+    val delta = (itemCenterOffset - anchorOffsetPx).toFloat()
     if (abs(delta) > MIN_SCROLL_DELTA_PX) {
+        staggerState.startNanos = System.nanoTime()
+        staggerState.deltaPx = delta
+        staggerState.targetIndex = clampedIndex
         listState.animateScrollBy(
-            value = delta.toFloat(),
-            animationSpec = tween(durationMillis = AUTOSCROLL_DURATION_MS, easing = FastOutSlowInEasing),
+            value = delta,
+            animationSpec = tween(durationMillis = durationMs, easing = easing),
         )
     }
 }

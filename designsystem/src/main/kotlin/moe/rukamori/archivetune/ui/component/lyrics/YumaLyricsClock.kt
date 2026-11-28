@@ -18,8 +18,6 @@ import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-private const val WORD_SYNC_LEAD_MS = 0L
-private const val LINE_SYNC_LEAD_MS = 250L
 private const val DRIFT_SNAP_THRESHOLD_MS = 250L
 private const val DRIFT_CORRECTION_FACTOR = 0.5f
 
@@ -32,8 +30,9 @@ fun rememberYumaLyricsPositionMs(
     syncOffsetMs: Int = 0,
     sessionKey: Any? = Unit,
     animationsDisabled: Boolean = false,
+    timingTokens: TimingTokens = TimingTokens(),
 ): State<Long> {
-    val leadMs = if (isWordSynced) WORD_SYNC_LEAD_MS else LINE_SYNC_LEAD_MS
+    val leadMs = if (isWordSynced) timingTokens.richsyncOffsetMs else timingTokens.lineOffsetMs
     val latestPositionProvider = rememberUpdatedState(currentPositionProvider)
     val latestSpeed = rememberUpdatedState(playbackSpeed)
 
@@ -43,7 +42,7 @@ fun rememberYumaLyricsPositionMs(
         )
     }
 
-    LaunchedEffect(sessionKey, isPlaying, isWordSynced, playbackSpeed, syncOffsetMs, animationsDisabled) {
+    LaunchedEffect(sessionKey, isPlaying, isWordSynced, playbackSpeed, syncOffsetMs, animationsDisabled, leadMs) {
         var anchorRawMs = latestPositionProvider.value().coerceAtLeast(0L)
         var anchorFrameNanos = 0L
         var lastEffectiveMs = (anchorRawMs + syncOffsetMs + leadMs).coerceAtLeast(0L)
@@ -81,7 +80,6 @@ fun rememberYumaLyricsPositionMs(
                     rawMs
                 } else {
                     val corrected = projectedRawMs + (driftMs * DRIFT_CORRECTION_FACTOR).roundToLong()
-                    // Keep monotonic progression between snaps so small jitter never steps backwards.
                     corrected.coerceAtLeast(lastEffectiveMs - syncOffsetMs - leadMs)
                 }
 

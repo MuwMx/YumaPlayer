@@ -177,6 +177,82 @@ object QRCParser {
             "arranger",
         )
 
+    private val songwriterTagKeys = setOf("by", "au", "wr", "lyricist", "composer", "songwriter", "songwriters")
+    private val songwriterLinePrefixes =
+        listOf(
+            "written by",
+            "lyrics by",
+            "composed by",
+            "作词",
+            "作曲",
+            "填词",
+            "谱曲",
+            "词",
+            "曲",
+        )
+
+    fun parseSongwriters(content: String): List<String> {
+        val lyricContent = extractLyricContent(content)
+        val writers = linkedSetOf<String>()
+
+        lyricContent.lineSequence().forEach { rawLine ->
+            val trimmed = rawLine.trim()
+            if (trimmed.isEmpty()) return@forEach
+
+            val metaMatch = metadataRegex.matchEntire(trimmed)
+            if (metaMatch != null) {
+                if (metaMatch.groupValues[1].lowercase() in songwriterTagKeys) {
+                    splitSongwriters(metaMatch.groupValues[2], writers)
+                }
+                return@forEach
+            }
+
+            val lineMatch = lineTimingRegex.matchEntire(trimmed)
+            val plainText =
+                if (lineMatch != null) {
+                    wordTimingRegex.replace(lineMatch.groupValues[3]) { it.groupValues[1] }.trim()
+                } else {
+                    trimmed
+                }
+
+            extractSongwriterFromCreditLine(plainText, writers)
+        }
+
+        return writers.toList()
+    }
+
+    private fun extractSongwriterFromCreditLine(
+        text: String,
+        out: MutableSet<String>,
+    ) {
+        if (text.isEmpty()) return
+        val lower = text.lowercase()
+        val colonIdx = text.indexOfFirst { it == ':' || it == '：' }
+        if (colonIdx > 0) {
+            val prefix = lower.substring(0, colonIdx).trim()
+            if (prefix in songwriterLinePrefixes || prefix.endsWith("词") || prefix.endsWith("曲")) {
+                splitSongwriters(text.substring(colonIdx + 1), out)
+                return
+            }
+        }
+        val matchedPrefix = songwriterLinePrefixes.firstOrNull { prefix ->
+            lower.startsWith(prefix) && lower.getOrNull(prefix.length)?.isWhitespace() == true
+        }
+        if (matchedPrefix != null) {
+            splitSongwriters(text.substring(matchedPrefix.length), out)
+        }
+    }
+
+    private fun splitSongwriters(
+        raw: String,
+        out: MutableSet<String>,
+    ) {
+        raw.split(',', '/', '、', '&')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach(out::add)
+    }
+
     fun isQrc(content: String): Boolean {
         if (content.contains("<QrcInfos", ignoreCase = true) || content.contains("LyricContent=", ignoreCase = true)) {
             return true

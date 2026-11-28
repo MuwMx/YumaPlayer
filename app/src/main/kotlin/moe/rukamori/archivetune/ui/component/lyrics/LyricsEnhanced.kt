@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FO
 import moe.rukamori.archivetune.lyrics.parsing.LrcParser.isLineSyncedLrc
 import moe.rukamori.archivetune.lyrics.parsing.LrcParser.isTtml
 import moe.rukamori.archivetune.lyrics.parsing.LrcParser.parseLyrics
+import moe.rukamori.archivetune.lyrics.parsing.LrcParser.parseSongwriters
 import moe.rukamori.archivetune.lyrics.parsing.LrcParser.parseTtml
 import moe.rukamori.archivetune.lyrics.model.LyricsEntry
 import moe.rukamori.archivetune.ui.component.shareLyricsAsText
@@ -93,21 +94,28 @@ fun LyricsEnhanced(
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics) || isTtml(lyrics)) }
     val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics) }
 
-    val lyricsEntries: List<LyricsEntry> by produceState(initialValue = emptyList(), key1 = lyrics) {
+    val parsedLyrics by produceState(
+        initialValue = emptyList<LyricsEntry>() to emptyList<String>(),
+        key1 = lyrics,
+    ) {
         val raw = lyrics
         if (raw == null || raw == LYRICS_NOT_FOUND) {
-            value = emptyList()
+            value = emptyList<LyricsEntry>() to emptyList()
         } else {
             value =
                 withContext(Dispatchers.Default) {
-                    when {
+                    val entries = when {
                         isTtml(raw) -> parseTtml(raw)
                         isLineSyncedLrc(raw) -> parseLyrics(raw)
                         else -> raw.lines().filter { it.isNotBlank() }.map { LyricsEntry(time = -1L, text = it.trim()) }
                     }
+                    val writers = parseSongwriters(raw)
+                    entries to writers
                 }
         }
     }
+    val lyricsEntries = parsedLyrics.first
+    val songwriters = parsedLyrics.second
 
     var syncedLyrics by remember(lyricsSessionKey) { mutableStateOf(SyncedLyrics(emptyList())) }
     var syncedLyricsRenderVersion by remember(lyricsSessionKey) { mutableIntStateOf(0) }
@@ -187,6 +195,7 @@ fun LyricsEnhanced(
         remember(
             styleState.useNativeLyricsRenderer,
             lyricsEntries,
+            songwriters,
             styleState.romanizationPreferences,
             romanizedLines,
         ) {
@@ -194,21 +203,12 @@ fun LyricsEnhanced(
                 lyricsEntries.toYumaLyricsDocument(
                     romanizationPreferences = styleState.romanizationPreferences,
                     romanizedLines = romanizedLines,
+                    songwriters = songwriters,
                 )
             } else {
                 YumaLyricsDocument(emptyList())
             }
         }
-
-    val yumaPositionMs by rememberYumaLyricsPositionMs(
-        currentPositionProvider = { sliderPositionProvider() ?: player.currentPosition },
-        isPlaying = styleState.useNativeLyricsRenderer && isPlaying && isReadyToParse && isLyricsVisible,
-        isWordSynced = yumaDocument.isWordSynced,
-        playbackSpeed = playbackParameters.speed,
-        syncOffsetMs = lyricsSyncOffset,
-        sessionKey = lyricsSessionKey,
-        animationsDisabled = animationsDisabled,
-    )
 
     val yumaStyle =
         remember(
@@ -233,6 +233,17 @@ fun LyricsEnhanced(
                 lineSpacingMultiplier = styleState.lyricsLineSpacing,
             )
         }
+
+    val yumaPositionState = rememberYumaLyricsPositionMs(
+        currentPositionProvider = { sliderPositionProvider() ?: player.currentPosition },
+        isPlaying = styleState.useNativeLyricsRenderer && isPlaying && isReadyToParse && isLyricsVisible,
+        isWordSynced = yumaDocument.isWordSynced,
+        playbackSpeed = playbackParameters.speed,
+        syncOffsetMs = lyricsSyncOffset,
+        sessionKey = lyricsSessionKey,
+        animationsDisabled = animationsDisabled,
+        timingTokens = yumaStyle.tokens.timing,
+    )
 
     val activity = context as? Activity
     DisposableEffect(Unit) {
@@ -268,7 +279,7 @@ fun LyricsEnhanced(
         onKaraokeLinePressed = selectionState.onKaraokeLinePressed,
         useNativeLyricsRenderer = styleState.useNativeLyricsRenderer,
         yumaDocument = yumaDocument,
-        yumaPositionMsProvider = { yumaPositionMs },
+        yumaPositionMsProvider = { yumaPositionState.value },
         yumaStyle = yumaStyle,
         autoScrollEnabled = styleState.lyricsScroll,
         onYumaSeek = { positionMs ->

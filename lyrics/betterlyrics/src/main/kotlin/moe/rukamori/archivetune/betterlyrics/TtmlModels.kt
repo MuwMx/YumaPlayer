@@ -60,6 +60,7 @@ data class TtmlDocument(
     val timingMode: TtmlTimingMode,
     val agents: List<TtmlAgent>,
     val lines: List<TtmlLine>,
+    val songwriters: List<String> = emptyList(),
 )
 
 enum class TtmlParseFailure {
