@@ -131,14 +131,14 @@ data class VisualTokens(
     val instrumentalDotPulseScale: Float = 0.12f,
     val instrumentalCollapseDropEm: Float = 0.35f,
     val past: List<LineDistanceStyle> = listOf(
-        LineDistanceStyle(alpha = 0.42f, blurFraction = 0.35f),
-        LineDistanceStyle(alpha = 0.28f, blurFraction = 0.67f),
-        LineDistanceStyle(alpha = 0.18f, blurFraction = 1.0f),
+        LineDistanceStyle(alpha = 0.95f, blurFraction = 0.35f),
+        LineDistanceStyle(alpha = 0.85f, blurFraction = 0.67f),
+        LineDistanceStyle(alpha = 0.75f, blurFraction = 1.0f),
     ),
     val upcoming: List<LineDistanceStyle> = listOf(
-        LineDistanceStyle(alpha = 0.28f, blurFraction = 0.35f),
-        LineDistanceStyle(alpha = 0.18f, blurFraction = 0.67f),
-        LineDistanceStyle(alpha = 0.12f, blurFraction = 1.0f),
+        LineDistanceStyle(alpha = 0.95f, blurFraction = 0.35f),
+        LineDistanceStyle(alpha = 0.85f, blurFraction = 0.67f),
+        LineDistanceStyle(alpha = 0.75f, blurFraction = 1.0f),
     ),
 )
 

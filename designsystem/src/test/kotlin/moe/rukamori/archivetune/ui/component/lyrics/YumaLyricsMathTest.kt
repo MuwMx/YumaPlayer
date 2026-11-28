@@ -205,4 +205,56 @@ class YumaLyricsMathTest {
         assertEquals(2, noBreaks.size)
         assertTrue(noBreaks.none { it.isInstrumental })
     }
+
+    @Test
+    fun scrollDoesNotTriggerBeforeLineStartMinusScrollOffset() {
+        val lines = listOf(
+            YumaLyricsLine(timeMs = 1000L, endTimeMs = 4000L, text = "Line 1"),
+            YumaLyricsLine(timeMs = 5000L, endTimeMs = 8000L, text = "Line 2"),
+        )
+        val timing = TimingTokens(scrollOffsetMs = 500L, earlyScrollMs = 540L)
+
+        // scrollTimeMs = 4200 + 500 = 4700: inside earlyScrollMs (4460..5000) of Line 2,
+        // but before Line 2's actual start (5000). Must not trigger scroll to Line 2.
+        val earlyEval = evaluateScrollTrigger(
+            lines = lines,
+            positionMs = 4200L,
+            lastScrollActive = listOf(0),
+            timing = timing,
+        )
+        assertEquals(listOf(0, 1), earlyEval.activeIndices)
+        assertEquals(false, earlyEval.shouldScroll)
+
+        // scrollTimeMs = 4500 + 500 = 5000: reaches Line 2's start -> triggers scroll.
+        val startEval = evaluateScrollTrigger(
+            lines = lines,
+            positionMs = 4500L,
+            lastScrollActive = listOf(0),
+            timing = timing,
+        )
+        assertEquals(true, startEval.shouldScroll)
+    }
+
+    @Test
+    fun computeActiveLinesScrollTopKeepsSingingLineInView() {
+        val lines = listOf(
+            YumaLyricsLine(timeMs = 1000L, endTimeMs = 6000L, text = "Line 1"),
+            YumaLyricsLine(timeMs = 5000L, endTimeMs = 9000L, text = "Line 2"),
+        )
+        val lineTops = floatArrayOf(100f, 320f)
+        val lineHeights = floatArrayOf(200f, 200f)
+
+        val top = computeActiveLinesScrollTop(
+            lines = lines,
+            activeIndices = listOf(0, 1),
+            scrollTimeMs = 4800L,
+            lineTops = lineTops,
+            lineHeights = lineHeights,
+            anchorOffsetPx = 120f,
+            viewportHeightPx = 400f,
+            maxScrollTop = 1000f,
+            endingThresholdMs = 500L,
+        )
+        assertTrue("Singing line 0 must not scroll above top edge", top <= lineTops[0])
+    }
 }

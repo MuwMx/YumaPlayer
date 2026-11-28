@@ -438,3 +438,74 @@ fun insertInstrumentalBreaks(
     }
     return out
 }
+
+internal data class ScrollTriggerEval(
+    val activeIndices: List<Int>,
+    val shouldScroll: Boolean,
+)
+
+internal fun evaluateScrollTrigger(
+    lines: List<YumaLyricsLine>,
+    positionMs: Long,
+    lastScrollActive: List<Int>,
+    timing: TimingTokens,
+    jumped: Boolean = false,
+    exitedUserScroll: Boolean = false,
+    hasInitialScroll: Boolean = true,
+): ScrollTriggerEval {
+    if (lines.isEmpty()) return ScrollTriggerEval(emptyList(), false)
+    val scrollTimeMs = positionMs + timing.scrollOffsetMs
+    val active = ArrayList<Int>(2)
+    var newLyric = jumped || exitedUserScroll || !hasInitialScroll
+    for (i in lines.indices) {
+        val line = lines[i]
+        val nextStart = lines.getOrNull(i + 1)?.timeMs ?: Long.MAX_VALUE
+        if (scrollTimeMs >= line.timeMs - timing.earlyScrollMs &&
+            (scrollTimeMs < nextStart || scrollTimeMs < line.endTimeMs)
+        ) {
+            active.add(i)
+            if (i !in lastScrollActive && scrollTimeMs >= line.timeMs) {
+                newLyric = true
+            }
+        }
+    }
+    return ScrollTriggerEval(activeIndices = active, shouldScroll = newLyric)
+}
+
+internal fun computeActiveLinesScrollTop(
+    lines: List<YumaLyricsLine>,
+    activeIndices: List<Int>,
+    scrollTimeMs: Long,
+    lineTops: FloatArray,
+    lineHeights: FloatArray,
+    anchorOffsetPx: Float,
+    viewportHeightPx: Float,
+    maxScrollTop: Float,
+    endingThresholdMs: Long,
+): Float {
+    if (lines.isEmpty() || lineTops.isEmpty() || lineHeights.isEmpty()) return 0f
+    val active = if (activeIndices.isEmpty()) listOf(0) else activeIndices
+    val sung = active.filterIndexed { k, idx ->
+        scrollTimeMs < lines[idx].endTimeMs - endingThresholdMs || k == active.lastIndex
+    }
+    val anchor = sung.lastOrNull { idx ->
+        lines[idx].timeMs <= scrollTimeMs && scrollTimeMs < lines[idx].endTimeMs
+    } ?: sung.lastOrNull { idx ->
+        lines[idx].timeMs <= scrollTimeMs
+    } ?: sung.first()
+
+    val first = sung.first()
+    val lastl = sung.last()
+    var centreSum = 0f
+    for (idx in sung) {
+        centreSum += lineTops[idx] + lineHeights[idx] * 0.5f
+    }
+    val centre = centreSum / sung.size.toFloat()
+
+    var top = centre - anchorOffsetPx
+    top = max(top, lineTops[lastl] + lineHeights[lastl] - viewportHeightPx)
+    top = min(top, min(lineTops[lastl], lineTops[first]))
+    top = max(top, lineTops[anchor] + lineHeights[anchor] - viewportHeightPx)
+    top = min(top, lineTops[anchor])
+    return top.coerceIn(0f, maxScrollTop)
+}

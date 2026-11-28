@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +36,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,12 +59,11 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import moe.rukamori.archivetune.ui.component.smoothFadingEdge
 import kotlin.math.abs
 import kotlin.math.max
@@ -100,7 +99,7 @@ fun YumaKaraokeView(
     val lines = document.lines
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
-    val textMeasurer = rememberTextMeasurer()
+    val textMeasurer = rememberTextMeasurer(cacheSize = 0)
 
     val tokens = style.tokens
     val timing = tokens.timing
@@ -121,9 +120,6 @@ fun YumaKaraokeView(
         userScrollUntilMs = 0L
     }
 
-    val scrollTargetIndex by remember(lines, timing) {
-        derivedStateOf { findScrollTargetLineIndex(lines, positionMsProvider(), timing) }
-    }
     val activeLineIndex by remember(lines) {
         derivedStateOf { findActiveLineIndex(lines, positionMsProvider()) }
     }
@@ -135,8 +131,8 @@ fun YumaKaraokeView(
     }
 
     val scrollAnims = remember(document) { ArrayList<ScrollAnim>() }
+    val scrollAnimVersion = remember(document) { mutableIntStateOf(0) }
     val animFrameState = remember(document) { mutableLongStateOf(0L) }
-    var animWakeNanos by remember(document) { mutableLongStateOf(0L) }
     var lastAlphaChangeNanos by remember(document) { mutableLongStateOf(System.nanoTime()) }
     val easeEasing = remember(motion.ease) {
         Easing { x -> motion.ease.at(x) }
@@ -146,14 +142,21 @@ fun YumaKaraokeView(
         lastAlphaChangeNanos = System.nanoTime()
     }
 
-    LaunchedEffect(document, activeLineIndex, isAutoscrollPaused, animWakeNanos) {
+    LaunchedEffect(document) {
         val minRunSec = motion.opacityTransitionSecs.toDouble() + 0.1
         while (true) {
-            val frameNanos = withFrameNanos { it }
-            animFrameState.longValue = frameNanos
-            pruneExpiredScrollAnims(scrollAnims, frameNanos)
-            val elapsedAlphaSec = (System.nanoTime() - lastAlphaChangeNanos) / 1_000_000_000.0
-            if (scrollAnims.isEmpty() && elapsedAlphaSec >= minRunSec) break
+            val nowCheck = System.nanoTime()
+            val elapsedAlpha = (nowCheck - lastAlphaChangeNanos) / 1_000_000_000.0
+            if (scrollAnims.isEmpty() && elapsedAlpha >= minRunSec) {
+                snapshotFlow {
+                    Triple(activeLineIndex, isAutoscrollPaused, scrollAnimVersion.intValue)
+                }.drop(1).first()
+                lastAlphaChangeNanos = System.nanoTime()
+            }
+            withFrameNanos { }
+            val nowNanos = System.nanoTime()
+            animFrameState.longValue = nowNanos
+            pruneExpiredScrollAnims(scrollAnims, nowNanos)
         }
     }
 
@@ -169,7 +172,7 @@ fun YumaKaraokeView(
                                 anim.dampStartNanos = nowNanos
                             }
                         }
-                        animWakeNanos = nowNanos
+                        scrollAnimVersion.intValue++
                     }
                 }
                 return Offset.Zero
@@ -256,6 +259,15 @@ fun YumaKaraokeView(
 
         var scrollTop by remember(document) { mutableFloatStateOf(0f) }
         var hasInitialScroll by remember(document) { mutableStateOf(false) }
+        var lastScrollActive by remember(document) { mutableStateOf(emptyList<Int>()) }
+        var prevPosMs by remember(document) { mutableLongStateOf(Long.MIN_VALUE) }
+        var wasUserScroll by remember(document) { mutableStateOf(false) }
+
+        LaunchedEffect(document, isAutoscrollPaused) {
+            if (isAutoscrollPaused) {
+                wasUserScroll = true
+            }
+        }
 
         LaunchedEffect(maxScrollTop) {
             if (scrollTop > maxScrollTop) {
@@ -273,11 +285,9 @@ fun YumaKaraokeView(
             old - next
         }
 
-        fun scrollToTargetLine(targetIndex: Int) {
+        fun applyScrollTop(desiredScrollTop: Float, targetIndex: Int) {
             if (lines.isEmpty()) return
-            val clamped = targetIndex.coerceIn(0, lines.lastIndex)
-            val lineCenter = lineTops[clamped] + lineHeights[clamped] * 0.5f
-            val desiredScrollTop = (lineCenter - anchorOffsetPx).coerceIn(0f, maxScrollTop)
+            val clampedIndex = targetIndex.coerceIn(0, lines.lastIndex)
             if (!hasInitialScroll) {
                 scrollTop = desiredScrollTop
                 hasInitialScroll = true
@@ -290,20 +300,47 @@ fun YumaKaraokeView(
                     ScrollAnim(
                         startNanos = System.nanoTime(),
                         deltaPx = delta,
-                        targetIndex = clamped,
+                        targetIndex = clampedIndex,
                         maxLineDurSec = maxScrollDurationSec(delta, motion.scrollBaseSecs.toDouble()),
                     ),
                 )
-                animWakeNanos = System.nanoTime()
+                scrollAnimVersion.intValue++
             }
         }
 
         LaunchedEffect(document, autoScrollEnabled, isAutoscrollPaused, anchorOffsetPx, maxScrollTop, motion.scrollBaseSecs) {
             if (!autoScrollEnabled || isAutoscrollPaused || lines.isEmpty()) return@LaunchedEffect
-            snapshotFlow { scrollTargetIndex }
-                .distinctUntilChanged()
-                .collectLatest { targetIndex ->
-                    scrollToTargetLine(targetIndex)
+            snapshotFlow { positionMsProvider() }
+                .collect { posMs ->
+                    val jumped = prevPosMs != Long.MIN_VALUE && abs(posMs - prevPosMs) > timing.timeJumpMs
+                    prevPosMs = posMs
+                    val exitedUser = wasUserScroll
+                    val eval = evaluateScrollTrigger(
+                        lines = lines,
+                        positionMs = posMs,
+                        lastScrollActive = lastScrollActive,
+                        timing = timing,
+                        jumped = jumped,
+                        exitedUserScroll = exitedUser,
+                        hasInitialScroll = hasInitialScroll,
+                    )
+                    if (exitedUser) wasUserScroll = false
+                    if (eval.shouldScroll) {
+                        val active = eval.activeIndices.ifEmpty { listOf(0) }
+                        val desiredScrollTop = computeActiveLinesScrollTop(
+                            lines = lines,
+                            activeIndices = active,
+                            scrollTimeMs = posMs + timing.scrollOffsetMs,
+                            lineTops = lineTops,
+                            lineHeights = lineHeights,
+                            anchorOffsetPx = anchorOffsetPx.toFloat(),
+                            viewportHeightPx = viewportHeightPx,
+                            maxScrollTop = maxScrollTop,
+                            endingThresholdMs = timing.endingThresholdMs,
+                        )
+                        applyScrollTop(desiredScrollTop, targetIndex = active.last())
+                        lastScrollActive = active
+                    }
                 }
         }
 
@@ -318,6 +355,7 @@ fun YumaKaraokeView(
                 if (lineTops.isEmpty()) {
                     IntRange.EMPTY
                 } else {
+                    scrollAnimVersion.intValue
                     val frameNanos = animFrameState.longValue
                     val nowNanos = if (frameNanos != 0L) frameNanos else System.nanoTime()
                     val currentScroll = scrollTop
@@ -356,6 +394,7 @@ fun YumaKaraokeView(
                 if (writersText.isEmpty()) {
                     false
                 } else {
+                    scrollAnimVersion.intValue
                     val frameNanos = animFrameState.longValue
                     val nowNanos = if (frameNanos != 0L) frameNanos else System.nanoTime()
                     val dy = if (scrollAnims.isEmpty()) {
@@ -416,8 +455,8 @@ fun YumaKaraokeView(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .offset { IntOffset(0, (lineTops[index] - scrollTop).roundToInt()) }
                             .graphicsLayer {
+                                scrollAnimVersion.intValue
                                 val frameNanos = animFrameState.longValue
                                 val nowNanos = if (frameNanos != 0L) frameNanos else System.nanoTime()
                                 val posMs = positionMsProvider()
@@ -444,7 +483,8 @@ fun YumaKaraokeView(
 
                                 scaleX = scale
                                 scaleY = scale
-                                translationY = computeStaggerDy(index, nowNanos, scrollAnims, motion)
+                                translationY = (lineTops[index] - scrollTop) +
+                                    computeStaggerDy(index, nowNanos, scrollAnims, motion)
                                 this.transformOrigin = transformOrigin
                             }
                             .clip(MaterialTheme.shapes.medium)
@@ -496,11 +536,12 @@ fun YumaKaraokeView(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset { IntOffset(0, (linesEndTop - scrollTop).roundToInt()) }
                         .graphicsLayer {
+                            scrollAnimVersion.intValue
                             val frameNanos = animFrameState.longValue
                             val nowNanos = if (frameNanos != 0L) frameNanos else System.nanoTime()
-                            translationY = computeStaggerDy(preparedLines.size, nowNanos, scrollAnims, motion)
+                            translationY = (linesEndTop - scrollTop) +
+                                computeStaggerDy(preparedLines.size, nowNanos, scrollAnims, motion)
                         }
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 )
@@ -518,8 +559,30 @@ fun YumaKaraokeView(
             Surface(
                 onClick = {
                     userScrollUntilMs = 0L
-                    val target = scrollTargetIndex.takeIf { it in lines.indices } ?: 0
-                    scrollToTargetLine(target)
+                    wasUserScroll = false
+                    val posMs = positionMsProvider()
+                    val eval = evaluateScrollTrigger(
+                        lines = lines,
+                        positionMs = posMs,
+                        lastScrollActive = lastScrollActive,
+                        timing = timing,
+                        exitedUserScroll = true,
+                        hasInitialScroll = hasInitialScroll,
+                    )
+                    val active = eval.activeIndices.ifEmpty { listOf(0) }
+                    val desired = computeActiveLinesScrollTop(
+                        lines = lines,
+                        activeIndices = active,
+                        scrollTimeMs = posMs + timing.scrollOffsetMs,
+                        lineTops = lineTops,
+                        lineHeights = lineHeights,
+                        anchorOffsetPx = anchorOffsetPx.toFloat(),
+                        viewportHeightPx = viewportHeightPx,
+                        maxScrollTop = maxScrollTop,
+                        endingThresholdMs = timing.endingThresholdMs,
+                    )
+                    applyScrollTop(desired, targetIndex = active.last())
+                    lastScrollActive = active
                 },
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
@@ -603,34 +666,6 @@ private fun findActiveLineIndex(
         }
     }
     return result
-}
-
-private fun findScrollTargetLineIndex(
-    lines: List<YumaLyricsLine>,
-    positionMs: Long,
-    timing: TimingTokens,
-): Int {
-    if (lines.isEmpty()) return -1
-    val scrollTimeMs = positionMs + timing.scrollOffsetMs
-    val active = ArrayList<Int>(2)
-    for (i in lines.indices) {
-        val line = lines[i]
-        val nextStart = lines.getOrNull(i + 1)?.timeMs ?: Long.MAX_VALUE
-        if (scrollTimeMs >= line.timeMs - timing.earlyScrollMs &&
-            (scrollTimeMs < nextStart || scrollTimeMs < line.endTimeMs)
-        ) {
-            active.add(i)
-        }
-    }
-    if (active.isEmpty()) {
-        return findActiveLineIndex(lines, scrollTimeMs)
-    }
-    val sung = active.filterIndexed { k, idx ->
-        scrollTimeMs < lines[idx].endTimeMs - timing.endingThresholdMs || k == active.lastIndex
-    }
-    return sung.lastOrNull { lines[it].timeMs <= scrollTimeMs && scrollTimeMs < lines[it].endTimeMs }
-        ?: sung.lastOrNull { lines[it].timeMs <= scrollTimeMs }
-        ?: sung.first()
 }
 
 private fun maxScrollDurationSec(deltaPx: Float, baseSecs: Double): Double =

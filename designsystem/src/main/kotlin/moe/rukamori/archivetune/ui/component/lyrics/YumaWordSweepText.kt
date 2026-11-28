@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -97,10 +98,10 @@ internal fun YumaLyricsLineCanvas(
             .fillMaxWidth()
             .height(heightDp.coerceAtLeast(1.dp)),
     ) {
-        val frameNanos = animFrameProvider()
+        animFrameProvider()
         val posMs = positionMsProvider()
         val tSec = posMs / 1000.0
-        val nowWallSec = (if (frameNanos != 0L) frameNanos else System.nanoTime()) / 1_000_000_000.0
+        val nowWallSec = System.nanoTime() / 1_000_000_000.0
         val tokens = style.tokens
         val timing = tokens.timing
         val motion = tokens.motion
@@ -468,49 +469,52 @@ private fun DrawScope.drawWordPass(
     val bounce = motion.wordBounce?.takeIf { isLive && !isExiting && !word.isLineSynced }
         ?.let { wordBounce(tSec - word.startSec, word.durSec, it) }
 
-    val canUseLetters = word.useLetters && word.letterLayouts.size == word.text.length && isLive && !isExiting
+    val canUseLetters = word.useLetters && word.letterLayouts.size == word.text.length
+    val effectiveShadow = shadow ?: Shadow.None
+    val effectiveBrush = brush ?: SolidColor(color)
     withWobbleAndBounce(word, wobble, bounce) {
         if (!canUseLetters) {
-            if (brush != null) {
-                drawText(word.textLayout, brush = brush, topLeft = Offset(word.x, word.y), shadow = shadow)
-            } else {
-                drawText(word.textLayout, color = color, topLeft = Offset(word.x, word.y), shadow = shadow)
-            }
+            drawText(word.textLayout, brush = effectiveBrush, topLeft = Offset(word.x, word.y), shadow = effectiveShadow)
         } else {
-            val waves = letterWaves(
-                letterCount = word.text.length,
-                wordDurSec = word.durSec,
-                floatSec = motion.letterWave.secs.toDouble(),
-                timing = tokens.timing,
-                crestFraction = motion.letterWave.crestFraction,
-            )
+            val animateLetters = isLive && !isExiting
+            val waves = if (animateLetters) {
+                letterWaves(
+                    letterCount = word.text.length,
+                    wordDurSec = word.durSec,
+                    floatSec = motion.letterWave.secs.toDouble(),
+                    timing = tokens.timing,
+                    crestFraction = motion.letterWave.crestFraction,
+                )
+            } else {
+                null
+            }
             val elapsed = tSec - word.startSec
             for (idx in word.text.indices) {
                 val charLayout = word.letterLayouts[idx]
                 val charX = word.x + word.letterStartXs[idx]
                 val charY = word.y
-                val (liftEm, scale) = letterFloat(
-                    elapsedSec = elapsed,
-                    wave = waves[idx],
-                    isLong = word.isLong,
-                    tokens = motion.letterWave,
-                    easeInOut = motion.easeInOut,
-                    easeOut = motion.easeOut,
-                )
-                val liftPx = -liftEm * word.fontSizePx
-                val pivot = Offset(
-                    x = charX + charLayout.size.width * 0.5f,
-                    y = charY + charLayout.size.height * 0.5f,
-                )
-                withTransform({
-                    if (liftPx != 0f) translate(top = liftPx)
-                    if (abs(scale - 1f) > 1e-4f) scale(scale, scale, pivot = pivot)
-                }) {
-                    if (brush != null) {
-                        drawText(charLayout, brush = brush, topLeft = Offset(charX, charY), shadow = shadow)
-                    } else {
-                        drawText(charLayout, color = color, topLeft = Offset(charX, charY), shadow = shadow)
+                if (waves != null) {
+                    val (liftEm, scale) = letterFloat(
+                        elapsedSec = elapsed,
+                        wave = waves[idx],
+                        isLong = word.isLong,
+                        tokens = motion.letterWave,
+                        easeInOut = motion.easeInOut,
+                        easeOut = motion.easeOut,
+                    )
+                    val liftPx = -liftEm * word.fontSizePx
+                    val pivot = Offset(
+                        x = charX + charLayout.size.width * 0.5f,
+                        y = charY + charLayout.size.height * 0.5f,
+                    )
+                    withTransform({
+                        if (liftPx != 0f) translate(top = liftPx)
+                        if (abs(scale - 1f) > 1e-4f) scale(scale, scale, pivot = pivot)
+                    }) {
+                        drawText(charLayout, brush = effectiveBrush, topLeft = Offset(charX, charY), shadow = effectiveShadow)
                     }
+                } else {
+                    drawText(charLayout, brush = effectiveBrush, topLeft = Offset(charX, charY), shadow = effectiveShadow)
                 }
             }
         }
@@ -531,23 +535,28 @@ private fun DrawScope.drawWordSweepPass(
     val bounce = motion.wordBounce?.takeIf { isLive && !isExiting && !word.isLineSynced }
         ?.let { wordBounce(tSec - word.startSec, word.durSec, it) }
 
-    val canUseLetters = word.useLetters && word.letterLayouts.size == word.text.length && isLive && !isExiting
+    val canUseLetters = word.useLetters && word.letterLayouts.size == word.text.length
     if (!canUseLetters) {
         val wordBox = transformedWordRect(word, wobble)
         val brush = buildWordSweepBrush(word, wordBox, look.start, look.end, litColor, originX = 0f) ?: return
         withWobbleAndBounce(word, wobble, bounce) {
-            drawText(word.textLayout, brush = brush, topLeft = Offset(word.x, word.y))
+            drawText(word.textLayout, brush = brush, topLeft = Offset(word.x, word.y), shadow = Shadow.None)
         }
         return
     }
 
-    val waves = letterWaves(
-        letterCount = word.text.length,
-        wordDurSec = word.durSec,
-        floatSec = motion.letterWave.secs.toDouble(),
-        timing = tokens.timing,
-        crestFraction = motion.letterWave.crestFraction,
-    )
+    val animateLetters = isLive && !isExiting
+    val waves = if (animateLetters) {
+        letterWaves(
+            letterCount = word.text.length,
+            wordDurSec = word.durSec,
+            floatSec = motion.letterWave.secs.toDouble(),
+            timing = tokens.timing,
+            crestFraction = motion.letterWave.crestFraction,
+        )
+    } else {
+        null
+    }
     val n = word.text.length.coerceAtLeast(1).toFloat()
     val elapsed = tSec - word.startSec
     val transparent = litColor.copy(alpha = 0f)
@@ -562,14 +571,18 @@ private fun DrawScope.drawWordSweepPass(
             val xe = (look.end * n - idx) * charW + 1f
             if (xe <= 0f) continue
 
-            val (liftEm, scale) = letterFloat(
-                elapsedSec = elapsed,
-                wave = waves[idx],
-                isLong = word.isLong,
-                tokens = motion.letterWave,
-                easeInOut = motion.easeInOut,
-                easeOut = motion.easeOut,
-            )
+            val (liftEm, scale) = if (waves != null) {
+                letterFloat(
+                    elapsedSec = elapsed,
+                    wave = waves[idx],
+                    isLong = word.isLong,
+                    tokens = motion.letterWave,
+                    easeInOut = motion.easeInOut,
+                    easeOut = motion.easeOut,
+                )
+            } else {
+                0f to 1f
+            }
             val liftPx = -liftEm * word.fontSizePx
             val pivot = Offset(
                 x = charX + charW * 0.5f,
@@ -580,14 +593,14 @@ private fun DrawScope.drawWordSweepPass(
                 if (abs(scale - 1f) > 1e-4f) scale(scale, scale, pivot = pivot)
             }) {
                 if (xs >= charW) {
-                    drawText(charLayout, color = litColor, topLeft = Offset(charX, charY))
+                    drawText(charLayout, brush = SolidColor(litColor), topLeft = Offset(charX, charY), shadow = Shadow.None)
                 } else {
                     val brush = Brush.horizontalGradient(
                         colors = listOf(litColor, transparent),
                         startX = xs,
                         endX = xe,
                     )
-                    drawText(charLayout, brush = brush, topLeft = Offset(charX, charY))
+                    drawText(charLayout, brush = brush, topLeft = Offset(charX, charY), shadow = Shadow.None)
                 }
             }
         }
