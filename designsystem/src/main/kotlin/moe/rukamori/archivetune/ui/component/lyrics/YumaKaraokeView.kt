@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -68,6 +69,7 @@ import moe.rukamori.archivetune.ui.component.smoothFadingEdge
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val MIN_SCROLL_DELTA_PX = 2f
 private const val MAX_SCROLL_STAGGER_REL = 25
@@ -114,7 +116,7 @@ fun YumaKaraokeView(
         if (userScrollUntilMs <= 0L) return@LaunchedEffect
         val remaining = userScrollUntilMs - System.currentTimeMillis()
         if (remaining > 0L) {
-            delay(remaining)
+            delay(remaining.milliseconds)
         }
         userScrollUntilMs = 0L
     }
@@ -128,7 +130,7 @@ fun YumaKaraokeView(
     val creditsFocused by remember(lines, timing) {
         derivedStateOf {
             val lastSung = lines.indexOfLast { !it.isInstrumental }
-            if (lastSung < 0) false else positionMsProvider() + timing.scrollOffsetMs >= lines[lastSung].endTimeMs
+            lastSung >= 0 && positionMsProvider() + timing.scrollOffsetMs >= lines[lastSung].endTimeMs
         }
     }
 
@@ -149,7 +151,7 @@ fun YumaKaraokeView(
         while (true) {
             val frameNanos = withFrameNanos { it }
             animFrameState.longValue = frameNanos
-            pruneExpiredScrollAnims(scrollAnims, frameNanos, motion)
+            pruneExpiredScrollAnims(scrollAnims, frameNanos)
             val elapsedAlphaSec = (System.nanoTime() - lastAlphaChangeNanos) / 1_000_000_000.0
             if (scrollAnims.isEmpty() && elapsedAlphaSec >= minRunSec) break
         }
@@ -202,7 +204,7 @@ fun YumaKaraokeView(
             }
         }
 
-        val padTopPx = with(density) { 24.dp.toPx() }
+        val minPadTopPx = with(density) { 24.dp.toPx() }
         val padBottomPx = with(density) { bottomPaddingDp.toPx() }
         val minLineHeightPx = with(density) { 1.dp.toPx() }
         val cullMarginPx = with(density) { 40.dp.toPx() }
@@ -212,6 +214,9 @@ fun YumaKaraokeView(
                 max(preparedLines[i].totalHeightPx, minLineHeightPx)
             }
         }
+        val firstLineHeight = lineHeights.firstOrNull() ?: 0f
+        val padTopPx = max(anchorOffsetPx - firstLineHeight * 0.5f, minPadTopPx)
+
         val lineTops = remember(lineHeights, padTopPx) {
             FloatArray(lineHeights.size).also { tops ->
                 var y = padTopPx
@@ -246,11 +251,11 @@ fun YumaKaraokeView(
                 ).size.height.toFloat() + footerVerticalPadPx * 2f
             }
         }
-        val footerTop = linesEndTop
         val totalContentHeight = linesEndTop + footerHeightPx + padBottomPx
         val maxScrollTop = (totalContentHeight - viewportHeightPx).coerceAtLeast(0f)
 
         var scrollTop by remember(document) { mutableFloatStateOf(0f) }
+        var hasInitialScroll by remember(document) { mutableStateOf(false) }
 
         LaunchedEffect(maxScrollTop) {
             if (scrollTop > maxScrollTop) {
@@ -259,6 +264,9 @@ fun YumaKaraokeView(
         }
 
         val scrollableState = rememberScrollableState { delta ->
+            if (abs(delta) > 0f) {
+                hasInitialScroll = true
+            }
             val old = scrollTop
             val next = (old - delta).coerceIn(0f, maxScrollTop)
             scrollTop = next
@@ -270,6 +278,11 @@ fun YumaKaraokeView(
             val clamped = targetIndex.coerceIn(0, lines.lastIndex)
             val lineCenter = lineTops[clamped] + lineHeights[clamped] * 0.5f
             val desiredScrollTop = (lineCenter - anchorOffsetPx).coerceIn(0f, maxScrollTop)
+            if (!hasInitialScroll) {
+                scrollTop = desiredScrollTop
+                hasInitialScroll = true
+                return
+            }
             val delta = desiredScrollTop - scrollTop
             if (abs(delta) > MIN_SCROLL_DELTA_PX) {
                 scrollTop = desiredScrollTop
@@ -332,7 +345,7 @@ fun YumaKaraokeView(
 
         val isFooterVisible by remember(
             writersText,
-            footerTop,
+            linesEndTop,
             footerHeightPx,
             viewportHeightPx,
             cullMarginPx,
@@ -350,7 +363,7 @@ fun YumaKaraokeView(
                     } else {
                         computeStaggerDy(preparedLines.size, nowNanos, scrollAnims, motion)
                     }
-                    val visualTop = footerTop - scrollTop + dy
+                    val visualTop = linesEndTop - scrollTop + dy
                     val visualBottom = visualTop + footerHeightPx
                     visualBottom >= -cullMarginPx && visualTop <= viewportHeightPx + cullMarginPx
                 }
@@ -380,7 +393,7 @@ fun YumaKaraokeView(
                         activeLineIndex >= 0 && index < activeLineIndex -> ladderStyle(visual.past, distance)
                         else -> ladderStyle(visual.upcoming, distance)
                     }
-                    val targetBlurDp = if (style.blurEnabled && !isLineActive) {
+                    val targetBlurDp = if (style.blurEnabled && !isLineActive && !isAutoscrollPaused) {
                         style.maxBlurRadiusDp * distStyle.blurFraction
                     } else {
                         0f
@@ -411,7 +424,7 @@ fun YumaKaraokeView(
                                 val tSec = posMs / 1000.0
                                 val lineStartSec = prepared.startSec
                                 val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + 0.05)
-                                val inLine = tSec >= lineStartSec && tSec < lineEndSec
+                                val inLine = tSec in lineStartSec..<lineEndSec
 
                                 val scale = when {
                                     inLine -> {
@@ -483,7 +496,7 @@ fun YumaKaraokeView(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset { IntOffset(0, (footerTop - scrollTop).roundToInt()) }
+                        .offset { IntOffset(0, (linesEndTop - scrollTop).roundToInt()) }
                         .graphicsLayer {
                             val frameNanos = animFrameState.longValue
                             val nowNanos = if (frameNanos != 0L) frameNanos else System.nanoTime()
@@ -526,7 +539,6 @@ fun YumaKaraokeView(
 private fun pruneExpiredScrollAnims(
     scrollAnims: MutableList<ScrollAnim>,
     nowNanos: Long,
-    motion: MotionTokens,
 ) {
     if (scrollAnims.isEmpty()) return
     for (i in scrollAnims.lastIndex downTo 0) {
