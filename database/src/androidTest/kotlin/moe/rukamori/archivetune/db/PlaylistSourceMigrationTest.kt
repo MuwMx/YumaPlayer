@@ -90,4 +90,29 @@ class PlaylistSourceMigrationTest {
             assertEquals("local", db.playlistBySpotifySourceId("sp1")?.playlist?.id)
             assertNull(db.playlistBySpotifySourceId("unknown"))
         }
+
+    @Test
+    fun songsAndPlaylistsSurviveMigrationFromVersion36To39() =
+        runBlocking {
+            helper.createDatabase(InternalDatabase.DB_NAME, 36).apply {
+                execSQL(
+                    "INSERT INTO song (id, title, duration, liked, totalPlayTime) VALUES ('s36', 'Track 36', 210, 1, 10)",
+                )
+                execSQL(
+                    "INSERT INTO playlist (id, name, browseId, isEditable, isLocal) VALUES ('pl36', 'Legacy 36', 'PL36', 1, 0)",
+                )
+                execSQL(
+                    "INSERT INTO playlist_song_map (playlistId, songId, position, setVideoId) VALUES ('pl36', 's36', 0, 'set-36')",
+                )
+                close()
+            }
+
+            val db = openMigratedDatabase()
+            val playlist = db.getPlaylistById("pl36")
+            assertNotNull(playlist)
+            assertEquals("Legacy 36", playlist!!.playlist.name)
+            assertEquals(1, playlist.songCount)
+            assertNull(playlist.playlist.spotifySourceId)
+            assertEquals(listOf("s36"), db.playlistSongMaps("pl36", 0).map { it.songId })
+        }
 }

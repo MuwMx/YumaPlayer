@@ -50,6 +50,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.app.init.SplashGate
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
 import moe.rukamori.archivetune.audiodsp.CrossfadeConstants
@@ -731,11 +732,18 @@ class MusicServiceLifecycle(
         }
         try {
             if (delegate.dataStore.get(PersistentQueueKey, true) && delegate.player.mediaItemCount > 0) {
-                runBlocking {
-                    delegate.saveQueueToStorage()
+                val saved = runBlocking {
+                    withTimeoutOrNull(1_500L) {
+                        delegate.saveQueueToStorage()
+                        true
+                    } == true
+                }
+                if (!saved) {
+                    Timber.tag("MusicServiceLifecycle").w("Timed out saving queue in onDestroy after 1500ms")
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Timber.tag("MusicServiceLifecycle").w(e, "Failed to save queue in onDestroy")
         }
         try {
             delegate.mediaLibrarySession.release()
@@ -815,7 +823,15 @@ class MusicServiceLifecycle(
             }
 
             if (delegate.dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
-                runBlocking { delegate.saveQueueToStorage() }
+                val saved = runBlocking {
+                    withTimeoutOrNull(1_500L) {
+                        delegate.saveQueueToStorage()
+                        true
+                    } == true
+                }
+                if (!saved) {
+                    Timber.tag("MusicServiceLifecycle").w("Timed out saving queue in onTaskRemoved after 1500ms")
+                }
             }
         } catch (_: Exception) {
         }

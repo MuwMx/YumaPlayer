@@ -47,7 +47,23 @@ dependencyResolutionManagement {
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "YumaPlayer"
-include(":app")
+
+val hasAndroidSdk =
+    !System.getenv("ANDROID_HOME").isNullOrBlank() ||
+        !System.getenv("ANDROID_SDK_ROOT").isNullOrBlank() ||
+        file("local.properties").takeIf { it.isFile }?.readText()?.contains("sdk.dir=") == true
+val isGitHubActions = System.getenv("GITHUB_ACTIONS") == "true"
+val skipApp = providers.gradleProperty("skipApp").orNull?.toBoolean() == true
+val forceIncludeApp = providers.gradleProperty("forceIncludeApp").orNull?.toBoolean() == true
+
+if (!skipApp && (hasAndroidSdk || isGitHubActions || forceIncludeApp)) {
+    include(":app")
+} else if (!skipApp) {
+    logger.lifecycle(
+        "Android SDK not detected (ANDROID_HOME/ANDROID_SDK_ROOT/local.properties missing); " +
+            "skipping :app. Pass -PforceIncludeApp=true to include it.",
+    )
+}
 include(":designsystem")
 include(":database")
 include(":core")

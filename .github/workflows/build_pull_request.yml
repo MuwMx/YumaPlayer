@@ -44,6 +44,18 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      - name: Run Unit Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --console=plain \
+            :canvas:test :core:test :core:innertube:test :flaccore:test :spotifycore:test \
+            :moriextractor:test :morideobfuscator:test :lastfm:test :shazamkit:test \
+            :lyrics:lrclib:test :lyrics:kugou:test :lyrics:simpmusic:test \
+            :lyrics:betterlyrics:test :lyrics:unison:test :lyrics:youlyplus:test \
+            :app:testGmsMobileUniversalDebugUnitTest \
+            --warning-mode summary
+
       - name: Build and Lint Mobile Universal Debug APK
         shell: bash
         run: |
