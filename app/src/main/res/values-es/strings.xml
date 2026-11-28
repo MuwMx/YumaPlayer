@@ -1856,4 +1856,13 @@
     <string name="player_stream_client_archivetune_extractor_desc">Utiliza el extractor del backend Yuma para las transmisiones de reproducción. Se recomienda seleccionar «Audio de alta calidad automático».</string>
     <string name="player_stream_client_archivetune_extractor">Extractor de Yuma</string>
     <string name="unblock_artist">Desbloquear artista</string>
+    <string name="copy_to_playlist">Copiar a lista de reproducción</string>
+    <string name="copy_choose_target">Elíga donde copiar esta lista de reprodución</string>
+    <string name="make_editable_copy">Hacer copia editable</string>
+    <string name="update_editable_copy">Actualizar copia editable</string>
+    <string name="editable_copy_description">Una lista de reproducción personal que puedes editar. Se mantiene actualizada con las nuevas canciones de Spotify.</string>
+    <string name="copy_new_personal">Nueva lista de reproducción personal</string>
+    <string name="copy_new_youtube">Nueva lista de reproducción de YouTube</string>
+    <string name="copy_reading">Leyendo lista de reproducción…</string>
+    <string name="copy_writing">Guardando lista de reproducción…</string>
 </resources>
