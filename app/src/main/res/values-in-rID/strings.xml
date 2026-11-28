@@ -1688,7 +1688,7 @@
     <string name="numbers">Angka</string>
     <string name="subscribers">Subscriber</string>
     <string name="monthly_listeners">Pendengar bulanan</string>
-    <string name="views">Tayangan</string>
+    <string name="views">Penayangan</string>
     <string name="likes">Suka</string>
     <string name="dislikes">Tidak suka</string>
     <string name="subscribe">Subscribe</string>
@@ -2284,4 +2284,8 @@
     <string name="transitions_player_summary_crossmix">Crossmix</string>
     <string name="audiopass_title_first">DAC &amp;</string>
     <string name="audiopass_title_second">lainnya</string>
+    <string name="written_by">Ditulis oleh %1$s</string>
+    <string name="enable_portato_lyrics">Aktifkan lirik Better Portato</string>
+    <string name="use_native_lyrics_renderer">Perender lirik Native Compose</string>
+    <string name="use_native_lyrics_renderer_desc">Gunakan perender eksperimental YumaKaraoke alih-alih tampilan lama</string>
 </resources>
