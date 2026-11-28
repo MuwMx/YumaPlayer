@@ -17,9 +17,6 @@ import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-private const val DRIFT_SNAP_THRESHOLD_MS = 250L
-private const val DRIFT_CORRECTION_FACTOR = 0.5f
-
 @Composable
 fun rememberYumaLyricsPositionMs(
     currentPositionProvider: () -> Long,
@@ -41,7 +38,17 @@ fun rememberYumaLyricsPositionMs(
         )
     }
 
-    LaunchedEffect(sessionKey, isPlaying, isWordSynced, playbackSpeed, syncOffsetMs, animationsDisabled, leadMs) {
+    LaunchedEffect(
+        sessionKey,
+        isPlaying,
+        isWordSynced,
+        playbackSpeed,
+        syncOffsetMs,
+        animationsDisabled,
+        leadMs,
+        timingTokens.driftSnapThresholdMs,
+        timingTokens.driftCorrectionFactor,
+    ) {
         var anchorRawMs = latestPositionProvider.value().coerceAtLeast(0L)
         var anchorFrameNanos = 0L
         var lastEffectiveMs = (anchorRawMs + syncOffsetMs + leadMs).coerceAtLeast(0L)
@@ -72,13 +79,13 @@ fun rememberYumaLyricsPositionMs(
             val driftMs = rawMs - projectedRawMs
 
             val smoothedRawMs =
-                if (abs(driftMs) > DRIFT_SNAP_THRESHOLD_MS) {
+                if (abs(driftMs) > timingTokens.driftSnapThresholdMs) {
                     anchorRawMs = rawMs
                     anchorFrameNanos = frameNanos
                     lastEffectiveMs = (rawMs + syncOffsetMs + leadMs).coerceAtLeast(0L)
                     rawMs
                 } else {
-                    val corrected = projectedRawMs + (driftMs * DRIFT_CORRECTION_FACTOR).roundToLong()
+                    val corrected = projectedRawMs + (driftMs * timingTokens.driftCorrectionFactor).roundToLong()
                     corrected.coerceAtLeast(lastEffectiveMs - syncOffsetMs - leadMs)
                 }
 

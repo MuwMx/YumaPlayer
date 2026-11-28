@@ -122,14 +122,14 @@ internal fun YumaLyricsLineCanvas(
             tracker.decoBornWallSec = null
         }
 
-        val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + 0.05)
+        val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + timing.lineEndTailSec)
         val isSelected = tSec + 2.0 >= prepared.startSec && tSec < lineEndSec
         if (isSelected && !tracker.selected) {
             tracker.selected = true
             tracker.exitStartWallSec = null
         } else if (!isSelected && tracker.selected) {
             tracker.selected = false
-            val staleSec = lineEndSec + timing.exitFadeSec + 0.05
+            val staleSec = lineEndSec + timing.exitFadeSec + timing.lineEndTailSec
             tracker.exitStartWallSec = if (tSec <= staleSec) nowWallSec else null
             tracker.exitSongSec = tSec
         }
@@ -303,10 +303,11 @@ internal fun YumaLyricsLineCanvas(
             val decoVis = e * lineOpacity
 
             for (deco in prepared.decos) {
-                val dy = -0.4f * deco.fontSizePx * (1f - e)
+                val dy = visual.decoEnterOffsetEm * deco.fontSizePx * (1f - e)
                 if (deco.isPill && deco.pillRect != null) {
                     val r = deco.pillRect.translate(0f, dy)
-                    val corner = CornerRadius(deco.fontSizePx * 0.6f, deco.fontSizePx * 0.6f)
+                    val cornerRadiusPx = deco.fontSizePx * visual.romanizationPillCornerEm
+                    val corner = CornerRadius(cornerRadiusPx, cornerRadiusPx)
                     drawRoundRect(
                         color = style.textColor.copy(alpha = visual.romanizationPillFillAlpha * decoVis),
                         topLeft = r.topLeft,
@@ -353,13 +354,14 @@ private fun DrawScope.drawInstrumentalBreak(
             val since = (nowWallSec - (tracker.exitStartWallSec ?: nowWallSec)).toFloat()
             1f - ease.at((since / timing.exitFadeSec).coerceIn(0f, 1f))
         }
-        tracker.selected && e >= 0.0 -> ease.at((e / 0.15).toFloat().coerceIn(0f, 1f))
+        tracker.selected && e >= 0.0 -> ease.at((e / timing.instrumentalDotFadeInSec.coerceAtLeast(0.001f)).toFloat().coerceIn(0f, 1f))
         else -> 0f
     }
 
     val em = prepared.instrumentalSizePx
-    val baseR = em * 0.14f
-    val spacing = 2.5f
+    val dotDiameter = em * visual.instrumentalDotSizeEm
+    val baseR = dotDiameter * 0.5f
+    val step = dotDiameter + em * visual.instrumentalDotGapEm
     val dim = visual.dimAlpha * lineOpacity
     val periodSec = visual.instrumentalDotWavePeriodSec.toDouble().coerceAtLeast(0.1)
     val leadSec = timing.instrumentalCollapseLeadSec.toDouble().coerceAtLeast(0.001)
@@ -374,7 +376,7 @@ private fun DrawScope.drawInstrumentalBreak(
     for (i in 0 until 3) {
         val phase = 2.0 * PI * max(e, 0.0) / periodSec + i * visual.instrumentalDotPhaseOffsetRad
         val wave = sin(phase).toFloat()
-        val cx = prepared.instrumentalX + baseR * (1f + spacing * i)
+        val cx = prepared.instrumentalX + baseR + step * i
         val floatDy = if (lit > 0f) wave * em * visual.instrumentalDotFloatEm * lit else 0f
         val cy = prepared.instrumentalCenterY + floatDy + collapseDy
         val pulseR = baseR * (1f + visual.instrumentalDotPulseScale * wave * lit)

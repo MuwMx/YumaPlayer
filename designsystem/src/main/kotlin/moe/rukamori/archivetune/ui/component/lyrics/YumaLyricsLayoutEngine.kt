@@ -311,7 +311,7 @@ internal fun prepareLyricsLine(
     val fontSizeSp = visual.baseFontSizeSp * style.textScale
     val fontSizePx = with(density) { fontSizeSp.sp.toPx() }
     val lineHeightPx = fontSizePx * style.lineSpacingMultiplier
-    val verticalPadPx = fontSizePx * visual.lineVerticalPaddingEm
+    val verticalPadPx = fontSizePx * visual.lineVerticalPaddingEm * style.lineSpacingMultiplier
 
     val effectiveAgent = if (line.isInstrumental) nearestAgent(lines, lineIndex) else line.agent
     val lineRtl = hasRtl(line.text)
@@ -326,12 +326,11 @@ internal fun prepareLyricsLine(
     val durSec = (line.endTimeMs - line.timeMs).coerceAtLeast(0L) / 1000.0
 
     if (line.isInstrumental) {
-        val dotEm = fontSizePx
-        val instSize = dotEm * 0.14f * (2f + 2f * 2.5f)
+        val instSize = fontSizePx * (3f * visual.instrumentalDotSizeEm + 2f * visual.instrumentalDotGapEm)
         val rawX = when (resolvedAlign) {
             YumaLyricsAlignment.End -> contentWidth - instSize
             YumaLyricsAlignment.Center -> (contentWidth - instSize) * 0.5f
-            else -> dotEm * 0.14f
+            else -> 0f
         }
         return PreparedLyricsLine(
             lineIndex = lineIndex,
@@ -348,14 +347,12 @@ internal fun prepareLyricsLine(
             decos = emptyList(),
             instrumentalX = rawX + inset,
             instrumentalCenterY = verticalPadPx + lineHeightPx * 0.5f,
-            instrumentalSizePx = dotEm,
+            instrumentalSizePx = fontSizePx,
         )
     }
 
-    val rawWords = if (line.words.isEmpty()) {
+    val rawWords = line.words.ifEmpty {
         buildLineSyncedParts(line, timing.lineStaggerSec.toDouble())
-    } else {
-        line.words
     }
     val allToks = rawWords.flatMap { w ->
         splitPartIntoTokens(w.text, w.startMs, w.endMs, w.isBackground)

@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -72,7 +73,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val MIN_SCROLL_DELTA_PX = 2f
 private const val MAX_SCROLL_STAGGER_REL = 25
-private const val USER_SCROLL_DAMP_SEC = 0.15
 
 private class ScrollAnim(
     val startNanos: Long,
@@ -156,7 +156,7 @@ fun YumaKaraokeView(
             withFrameNanos { }
             val nowNanos = System.nanoTime()
             animFrameState.longValue = nowNanos
-            pruneExpiredScrollAnims(scrollAnims, nowNanos)
+            pruneExpiredScrollAnims(scrollAnims, nowNanos, motion.userScrollDampSec.toDouble())
         }
     }
 
@@ -177,6 +177,17 @@ fun YumaKaraokeView(
                 }
                 return Offset.Zero
             }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset = if (available.y != 0f) Offset(0f, available.y) else Offset.Zero
+
+            override suspend fun onPostFling(
+                consumed: Velocity,
+                available: Velocity,
+            ): Velocity = if (available.y != 0f) Velocity(0f, available.y) else Velocity.Zero
         }
     }
 
@@ -187,7 +198,7 @@ fun YumaKaraokeView(
     ) {
         val viewportWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(40f)
         val viewportHeightPx = with(density) { maxHeight.toPx() }.coerceAtLeast(1f)
-        val horizontalPadPx = with(density) { 16.dp.toPx() }
+        val horizontalPadPx = with(density) { visual.horizontalPaddingDp.dp.toPx() }
         val lineFullWidthPx = (viewportWidthPx - horizontalPadPx * 2f).coerceAtLeast(40f)
         val anchorOffsetPx = (viewportHeightPx * visual.anchorRatio).roundToInt()
         val bottomPaddingDp = maxHeight * (1f - visual.anchorRatio)
@@ -207,7 +218,7 @@ fun YumaKaraokeView(
             }
         }
 
-        val minPadTopPx = with(density) { 24.dp.toPx() }
+        val minPadTopPx = with(density) { visual.listTopPaddingDp.dp.toPx() }
         val padBottomPx = with(density) { bottomPaddingDp.toPx() }
         val minLineHeightPx = with(density) { 1.dp.toPx() }
         val cullMarginPx = with(density) { 40.dp.toPx() }
@@ -240,9 +251,9 @@ fun YumaKaraokeView(
         }
         val footerStyle = MaterialTheme.typography.bodyMedium.copy(
             fontFamily = style.fontFamily,
-            fontSize = (14f * style.textScale).sp,
+            fontSize = (visual.footerFontSizeSp * style.textScale).sp,
         )
-        val footerVerticalPadPx = with(density) { 12.dp.toPx() }
+        val footerVerticalPadPx = with(density) { visual.footerVerticalPaddingDp.dp.toPx() }
         val footerHeightPx = remember(writersText, footerStyle, lineFullWidthPx) {
             if (writersText.isEmpty()) {
                 0f
@@ -418,7 +429,7 @@ fun YumaKaraokeView(
                     orientation = Orientation.Vertical,
                     flingBehavior = ScrollableDefaults.flingBehavior(),
                 )
-                .smoothFadingEdge(top = 40.dp, bottom = 56.dp),
+                .smoothFadingEdge(top = visual.topEdgeFadeDp.dp, bottom = visual.bottomEdgeFadeDp.dp),
         ) {
             for (index in visibleLineRange) {
                 val prepared = preparedLines[index]
@@ -462,7 +473,7 @@ fun YumaKaraokeView(
                                 val posMs = positionMsProvider()
                                 val tSec = posMs / 1000.0
                                 val lineStartSec = prepared.startSec
-                                val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + 0.05)
+                                val lineEndSec = max(nextLineStartSec, prepared.startSec + prepared.durSec + timing.lineEndTailSec)
                                 val inLine = tSec in lineStartSec..<lineEndSec
 
                                 val scale = when {
@@ -500,7 +511,7 @@ fun YumaKaraokeView(
                                 },
                                 onLongClick = onLineLongPress?.let { handler -> { handler(line) } },
                             )
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = visual.horizontalPaddingDp.dp)
                             .then(
                                 if (animatedBlurDp > 0.25f) {
                                     Modifier.blur(animatedBlurDp.dp)
@@ -543,7 +554,7 @@ fun YumaKaraokeView(
                             translationY = (linesEndTop - scrollTop) +
                                 computeStaggerDy(preparedLines.size, nowNanos, scrollAnims, motion)
                         }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = visual.horizontalPaddingDp.dp, vertical = visual.footerVerticalPaddingDp.dp),
                 )
             }
         }
@@ -602,12 +613,13 @@ fun YumaKaraokeView(
 private fun pruneExpiredScrollAnims(
     scrollAnims: MutableList<ScrollAnim>,
     nowNanos: Long,
+    userScrollDampSec: Double,
 ) {
     if (scrollAnims.isEmpty()) return
     for (i in scrollAnims.lastIndex downTo 0) {
         val a = scrollAnims[i]
         val expired = if (a.dampStartNanos > 0L) {
-            (nowNanos - a.dampStartNanos) / 1_000_000_000.0 >= USER_SCROLL_DAMP_SEC
+            (nowNanos - a.dampStartNanos) / 1_000_000_000.0 >= userScrollDampSec
         } else {
             (nowNanos - a.startNanos) / 1_000_000_000.0 >= a.maxLineDurSec
         }
@@ -625,6 +637,7 @@ private fun computeStaggerDy(
 ): Float {
     if (scrollAnims.isEmpty()) return 0f
     val baseDur = motion.scrollBaseSecs.toDouble().coerceAtLeast(0.01)
+    val dampSec = motion.userScrollDampSec.toDouble().coerceAtLeast(0.001)
     var staggerDy = 0f
     for (i in scrollAnims.indices) {
         val a = scrollAnims[i]
@@ -632,11 +645,11 @@ private fun computeStaggerDy(
         val lineDur = scrollDurationSec(rel, a.deltaPx, baseDur).coerceAtLeast(0.01)
         if (a.dampStartNanos > 0L) {
             val dampElapsed = ((nowNanos - a.dampStartNanos) / 1_000_000_000.0).coerceAtLeast(0.0)
-            if (dampElapsed >= USER_SCROLL_DAMP_SEC) continue
+            if (dampElapsed >= dampSec) continue
             val elapsedAtDamp = ((a.dampStartNanos - a.startNanos) / 1_000_000_000.0).coerceAtLeast(0.0)
             val pAtDamp = (elapsedAtDamp / lineDur).toFloat().coerceIn(0f, 1f)
             val initialDy = a.deltaPx * (1f - motion.scrollEase.at(pAtDamp))
-            val dampP = (dampElapsed / USER_SCROLL_DAMP_SEC).toFloat().coerceIn(0f, 1f)
+            val dampP = (dampElapsed / dampSec).toFloat().coerceIn(0f, 1f)
             staggerDy += initialDy * (1f - motion.easeOut.at(dampP))
         } else {
             val elapsedSec = ((nowNanos - a.startNanos) / 1_000_000_000.0).coerceAtLeast(0.0)
