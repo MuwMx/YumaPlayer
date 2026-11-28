@@ -147,4 +147,63 @@ class YumaLyricsMathTest {
         assertEquals(2.5, tokens[3].startSec, 1e-4)
         assertNotEquals(tokens[0].startSec, tokens[3].startSec)
     }
+
+    @Test
+    fun sweepGradientBoundsUseLocalCoordsForDrawTextAndOriginForDstIn() {
+        val wordWidth = 120f
+        val wordX = 200f
+        val localBounds = computeSweepGradientBounds(
+            width = wordWidth,
+            isRtl = false,
+            startFrac = 0.4f,
+            endFrac = 0.6f,
+            originX = 0f,
+        )!!
+        assertTrue(localBounds.startX in 0f..wordWidth)
+        assertTrue(localBounds.endX in 0f..wordWidth)
+        assertEquals(48f, localBounds.startX, 1e-3f)
+        assertEquals(73f, localBounds.endX, 1e-3f)
+
+        val canvasBounds = computeSweepGradientBounds(
+            width = wordWidth,
+            isRtl = false,
+            startFrac = 0.4f,
+            endFrac = 0.6f,
+            originX = wordX,
+        )!!
+        assertEquals(wordX + 48f, canvasBounds.startX, 1e-3f)
+        assertEquals(wordX + 73f, canvasBounds.endX, 1e-3f)
+    }
+
+    @Test
+    fun instrumentalBreaksInsertedForGapsAtLeast5sAndIntro() {
+        val linesWithIntroAndGap = listOf(
+            YumaLyricsLine(timeMs = 6000L, endTimeMs = 9000L, text = "First"),
+            YumaLyricsLine(timeMs = 14500L, endTimeMs = 17000L, text = "Second"),
+            YumaLyricsLine(timeMs = 20000L, endTimeMs = 22000L, text = "Third"),
+        )
+        val result = insertInstrumentalBreaks(linesWithIntroAndGap, minGapMs = 5000L)
+        assertEquals(5, result.size)
+
+        assertTrue(result[0].isInstrumental)
+        assertEquals(0L, result[0].timeMs)
+        assertEquals(6000L, result[0].endTimeMs)
+
+        assertEquals("First", result[1].text)
+
+        assertTrue(result[2].isInstrumental)
+        assertEquals(9000L, result[2].timeMs)
+        assertEquals(14500L, result[2].endTimeMs)
+
+        assertEquals("Second", result[3].text)
+        assertEquals("Third", result[4].text)
+
+        val shortIntroAndGap = listOf(
+            YumaLyricsLine(timeMs = 3000L, endTimeMs = 6000L, text = "A"),
+            YumaLyricsLine(timeMs = 10999L, endTimeMs = 13000L, text = "B"),
+        )
+        val noBreaks = insertInstrumentalBreaks(shortIntroAndGap, minGapMs = 5000L)
+        assertEquals(2, noBreaks.size)
+        assertTrue(noBreaks.none { it.isInstrumental })
+    }
 }

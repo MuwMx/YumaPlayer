@@ -399,3 +399,43 @@ internal fun nearestAgent(lines: List<YumaLyricsLine>, index: Int): String? {
     }
     return null
 }
+
+fun insertInstrumentalBreaks(
+    lines: List<YumaLyricsLine>,
+    minGapMs: Long = TimingTokens().minInstrumentalGapMs,
+): List<YumaLyricsLine> {
+    if (lines.isEmpty() || minGapMs <= 0L) return lines
+    val out = ArrayList<YumaLyricsLine>(lines.size + 4)
+
+    val first = lines.first()
+    if (!first.isInstrumental && first.timeMs >= minGapMs) {
+        out.add(
+            YumaLyricsLine(
+                timeMs = 0L,
+                endTimeMs = first.timeMs,
+                text = "",
+                isInstrumental = true,
+            ),
+        )
+    }
+
+    for (i in lines.indices) {
+        val current = lines[i]
+        out.add(current)
+        val next = lines.getOrNull(i + 1) ?: continue
+        if (!current.isInstrumental && !next.isInstrumental) {
+            val gapMs = next.timeMs - current.endTimeMs
+            if (gapMs >= minGapMs) {
+                out.add(
+                    YumaLyricsLine(
+                        timeMs = current.endTimeMs,
+                        endTimeMs = next.timeMs,
+                        text = "",
+                        isInstrumental = true,
+                    ),
+                )
+            }
+        }
+    }
+    return out
+}

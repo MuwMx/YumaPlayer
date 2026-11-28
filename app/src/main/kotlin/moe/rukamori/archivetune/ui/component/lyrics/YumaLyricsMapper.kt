@@ -86,7 +86,7 @@ internal fun List<LyricsEntry>.toYumaLyricsDocument(
     }
 
     return YumaLyricsDocument(
-        lines = mappedLines,
+        lines = insertInstrumentalBreaks(mappedLines),
         songwriters = songwriters,
         isWordSynced = hasWordSync,
     )

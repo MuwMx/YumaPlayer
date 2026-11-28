@@ -28,8 +28,46 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.sin
+
+internal class AlphaTransState {
+    private var fromAlpha: Float = -1f
+    private var toAlpha: Float = -1f
+    private var startWallSec: Double = 0.0
+
+    fun current(
+        targetAlpha: Float,
+        nowWallSec: Double,
+        durationSec: Float,
+        ease: YumaCubicBezier,
+    ): Float {
+        if (fromAlpha < 0f) {
+            fromAlpha = targetAlpha
+            toAlpha = targetAlpha
+            return targetAlpha
+        }
+        val dur = durationSec.coerceAtLeast(0.001f)
+        if (abs(targetAlpha - toAlpha) > 1e-4f) {
+            fromAlpha = sample(nowWallSec, dur, ease)
+            toAlpha = targetAlpha
+            startWallSec = nowWallSec
+        }
+        return sample(nowWallSec, dur, ease)
+    }
+
+    private fun sample(nowWallSec: Double, dur: Float, ease: YumaCubicBezier): Float {
+        if (abs(toAlpha - fromAlpha) <= 1e-4f) return toAlpha
+        val p = ((nowWallSec - startWallSec) / dur).toFloat().coerceIn(0f, 1f)
+        if (p >= 1f) {
+            fromAlpha = toAlpha
+            return toAlpha
+        }
+        return lerpFloat(fromAlpha, toAlpha, ease.at(p))
+    }
+}
 
 internal class LinePlaybackTracker {
     var selected: Boolean = false
@@ -37,6 +75,7 @@ internal class LinePlaybackTracker {
     var exitSongSec: Double = 0.0
     var decoBornWallSec: Double? = null
     var lastLineIndex: Int = -1
+    val alphaTrans: AlphaTransState = AlphaTransState()
 }
 
 @Composable
@@ -47,9 +86,10 @@ internal fun YumaLyricsLineCanvas(
     lineAlphaProvider: () -> Float,
     style: YumaLyricsStyle,
     modifier: Modifier = Modifier,
+    animTickProvider: () -> Long = { 0L },
 ) {
     val density = LocalDensity.current
-    val tracker = remember(prepared.lineIndex) { LinePlaybackTracker() }
+    val tracker = remember(prepared) { LinePlaybackTracker() }
     val heightDp = with(density) { prepared.totalHeightPx.toDp() }
     val layerPaint = remember { Paint() }
 
@@ -58,14 +98,21 @@ internal fun YumaLyricsLineCanvas(
             .fillMaxWidth()
             .height(heightDp.coerceAtLeast(1.dp)),
     ) {
+        val tickNanos = animTickProvider()
         val posMs = positionMsProvider()
         val tSec = posMs / 1000.0
-        val nowWallSec = System.nanoTime() / 1_000_000_000.0
+        val nowWallSec = (if (tickNanos != 0L) tickNanos else System.nanoTime()) / 1_000_000_000.0
         val tokens = style.tokens
         val timing = tokens.timing
         val motion = tokens.motion
         val visual = tokens.visual
-        val lineOpacity = lineAlphaProvider().coerceIn(0f, 1f)
+        val targetOpacity = lineAlphaProvider().coerceIn(0f, 1f)
+        val lineOpacity = tracker.alphaTrans.current(
+            targetAlpha = targetOpacity,
+            nowWallSec = nowWallSec,
+            durationSec = motion.opacityTransitionSecs,
+            ease = motion.ease,
+        ).coerceIn(0f, 1f)
         if (lineOpacity <= 0.001f) return@Canvas
 
         if (tracker.lastLineIndex != prepared.lineIndex) {
@@ -208,6 +255,7 @@ internal fun YumaLyricsLineCanvas(
                         startFrac = look.start,
                         endFrac = look.end,
                         color = Color.White,
+                        originX = wordBox.left,
                     )
                     if (maskBrush != null) {
                         drawRect(
@@ -294,7 +342,8 @@ private fun DrawScope.drawInstrumentalBreak(
 ) {
     val visual = style.tokens.visual
     val timing = style.tokens.timing
-    val ease = style.tokens.motion.ease
+    val motion = style.tokens.motion
+    val ease = motion.ease
     val e = tSec - prepared.startSec
     val d = max(prepared.durSec, 0.001)
     val p = (e / d).toFloat().coerceIn(0f, 1f)
@@ -309,19 +358,36 @@ private fun DrawScope.drawInstrumentalBreak(
     }
 
     val em = prepared.instrumentalSizePx
-    val r = em * 0.14f
+    val baseR = em * 0.14f
     val spacing = 2.5f
     val dim = visual.dimAlpha * lineOpacity
+    val periodSec = visual.instrumentalDotWavePeriodSec.toDouble().coerceAtLeast(0.1)
+    val leadSec = timing.instrumentalCollapseLeadSec.toDouble().coerceAtLeast(0.001)
+    val (collapseScale, collapseDy, collapseAlpha) = if (d > leadSec && e > d - leadSec) {
+        val cp = ((e - (d - leadSec)) / leadSec).toFloat().coerceIn(0f, 1f)
+        val c = motion.easeIn.at(cp)
+        Triple((1f - c).coerceAtLeast(0f), em * visual.instrumentalCollapseDropEm * c, (1f - c).coerceIn(0f, 1f))
+    } else {
+        Triple(1f, 0f, 1f)
+    }
+
     for (i in 0 until 3) {
-        val cx = prepared.instrumentalX + r * (1f + spacing * i)
-        val cy = prepared.instrumentalCenterY
+        val phase = 2.0 * PI * max(e, 0.0) / periodSec + i * visual.instrumentalDotPhaseOffsetRad
+        val wave = sin(phase).toFloat()
+        val cx = prepared.instrumentalX + baseR * (1f + spacing * i)
+        val floatDy = if (lit > 0f) wave * em * visual.instrumentalDotFloatEm * lit else 0f
+        val cy = prepared.instrumentalCenterY + floatDy + collapseDy
+        val pulseR = baseR * (1f + visual.instrumentalDotPulseScale * wave * lit)
+        val r = pulseR * collapseScale
         val fill = ((p * 3f - i).coerceIn(0f, 1f) * lit).coerceAtLeast(0f)
-        val alpha = (dim + (lineOpacity - dim) * fill).coerceIn(0f, 1f)
-        drawCircle(
-            color = style.textColor.copy(alpha = alpha),
-            radius = r,
-            center = Offset(cx, cy),
-        )
+        val alpha = ((dim + (lineOpacity - dim) * fill) * collapseAlpha).coerceIn(0f, 1f)
+        if (r > 0.05f && alpha > 0.001f) {
+            drawCircle(
+                color = style.textColor.copy(alpha = alpha),
+                radius = r,
+                center = Offset(cx, cy),
+            )
+        }
     }
 }
 
@@ -338,34 +404,54 @@ private fun transformedWordRect(
     return Rect(minOf(left, right), word.y, maxOf(left, right), word.y + word.height)
 }
 
+internal data class SweepGradientBounds(
+    val startX: Float,
+    val endX: Float,
+    val isRtl: Boolean,
+)
+
+internal fun computeSweepGradientBounds(
+    width: Float,
+    isRtl: Boolean,
+    startFrac: Float,
+    endFrac: Float,
+    originX: Float = 0f,
+): SweepGradientBounds? {
+    val w = width.coerceAtLeast(1f)
+    return if (isRtl) {
+        val xs = originX + w * (1f - startFrac)
+        val xe = originX + w * (1f - endFrac) - 1f
+        if (abs(xs - xe) < 0.5f) return null
+        SweepGradientBounds(startX = xe, endX = xs, isRtl = true)
+    } else {
+        val xs = originX + w * startFrac
+        val xe = originX + w * endFrac + 1f
+        if (abs(xe - xs) < 0.5f) return null
+        SweepGradientBounds(startX = xs, endX = xe, isRtl = false)
+    }
+}
+
 private fun buildWordSweepBrush(
     word: PreparedWord,
     wordBox: Rect,
     startFrac: Float,
     endFrac: Float,
     color: Color,
+    originX: Float,
 ): Brush? {
-    val w = wordBox.width.coerceAtLeast(1f)
+    val bounds = computeSweepGradientBounds(
+        width = wordBox.width,
+        isRtl = word.isRtl,
+        startFrac = startFrac,
+        endFrac = endFrac,
+        originX = originX,
+    ) ?: return null
     val transparent = color.copy(alpha = 0f)
-    if (word.isRtl) {
-        val xs = wordBox.right - w * startFrac
-        val xe = wordBox.right - w * endFrac - 1f
-        if (abs(xs - xe) < 0.5f) return null
-        return Brush.horizontalGradient(
-            colors = listOf(transparent, color),
-            startX = xe,
-            endX = xs,
-        )
-    } else {
-        val xs = wordBox.left + w * startFrac
-        val xe = wordBox.left + w * endFrac + 1f
-        if (abs(xe - xs) < 0.5f) return null
-        return Brush.horizontalGradient(
-            colors = listOf(color, transparent),
-            startX = xs,
-            endX = xe,
-        )
-    }
+    return Brush.horizontalGradient(
+        colors = if (bounds.isRtl) listOf(transparent, color) else listOf(color, transparent),
+        startX = bounds.startX,
+        endX = bounds.endX,
+    )
 }
 
 private fun DrawScope.drawWordPass(
@@ -449,7 +535,7 @@ private fun DrawScope.drawWordSweepPass(
     val canUseLetters = word.useLetters && word.letterLayouts.size == word.text.length && isLive && !isExiting
     if (!canUseLetters) {
         val wordBox = transformedWordRect(word, wobble)
-        val brush = buildWordSweepBrush(word, wordBox, look.start, look.end, litColor) ?: return
+        val brush = buildWordSweepBrush(word, wordBox, look.start, look.end, litColor, originX = 0f) ?: return
         withWobbleAndBounce(word, wobble, bounce) {
             drawText(word.textLayout, brush = brush, topLeft = Offset(word.x, word.y))
         }
@@ -473,9 +559,9 @@ private fun DrawScope.drawWordSweepPass(
             val charX = word.x + word.letterStartXs[idx]
             val charY = word.y
             val charW = charLayout.size.width.toFloat().coerceAtLeast(1f)
-            val xs = charX + (look.start * n - idx) * charW
-            val xe = charX + (look.end * n - idx) * charW + 1f
-            if (xe <= charX) continue
+            val xs = (look.start * n - idx) * charW
+            val xe = (look.end * n - idx) * charW + 1f
+            if (xe <= 0f) continue
 
             val (liftEm, scale) = letterFloat(
                 elapsedSec = elapsed,
@@ -494,7 +580,7 @@ private fun DrawScope.drawWordSweepPass(
                 if (liftPx != 0f) translate(top = liftPx)
                 if (abs(scale - 1f) > 1e-4f) scale(scale, scale, pivot = pivot)
             }) {
-                if (xs >= charX + charW) {
+                if (xs >= charW) {
                     drawText(charLayout, color = litColor, topLeft = Offset(charX, charY))
                 } else {
                     val brush = Brush.horizontalGradient(

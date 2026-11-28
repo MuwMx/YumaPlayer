@@ -37,6 +37,8 @@ data class TimingTokens(
     val lineStaggerSec: Float = 0.05f,
     val decoEntrySec: Float = 0.35f,
     val userScrollResumeSec: Float = 25f,
+    val minInstrumentalGapMs: Long = 5000L,
+    val instrumentalCollapseLeadSec: Float = 0.25f,
 )
 
 @Immutable
@@ -124,6 +126,11 @@ data class VisualTokens(
     val decoGapEm: Float = 1.0f / 6.0f,
     val creditsAlphaRest: Float = 0.2f,
     val creditsAlphaFocused: Float = 0.85f,
+    val instrumentalDotFloatEm: Float = 0.06f,
+    val instrumentalDotWavePeriodSec: Float = 1.8f,
+    val instrumentalDotPhaseOffsetRad: Float = 1.0f,
+    val instrumentalDotPulseScale: Float = 0.12f,
+    val instrumentalCollapseDropEm: Float = 0.35f,
     val past: List<LineDistanceStyle> = listOf(
         LineDistanceStyle(alpha = 0.42f, blurFraction = 0.35f),
         LineDistanceStyle(alpha = 0.28f, blurFraction = 0.67f),
