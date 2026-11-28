@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -18,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import kotlinx.coroutines.flow.StateFlow
+import moe.rukamori.archivetune.ui.component.lyrics.LocalYumaLyricsScrollState
+import moe.rukamori.archivetune.ui.component.lyrics.YumaLyricsScrollState
 import moe.rukamori.archivetune.ui.haptics.rememberYumaHaptics
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsColumn
 import moe.rukamori.archivetune.ui.player.lyrics_0.LyricsHeader
@@ -43,11 +46,13 @@ internal fun PlayerLyricsLayer(
     val haptics = rememberYumaHaptics()
 
     val lyricsListState = rememberLazyListState()
-    val canDragLyrics by remember(lyricsListState) {
+    val yumaScrollState = remember { YumaLyricsScrollState() }
+    val canDragLyrics by remember(lyricsListState, yumaScrollState) {
         derivedStateOf {
             lyricsFractionProvider() > 0.05f &&
                     lyricsListState.firstVisibleItemIndex == 0 &&
-                    lyricsListState.firstVisibleItemScrollOffset == 0
+                    lyricsListState.firstVisibleItemScrollOffset == 0 &&
+                    yumaScrollState.isAtTop
         }
     }
     val lyricsNestedScrollConnection = remember(dragHandler) {
@@ -96,20 +101,22 @@ internal fun PlayerLyricsLayer(
                     }
                 )
         ) {
-            LyricsColumn(
-                state = state,
-                animateProgressProvider = lyricsFractionProvider,
-                playbackProgress = playbackProgress,
-                onCloseClick = onCloseLyricsClick,
-                onMoreClick = onMoreLyricsClick,
-                onSearchClick = onSearchLyricsClick,
-                lazyListState = lyricsListState,
-                onAction = onAction,
-                onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
-                onSeek = onSeek,
-                onSeekStarted = onSeekStarted,
-                modifier = Modifier.fillMaxSize(),
-            )
+            CompositionLocalProvider(LocalYumaLyricsScrollState provides yumaScrollState) {
+                LyricsColumn(
+                    state = state,
+                    animateProgressProvider = lyricsFractionProvider,
+                    playbackProgress = playbackProgress,
+                    onCloseClick = onCloseLyricsClick,
+                    onMoreClick = onMoreLyricsClick,
+                    onSearchClick = onSearchLyricsClick,
+                    lazyListState = lyricsListState,
+                    onAction = onAction,
+                    onLineClick = { timeMs -> onSeek(timeMs.toFloat()) },
+                    onSeek = onSeek,
+                    onSeekStarted = onSeekStarted,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }

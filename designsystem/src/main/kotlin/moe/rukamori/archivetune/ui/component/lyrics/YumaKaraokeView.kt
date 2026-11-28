@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +61,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -73,6 +74,13 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val MIN_SCROLL_DELTA_PX = 2f
 private const val MAX_SCROLL_STAGGER_REL = 25
+
+class YumaLyricsScrollState {
+    var isAtTop by mutableStateOf(true)
+        internal set
+}
+
+val LocalYumaLyricsScrollState = staticCompositionLocalOf<YumaLyricsScrollState?> { null }
 
 private class ScrollAnim(
     val startNanos: Long,
@@ -177,17 +185,6 @@ fun YumaKaraokeView(
                 }
                 return Offset.Zero
             }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset = if (available.y != 0f) Offset(0f, available.y) else Offset.Zero
-
-            override suspend fun onPostFling(
-                consumed: Velocity,
-                available: Velocity,
-            ): Velocity = if (available.y != 0f) Velocity(0f, available.y) else Velocity.Zero
         }
     }
 
@@ -268,11 +265,20 @@ fun YumaKaraokeView(
         val totalContentHeight = linesEndTop + footerHeightPx + padBottomPx
         val maxScrollTop = (totalContentHeight - viewportHeightPx).coerceAtLeast(0f)
 
+        val scrollStateBridge = LocalYumaLyricsScrollState.current
         var scrollTop by remember(document) { mutableFloatStateOf(0f) }
         var hasInitialScroll by remember(document) { mutableStateOf(false) }
         var lastScrollActive by remember(document) { mutableStateOf(emptyList<Int>()) }
         var prevPosMs by remember(document) { mutableLongStateOf(Long.MIN_VALUE) }
         var wasUserScroll by remember(document) { mutableStateOf(false) }
+
+        val isAtTop by remember { derivedStateOf { scrollTop <= 0.5f } }
+        LaunchedEffect(scrollStateBridge, isAtTop) {
+            scrollStateBridge?.isAtTop = isAtTop
+        }
+        DisposableEffect(scrollStateBridge) {
+            onDispose { scrollStateBridge?.isAtTop = true }
+        }
 
         LaunchedEffect(document, isAutoscrollPaused) {
             if (isAutoscrollPaused) {
@@ -293,6 +299,7 @@ fun YumaKaraokeView(
             val old = scrollTop
             val next = (old - delta).coerceIn(0f, maxScrollTop)
             scrollTop = next
+            scrollStateBridge?.isAtTop = next <= 0.5f
             old - next
         }
 
