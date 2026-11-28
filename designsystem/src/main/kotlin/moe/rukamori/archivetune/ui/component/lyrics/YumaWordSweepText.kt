@@ -1,6 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
- * ArchiveTune (2026) | Original work by © Rukamori
+ * YumaPlayer (2026) | Original work by MuwMix
  * GPL-3.0 License | Contributors: see git history
  */
 
@@ -86,7 +85,7 @@ internal fun YumaLyricsLineCanvas(
     lineAlphaProvider: () -> Float,
     style: YumaLyricsStyle,
     modifier: Modifier = Modifier,
-    animTickProvider: () -> Long = { 0L },
+    animFrameProvider: () -> Long = { 0L },
 ) {
     val density = LocalDensity.current
     val tracker = remember(prepared) { LinePlaybackTracker() }
@@ -98,10 +97,10 @@ internal fun YumaLyricsLineCanvas(
             .fillMaxWidth()
             .height(heightDp.coerceAtLeast(1.dp)),
     ) {
-        val tickNanos = animTickProvider()
+        val frameNanos = animFrameProvider()
         val posMs = positionMsProvider()
         val tSec = posMs / 1000.0
-        val nowWallSec = (if (tickNanos != 0L) tickNanos else System.nanoTime()) / 1_000_000_000.0
+        val nowWallSec = (if (frameNanos != 0L) frameNanos else System.nanoTime()) / 1_000_000_000.0
         val tokens = style.tokens
         val timing = tokens.timing
         val motion = tokens.motion
